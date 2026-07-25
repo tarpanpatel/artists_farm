@@ -1,0 +1,85 @@
+[
+  {
+    "id": "df9dc18f4aca525d451625cd45ecaf0d",
+    "portal": "requests",
+    "severity": "Super Admin",
+    "msg": "/artists_farm/php/telegram/manager.php",
+    "origin": "Dashboard",
+    "timestamp": "2026-07-24 16:06:54",
+    "execution_time": "0.0203s",
+    "memory_usage": "0.21 MB",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "e98df8192a71e8f238b192837f19a002",
+    "portal": "php",
+    "severity": "Fatal Error",
+    "msg": "Uncaught PDOException: SQLSTATE[HY000] [2002] Connection refused in /config/database.php:12",
+    "origin": "Database Handler",
+    "timestamp": "2026-07-24 15:42:10",
+    "execution_time": "0.0041s",
+    "memory_usage": "0.15 MB",
+    "ip": "127.0.0.1",
+    "file": "/config/database.php",
+    "line": 12,
+    "trace": "#0 /config/database.php(12): PDO->__construct()\n#1 /index.php(5): require_once()"
+  },
+  {
+    "id": "d9659943d60f7847c5d129f2f0cefb9d",
+    "portal": "requests",
+    "severity": "Super Admin",
+    "msg": "/artists_farm/php/guests/checkin.php",
+    "origin": "Guests",
+    "timestamp": "2026-07-24 14:33:24",
+    "execution_time": "0.0110s",
+    "memory_usage": "0.22 MB",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "4d3f2a2998d91146c5ea2652606cbba4",
+    "portal": "requests",
+    "severity": "Super Admin",
+    "msg": "/artists_farm/php/guests/billing.php",
+    "origin": "Guests",
+    "timestamp": "2026-07-24 14:27:18",
+    "execution_time": "0.0285s",
+    "memory_usage": "0.35 MB",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "t819238f910283748291038472910231",
+    "portal": "telegram",
+    "severity": "Telegram API",
+    "msg": "sendMessage dispatch to channel -5511705268 (Kitchen Alert)",
+    "origin": "Kitchen Orders",
+    "timestamp": "2026-07-24 14:10:05",
+    "execution_time": "0.1240s",
+    "memory_usage": "0.28 MB",
+    "ip": "127.0.0.1",
+    "channel_id": "-5511705268",
+    "status": "HTTP 200 OK"
+  },
+  {
+    "id": "j9182374910283748291038472910232",
+    "portal": "js",
+    "severity": "JS Exception",
+    "msg": "TypeError: Cannot read properties of undefined (reading 'item_name') at OrderModal.tsx:84",
+    "origin": "Browser Client",
+    "timestamp": "2026-07-24 13:55:12",
+    "execution_time": "0.0010s",
+    "memory_usage": "N/A",
+    "ip": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+  },
+  {
+    "id": "n9182374910283748291038472910233",
+    "portal": "404",
+    "severity": "404 Sentinel",
+    "msg": "HTTP 404 Not Found: GET /wp-login.php",
+    "origin": "Router",
+    "timestamp": "2026-07-24 12:30:19",
+    "execution_time": "0.0020s",
+    "memory_usage": "0.10 MB",
+    "ip": "192.168.1.100"
+  }
+]

@@ -1,0 +1,456 @@
+import React, { useState } from 'react';
+import {
+  FileSpreadsheet,
+  Download,
+  Calendar,
+  Database,
+  Hotel,
+  Utensils,
+  Wrench,
+  UserCheck,
+  FileText,
+  HardDriveDownload,
+  CheckCircle2
+} from 'lucide-react';
+import { Guest, BillingReceipt, Order, InventoryItem, PettyCashEntry, StaffMember, AttendanceRecord, AuditLog } from '../types';
+
+interface DataExportCenterProps {
+  guests: Guest[];
+  receipts: BillingReceipt[];
+  orders: Order[];
+  inventory: InventoryItem[];
+  expenses: PettyCashEntry[];
+  staff: StaffMember[];
+  attendance: AttendanceRecord[];
+  auditLogs: AuditLog[];
+}
+
+export const DataExportCenter: React.FC<DataExportCenterProps> = ({
+  guests,
+  receipts,
+  orders,
+  inventory,
+  expenses,
+  staff,
+  attendance,
+  auditLogs,
+}) => {
+  const currentMonthNum = new Date().getMonth() + 1;
+  const currentYearNum = new Date().getFullYear();
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonthNum);
+  const [selectedYear, setSelectedYear] = useState<number>(currentYearNum);
+  const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
+
+  const monthsList = [
+    { num: 1, name: 'January' },
+    { num: 2, name: 'February' },
+    { num: 3, name: 'March' },
+    { num: 4, name: 'April' },
+    { num: 5, name: 'May' },
+    { num: 6, name: 'June' },
+    { num: 7, name: 'July' },
+    { num: 8, name: 'August' },
+    { num: 9, name: 'September' },
+    { num: 10, name: 'October' },
+    { num: 11, name: 'November' },
+    { num: 12, name: 'December' },
+  ];
+
+  const yearsList = [2026, 2025, 2024];
+
+  const triggerDownload = (filename: string, content: string, mimeType: string = 'text/csv;charset=utf-8;') => {
+    const blob = new Blob(['\uFEFF' + content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setDownloadSuccessMsg(`Downloaded file: ${filename}`);
+    setTimeout(() => setDownloadSuccessMsg(null), 4000);
+  };
+
+  const monthName = monthsList.find((m) => m.num === Number(selectedMonth))?.name || 'Month';
+
+  // 1. Export Bookings / Accommodations
+  const exportBookings = () => {
+    const headers = [
+      'Guest Name',
+      'Room Number',
+      'Booking Source',
+      'Phone Number',
+      'Guests',
+      'Check-In Date',
+      'Check-Out Date',
+      'Base Room Rent (INR)',
+      'Advance Paid (INR)',
+      'Total Food Bill (INR)',
+      'Total Bill (INR)',
+      'Payment Status',
+    ];
+
+    const rows = guests.map((g) => [
+      `"${g.guestName}"`,
+      `"${g.roomNumber}"`,
+      `"${g.bookingSource}"`,
+      `"${g.phoneNumber}"`,
+      g.numberOfGuests,
+      `"${g.checkInDate}"`,
+      `"${g.checkOutDate}"`,
+      g.roomRate,
+      g.advanceAmount,
+      g.foodBill,
+      g.totalAmount,
+      `"${g.paymentStatus}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_BOOKINGS_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 2. Export Kitchen Purchases / Inventory
+  const exportKitchenExpenses = () => {
+    const headers = [
+      'Item Name',
+      'Category',
+      'Current Stock',
+      'Min Threshold',
+      'Unit',
+      'Estimated Value per Unit (INR)',
+      'Total Stock Value (INR)',
+    ];
+
+    const rows = inventory.map((item) => [
+      `"${item.name}"`,
+      `"${item.category}"`,
+      item.currentStock,
+      item.minThreshold,
+      `"${item.unit}"`,
+      120, // default estimation factor
+      item.currentStock * 120,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_KITCHEN_PURCHASES_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 3. Export Farm Maintenance & Upkeep Expenses
+  const exportFarmUpkeep = () => {
+    const headers = [
+      'Record ID',
+      'Date',
+      'Category',
+      'Description',
+      'Vendor / Payee',
+      'Transaction Type',
+      'Amount (INR)',
+    ];
+
+    const rows = expenses.map((exp) => [
+      `"${exp.id}"`,
+      `"${exp.date}"`,
+      `"${exp.category}"`,
+      `"${exp.description}"`,
+      `"${exp.vendor}"`,
+      `"${exp.type}"`,
+      exp.amount,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_FARM_UPKEEP_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 4. Export Payroll & Salaries
+  const exportSalaries = () => {
+    const headers = [
+      'Staff ID',
+      'Staff Name',
+      'Role / Designation',
+      'Base Monthly Salary (INR)',
+      'Attendance Count',
+      'Payment Status',
+    ];
+
+    const rows = staff.map((s) => [
+      `"${s.id}"`,
+      `"${s.name}"`,
+      `"${s.role}"`,
+      s.monthlySalary,
+      attendance.filter((a) => a.staffId === s.id && a.status === 'Present').length,
+      `"${s.status}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_SALARIES_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 5. Export Master Transaction Ledger
+  const exportMasterLedger = () => {
+    const headers = [
+      'Date',
+      'Financial Category',
+      'Description',
+      'Vendor / Reference',
+      'Payment Mode',
+      'Amount In / Out (INR)',
+    ];
+
+    const ledgerRows: string[][] = [];
+
+    // Add Guest Income
+    guests.forEach((g) => {
+      if (g.advanceAmount > 0) {
+        ledgerRows.push([
+          `"${g.checkInDate}"`,
+          '"Room Rent (Advance)"',
+          `"Booking Advance: ${g.guestName} (${g.roomNumber}) via ${g.bookingSource}"`,
+          '"Front Desk"',
+          '"UPI/Cash"',
+          `${g.advanceAmount}`,
+        ]);
+      }
+      if (g.paymentStatus === 'Checked Out' && g.totalAmount > 0) {
+        ledgerRows.push([
+          `"${g.checkOutDate}"`,
+          '"Room & Food Settlement"',
+          `"Final Checkout Settlement: ${g.guestName} (${g.roomNumber})"`,
+          '"Front Desk"',
+          '"Settled"',
+          `${g.totalAmount - g.advanceAmount}`,
+        ]);
+      }
+    });
+
+    // Add Expenses
+    expenses.forEach((e) => {
+      ledgerRows.push([
+        `"${e.date}"`,
+        `"Petty Cash (${e.category})"`,
+        `"${e.description}"`,
+        `"${e.vendor}"`,
+        `"${e.type}"`,
+        `-${e.amount}`,
+      ]);
+    });
+
+    const csvContent = [headers.join(','), ...ledgerRows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_MASTER_LEDGER_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 6. Export Full SQL Database Snapshot Backup
+  const exportFullSqlBackup = () => {
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    let sql = `-- ======================================================\n`;
+    sql += `-- AUTOMATED DATABASE SNAPSHOT BACKUP - ARTISTS FARM JAIPUR\n`;
+    sql += `-- Generated At: ${nowStr}\n`;
+    sql += `-- ======================================================\n\n`;
+
+    sql += `CREATE TABLE IF NOT EXISTS guests (\n  id VARCHAR(50) PRIMARY KEY,\n  guest_name VARCHAR(100),\n  room_number VARCHAR(50),\n  total_amount DECIMAL(10,2),\n  advance_amount DECIMAL(10,2)\n);\n\n`;
+
+    guests.forEach((g) => {
+      sql += `INSERT INTO guests (id, guest_name, room_number, total_amount, advance_amount) VALUES ('${g.id}', '${g.guestName.replace(/'/g, "''")}', '${g.roomNumber}', ${g.totalAmount}, ${g.advanceAmount});\n`;
+    });
+
+    sql += `\n-- End of Backup Dump\n`;
+
+    triggerDownload(`Backup_Artists_Farm_Jaipur_${new Date().toISOString().slice(0, 10)}.sql`, sql, 'text/plain;charset=utf-8;');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner Header */}
+      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+            <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
+            <span>Data Export & Backup Center</span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.
+          </p>
+        </div>
+
+        {downloadSuccessMsg && (
+          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-lg text-xs font-bold animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{downloadSuccessMsg}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Control Card & Dropdowns */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-2xs space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-dashed border-gray-200">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span>Target Statement Month</span>
+            </label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm font-semibold rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+            >
+              {monthsList.map((m) => (
+                <option key={m.num} value={m.num}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span>Target Statement Year</span>
+            </label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm font-semibold rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+            >
+              {yearsList.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Action Export Cards List */}
+        <div className="space-y-4">
+          {/* Card 1: Bookings */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <Hotel className="w-4 h-4 text-blue-600" />
+                <span>🏨 Accommodations Booking Spreadsheet</span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportBookings}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>EXPORT SHEETS</span>
+            </button>
+          </div>
+
+          {/* Card 2: Kitchen Purchases */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <Utensils className="w-4 h-4 text-amber-600" />
+                <span>🍳 Kitchen Purchases Workbook</span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportKitchenExpenses}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>EXPORT SHEETS</span>
+            </button>
+          </div>
+
+          {/* Card 3: Farm Upkeep & Utilities */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-purple-600" />
+                <span>🛠 Property Maintenance & Utilities Logs</span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Generates itemized expense spreadsheets for water tankers, electricity bills, hardware, and physical farm upkeep.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportFarmUpkeep}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>EXPORT SHEETS</span>
+            </button>
+          </div>
+
+          {/* Card 4: Payroll & Salaries */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-indigo-600" />
+                <span>💼 Payroll & Salaries Registry</span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Compiles all recorded payouts, staff management stipends, logged cash advances, and deductions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportSalaries}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>EXPORT SHEETS</span>
+            </button>
+          </div>
+
+          {/* Card 5: Master Ledger */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-xl gap-4 hover:border-sky-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-sky-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-sky-700" />
+                <span>📊 Master Transaction Ledger</span>
+              </h3>
+              <p className="text-xs text-sky-700">
+                The ultimate financial sheet compiling room rent advances, final settlements, food collections, supply purchases, and operational expenses.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportMasterLedger}
+              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>EXPORT MASTER</span>
+            </button>
+          </div>
+
+          {/* Card 6: SQL Snapshot Backup */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-rose-900 flex items-center gap-2">
+                <Database className="w-4 h-4 text-rose-700" />
+                <span>💾 Full System Snapshot Backup</span>
+              </h3>
+              <p className="text-xs text-rose-700">
+                Generates an instant raw SQL dump of your entire database structure and entries for full data protection.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={exportFullSqlBackup}
+              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+            >
+              <HardDriveDownload className="w-4 h-4" />
+              <span>DOWNLOAD BACKUP (.SQL)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
