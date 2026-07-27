@@ -191,17 +191,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [passcodeError, setPasscodeError] = useState('');
   const [pendingPasscodeAction, setPendingPasscodeAction] = useState<(() => void) | null>(null);
 
-  const foodCategories = [
-    'All',
-    'Starters',
-    'Chinese',
-    'Pizza & Sandwich',
-    'Main Course',
-    'Rice & Roti',
-    'Breakfast',
-    'Raita & Salad',
-    'Beverages',
-  ];
+  const foodCategories = ['All', ...Array.from(new Set(foodMenu.map((item) => item.category).filter(Boolean)))];
 
   const filteredFoodItems = foodMenu.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(foodSearch.toLowerCase());

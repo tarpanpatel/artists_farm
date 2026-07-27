@@ -35,7 +35,8 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  Users
+  Users,
+  Paintbrush
 } from 'lucide-react';
 
 export type TabType =
@@ -288,6 +289,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'telegram', uniqueKey: 'telegram', label: 'Telegram', icon: Send, roles: ['Super Admin', 'Admin'] },
     { id: 'errors', uniqueKey: 'errors', label: 'Error Logs', icon: AlertCircle, roles: ['Super Admin', 'Admin'] },
     { id: 'kitchen', uniqueKey: 'beta_recipe_builder', label: 'Beta Recipe Builder', icon: CookingPot, roles: ['Super Admin', 'Admin', 'Chef'] },
+    { id: 'custom_css', uniqueKey: 'custom_css', label: 'Custom CSS Override', icon: Paintbrush, roles: ['Super Admin', 'Admin'] },
   ];
 
   // Cash Drawer item

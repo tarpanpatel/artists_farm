@@ -21,7 +21,7 @@ import {
   Key,
   Store
 } from 'lucide-react';
-import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity } from '../types';
+import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB } from '../services/api';
 
 interface StaffManagementProps {
@@ -95,6 +95,40 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Monthly Payout Calculator State
+  const [advances, setAdvances] = useState<StaffAdvance[]>(() => {
+    try { return JSON.parse(localStorage.getItem('staff_advances') || '[]'); } catch { return []; }
+  });
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [advanceStaff, setAdvanceStaff] = useState<StaffMember | null>(null);
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [advanceReason, setAdvanceReason] = useState('');
+
+  useEffect(() => { localStorage.setItem('staff_advances', JSON.stringify(advances)); }, [advances]);
+
+  const handleGiveAdvance = () => {
+    if (!advanceStaff || advanceAmount <= 0) return;
+    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+    const newAdvance: StaffAdvance = {
+      id: `adv-${Date.now()}`,
+      staffId: advanceStaff.id,
+      staffName: advanceStaff.name,
+      amount: advanceAmount,
+      date: new Date().toISOString().slice(0, 10),
+      month: monthKey,
+      reason: advanceReason || 'Cash advance',
+      addedBy: 'Admin',
+    };
+    setAdvances((prev) => [...prev, newAdvance]);
+    setIsAdvanceModalOpen(false);
+    setAdvanceStaff(null);
+    setAdvanceAmount(0);
+    setAdvanceReason('');
+  };
+
+  const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+  const monthAdvances = advances.filter((a) => a.month === monthKey);
+
   // Form State for Add Staff Roster
   const [name, setName] = useState('');
   const [role, setRole] = useState<StaffMember['role']>('');
@@ -156,6 +190,22 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const attendanceMap = new Map<string, AttendanceRecord['status']>();
   attendance.forEach((rec) => {
     attendanceMap.set(`${rec.staffId}_${rec.date}`, rec.status);
+  });
+
+  // Payout calculation data
+  const payoutData = staff.filter((s) => s.status === 'Active').map((s) => {
+    const dailyWage = daysInMonth > 0 ? s.monthlySalary / daysInMonth : 0;
+    let presentDays = 0;
+    monthDays.forEach((d) => {
+      const status = attendanceMap.get(`${s.id}_${d.dateStr}`);
+      if (status === 'Present') presentDays += 1;
+      else if (status === 'Half Day') presentDays += 0.5;
+    });
+    const totalEarned = Math.round(dailyWage * presentDays * 100) / 100;
+    const moneyOwed = Math.round((s.monthlySalary - totalEarned) * 100) / 100;
+    const staffAdvances = monthAdvances.filter((a) => a.staffId === s.id).reduce((sum, a) => sum + a.amount, 0);
+    const pendingPayout = Math.round((totalEarned - staffAdvances) * 100) / 100;
+    return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, pendingPayout };
   });
 
   // Handlers for Control Center
@@ -1015,6 +1065,101 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </table>
             </div>
           </div>
+
+          {/* MONTHLY PAYOUT CALCULATOR */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors">
+            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
+              <h3 className="font-extrabold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
+                <IndianRupee className="w-4 h-4" />
+                Monthly Payout Calculator
+              </h3>
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full">
+                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-amber-50/80 dark:bg-amber-950/20 font-bold uppercase text-[10px] text-amber-700 dark:text-amber-400 border-b border-amber-200 dark:border-amber-800/40">
+                  <tr>
+                    <th className="py-2.5 px-3">Staff Name</th>
+                    <th className="py-2.5 px-3 text-right">Daily Wage (₹)</th>
+                    <th className="py-2.5 px-3 text-center">Present Days</th>
+                    <th className="py-2.5 px-3 text-right">Total Earned (₹)</th>
+                    <th className="py-2.5 px-3 text-right">Money Owed (₹)</th>
+                    <th className="py-2.5 px-3 text-right">Advances (₹)</th>
+                    <th className="py-2.5 px-3 text-right">Pending Payout (₹)</th>
+                    <th className="py-2.5 px-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30">
+                  {payoutData.map((row) => (
+                    <tr key={row.staff.id} className="hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors">
+                      <td className="py-3 px-3 font-bold text-gray-900 dark:text-white text-sm">{row.staff.name}</td>
+                      <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-gray-300">₹{row.dailyWage.toFixed(2)}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="font-extrabold text-gray-800 dark:text-gray-200">{row.presentDays}</span>
+                        <span className="text-gray-400 dark:text-gray-500"> days</span>
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-3 px-3 text-right font-bold text-orange-600 dark:text-orange-400">
+                        {row.moneyOwed > 0 ? `+ ₹${row.moneyOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold text-red-600 dark:text-red-400">
+                        {row.advances > 0 ? `- ₹${row.advances.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-extrabold text-blue-700 dark:text-blue-400">
+                        ₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          onClick={() => {
+                            setAdvanceStaff(row.staff);
+                            setAdvanceAmount(0);
+                            setAdvanceReason('');
+                            setIsAdvanceModalOpen(true);
+                          }}
+                          className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1 mx-auto"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Give Advance
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {payoutData.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-gray-400 dark:text-gray-500 font-semibold text-xs">
+                        No active staff members found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Advances History for this month */}
+            {monthAdvances.length > 0 && (
+              <div className="border-t border-amber-200 dark:border-amber-800/40 px-4 py-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Advances This Month</p>
+                <div className="space-y-1">
+                  {monthAdvances.map((adv) => (
+                    <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
+                      <span className="font-bold text-red-800 dark:text-red-300">{adv.staffName}</span>
+                      <span className="text-red-600 dark:text-red-400">- ₹{adv.amount.toLocaleString('en-IN')}</span>
+                      <span className="text-gray-400 dark:text-gray-500">{adv.reason}</span>
+                      <button
+                        onClick={() => setAdvances((prev) => prev.filter((a) => a.id !== adv.id))}
+                        className="text-red-400 hover:text-red-600 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1294,6 +1439,59 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* GIVE ADVANCE MODAL */}
+      {isAdvanceModalOpen && advanceStaff && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Give Advance — {advanceStaff.name}</h3>
+              <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Amount (₹) *</label>
+              <input
+                type="number"
+                min={0}
+                value={advanceAmount || ''}
+                onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                placeholder="e.g. 2000"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reason</label>
+              <input
+                type="text"
+                value={advanceReason}
+                onChange={(e) => setAdvanceReason(e.target.value)}
+                placeholder="e.g. Personal emergency"
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsAdvanceModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGiveAdvance}
+                disabled={advanceAmount <= 0}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:opacity-50 text-white font-bold text-xs shadow-sm cursor-pointer"
+              >
+                Confirm Advance
+              </button>
+            </div>
           </div>
         </div>
       )}

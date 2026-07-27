@@ -47,7 +47,7 @@ export interface BillingReceipt {
 }
 
 export interface MenuItem {
-  id: string;
+  id: number;
   name: string;
   category: 'Starters' | 'Chinese' | 'Pizza & Sandwich' | 'Main Course' | 'Rice & Roti' | 'Breakfast' | 'Raita & Salad' | 'Beverages' | string;
   categoryId?: string | number;
@@ -163,6 +163,17 @@ export interface AttendanceRecord {
   staffId: string;
   staffName: string;
   status: 'Present' | 'Absent' | 'Half Day' | 'Paid Leave' | 'Unpaid Leave' | string;
+}
+
+export interface StaffAdvance {
+  id: string;
+  staffId: string;
+  staffName: string;
+  amount: number;
+  date: string;
+  month: string;
+  reason: string;
+  addedBy: string;
 }
 
 export interface AuditLog {

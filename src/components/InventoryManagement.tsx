@@ -112,7 +112,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
   }, []);
 
-  // Material categories from database
+  // Material categories from database (for CRUD operations)
   const [dbCategories, setDbCategories] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
@@ -122,6 +122,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
     });
   }, []);
+
+  // Category filter pills derived from actual catalog items (always in sync with data)
+  const catalogCategories = React.useMemo(() => {
+    const cats = Array.from(new Set(catalogItems.map((item) => item.category).filter(Boolean)));
+    return ['All', ...cats];
+  }, [catalogItems]);
 
   // Sync recorded-by with logged-in user
   useEffect(() => {
@@ -1416,19 +1422,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           >
             All ({catalogItems.length})
           </button>
-          {dbCategories.map(cat => {
-            const count = catalogItems.filter(i => i.category === cat.name).length;
+          {catalogCategories.map(cat => {
+            const count = catalogItems.filter(i => i.category === cat).length;
             return (
               <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.name)}
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-                  selectedCategory === cat.name
+                  selectedCategory === cat
                     ? 'bg-blue-600 text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {cat.name} ({count})
+                {cat} ({count})
               </button>
             );
           })}
@@ -1492,34 +1498,36 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-              {dbCategories.map(cat => (
-                <div key={cat.id} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
-                  {editingCategoryId === cat.id ? (
+              {catalogCategories.filter(c => c !== 'All').map(cat => {
+                  const dbCat = dbCategories.find(c => c.name === cat);
+                  return (
+                    <div key={cat} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
+                      {editingCategoryId === dbCat?.id ? (
                     <>
                       <input
                         type="text"
                         value={editingCategoryName}
                         onChange={e => setEditingCategoryName(e.target.value)}
-                        onBlur={() => handleRenameCategory(cat.id)}
-                        onKeyDown={e => e.key === 'Enter' && handleRenameCategory(cat.id)}
+                        onBlur={() => handleRenameCategory(dbCat!.id)}
+                        onKeyDown={e => e.key === 'Enter' && handleRenameCategory(dbCat!.id)}
                         autoFocus
                         className="flex-1 p-1 border border-blue-500 rounded text-xs"
                       />
-                      <button onClick={() => handleRenameCategory(cat.id)} className="text-green-600 hover:text-green-700 text-xs font-bold cursor-pointer">✓</button>
+                      <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-green-600 hover:text-green-700 text-xs font-bold cursor-pointer">✓</button>
                       <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer">✕</button>
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 text-xs font-semibold text-slate-700 truncate">{cat.name}</span>
+                      <span className="flex-1 text-xs font-semibold text-slate-700 truncate">{cat}</span>
                       <button
-                        onClick={() => { setEditingCategoryId(cat.id); setEditingCategoryName(cat.name); }}
+                        onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
                         className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
                         title="Rename"
                       >
                         ✎
                       </button>
                       <button
-                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                        onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
                         className="text-slate-400 hover:text-red-600 text-xs cursor-pointer"
                         title="Delete"
                       >
@@ -1528,7 +1536,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </>
                   )}
                 </div>
-              ))}
+               );
+            })}
             </div>
           </div>
         )}
@@ -1551,9 +1560,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 className="flex-1 sm:flex-none bg-white border border-blue-300 text-slate-800 text-xs font-semibold px-3 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
               >
                 <option value="" disabled>Select Target Category...</option>
-                {dbCategories.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.name}</option>
-                ))}
+                {catalogCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
               </select>
               <button
                 onClick={() => handleBulkAssignCategory(bulkTargetCategory)}
@@ -1686,8 +1695,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   <label className="block text-slate-700 font-bold mb-1">Category</label>
                   <select required value={catCategory} onChange={e => setCatCategory(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden bg-white">
                     <option value="">Select category...</option>
-                    {dbCategories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    {catalogCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
@@ -1920,7 +1929,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     const categories = [
       'All Items',
-      ...dbCategories.map(c => c.name)
+      ...catalogCategories.filter(c => c !== 'All')
     ];
 
     const totalReqCount = reqBasket.reduce((sum, b) => sum + b.qty, 0);
