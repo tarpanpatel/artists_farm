@@ -989,7 +989,6 @@ ${itemsStr}
 
   const handleUpdateNavItems = (items: NavMenuItem[]) => {
     setNavItems(items);
-    saveNavMenuDB(items);
     logAudit(`Updated system navigation menu configuration & RBAC rules`);
   };
 

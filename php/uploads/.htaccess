@@ -1,1 +1,9 @@
-Allow from all
+# Restrict uploads directory to image files only
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Allow from all
+</FilesMatch>
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pl|cgi|py|rb|asp|aspx|exe|sh|bat|cmd)$">
+    Deny from all
+</FilesMatch>
+# Block direct access to the directory index
+Options -Indexes

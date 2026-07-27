@@ -176,7 +176,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `custom_url` TEXT DEFAULT NULL"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
 
-                $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab FROM nav_menu_items ORDER BY display_order ASC");
+                $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
                     return [
@@ -216,10 +216,11 @@ function handleMenuRequests($pdo, $request_method, $action) {
                         `is_visible` TINYINT(1) DEFAULT 1,
                         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                    try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
                     $pdo->beginTransaction();
-                    $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab, parent_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             title = VALUES(title),
                             tab_key = VALUES(tab_key),
@@ -230,7 +231,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                             roles_json = VALUES(roles_json),
                             is_visible = VALUES(is_visible),
                             custom_url = VALUES(custom_url),
-                            open_in_new_tab = VALUES(open_in_new_tab)");
+                            open_in_new_tab = VALUES(open_in_new_tab),
+                            parent_id = VALUES(parent_id)");
 
                     foreach ($items as $idx => $item) {
                         $stmt->execute([
@@ -244,7 +246,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                             json_encode($item['roles'] ?? []),
                             isset($item['isVisible']) ? ($item['isVisible'] ? 1 : 0) : 1,
                             $item['customUrl'] ?? null,
-                            isset($item['openInNewTab']) ? ($item['openInNewTab'] ? 1 : 0) : 0
+                            isset($item['openInNewTab']) ? ($item['openInNewTab'] ? 1 : 0) : 0,
+                            $item['parentId'] ?? null
                         ]);
                     }
                     $pdo->commit();

@@ -6,6 +6,7 @@
 const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
+const API_KEY = 'artists-farm-secure-key-2026';
 
 export function isTestingModeActive(): boolean {
   if (typeof window !== 'undefined') {
@@ -26,6 +27,7 @@ export function getTestingHeaders(customHeaders: Record<string, string> = {}): R
   if (isTestingModeActive()) {
     headers['X-Testing-Mode'] = '1';
   }
+  headers['X-API-Key'] = API_KEY;
   return headers;
 }
 

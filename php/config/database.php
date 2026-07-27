@@ -1,10 +1,15 @@
+h
+
 <?php
 /**
  * Database & Environment Configuration
  * Artists Farm Resort & Kitchen Management System
  */
 
-header('Access-Control-Allow-Origin: *');
+// Restrict CORS to specific known origins
+$allowed_origins = ['http://localhost:5173', 'http://localhost', 'https://artistsfarmjaipur.com', 'https://www.artistsfarmjaipur.com'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistsfarmjaipur.com'));
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Testing-Mode');
 header('Content-Type: application/json; charset=UTF-8');
@@ -29,7 +34,7 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
     $db_host = 'localhost';
     $live_db = 'artists_farm';
     $db_user = 'artist_farm';
-    $db_pass = 'tPatel13@';
+    $db_pass = getenv('DB_PASSWORD') ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : 'tPatel13@');
 }
 
 $is_testing_mode = false;
@@ -73,12 +78,14 @@ try {
             }
         } catch (Exception $ex) {
             http_response_code(500);
-            echo json_encode(['error' => 'Sandbox database initialization failed: ' . $ex->getMessage()]);
+            echo json_encode(['error' => 'Sandbox initialization failed.']);
+            error_log('Sandbox database init error: ' . $ex->getMessage());
             exit();
         }
     } else {
         http_response_code(500);
-        echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+        echo json_encode(['error' => 'Database connection failed. Please contact system administrator.']);
+        error_log('Database connection error: ' . $e->getMessage());
         exit();
     }
 }

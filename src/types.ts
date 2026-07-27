@@ -69,6 +69,7 @@ export interface NavMenuItem {
   isVisible: boolean;
   customUrl?: string;
   openInNewTab?: boolean;
+  parentId?: string | null;
 }
 
 export interface OrderItem {

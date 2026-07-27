@@ -162,6 +162,20 @@ export const Navigation: React.FC<NavigationProps> = ({
   const customUrlItems = dynamicFlatNavItems.filter((item) => item.customUrl);
   const internalNavItems = dynamicFlatNavItems.filter((item) => !item.customUrl);
 
+  // Build tree from internal nav items using parentId
+  const buildInternalTree = (parentId: string | null = null): FlatNavItem[] => {
+    return internalNavItems
+      .filter((item) => {
+        const itemParentId = (navItems.find(n => n.uniqueKey === item.uniqueKey))?.parentId || null;
+        return itemParentId === parentId;
+      })
+      .sort((a, b) => {
+        const aOrder = navItems.find(n => n.uniqueKey === a.uniqueKey)?.order ?? 0;
+        const bOrder = navItems.find(n => n.uniqueKey === b.uniqueKey)?.order ?? 0;
+        return aOrder - bOrder;
+      });
+  };
+
   // Top-level flat items in exact user requested order
   const topFlatItems: FlatNavItem[] = [
     {
@@ -604,30 +618,39 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </button>
               )}
 
-              {/* 4. Dynamic Internal Nav Items (from DB "Edit Main Menu", non-customUrl) */}
+              {/* 4. Dynamic Internal Nav Items (from DB "Edit Main Menu", non-customUrl, with hierarchy) */}
               {internalNavItems.length > 0 && (
                 <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
                   <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Additional Links</div>
-                  {internalNavItems
-                    .filter((item) => isVisible(item.roles))
-                    .map((item) => {
+                  {(() => {
+                    const renderNavItem = (item: FlatNavItem, depth: number = 0) => {
                       const ItemIcon = item.icon;
                       const isActive = activeMenuItemKey === item.uniqueKey;
+                      const navRecord = navItems.find(n => n.uniqueKey === item.uniqueKey);
+                      const children = buildInternalTree(item.uniqueKey);
+                      const hasChildren = children.length > 0;
+                      const isExpanded = depth === 0; // Auto-expand top level
+
                       return (
-                        <button
-                          key={item.uniqueKey}
-                          onClick={() => handleTabClick(item)}
-                          className={`w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
-                          }`}
-                        >
-                          <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'}`} />
-                          <span className="truncate">{item.label}</span>
-                        </button>
+                        <div key={item.uniqueKey}>
+                          <button
+                            onClick={() => handleTabClick(item)}
+                            style={{ paddingLeft: `${12 + depth * 16}px` }}
+                            className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer text-left ${
+                              isActive
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'}`} />
+                            <span className="truncate">{item.label}</span>
+                          </button>
+                          {isExpanded && hasChildren && children.map(child => renderNavItem(child, depth + 1))}
+                        </div>
                       );
-                    })}
+                    };
+                    return buildInternalTree(null).map(item => renderNavItem(item, 0));
+                  })()}
                 </div>
               )}
 
