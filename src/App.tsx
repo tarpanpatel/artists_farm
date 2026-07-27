@@ -20,7 +20,7 @@ import { GlobalModal } from './components/GlobalModal';
 import { LoginModal } from './components/LoginModal';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB, dedupMenuDB } from './services/api';
+import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB, dedupMenuDB, fetchReceiptsFromDB } from './services/api';
 import { INITIAL_MENU } from './data/initialData';
 
 // Removed INITIAL_ imports to ensure we never use hardcoded lists
@@ -412,6 +412,9 @@ export function App() {
     fetchAuditLogsFromDB().then((data) => {
       if (data && data.length > 0) setAuditLogs(data); else setAuditLogs([]);
     });
+    fetchReceiptsFromDB().then((data) => {
+      if (data && data.length > 0) setReceipts(data); else setReceipts([]);
+    });
   }, [isTestingMode]);
 
   const handleResetTestDatabase = async () => {
@@ -513,6 +516,9 @@ export function App() {
     });
     fetchAuditLogsFromDB().then((data) => {
       if (data && data.length > 0) setAuditLogs(data);
+    });
+    fetchReceiptsFromDB().then((data) => {
+      if (data && data.length > 0) setReceipts(data);
     });
   }, []);
 

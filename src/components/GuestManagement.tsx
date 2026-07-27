@@ -191,14 +191,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   };
 
   // Selected Active Guest for Billing
-  const [selectedGuestId, setSelectedGuestId] = useState<string>(guests[0]?.id || '');
+  const activeGuests = guests.filter((g) => g.status === 'Active');
+  const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
 
-  // Lodging Breakdown Data
-  const [baseLodging, setBaseLodging] = useState(12000);
-  const [advancePaid, setAdvancePaid] = useState(10000);
-  const [advancePayer, setAdvancePayer] = useState('Tarpan');
-  const [pendingSettled, setPendingSettled] = useState(2000);
-  const [pendingSettledBy, setPendingSettledBy] = useState('Kamlesh');
+  // BUG 2 FIX: Auto-select first Active guest when guests prop changes
+  useEffect(() => {
+    if (activeGuests.length > 0 && !activeGuests.find((g) => g.id === selectedGuestId)) {
+      setSelectedGuestId(activeGuests[0].id);
+    }
+  }, [guests]);
+
+  // Lodging Breakdown Data — initialized from guest data (BUG 6 FIX)
+  const [baseLodging, setBaseLodging] = useState(0);
+  const [advancePaid, setAdvancePaid] = useState(0);
+  const [advancePayer, setAdvancePayer] = useState('');
+  const [pendingSettled, setPendingSettled] = useState(0);
+  const [pendingSettledBy, setPendingSettledBy] = useState('');
 
   // Incidentals Log Items
   const [incidentals, setIncidentals] = useState<IncidentalsItem[]>([
@@ -265,12 +273,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
-  // Active Guest Object
-  const currentGuest = guests.find((g) => g.id === selectedGuestId) || guests[0];
+  // Active Guest Object — BUG 3 FIX: fallback to first Active guest, not guests[0]
+  const currentGuest = guests.find((g) => g.id === selectedGuestId) || activeGuests[0];
 
   // Whenever selected guest changes, auto-load their fulfilled orders into incidentals
+  // BUG 6 FIX: Initialize lodging amounts from guest data
+  // BUG 9 FIX: Clear hardcoded incidentals on guest switch (initialize to [])
+  // BUG 10 FIX: Reset adjustments and split state on guest switch
   useEffect(() => {
     if (currentGuest) {
+      // BUG 6: Initialize lodging from guest data
+      setBaseLodging(currentGuest.roomRate ?? currentGuest.totalAmount ?? 0);
+      setAdvancePaid(currentGuest.advanceAmount ?? 0);
+
       const savedRemoved = getRemovedIds(currentGuest.id);
       const guestOrders = orders.filter((o) => o.guestId === currentGuest.id || o.guestName === currentGuest.guestName);
       if (guestOrders.length > 0) {
@@ -292,6 +307,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       } else {
         setIncidentals([]);
       }
+      // BUG 10: Reset adjustments and split state when switching guests
+      setAdjustments([]);
+      setSplitRows([{ id: 1, amount: 0, mode: 'Cash', recipient: 'On-Site Cash Safe' }]);
     }
   }, [selectedGuestId]);
 
@@ -475,8 +493,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           roomNumber: currentGuest.roomNumber,
           checkinDate: currentGuest.checkinDate,
           checkoutDate: checkoutDateStr,
-          roomRatePerNight: Math.round(baseLodging / 2),
-          nightsCount: 2,
+          roomRatePerNight: currentGuest.roomRate ?? (baseLodging > 0 ? Math.round(baseLodging / 2) : 0),
+          nightsCount: Math.max(1, Math.ceil((new Date(checkoutDateStr).getTime() - new Date(currentGuest.checkinDate).getTime()) / 86400000)),
           roomTotal: lodgingPendingDue,
           kitchenTotal: foodTotal,
           miscTotal: extraCharges,
@@ -772,6 +790,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* ========================================================================= */}
       {activeMenuItemKey === 'billing_checkout' && (
         <div className="space-y-6">
+          {/* BUG 5 FIX: Guard for empty Active guest list */}
+          {activeGuests.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center">
+              <Building className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-gray-700 mb-1">No Active Residents</h3>
+              <p className="text-sm text-gray-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
+            </div>
+          ) : (<>
           {/* Active Resident Selector Bar */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
@@ -792,9 +818,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full text-[11px] border border-emerald-300">
-                ● Resident Currently In Stay
-              </span>
+              {currentGuest ? (
+                <span className={`font-bold px-2.5 py-1 rounded-full text-[11px] border ${
+                  currentGuest.status === 'Active'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : currentGuest.status === 'Booked'
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-slate-100 text-slate-800 border-slate-300'
+                }`}>
+                  ● {currentGuest.status === 'Active' ? 'Resident Currently In Stay' : currentGuest.status === 'Booked' ? 'Reservation Booked' : currentGuest.status}
+                </span>
+              ) : (
+                <span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
+                  No Active Resident Selected
+                </span>
+              )}
             </div>
           </div>
 
@@ -1272,11 +1310,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
-
-
-
       {/* ========================================================================= */}
       {/* CHECK-IN NEW RESIDENT MODAL                                               */}
       {/* ========================================================================= */}

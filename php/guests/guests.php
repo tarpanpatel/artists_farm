@@ -101,7 +101,7 @@ function handleGuestRequests($pdo, $request_method, $action) {
                     $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', checkout_date = ? WHERE id = ?");
                     $stmt->execute([date('Y-m-d'), $input['id']]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'Checked-Out', check_out = ? WHERE id = ?");
+                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', check_out = ? WHERE id = ?");
                     $stmt->execute([date('Y-m-d H:i:s'), $input['id']]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
