@@ -223,12 +223,26 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: UtensilsCrossed,
       roles: ['Super Admin', 'Admin', 'Manager', 'Chef', 'Staff Kitchen'],
     },
-    {
+{
       id: 'staff',
       uniqueKey: 'attendance_calendar',
       label: 'Attendance & Salaries',
       icon: UserCheck,
       roles: ['Super Admin', 'Admin', 'Manager', 'Staff'],
+    },
+    {
+      id: 'staff',
+      uniqueKey: 'staff_payees_control',
+      label: 'Staff & Payees Control',
+      icon: ShieldCheck,
+      roles: ['Super Admin', 'Admin', 'Staff Supervisor'],
+    },
+    {
+      id: 'staff',
+      uniqueKey: 'staff_directory_salaries',
+      label: 'Staff Directory & Salaries',
+      icon: Users,
+      roles: ['Super Admin', 'Admin', 'Staff Supervisor'],
     },
     {
       id: 'petty_cash',

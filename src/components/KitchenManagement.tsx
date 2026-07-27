@@ -788,7 +788,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <p className="text-slate-600 dark:text-slate-400 font-bold text-xs">No food items found matching "{posSearch}"</p>
                   </div>
                 ) : (
-                  <div className="pos-menu-grid flex flex-col gap-2.5">
+                  <div className="pos-menu-grid grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {filteredPosMenuItems.map((item) => {
                       const isRecentlyAdded = recentlyAddedId === item.id;
                       return (

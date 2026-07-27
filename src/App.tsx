@@ -324,6 +324,8 @@ export function App() {
     { id: 'nav-16', title: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 17, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-16b', title: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 17, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-17', title: 'Past Receipts Log', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log', category: 'Admin Control', iconName: 'BookOpen', order: 18, roles: ['Super Admin', 'Admin'], isVisible: true },
+    { id: 'nav-17b', title: 'Audit Logs', tabKey: 'audit_logs', uniqueKey: 'audit_logs_main', category: 'Admin Control', iconName: 'ScrollText', order: 19, roles: ['Super Admin', 'Admin'], isVisible: true },
+    { id: 'nav-17c', title: 'Staff Activity Trail', tabKey: 'audit_logs', uniqueKey: 'staff_activity_trail', category: 'Admin Control', iconName: 'ShieldAlert', order: 20, roles: ['Super Admin', 'Admin'], isVisible: true },
 
     // 3. Edit Items Sub-Dropdown Group Header & Tier 3 Children
     { id: 'nav-header-edit', title: 'Edit Items', tabKey: 'menu_manager', uniqueKey: 'edit_items_group', category: 'Edit Items', iconName: 'Boxes', order: 20, roles: ['Super Admin', 'Admin'], isVisible: true },
