@@ -618,42 +618,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </button>
               )}
 
-              {/* 4. Dynamic Internal Nav Items (from DB "Edit Main Menu", non-customUrl, with hierarchy) */}
-              {internalNavItems.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
-                  <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Additional Links</div>
-                  {(() => {
-                    const renderNavItem = (item: FlatNavItem, depth: number = 0) => {
-                      const ItemIcon = item.icon;
-                      const isActive = activeMenuItemKey === item.uniqueKey;
-                      const navRecord = navItems.find(n => n.uniqueKey === item.uniqueKey);
-                      const children = buildInternalTree(item.uniqueKey);
-                      const hasChildren = children.length > 0;
-                      const isExpanded = depth === 0; // Auto-expand top level
-
-                      return (
-                        <div key={item.uniqueKey}>
-                          <button
-                            onClick={() => handleTabClick(item)}
-                            style={{ paddingLeft: `${12 + depth * 16}px` }}
-                            className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer text-left ${
-                              isActive
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
-                            }`}
-                          >
-                            <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'}`} />
-                            <span className="truncate">{item.label}</span>
-                          </button>
-                          {isExpanded && hasChildren && children.map(child => renderNavItem(child, depth + 1))}
-                        </div>
-                      );
-                    };
-                    return buildInternalTree(null).map(item => renderNavItem(item, 0));
-                  })()}
-                </div>
-              )}
-
               {/* 5. Custom URL Links (from DB) */}
               {customUrlItems.length > 0 && (
                 <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
