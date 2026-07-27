@@ -293,7 +293,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       status: 'Pending',
       items: [
         {
-          menuItemId: 'stf-meal',
+          menuItemId: 0,
           name: `Staff Meal: ${foodStr}`,
           quantity: smQuantity,
           unitPrice: 0,
@@ -313,7 +313,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   };
 
   // Beta Recipe Builder State
-  const [selectedRecipeMenuItemId, setSelectedRecipeMenuItemId] = useState<string>(menu[0]?.id || 'm-1');
+  const [selectedRecipeMenuItemId, setSelectedRecipeMenuItemId] = useState<number>(menu[0]?.id || 0);
   const selectedRecipeMenuItem = menu.find((m) => m.id === selectedRecipeMenuItemId) || menu[0];
 
   const [recipeIngredients, setRecipeIngredients] = useState<
@@ -377,7 +377,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   });
   const [posSearch, setPosSearch] = useState('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
-  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
+  const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
 
   useEffect(() => { localStorage.setItem('kitchen_cart_items', JSON.stringify(cartItems)); }, [cartItems]);
@@ -406,7 +406,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   };
 
-  const handleUpdateCartQuantity = (itemId: string, delta: number) => {
+  const handleUpdateCartQuantity = (itemId: number, delta: number) => {
     setCartItems((prev) =>
       prev
         .map((i) => (i.menuItem.id === itemId ? { ...i, quantity: i.quantity + delta } : i))
@@ -450,7 +450,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     if (!newItemName) return;
 
     const item: MenuItem = {
-      id: `m-${Date.now().toString().slice(-4)}`,
+      id: Date.now(),
       name: newItemName,
       category: newItemCategory,
       price: Number(newItemPrice),
@@ -1375,7 +1375,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Target Dish:</span>
               <select
                 value={selectedRecipeMenuItemId}
-                onChange={(e) => setSelectedRecipeMenuItemId(e.target.value)}
+                onChange={(e) => setSelectedRecipeMenuItemId(Number(e.target.value))}
                 className="recipe-dish-selector p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900"
               >
                 {menu.map((m) => (

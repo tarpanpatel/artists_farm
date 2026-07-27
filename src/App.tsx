@@ -902,7 +902,7 @@ ${itemsStr}
     logAudit(`${currentUserName} added new food menu catalog item: ${item.name} (₹${item.price})`);
   };
 
-  const handleUpdateMenuItem = (id: string, updated: Partial<MenuItem>) => {
+  const handleUpdateMenuItem = (id: number, updated: Partial<MenuItem>) => {
     const oldItem = menu.find((m) => m.id === id);
     setMenu((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
     updateMenuItemDB(id, updated);
@@ -929,7 +929,7 @@ ${itemsStr}
     logAudit(logMsg);
   };
 
-  const handleDeleteMenuItem = (id: string) => {
+  const handleDeleteMenuItem = (id: number) => {
     const oldItem = menu.find((m) => m.id === id);
     setMenu((prev) => prev.filter((m) => m.id !== id));
     deleteMenuItemDB(id);

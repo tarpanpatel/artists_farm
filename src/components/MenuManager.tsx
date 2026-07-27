@@ -54,8 +54,8 @@ import { CustomCSSOverride } from './CustomCSSOverride';
 interface MenuManagerProps {
   foodMenu: MenuItem[];
   onAddFoodItem: (newItem: MenuItem) => void;
-  onUpdateFoodItem: (id: string, updated: Partial<MenuItem>) => void;
-  onDeleteFoodItem: (id: string) => void;
+  onUpdateFoodItem: (id: number, updated: Partial<MenuItem>) => void;
+  onDeleteFoodItem: (id: number) => void;
   navItems: NavMenuItem[];
   onUpdateNavItems: (items: NavMenuItem[]) => void;
   activeRole: string;
@@ -280,7 +280,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         imagePath: savedImagePath,
       });
     } else {
-      const newId = `m-${Date.now().toString().slice(-4)}`;
+      const newId = Date.now();
       onAddFoodItem({
         id: newId,
         name: foodForm.name,

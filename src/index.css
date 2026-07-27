@@ -595,3 +595,7 @@ html.dark .payees-registry-table tr:hover {
   background-color: rgba(99, 102, 241, 0.1) !important;
 }
 
+.expenses-filter-bar {
+  max-width: 600px;
+}
+

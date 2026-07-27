@@ -72,7 +72,7 @@ export interface NavMenuItem {
 }
 
 export interface OrderItem {
-  menuItemId: string;
+  menuItemId: number;
   name: string;
   quantity: number;
   unitPrice: number;
