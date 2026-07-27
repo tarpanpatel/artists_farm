@@ -384,10 +384,35 @@ export function App() {
 
   const handleToggleTestingMode = () => {
     const nextState = !isTestingMode;
-    setIsTestingMode(nextState);
     setTestingModeState(nextState);
-    window.location.reload();
+    setIsTestingMode(nextState);
   };
+
+  // Re-fetch ALL data when testing mode changes (live DB ↔ test DB)
+  useEffect(() => {
+    fetchGuestsFromDB().then((data) => {
+      if (data && data.length > 0) setGuests(data); else setGuests([]);
+    });
+    fetchMenuFromDB().then((data) => {
+      if (data && data.length > 0) setMenu(data); else setMenu(INITIAL_MENU);
+    });
+    fetchOrdersFromDB().then((data) => {
+      if (data && data.length > 0) setOrders(data); else setOrders([]);
+    });
+    fetchInventoryFromDB().then((data) => {
+      if (data && data.length > 0) setInventory(data); else setInventory([]);
+    });
+    fetchExpensesFromDB().then((data) => {
+      if (data && data.length > 0) setPettyCash(data); else setPettyCash([]);
+    });
+    reloadStaffFromDB();
+    fetchAttendanceFromDB().then((data) => {
+      if (data && data.length > 0) setAttendance(data); else setAttendance([]);
+    });
+    fetchAuditLogsFromDB().then((data) => {
+      if (data && data.length > 0) setAuditLogs(data); else setAuditLogs([]);
+    });
+  }, [isTestingMode]);
 
   const handleResetTestDatabase = async () => {
     if (window.confirm("Are you sure you want to reset the Sandbox Database? This will overwrite all test data with a fresh snapshot from the live production database.")) {
@@ -619,7 +644,8 @@ export function App() {
     replyMarkup?: any
   ) => {
     const logId = `tg-${Date.now().toString().slice(-4)}`;
-    const timestamp = `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     
     // Add pending log entry
     const newLog: TelegramDispatchLog = {
@@ -687,7 +713,8 @@ export function App() {
   // Helper to add audit logs
   const logAudit = (actionText: string, extra?: { status?: string; module?: string; user?: string }) => {
     const client = detectClientInfo();
-    const timestamp = `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const newLog: AuditLog = {
       id: `aud-${Date.now().toString().slice(-4)}`,
       timestamp,
