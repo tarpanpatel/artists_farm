@@ -28,6 +28,7 @@ interface StaffManagementProps {
   staff: StaffMember[];
   attendance: AttendanceRecord[];
   onAddStaff: (member: StaffMember) => void;
+  onUpdateStaff?: (id: string, updated: Partial<StaffMember>) => void;
   onRecordAttendance: (record: AttendanceRecord) => void;
   activeMenuItemKey?: string;
   onReloadStaff?: () => void;
@@ -40,6 +41,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   staff,
   attendance,
   onAddStaff,
+  onUpdateStaff,
   onRecordAttendance,
   activeMenuItemKey,
   onReloadStaff,
@@ -86,8 +88,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editingPayee, setEditingPayee] = useState<PayeeEntity | null>(null);
 
   // Attendance Calendar State
-  const [selectedYear, setSelectedYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(6); // 0-indexed: 6 = July
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [isBulkSelectEnabled, setIsBulkSelectEnabled] = useState(false);
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,10 +100,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [phone, setPhone] = useState('');
   const [monthlySalary, setMonthlySalary] = useState(25000);
 
+  // Edit Staff Roster State
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editStaffRole, setEditStaffRole] = useState('');
+  const [editStaffPhone, setEditStaffPhone] = useState('');
+  const [editStaffSalary, setEditStaffSalary] = useState(0);
+  const [editStaffStatus, setEditStaffStatus] = useState('Active');
+
   // Month metadata
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
 
   // Array of days
+  const now = new Date();
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
     const dayNum = i + 1;
     const dateObj = new Date(selectedYear, selectedMonth, dayNum);
@@ -109,7 +119,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const monthStr = String(selectedMonth + 1).padStart(2, '0');
     const dayStr = String(dayNum).padStart(2, '0');
     const dateStr = `${selectedYear}-${monthStr}-${dayStr}`;
-    return { dayNum, dayName, dateStr, isToday: dayNum === 24 };
+    const isToday = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() && dayNum === now.getDate();
+    return { dayNum, dayName, dateStr, isToday };
   });
 
   // Map attendance records
@@ -839,6 +850,38 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             )}
           </div>
 
+          <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+            <button
+              onClick={() => {
+                if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+                else { setSelectedMonth(m => m - 1); }
+              }}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+            >
+              ← Prev
+            </button>
+            <div className="font-extrabold text-sm text-slate-800 dark:text-white">
+              {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); }}
+                className="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+                  else { setSelectedMonth(m => m + 1); }
+                }}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
             <div className="overflow-x-auto relative">
               <table className="w-full text-center border-collapse text-xs">
@@ -955,25 +998,84 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <th className="py-2.5 px-3">Phone</th>
                   <th className="py-2.5 px-3">Monthly Base</th>
                   <th className="py-2.5 px-3">Status</th>
+                  {(onUpdateStaff) && <th className="py-2.5 px-3 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                {staff.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                    <td className="py-3 px-3 font-mono font-bold text-gray-500 dark:text-gray-400">{m.id}</td>
-                    <td className="py-3 px-3 font-bold text-gray-900 dark:text-white text-sm">{m.name}</td>
-                    <td className="py-3 px-3 font-medium text-gray-600 dark:text-gray-300">{m.role}</td>
-                    <td className="py-3 px-3 font-mono text-gray-600 dark:text-gray-300">{m.phone}</td>
-                    <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400">
-                      ₹{m.monthlySalary.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                        {m.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {staff.map((m) => {
+                  const isEditing = editingStaffId === m.id;
+                  return (
+                    <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                      <td className="py-3 px-3 font-mono font-bold text-gray-500 dark:text-gray-400">{m.id}</td>
+                      <td className="py-3 px-3 font-bold text-gray-900 dark:text-white text-sm">{m.name}</td>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value)}
+                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
+                            {['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff', 'Chef', 'Housekeeping', 'Farm Supervisor', 'Kitchen Assistant', 'Front Desk'].map(r => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="font-medium text-gray-600 dark:text-gray-300">{m.role}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <input type="tel" value={editStaffPhone} onChange={e => setEditStaffPhone(e.target.value)}
+                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-mono bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                        ) : (
+                          <span className="font-mono text-gray-600 dark:text-gray-300">{m.phone}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <input type="number" value={editStaffSalary} onChange={e => setEditStaffSalary(Number(e.target.value))}
+                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                        ) : (
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{m.monthlySalary.toLocaleString('en-IN')}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <select value={editStaffStatus} onChange={e => setEditStaffStatus(e.target.value)}
+                            className="w-full p-1.5 border border-blue-300 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                            {m.status}
+                          </span>
+                        )}
+                      </td>
+                      {onUpdateStaff && (
+                        <td className="py-3 px-3 text-right">
+                          {isEditing ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => {
+                                onUpdateStaff(m.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus });
+                                setEditingStaffId(null);
+                                if (onLogAudit) onLogAudit(`Updated staff ${m.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`);
+                              }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
+                              <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => {
+                              setEditingStaffId(m.id);
+                              setEditStaffRole(m.role);
+                              setEditStaffPhone(m.phone);
+                              setEditStaffSalary(m.monthlySalary);
+                              setEditStaffStatus(m.status);
+                            }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">
+                              Edit
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

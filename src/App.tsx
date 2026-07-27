@@ -20,7 +20,7 @@ import { GlobalModal } from './components/GlobalModal';
 import { LoginModal } from './components/LoginModal';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB } from './services/api';
+import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB } from './services/api';
 import { INITIAL_MENU } from './data/initialData';
 
 // Removed INITIAL_ imports to ensure we never use hardcoded lists
@@ -1069,6 +1069,12 @@ ${itemsStr}
     logAudit(`Added new staff member: ${member.name} (${member.role})`);
   };
 
+  const handleUpdateStaff = (id: string, updated: Partial<StaffMember>) => {
+    setStaff((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
+    updateStaffUserDB(id, updated);
+    logAudit(`Updated staff member #${id}: ${JSON.stringify(updated)}`);
+  };
+
   const handleRecordAttendance = (record: AttendanceRecord) => {
     setAttendance((prev) => {
       const filtered = prev.filter(
@@ -1257,6 +1263,7 @@ ${itemsStr}
               staff={staff}
               attendance={attendance}
               onAddStaff={handleAddStaff}
+              onUpdateStaff={handleUpdateStaff}
               onRecordAttendance={handleRecordAttendance}
               onReloadStaff={reloadStaffFromDB}
               expenses={pettyCash}
