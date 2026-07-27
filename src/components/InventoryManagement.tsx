@@ -2001,7 +2001,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <p className="text-slate-600 font-bold text-xs">No catalog items found matching "{reqSearch}"</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {filteredCatalog.map((item) => {
                   const isRecentlyAdded = recentlyAddedReqId === item.id;
                   return (
