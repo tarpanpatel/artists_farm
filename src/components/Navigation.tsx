@@ -291,6 +291,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'inventory', uniqueKey: 'edit_kitchen_stock', label: 'Edit Kitchen Stock', icon: Boxes, roles: ['Super Admin', 'Admin'] },
     { id: 'petty_cash', uniqueKey: 'edit_expense_items', label: 'Edit Expense Items', icon: Layers, roles: ['Super Admin', 'Admin'] },
     { id: 'menu_manager', uniqueKey: 'edit_main_menu', label: 'Edit Main Menu', icon: LinkIcon, roles: ['Super Admin', 'Admin'] },
+    { id: 'custom_css', uniqueKey: 'custom_css', label: 'Custom CSS Override', icon: Paintbrush, roles: ['Super Admin', 'Admin'] },
   ];
 
   // Rest of Admin Control Items after Edit Items
@@ -303,7 +304,6 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'telegram', uniqueKey: 'telegram', label: 'Telegram', icon: Send, roles: ['Super Admin', 'Admin'] },
     { id: 'errors', uniqueKey: 'errors', label: 'Error Logs', icon: AlertCircle, roles: ['Super Admin', 'Admin'], customUrl: './php/errors/index.php', openInNewTab: true },
     { id: 'kitchen', uniqueKey: 'beta_recipe_builder', label: 'Beta Recipe Builder', icon: CookingPot, roles: ['Super Admin', 'Admin', 'Chef'] },
-    { id: 'custom_css', uniqueKey: 'custom_css', label: 'Custom CSS Override', icon: Paintbrush, roles: ['Super Admin', 'Admin'] },
   ];
 
   // Cash Drawer item

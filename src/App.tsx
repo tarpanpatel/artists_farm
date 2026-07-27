@@ -1150,6 +1150,7 @@ ${itemsStr}
         />
       )}
 
+      {isAuthenticated && (
       <Header
         activeRole={activeRole}
         setActiveRole={setActiveRole}
@@ -1168,8 +1169,9 @@ ${itemsStr}
         isTestingMode={isTestingMode}
         onToggleTestingMode={handleToggleTestingMode}
       />
+      )}
 
-      {isTestingMode && (
+      {isAuthenticated && isTestingMode && (
         <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold shadow-md flex flex-wrap items-center justify-between z-40 border-b border-amber-400 mt-16">
           <div className="flex items-center gap-2">
             <span className="bg-slate-950 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
@@ -1196,6 +1198,7 @@ ${itemsStr}
         </div>
       )}
 
+      {isAuthenticated && (
       <Navigation
         activeTab={activeTab}
         setActiveTab={(tab) => handleNavigateTab(tab)}
@@ -1214,6 +1217,7 @@ ${itemsStr}
         navItems={navItems}
         onLogout={handleLogout}
       />
+      )}
 
       <TelegramNotificationModal
         isOpen={isTelegramModalOpen}
@@ -1225,6 +1229,7 @@ ${itemsStr}
       />
 
       {/* Main Flowbite Dashboard Container */}
+      {isAuthenticated && (
       <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
         <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
 
@@ -1382,6 +1387,13 @@ ${itemsStr}
           )}
         </main>
       </div>
+      )}
+
+      {/* Unauthenticated: show login-only content */}
+      {!isAuthenticated && (
+        <div className="flex-1" />
+      )}
+
       <GlobalModal />
     </div>
   );
