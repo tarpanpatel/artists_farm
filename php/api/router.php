@@ -11,6 +11,7 @@ require_once __DIR__ . '/../billing/receipts.php';
 require_once __DIR__ . '/../kitchen/orders.php';
 require_once __DIR__ . '/../kitchen/menu.php';
 require_once __DIR__ . '/../inventory/inventory.php';
+require_once __DIR__ . '/../finance/ledger.php';
 require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
@@ -95,6 +96,8 @@ switch ($action) {
     case 'get_cash_drawer_summary':
     case 'add_drawer_entry':
     case 'get_drawer_entries':
+    case 'get_financial_ledger':
+    case 'record_salary_payment':
         handleFinanceRequests($pdo, $request_method, $action);
         break;
 

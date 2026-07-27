@@ -61,6 +61,21 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     }
                 }
 
+                // Every expense is also an accounting debit. The unique entry key
+                // makes retries safe and keeps the operational record authoritative.
+                postFinancialLedger($pdo, [
+                    'entry_key' => 'expense:' . $id,
+                    'direction' => 'debit',
+                    'amount' => $input['amount'] ?? 0,
+                    'category' => $input['category'] ?? 'Other',
+                    'payment_method' => $input['payment_mode'] ?? $input['paymentMode'] ?? 'Cash',
+                    'party_type' => 'payee',
+                    'party_name' => $input['vendor'] ?? $input['vendor_name'] ?? 'Manager',
+                    'source_type' => 'expense',
+                    'source_id' => $id,
+                    'description' => $input['description'] ?? '',
+                ]);
+
                 echo json_encode(['status' => 'success', 'id' => $id, 'message' => 'Expense outflow recorded']);
             }
             break;
@@ -68,6 +83,9 @@ function handleFinanceRequests($pdo, $request_method, $action) {
         case 'update_petty_cash':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                // Never overwrite accounting history: neutralise the previous
+                // posting, then add the corrected value after the source update.
+                reverseFinancialSource($pdo, 'expense', (string)$input['id'], 'Expense corrected');
                 try {
                     $stmt = $pdo->prepare("UPDATE farm_utility_expenses SET expense_date = ?, category = ?, description = ?, amount = ?, payment_mode = ?, vendor_name = ? WHERE id = ?");
                     $stmt->execute([
@@ -102,6 +120,19 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     $stmtPrice->execute([trim($input['description']), $input['amount']]);
                 }
 
+                postFinancialLedger($pdo, [
+                    'entry_key' => 'expense_revision:' . $input['id'] . ':' . uniqid(),
+                    'direction' => 'debit',
+                    'amount' => $input['amount'] ?? 0,
+                    'category' => $input['category'] ?? 'Other',
+                    'payment_method' => $input['paymentMode'] ?? $input['payment_mode'] ?? 'Cash',
+                    'party_type' => 'payee',
+                    'party_name' => $input['paidBy'] ?? $input['vendor'] ?? 'Manager',
+                    'source_type' => 'expense',
+                    'source_id' => $input['id'],
+                    'description' => $input['description'] ?? '',
+                ]);
+
                 echo json_encode(['status' => 'success', 'message' => 'Expense entry updated in database']);
             }
             break;
@@ -114,6 +145,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     echo json_encode(['status' => 'error', 'message' => 'Expense id is required']);
                     break;
                 }
+                reverseFinancialSource($pdo, 'expense', (string)$id, 'Expense deleted');
                 try {
                     $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE id = ?");
                     $stmt->execute([$id]);
@@ -400,6 +432,21 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         $input['notes'] ?? null,
                     ]);
                     $newId = $pdo->lastInsertId();
+                    $drawerType = $input['type'] ?? 'handover';
+                    postFinancialLedger($pdo, [
+                        'entry_key' => 'cash_drawer:' . $newId,
+                        'direction' => $drawerType === 'manual_adjustment' ? 'credit' : 'debit',
+                        'amount' => $input['amount'] ?? 0,
+                        'category' => 'Cash Drawer ' . $drawerType,
+                        'payment_method' => 'Cash',
+                        'party_type' => 'staff',
+                        'party_id' => $input['staff_id'] ?? '',
+                        'party_name' => $input['staff_name'] ?? '',
+                        'source_type' => 'cash_drawer',
+                        'source_id' => $newId,
+                        'description' => $input['notes'] ?? '',
+                        'metadata' => ['handed_to' => $input['handed_to'] ?? null],
+                    ]);
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Cash drawer entry recorded']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -424,6 +471,37 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
+        case 'get_financial_ledger':
+            try {
+                ensureFinancialLedger($pdo);
+                $stmt = $pdo->query("SELECT * FROM financial_ledger ORDER BY occurred_at DESC, id DESC LIMIT 1000");
+                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'record_salary_payment':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $paymentId = $input['payment_id'] ?? ('salary-' . uniqid());
+                postFinancialLedger($pdo, [
+                    'entry_key' => 'salary:' . $paymentId,
+                    'direction' => 'debit',
+                    'amount' => $input['amount'] ?? 0,
+                    'category' => 'Salary Payment',
+                    'payment_method' => $input['payment_method'] ?? 'Cash',
+                    'party_type' => 'staff',
+                    'party_id' => $input['staff_id'] ?? '',
+                    'party_name' => $input['staff_name'] ?? '',
+                    'source_type' => 'salary_payment',
+                    'source_id' => $paymentId,
+                    'description' => $input['description'] ?? '',
+                ]);
+                echo json_encode(['status' => 'success', 'id' => $paymentId]);
             }
             break;
 

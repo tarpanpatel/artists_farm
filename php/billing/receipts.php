@@ -76,6 +76,25 @@ function handleReceiptRequests($pdo, $request_method, $action) {
                         $input['paidAt'] ?? date('Y-m-d H:i:s')
                     ]);
 
+                    // Record only the settlement collected at checkout. Registration
+                    // advances are posted by the guest module, avoiding double-counting.
+                    $settlement = max(0, floatval($input['grandTotal'] ?? 0) - floatval($input['advancePaid'] ?? 0));
+                    if ($settlement > 0) {
+                        postFinancialLedger($pdo, [
+                            'entry_key' => 'checkout_settlement:' . ($input['id'] ?? 'REC-' . time()),
+                            'direction' => 'credit',
+                            'amount' => $settlement,
+                            'category' => 'Guest Checkout Settlement',
+                            'payment_method' => $input['paymentMethod'] ?? 'Cash',
+                            'party_type' => 'guest',
+                            'party_id' => $input['guestId'] ?? '',
+                            'party_name' => $input['guestName'] ?? '',
+                            'source_type' => 'billing_receipt',
+                            'source_id' => $input['id'] ?? '',
+                            'description' => 'Balance collected on checkout',
+                        ]);
+                    }
+
                     // Also log to audit trail
                     try {
                         $logStmt = $pdo->prepare("INSERT INTO audit_logs (timestamp, user, action) VALUES (?, ?, ?)");

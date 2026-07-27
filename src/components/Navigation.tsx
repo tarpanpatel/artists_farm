@@ -103,6 +103,8 @@ interface FlatNavItem {
   badgeClass?: string;
   roles?: string[];
   subCategory?: string;
+  customUrl?: string;
+  openInNewTab?: boolean;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -143,6 +145,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           icon: getIconComponent(item.iconName),
           roles: item.roles,
           subCategory: item.category,
+          customUrl: (item as any).customUrl || (item as any).custom_url || '',
+          openInNewTab: !!(item as any).openInNewTab || !!(item as any).open_in_new_tab,
           badge:
             (item.uniqueKey === 'kitchen_orders' && pendingOrdersCount > 0) ? `${pendingOrdersCount}` :
             (item.uniqueKey === 'stock_requests' && pendingReqCount > 0) ? `${pendingReqCount}` :
@@ -153,6 +157,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             item.uniqueKey === 'deficit_shortfalls_log' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' : undefined,
         }))
     : [];
+
+  const customUrlItems = dynamicFlatNavItems.filter((item) => item.customUrl);
 
   // Top-level flat items in exact user requested order
   const topFlatItems: FlatNavItem[] = [
@@ -294,6 +300,17 @@ export const Navigation: React.FC<NavigationProps> = ({
   };
 
   const handleTabClick = (item: FlatNavItem) => {
+    if (item.customUrl) {
+      if (item.openInNewTab) {
+        window.open(item.customUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.href = item.customUrl;
+      }
+      if (window.innerWidth < 768) {
+        onCloseSidebar();
+      }
+      return;
+    }
     setActiveTab(item.id);
     setActiveMenuItemKey(item.uniqueKey);
     if (window.innerWidth < 768) {
@@ -343,6 +360,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 ...editItemsGroup,
                 ...adminPostEditItems,
                 cashDrawerItem,
+                ...customUrlItems.filter((item) => isVisible(item.roles)),
               ]
                 .filter((item) => isVisible(item.roles))
                 .map((item, i) => {
@@ -565,6 +583,34 @@ export const Navigation: React.FC<NavigationProps> = ({
                   <Wallet className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <span className="truncate">{cashDrawerItem.label}</span>
                 </button>
+              )}
+
+              {/* 4. Custom URL Links (from DB) */}
+              {customUrlItems.length > 0 && (
+                <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
+                  <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
+                  {customUrlItems
+                    .filter((item) => isVisible(item.roles))
+                    .map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <a
+                          key={item.uniqueKey}
+                          href={item.customUrl}
+                          target={item.openInNewTab ? '_blank' : undefined}
+                          rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+                          onClick={() => { if (window.innerWidth < 768) onCloseSidebar(); }}
+                          className="w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+                        >
+                          <ItemIcon className="w-4 h-4 shrink-0 text-purple-500 dark:text-purple-400" />
+                          <span className="truncate">{item.label}</span>
+                          {item.openInNewTab && (
+                            <LinkIcon className="w-3 h-3 shrink-0 ml-auto text-purple-400 dark:text-purple-500" />
+                          )}
+                        </a>
+                      );
+                    })}
+                </div>
               )}
             </div>
 

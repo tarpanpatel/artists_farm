@@ -44,10 +44,12 @@ import {
   ShoppingBag,
   Layers,
   Link as LinkIcon,
-  Info
+  Info,
+  Paintbrush
 } from 'lucide-react';
 import { MenuItem, NavMenuItem, StaffMember } from '../types';
 import { uploadImageDB } from '../services/api';
+import { CustomCSSOverride } from './CustomCSSOverride';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -112,13 +114,15 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   activeMenuItemKey,
   staff,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>('food_menu');
+  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu' | 'custom_css'>('food_menu');
 
   useEffect(() => {
     if (activeMenuItemKey === 'edit_main_menu') {
       setActiveSubTab('nav_menu');
     } else if (activeMenuItemKey === 'edit_food_menu') {
       setActiveSubTab('food_menu');
+    } else if (activeMenuItemKey === 'custom_css') {
+      setActiveSubTab('custom_css');
     }
   }, [activeMenuItemKey]);
 
@@ -159,6 +163,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     iconName: string;
     roles: string[];
     isVisible: boolean;
+    customUrl: string;
+    openInNewTab: boolean;
   }>({
     title: '',
     tabKey: 'dashboard',
@@ -167,6 +173,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     iconName: 'LayoutDashboard',
     roles: ['Super Admin', 'Manager', 'Staff'],
     isVisible: true,
+    customUrl: '',
+    openInNewTab: false,
   });
 
   // Drag and Drop state for Navigation items
@@ -416,6 +424,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       iconName: 'LayoutDashboard',
       roles: ['Super Admin', 'Manager', 'Staff'],
       isVisible: true,
+      customUrl: '',
+      openInNewTab: false,
     });
     setIsNavModalOpen(true);
   };
@@ -430,6 +440,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       iconName: item.iconName,
       roles: item.roles,
       isVisible: item.isVisible,
+      customUrl: (item as any).customUrl || '',
+      openInNewTab: (item as any).openInNewTab || false,
     });
     setIsNavModalOpen(true);
   };
@@ -450,6 +462,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               iconName: navForm.iconName,
               roles: navForm.roles,
               isVisible: navForm.isVisible,
+              customUrl: navForm.customUrl,
+              openInNewTab: navForm.openInNewTab,
             }
           : item
       );
@@ -465,6 +479,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         order: navItems.length + 1,
         roles: navForm.roles,
         isVisible: navForm.isVisible,
+        customUrl: navForm.customUrl,
+        openInNewTab: navForm.openInNewTab,
       };
       onUpdateNavItems([...navItems, newItem]);
     }
@@ -520,6 +536,17 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             >
               <Utensils className="w-4 h-4" />
               <span>Food Catalog ({foodMenu.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab('custom_css')}
+              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                activeSubTab === 'custom_css'
+                  ? 'bg-blue-700 text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Paintbrush className="w-4 h-4" />
+              <span>CSS Override</span>
             </button>
           </div>
         </div>
@@ -968,6 +995,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         </div>
       )}
 
+      {/* SUB-TAB 3: CUSTOM CSS OVERRIDE */}
+      {activeSubTab === 'custom_css' && (
+        <CustomCSSOverride />
+      )}
+
       {/* ICON PICKER MODAL */}
       {iconPickerTargetId && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -1135,6 +1167,30 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 />
                 <span className="font-bold text-slate-800">Visible in System Navigation</span>
               </label>
+
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Custom Link (Optional)</p>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">External URL / Custom Link</label>
+                  <input
+                    type="url"
+                    value={navForm.customUrl}
+                    onChange={(e) => setNavForm({ ...navForm, customUrl: e.target.value })}
+                    placeholder="e.g. https://example.com or /some/path"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">If set, clicking this menu item opens this link instead of an internal tab.</p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={navForm.openInNewTab}
+                    onChange={(e) => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-bold text-slate-700 text-xs">Open link in new browser tab</span>
+                </label>
+              </div>
 
               <div className="pt-3 flex items-center justify-end gap-2">
                 <button

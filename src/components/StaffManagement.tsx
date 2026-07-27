@@ -22,7 +22,7 @@ import {
   Store
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity } from '../types';
-import { INITIAL_USER_ACCOUNTS, INITIAL_PAYEES } from '../data/initialData';
+import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB } from '../services/api';
 
 interface StaffManagementProps {
   staff: StaffMember[];
@@ -60,14 +60,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   }, [activeMenuItemKey]);
 
   // Property Payroll & Payee State
-  const [users, setUsers] = useState<UserAccount[]>(INITIAL_USER_ACCOUNTS);
-  const [payees, setPayees] = useState<PayeeEntity[]>(INITIAL_PAYEES);
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [payees, setPayees] = useState<PayeeEntity[]>([]);
+  const roleOptions = Array.from(new Set(staff.map((member) => member.role).filter(Boolean))).sort();
 
   // Form States
   // 1. Create User
   const [newUsername, setNewUsername] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
-  const [newRole, setNewRole] = useState<UserAccount['role']>('Staff');
+  const [newRole, setNewRole] = useState<UserAccount['role']>('');
   const [newIsFinancialHandler, setNewIsFinancialHandler] = useState(false);
   const [newQrCodeUrl, setNewQrCodeUrl] = useState('');
 
@@ -96,7 +97,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Form State for Add Staff Roster
   const [name, setName] = useState('');
-  const [role, setRole] = useState<StaffMember['role']>('Chef');
+  const [role, setRole] = useState<StaffMember['role']>('');
   const [phone, setPhone] = useState('');
   const [monthlySalary, setMonthlySalary] = useState(25000);
 
@@ -106,6 +107,34 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editStaffPhone, setEditStaffPhone] = useState('');
   const [editStaffSalary, setEditStaffSalary] = useState(0);
   const [editStaffStatus, setEditStaffStatus] = useState('Active');
+
+  useEffect(() => {
+    setUsers(staff.map((member) => ({
+      id: member.id,
+      username: member.name,
+      role: member.role,
+      passcodePin: member.passcode || '',
+      isFinancialHandler: Boolean(member.isFinancialHandler),
+      qrCodeUrl: member.qrCodeUrl,
+      status: member.status,
+    })));
+  }, [staff]);
+
+  useEffect(() => {
+    fetchPayeesFromDB().then((data) => {
+      setPayees(data.map((payee: any) => ({
+        id: String(payee.id),
+        name: payee.name,
+        type: payee.type,
+        qrCodeUrl: payee.qrCodeUrl,
+      })));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!newRole && roleOptions.length) setNewRole(roleOptions[0] as UserAccount['role']);
+    if (!role && roleOptions.length) setRole(roleOptions[0] as StaffMember['role']);
+  }, [newRole, role, roleOptions]);
 
   // Month metadata
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -130,7 +159,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   });
 
   // Handlers for Control Center
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPasscode) return;
     const newUser: UserAccount = {
@@ -142,20 +171,35 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       qrCodeUrl: newQrCodeUrl || undefined,
       status: 'Active',
     };
-    setUsers([...users, newUser]);
+    const saved = await addStaffUserDB({
+      id: newUser.id,
+      username: newUser.username,
+      fullName: newUser.username,
+      role: newUser.role,
+      passcode: newUser.passcodePin,
+      isFinancialHandler: newUser.isFinancialHandler,
+      qrCodeUrl: newUser.qrCodeUrl,
+      status: newUser.status,
+    });
+    if (!saved) {
+      alert('Unable to save the staff member to the database.');
+      return;
+    }
+    onReloadStaff?.();
     setNewUsername('');
     setNewPasscode('');
     setNewQrCodeUrl('');
     setNewIsFinancialHandler(false);
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (confirm('Delete user profile permanently?')) {
-      setUsers(users.filter((u) => u.id !== id));
+      if (await deleteStaffUserDB(id)) onReloadStaff?.();
+      else alert('Unable to delete the staff member from the database.');
     }
   };
 
-  const handleCreatePayee = (e: React.FormEvent) => {
+  const handleCreatePayee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPayeeName) return;
     const newPayee: PayeeEntity = {
@@ -164,34 +208,38 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       type: newPayeeType,
       qrCodeUrl: newPayeeQrCode || undefined,
     };
-    setPayees([...payees, newPayee]);
+    if (!await addPayeeDB(newPayee)) {
+      alert('Unable to save the payee to the database.');
+      return;
+    }
+    setPayees((previous) => [...previous, newPayee]);
     setNewPayeeName('');
     setNewPayeeQrCode('');
   };
 
-  const handleDeletePayee = (id: string) => {
+  const handleDeletePayee = async (id: string) => {
     if (confirm('Purge payee archive records permanently?')) {
-      setPayees(payees.filter((p) => p.id !== id));
+      if (await deletePayeeDB(id)) setPayees((previous) => previous.filter((payee) => payee.id !== id));
+      else alert('Unable to delete the payee from the database.');
     }
   };
 
-  const handleUpdateUserSubmit = (e: React.FormEvent) => {
+  const handleUpdateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUpdateUserId) return;
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === selectedUpdateUserId) {
-          return {
-            ...u,
-            role: updateRole || u.role,
-            passcodePin: updatePasscode || u.passcodePin,
-            isFinancialHandler: updateIsFinancialHandler,
-            qrCodeUrl: updateQrCodeUrl || u.qrCodeUrl,
-          };
-        }
-        return u;
-      })
-    );
+    const currentUser = users.find((user) => user.id === selectedUpdateUserId);
+    if (!currentUser) return;
+    const saved = await updateStaffUserDB(selectedUpdateUserId, {
+      role: updateRole || currentUser.role,
+      passcode: updatePasscode || currentUser.passcodePin,
+      isFinancialHandler: updateIsFinancialHandler,
+      qrCodeUrl: updateQrCodeUrl || currentUser.qrCodeUrl,
+    });
+    if (!saved) {
+      alert('Unable to update the user in the database.');
+      return;
+    }
+    onReloadStaff?.();
     setSelectedUpdateUserId('');
     setUpdatePasscode('');
     setUpdateRole('');
@@ -544,10 +592,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     onChange={(e) => setNewRole(e.target.value as any)}
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
                   >
-                    <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Staff Kitchen">Staff Kitchen</option>
-                    <option value="Super Admin">Super Admin</option>
+                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
                   </select>
                 </div>
 
@@ -687,10 +732,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
                   >
                     <option value="">-- Keep Current Role --</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Staff Kitchen">Staff Kitchen</option>
-                    <option value="Super Admin">Super Admin</option>
+                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
                   </select>
                 </div>
 
@@ -1012,8 +1054,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         {isEditing ? (
                           <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value)}
                             className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
-                            {['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff', 'Chef', 'Housekeeping', 'Farm Supervisor', 'Kitchen Assistant', 'Front Desk'].map(r => (
-                              <option key={r} value={r}>{r}</option>
+                            {roleOptions.map((roleName) => (
+                              <option key={roleName} value={roleName}>{roleName}</option>
                             ))}
                           </select>
                         ) : (
@@ -1210,11 +1252,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onChange={(e) => setRole(e.target.value as any)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="Manager">Manager</option>
-                  <option value="Chef">Chef</option>
-                  <option value="Housekeeping">Housekeeping</option>
-                  <option value="Farm Supervisor">Farm Supervisor</option>
-                  <option value="Kitchen Assistant">Kitchen Assistant</option>
+                  {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
                 </select>
               </div>
 

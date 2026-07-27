@@ -23,14 +23,18 @@ interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
   orders: Order[];
   expenses: PettyCashEntry[];
+  activeMenuItemKey?: string;
 }
 
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   receipts = [],
   orders = [],
   expenses = [],
+  activeMenuItemKey,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'purchases'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'purchases'>(() => {
+    return activeMenuItemKey === 'purchase_analytics' ? 'purchases' : 'overview';
+  });
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
   const [priceSearch, setPriceSearch] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All Categories');
@@ -42,6 +46,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (activeMenuItemKey === 'purchase_analytics') setActiveTab('purchases');
+    else if (activeMenuItemKey === 'dashboard_analytics') setActiveTab('overview');
+  }, [activeMenuItemKey]);
 
   // Revenue calculations
   const roomRevenue = receipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);

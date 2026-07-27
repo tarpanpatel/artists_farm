@@ -70,6 +70,22 @@ function handleGuestRequests($pdo, $request_method, $action) {
                         intval($input['no_of_guests'] ?? 1),
                     ]);
                     $newId = $pdo->lastInsertId();
+                    $advance = floatval($input['advance_paid'] ?? 0);
+                    if ($advance > 0) {
+                        postFinancialLedger($pdo, [
+                            'entry_key' => 'guest_advance:' . $newId,
+                            'direction' => 'credit',
+                            'amount' => $advance,
+                            'category' => 'Guest Registration Advance',
+                            'payment_method' => $input['payment_method'] ?? 'Cash',
+                            'party_type' => 'guest',
+                            'party_id' => $newId,
+                            'party_name' => $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
+                            'source_type' => 'guest_registration',
+                            'source_id' => $newId,
+                            'description' => 'Advance collected at guest registration',
+                        ]);
+                    }
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully']);
                 } catch (PDOException $e) {
                     http_response_code(500);

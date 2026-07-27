@@ -66,6 +66,8 @@ export interface NavMenuItem {
   order: number;
   roles: string[]; // e.g. ['Super Admin', 'Manager', 'Chef', 'Staff']
   isVisible: boolean;
+  customUrl?: string;
+  openInNewTab?: boolean;
 }
 
 export interface OrderItem {
@@ -186,7 +188,7 @@ export interface PayeeEntity {
 export interface UserAccount {
   id: string;
   username: string;
-  role: 'Super Admin' | 'Admin' | 'Staff' | 'Staff Kitchen' | 'Manager' | 'Chef' | 'Front Desk';
+  role: string;
   passcodePin: string;
   isFinancialHandler: boolean;
   qrCodeUrl?: string;

@@ -70,6 +70,7 @@ export function App() {
         staff: { tab: 'staff', key: 'staff_payees_control' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'dashboard_analytics' },
+        purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         sys_logs_health: { tab: 'audit_logs', key: 'sys_logs_health' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         staff_activity_trail: { tab: 'audit_logs', key: 'staff_activity_trail' },
@@ -321,6 +322,7 @@ export function App() {
     // 2. Admin Control Dropdown Group Header & Tier 2 Children
     { id: 'nav-header-admin', title: 'Admin Control', tabKey: 'analytics', uniqueKey: 'admin_control_group', category: 'Admin Control', iconName: 'Sliders', order: 16, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-16', title: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 17, roles: ['Super Admin', 'Admin'], isVisible: true },
+    { id: 'nav-16b', title: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 17, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-17', title: 'Past Receipts Log', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log', category: 'Admin Control', iconName: 'BookOpen', order: 18, roles: ['Super Admin', 'Admin'], isVisible: true },
 
     // 3. Edit Items Sub-Dropdown Group Header & Tier 3 Children
@@ -549,6 +551,7 @@ export function App() {
         staff: { tab: 'staff', key: 'staff_payees_control' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'dashboard_analytics' },
+        purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         audit_logs_main: { tab: 'audit_logs', key: 'audit_logs_main' },
         audit_logs: { tab: 'audit_logs', key: 'audit_logs_main' },
         sys_logs_health: { tab: 'audit_logs', key: 'sys_logs_health' },
@@ -1277,6 +1280,7 @@ ${itemsStr}
               receipts={receipts}
               orders={orders}
               expenses={pettyCash}
+              activeMenuItemKey={activeMenuItemKey}
             />
           )}
 
