@@ -175,6 +175,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 // Auto-add columns if missing
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `custom_url` TEXT DEFAULT NULL"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
+                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -190,7 +191,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                         'roles' => json_decode($r['roles_json'] ?? '[]', true) ?: [],
                         'isVisible' => (bool)$r['isVisible'],
                         'customUrl' => $r['customUrl'] ?? '',
-                        'openInNewTab' => (bool)$r['openInNewTab']
+                        'openInNewTab' => (bool)$r['openInNewTab'],
+                        'parentId' => $r['parentId'] ?: null
                     ];
                 }, $rows);
                 echo json_encode(['status' => 'success', 'data' => $data]);

@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sortable from 'sortablejs';
 import {
   GripVertical, Plus, Trash2, Edit2, Eye, EyeOff, ChevronDown, ChevronRight,
-  Check, X, Search, LayoutDashboard, Users, CreditCard, ShoppingCart,
+  Check, X, LayoutDashboard, Users, CreditCard, ShoppingCart,
   UtensilsCrossed, Utensils, ClipboardList, Truck, CookingPot, Boxes,
   Wallet, UserCheck, Receipt, TrendingDown, Package, ShoppingBag,
   BarChart3, ScrollText, Grid, Bot, Settings, Navigation as NavIcon,
   Link as LinkIcon, ExternalLink, Paintbrush, ChevronUp, List,
-  PanelLeftOpen, PanelLeftClose, Layers, DollarSign, ShieldCheck,
-  PanelRightOpen
+  Layers, DollarSign, ShieldCheck,
+  PanelLeftClose, PanelRightOpen
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB } from '../services/api';
@@ -29,39 +29,6 @@ const AVAILABLE_ICONS: Record<string, React.ComponentType<any>> = {
 
 const ALL_ROLES = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
 
-const AVAILABLE_PAGES: { title: string; tabKey: string; uniqueKey: string; icon: string; category: string }[] = [
-  { title: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard', icon: 'LayoutDashboard', category: 'Main' },
-  { title: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration', icon: 'Users', category: 'Residents' },
-  { title: 'Billing & Checkout', tabKey: 'guests', uniqueKey: 'billing_checkout', icon: 'CreditCard', category: 'Residents' },
-  { title: 'Take Food Order', tabKey: 'kitchen', uniqueKey: 'take_food_order', icon: 'UtensilsCrossed', category: 'Kitchen' },
-  { title: 'Kitchen Orders', tabKey: 'kitchen', uniqueKey: 'kitchen_orders', icon: 'ClipboardList', category: 'Kitchen' },
-  { title: 'Staff Meals', tabKey: 'kitchen', uniqueKey: 'staff_meals', icon: 'Utensils', category: 'Kitchen' },
-  { title: 'Stock Requests', tabKey: 'inventory', uniqueKey: 'stock_requests', icon: 'Boxes', category: 'Inventory' },
-  { title: 'Fulfill Stock Req', tabKey: 'inventory', uniqueKey: 'fulfill_stock_req', icon: 'Truck', category: 'Inventory' },
-  { title: 'Deficit Shortfalls', tabKey: 'inventory', uniqueKey: 'deficit_shortfalls_log', icon: 'TrendingDown', category: 'Inventory' },
-  { title: 'Kitchen Purchases', tabKey: 'inventory', uniqueKey: 'kitchen_purchases', icon: 'ShoppingBag', category: 'Inventory' },
-  { title: 'Stock Log', tabKey: 'inventory', uniqueKey: 'stock_log', icon: 'Package', category: 'Inventory' },
-  { title: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses', icon: 'DollarSign', category: 'Financials' },
-  { title: 'Cash Drawer', tabKey: 'petty_cash', uniqueKey: 'cash_drawer', icon: 'Wallet', category: 'Financials' },
-  { title: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges', icon: 'Receipt', category: 'Financials' },
-  { title: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions', icon: 'ShieldCheck', category: 'Staff' },
-  { title: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar', icon: 'UserCheck', category: 'Staff' },
-  { title: 'Staff Directory & Salaries', tabKey: 'staff', uniqueKey: 'staff_directory_salaries', icon: 'Users', category: 'Staff' },
-  { title: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics', icon: 'BarChart3', category: 'Analytics' },
-  { title: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics', icon: 'BarChart3', category: 'Analytics' },
-  { title: 'Audit Logs', tabKey: 'audit_logs', uniqueKey: 'audit_logs_main', icon: 'ScrollText', category: 'Audit' },
-  { title: 'Past Receipts Log', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log', icon: 'ScrollText', category: 'Audit' },
-  { title: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs', icon: 'ScrollText', category: 'Audit' },
-  { title: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health', icon: 'Settings', category: 'Audit' },
-  { title: 'Telegram', tabKey: 'telegram', uniqueKey: 'telegram', icon: 'Bot', category: 'System' },
-  { title: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu', icon: 'Grid', category: 'Admin' },
-  { title: 'Edit Main Menu', tabKey: 'menu_manager', uniqueKey: 'edit_main_menu', icon: 'NavIcon', category: 'Admin' },
-  { title: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock', icon: 'Boxes', category: 'Admin' },
-  { title: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items', icon: 'Layers', category: 'Admin' },
-  { title: 'Data Export Center', tabKey: 'export', uniqueKey: 'data_export_center', icon: 'LayoutDashboard', category: 'System' },
-  { title: 'Custom CSS Override', tabKey: 'custom_css', uniqueKey: 'custom_css', icon: 'Paintbrush', category: 'Admin' },
-];
-
 export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   navItems,
   onUpdateNavItems,
@@ -71,9 +38,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [showAddPanel, setShowAddPanel] = useState(true);
-  const [addPanelSearch, setAddPanelSearch] = useState('');
-  const [addPanelCategory, setAddPanelCategory] = useState('All');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showRolesFor, setShowRolesFor] = useState<string | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
@@ -209,41 +173,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   };
 
   // Add items from the "Add Items" panel
-  const handleAddPage = (page: typeof AVAILABLE_PAGES[0]) => {
-    if (items.find(i => i.uniqueKey === page.uniqueKey)) return;
-    const newItem: NavMenuItem = {
-      id: `nav-${Date.now().toString().slice(-6)}`,
-      title: page.title,
-      tabKey: page.tabKey,
-      uniqueKey: page.uniqueKey,
-      iconName: page.icon,
-      order: items.length + 1,
-      roles: ['Super Admin', 'Admin'],
-      isVisible: true,
-      parentId: null,
-    };
-    setItems(prev => [...prev, newItem]);
-    markDirty();
-  };
-
-  const handleAddCustomLink = (title: string, url: string) => {
-    const newItem: NavMenuItem = {
-      id: `nav-${Date.now().toString().slice(-6)}`,
-      title: title || 'Custom Link',
-      tabKey: 'custom',
-      uniqueKey: `custom_${Date.now().toString().slice(-6)}`,
-      iconName: 'LinkIcon',
-      order: items.length + 1,
-      roles: ['Super Admin', 'Admin'],
-      isVisible: true,
-      customUrl: url,
-      openInNewTab: true,
-      parentId: null,
-    };
-    setItems(prev => [...prev, newItem]);
-    markDirty();
-  };
-
   const handleDelete = (id: string) => {
     const idsToDelete = new Set<string>([id]);
     const findChildren = (parentId: string) => {
@@ -339,14 +268,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return result;
   }, [expandedIds]);
 
-  const addedKeys = new Set(items.map(i => i.uniqueKey));
-  const filteredPages = AVAILABLE_PAGES.filter(p => {
-    const matchSearch = p.title.toLowerCase().includes(addPanelSearch.toLowerCase());
-    const matchCat = addPanelCategory === 'All' || p.category === addPanelCategory;
-    return matchSearch && matchCat;
-  });
-  const addPanelCategories = ['All', ...new Set(AVAILABLE_PAGES.map(p => p.category))];
-
   // Render tree item as <li>
   const renderTreeItem = (item: NavMenuItem & { children?: any[] }, depth: number = 0) => {
     const isExpanded = expandedIds.has(item.id);
@@ -354,12 +275,15 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     const hasChildren = item.children && item.children.length > 0;
     const IconComp = AVAILABLE_ICONS[item.iconName] || NavIcon;
 
+    const depthColors = ['border-l-blue-400', 'border-l-emerald-400', 'border-l-amber-400'];
+    const depthBg = ['', 'bg-blue-50/30', 'bg-emerald-50/30'];
+
     return (
-      <li key={item.id} data-id={item.id} className="nav-menu-item">
-        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-all text-xs group my-0.5 ${
+      <li key={item.id} data-id={item.id} className="nav-menu-item" style={{ paddingLeft: depth > 0 ? `${depth * 24}px` : '0px' }}>
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-l-[3px] transition-all text-xs group my-0.5 ${
           item.isVisible ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs' :
           'bg-slate-50 border-slate-200 opacity-60'
-        }`}>
+        } ${depthColors[Math.min(depth, 2)]} ${depthBg[Math.min(depth, 2)] || ''}`}>
           {/* Drag Handle */}
           <div className="hs-handle p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
             title="Drag to reorder or nest">
@@ -471,7 +395,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
         {/* Children rendered as nested <ul> */}
         {isExpanded && hasChildren && (
-          <ul data-sortable className="ml-5 pl-2 border-l-2 border-slate-100">
+          <ul data-sortable className="ml-2 pl-3 border-l-2 border-slate-200 my-1">
             {item.children!.sort((a: any, b: any) => a.order - b.order).map((child: any) => renderTreeItem(child, depth + 1))}
           </ul>
         )}
@@ -481,8 +405,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 min-h-[600px]">
-      {/* LEFT PANEL: Menu Structure */}
-      <div className={`flex-1 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col ${showAddPanel ? 'lg:max-w-[65%]' : ''}`}>
+      {/* Menu Structure */}
+      <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center justify-between mb-2">
@@ -492,8 +416,25 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{items.length} items</span>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowAddPanel(!showAddPanel)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${showAddPanel ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'}`}>
-                <PanelRightOpen className="w-3.5 h-3.5" /> Add Items
+              <button onClick={() => {
+                const newId = `nav-${Date.now().toString().slice(-6)}`;
+                const newItem: NavMenuItem = {
+                  id: newId,
+                  title: 'New Menu Item',
+                  tabKey: 'dashboard',
+                  uniqueKey: `new_${newId}`,
+                  iconName: 'LayoutDashboard',
+                  order: items.length + 1,
+                  roles: ['Super Admin', 'Admin'],
+                  isVisible: true,
+                  parentId: null,
+                };
+                setItems(prev => [...prev, newItem]);
+                setEditingId(newId);
+                setEditTitle('New Menu Item');
+                markDirty();
+              }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer">
+                <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
               {hasUnsaved && (
                 <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50">
@@ -553,66 +494,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         </div>
       </div>
 
-      {/* RIGHT PANEL: Add Items */}
-      {showAddPanel && (
-        <div className="w-full lg:w-80 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col shrink-0">
-          <div className="p-4 border-b border-slate-100">
-            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-emerald-600" /> Add Items
-            </h3>
-            <p className="text-[10px] text-slate-500 mt-0.5">Click to add pages to your menu</p>
-          </div>
-          <div className="px-3 py-2 border-b border-slate-100">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-              <input type="text" value={addPanelSearch} onChange={(e) => setAddPanelSearch(e.target.value)} placeholder="Search pages..." className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
-            </div>
-          </div>
-          <div className="px-3 py-1.5 border-b border-slate-100 flex flex-wrap gap-1">
-            {addPanelCategories.map(cat => (
-              <button key={cat} onClick={() => setAddPanelCategory(cat)} className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${addPanelCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{cat}</button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {filteredPages.map(page => {
-              const isAdded = addedKeys.has(page.uniqueKey);
-              const PageIcon = AVAILABLE_ICONS[page.icon] || NavIcon;
-              return (
-                <button key={page.uniqueKey} onClick={() => !isAdded && handleAddPage(page)} disabled={isAdded}
-                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all text-left ${isAdded ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default' : 'bg-slate-50 text-slate-700 border border-transparent hover:bg-blue-50 hover:border-blue-200 hover:text-blue-800 cursor-pointer'}`}>
-                  <PageIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="font-semibold truncate flex-1">{page.title}</span>
-                  {isAdded ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Plus className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-          <CustomLinkAdder onAdd={handleAddCustomLink} />
-        </div>
-      )}
-    </div>
-  );
-};
-
-const CustomLinkAdder: React.FC<{ onAdd: (title: string, url: string) => void }> = ({ onAdd }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const handleAdd = () => { if (!url.trim()) return; onAdd(title.trim() || 'Custom Link', url.trim()); setTitle(''); setUrl(''); setIsOpen(false); };
-
-  return (
-    <div className="border-t border-slate-100">
-      <button onClick={() => setIsOpen(!isOpen)} className="w-full px-4 py-2.5 flex items-center gap-2 text-xs font-bold text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer">
-        <LinkIcon className="w-3.5 h-3.5" /> Add Custom Link
-        {isOpen ? <ChevronDown className="w-3 h-3 ml-auto" /> : <ChevronRight className="w-3 h-3 ml-auto" />}
-      </button>
-      {isOpen && (
-        <div className="px-4 pb-3 space-y-2">
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Link text" className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none" />
-          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none" />
-          <button onClick={handleAdd} disabled={!url.trim()} className="w-full py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40">Add Link</button>
-        </div>
-      )}
     </div>
   );
 };
