@@ -462,7 +462,7 @@ export function App() {
       if (data && data.length > 0) setGuests(data);
     });
     fetchMenuFromDB().then((data) => {
-      if (data && data.length > 74) {
+      if (data && data.length > 75) {
         dedupMenuDB().then(() => {
           fetchMenuFromDB().then((clean) => {
             setMenu(clean && clean.length > 0 ? clean : INITIAL_MENU);
