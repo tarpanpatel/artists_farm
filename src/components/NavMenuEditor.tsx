@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Sortable from 'sortablejs';
 import {
   GripVertical, Plus, Trash2, Edit2, Eye, EyeOff, ChevronDown, ChevronRight,
   Check, X, Search, LayoutDashboard, Users, CreditCard, ShoppingCart,
@@ -61,19 +62,6 @@ const AVAILABLE_PAGES: { title: string; tabKey: string; uniqueKey: string; icon:
   { title: 'Custom CSS Override', tabKey: 'custom_css', uniqueKey: 'custom_css', icon: 'Paintbrush', category: 'Admin' },
 ];
 
-const INDENT_PX = 28;
-
-interface DragState {
-  active: boolean;
-  sourceId: string | null;
-  ghostX: number;
-  ghostY: number;
-  ghostWidth: number;
-  dropTargetId: string | null;
-  dropDepth: number;
-  overHalf: 'top' | 'bottom' | null;
-}
-
 export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   navItems,
   onUpdateNavItems,
@@ -91,15 +79,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [drag, setDrag] = useState<DragState>({
-    active: false, sourceId: null, ghostX: 0, ghostY: 0, ghostWidth: 0,
-    dropTargetId: null, dropDepth: 0, overHalf: null,
-  });
-
-  const treeRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const dragStartPos = useRef<{ x: number; y: number; depth: number; originalParentId: string | null }>({ x: 0, y: 0, depth: 0, originalParentId: null });
-  const flatOrderRef = useRef<string[]>([]);
+  const sortableInstances = useRef<Sortable[]>([]);
+  const sortableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setItems(navItems);
@@ -132,20 +113,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
   const tree = buildTree(items);
 
-  // Flatten tree to visible ordered list
-  const flattenVisible = useCallback((nodes: (NavMenuItem & { children: any[] })[], parentId: string | null = null): NavMenuItem[] => {
-    const result: NavMenuItem[] = [];
-    nodes.forEach((node, idx) => {
-      result.push({ ...node, parentId, order: idx + 1 });
-      if (expandedIds.has(node.id) && node.children?.length > 0) {
-        result.push(...flattenVisible(node.children, node.id));
-      }
-    });
-    return result;
-  }, [expandedIds]);
-
-  const flatVisible = flattenVisible(tree);
-
   // Full flatten (all items, not just visible)
   const flattenAll = useCallback((nodes: (NavMenuItem & { children: any[] })[], parentId: string | null = null): NavMenuItem[] => {
     const result: NavMenuItem[] = [];
@@ -171,178 +138,62 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return depth;
   };
 
-  // Get the max depth a child of sourceId can go (prevent too deep nesting)
-  const getMaxChildDepth = (sourceId: string): number => {
-    let maxDepth = 0;
-    const count = (id: string, depth: number) => {
-      items.filter(i => i.parentId === id).forEach(child => {
-        maxDepth = Math.max(maxDepth, depth + 1);
-        count(child.id, depth + 1);
+  // ========== SORTABLE.JS SETUP ==========
+  // Extract flat list from DOM after Sortable reorders
+  const extractFromDOM = useCallback((): NavMenuItem[] => {
+    const result: NavMenuItem[] = [];
+    const processList = (ulEl: HTMLUListElement, parentId: string | null) => {
+      const lis = Array.from(ulEl.children).filter(el => el.tagName === 'LI') as HTMLLIElement[];
+      lis.forEach((li, idx) => {
+        const id = li.getAttribute('data-id');
+        if (!id) return;
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        result.push({ ...item, parentId, order: idx + 1 });
+        const childUl = li.querySelector(':scope > ul') as HTMLUListElement | null;
+        if (childUl) {
+          processList(childUl, id);
+        }
       });
     };
-    count(sourceId, 0);
-    return maxDepth;
-  };
+    const rootUl = sortableContainerRef.current?.querySelector(':scope > ul') as HTMLUListElement | null;
+    if (rootUl) processList(rootUl, null);
+    return result;
+  }, [items]);
 
-  // ========== CUSTOM DRAG SYSTEM ==========
-  const handleDragStart = useCallback((e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const el = itemRefs.current.get(id);
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
+  // Initialize Sortable on all <ul> elements
+  const initSortable = useCallback(() => {
+    // Destroy previous instances
+    sortableInstances.current.forEach(s => s.destroy());
+    sortableInstances.current = [];
 
-    const item = items.find(i => i.id === id);
-    const depth = item ? getDepth(item) : 0;
+    if (!sortableContainerRef.current) return;
 
-    dragStartPos.current = { x: e.clientX, y: e.clientY, depth, originalParentId: item?.parentId || null };
-    flatOrderRef.current = flatVisible.map(i => i.id);
-
-    setDrag({
-      active: true,
-      sourceId: id,
-      ghostX: rect.left,
-      ghostY: rect.top,
-      ghostWidth: rect.width,
-      dropTargetId: null,
-      dropDepth: depth,
-      overHalf: null,
+    const allUls = sortableContainerRef.current.querySelectorAll('ul[data-sortable]');
+    allUls.forEach(ul => {
+      const instance = Sortable.create(ul as HTMLUListElement, {
+        group: 'nav-menu',
+        animation: 150,
+        handle: '.hs-handle',
+        ghostClass: 'nav-sortable-ghost',
+        chosenClass: 'nav-sortable-chosen',
+        dragClass: 'nav-sortable-drag',
+        easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+        onEnd: () => {
+          const newItems = extractFromDOM();
+          setItems(newItems);
+          markDirty();
+        },
+      });
+      sortableInstances.current.push(instance);
     });
-  }, [items, flatVisible]);
+  }, [extractFromDOM]);
 
+  // Re-init sortable when tree changes
   useEffect(() => {
-    if (!drag.active) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStartPos.current.x;
-      const dy = e.clientY - dragStartPos.current.y;
-
-      const newDepth = Math.max(0, Math.min(2, dragStartPos.current.depth + Math.round(dx / INDENT_PX)));
-
-      // Find which item we're over
-      let overId: string | null = null;
-      let overHalf: 'top' | 'bottom' = 'bottom';
-
-      for (const [id, el] of itemRefs.current.entries()) {
-        if (id === drag.sourceId) continue;
-        const rect = el.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          overId = id;
-          overHalf = e.clientY < midY ? 'top' : 'bottom';
-          break;
-        }
-      }
-
-      setDrag(prev => ({
-        ...prev,
-        ghostX: prev.ghostX + (e.clientX - (prev.ghostX + prev.ghostWidth / 2 - prev.ghostWidth / 2)),
-        ghostY: prev.ghostY + dy,
-        dropTargetId: overId,
-        dropDepth: newDepth,
-        overHalf,
-      }));
-
-      // Update ghost position directly for performance
-      const ghostEl = document.getElementById('nav-drag-ghost');
-      if (ghostEl) {
-        ghostEl.style.left = `${e.clientX - dragStartPos.current.depth * INDENT_PX}px`;
-        ghostEl.style.top = `${e.clientY - 20}px`;
-      }
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-
-      if (drag.dropTargetId && drag.sourceId && drag.dropTargetId !== drag.sourceId) {
-        performDrop(drag.sourceId, drag.dropTargetId, drag.overHalf || 'bottom', drag.dropDepth);
-      }
-
-      setDrag({ active: false, sourceId: null, ghostX: 0, ghostY: 0, ghostWidth: 0, dropTargetId: null, dropDepth: 0, overHalf: null });
-    };
-
-    document.body.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [drag.active, drag.sourceId, drag.dropTargetId, drag.overHalf, drag.dropDepth]);
-
-  const performDrop = (sourceId: string, targetId: string, overHalf: 'top' | 'bottom', newDepth: number) => {
-    const sourceItem = items.find(i => i.id === sourceId);
-    const targetItem = items.find(i => i.id === targetId);
-    if (!sourceItem || !targetItem) return;
-
-    // Can't drop onto own descendant
-    const isDescendant = (parentId: string, checkId: string): boolean => {
-      const children = items.filter(i => i.parentId === parentId);
-      for (const child of children) {
-        if (child.id === checkId) return true;
-        if (isDescendant(child.id, checkId)) return true;
-      }
-      return false;
-    };
-    if (isDescendant(sourceId, targetId)) return;
-
-    // Determine new parent based on depth
-    let newParentId: string | null = null;
-    if (newDepth === 0) {
-      newParentId = null;
-    } else {
-      // Walk up from target to find the ancestor at (newDepth - 1)
-      let ancestor = targetItem;
-      const targetDepth = getDepth(targetItem);
-      const stepsUp = targetDepth - (newDepth - 1);
-      if (stepsUp >= 0) {
-        for (let i = 0; i < stepsUp; i++) {
-          if (ancestor.parentId) {
-            ancestor = items.find(j => j.id === ancestor.parentId!) || ancestor;
-          }
-        }
-        newParentId = ancestor.id;
-      } else {
-        newParentId = targetItem.parentId || null;
-      }
-    }
-
-    // Build sibling list for new parent (excluding source)
-    const siblings = items.filter(i => i.parentId === (newParentId || null) && i.id !== sourceId).sort((a, b) => a.order - b.order);
-    const targetIdx = siblings.findIndex(s => s.id === targetId);
-
-    // Insert position
-    let insertIdx: number;
-    if (overHalf === 'top') {
-      insertIdx = targetIdx >= 0 ? targetIdx : 0;
-    } else {
-      insertIdx = targetIdx >= 0 ? targetIdx + 1 : siblings.length;
-    }
-
-    // Rebuild with new order
-    siblings.splice(insertIdx, 0, { ...sourceItem, parentId: newParentId } as NavMenuItem);
-
-    setItems(prev => {
-      let updated = prev.map(i => {
-        if (i.id === sourceId) return { ...i, parentId: newParentId };
-        return i;
-      });
-      // Re-assign orders
-      siblings.forEach((sib, idx) => {
-        const idx2 = updated.findIndex(i => i.id === sib.id);
-        if (idx2 >= 0) updated[idx2] = { ...updated[idx2], order: idx + 1 };
-      });
-      return updated;
-    });
-    markDirty();
-  };
+    const timer = setTimeout(initSortable, 50);
+    return () => clearTimeout(timer);
+  }, [tree, expandedIds, initSortable]);
 
   // Save to DB
   const handleSave = async () => {
@@ -438,9 +289,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   };
 
   const handleIndent = (id: string) => {
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-    const flat = flatVisible;
+    const flat = flattenVisible(tree);
     const idx = flat.findIndex(i => i.id === id);
     if (idx <= 0) return;
     const above = flat[idx - 1];
@@ -478,6 +327,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const expandAll = () => setExpandedIds(new Set(items.filter(i => i.parentId).map(i => i.parentId!)));
   const collapseAll = () => setExpandedIds(new Set());
 
+  // Flatten visible tree for indent/outdent/move buttons
+  const flattenVisible = useCallback((nodes: (NavMenuItem & { children: any[] })[], parentId: string | null = null): NavMenuItem[] => {
+    const result: NavMenuItem[] = [];
+    nodes.forEach((node, idx) => {
+      result.push({ ...node, parentId, order: idx + 1 });
+      if (expandedIds.has(node.id) && node.children?.length > 0) {
+        result.push(...flattenVisible(node.children, node.id));
+      }
+    });
+    return result;
+  }, [expandedIds]);
+
   const addedKeys = new Set(items.map(i => i.uniqueKey));
   const filteredPages = AVAILABLE_PAGES.filter(p => {
     const matchSearch = p.title.toLowerCase().includes(addPanelSearch.toLowerCase());
@@ -486,44 +347,22 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   });
   const addPanelCategories = ['All', ...new Set(AVAILABLE_PAGES.map(p => p.category))];
 
-  // Render tree item
+  // Render tree item as <li>
   const renderTreeItem = (item: NavMenuItem & { children?: any[] }, depth: number = 0) => {
     const isExpanded = expandedIds.has(item.id);
     const isEditing = editingId === item.id;
-    const isDragging = drag.sourceId === item.id;
-    const isDropTarget = drag.active && drag.dropTargetId === item.id;
     const hasChildren = item.children && item.children.length > 0;
     const IconComp = AVAILABLE_ICONS[item.iconName] || NavIcon;
 
-    // Placeholder line when dragging over
-    let placeholderAbove = false;
-    let placeholderBelow = false;
-    if (isDropTarget && !isDragging) {
-      if (drag.overHalf === 'top') placeholderAbove = true;
-      else placeholderBelow = true;
-    }
-
     return (
-      <div key={item.id} className="select-none" data-nav-item-id={item.id}>
-        {placeholderAbove && (
-          <div className="h-0.5 bg-blue-500 rounded-full my-0.5 mx-2 shadow-sm" style={{ marginLeft: `${depth * INDENT_PX + 4}px` }} />
-        )}
-        <div
-          ref={(el) => { if (el) itemRefs.current.set(item.id, el); else itemRefs.current.delete(item.id); }}
-          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-all text-xs group ${
-            isDragging ? 'opacity-30 border-dashed border-blue-300 bg-blue-50/50' :
-            isDropTarget ? 'border-blue-400 bg-blue-50/80 shadow-sm' :
-            item.isVisible ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs' :
-            'bg-slate-50 border-slate-200 opacity-60'
-          }`}
-          style={{ marginLeft: depth > 0 ? `${depth * INDENT_PX}px` : '0px' }}
-        >
-          {/* Drag Handle — mousedown starts custom drag */}
-          <div
-            onMouseDown={(e) => handleDragStart(e, item.id)}
-            className="p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
-            title="Drag to reorder or change nesting level"
-          >
+      <li key={item.id} data-id={item.id} className="nav-menu-item">
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-all text-xs group my-0.5 ${
+          item.isVisible ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-2xs' :
+          'bg-slate-50 border-slate-200 opacity-60'
+        }`}>
+          {/* Drag Handle */}
+          <div className="hs-handle p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
+            title="Drag to reorder or nest">
             <GripVertical className="w-4 h-4" />
           </div>
 
@@ -630,19 +469,15 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
         )}
 
-        {placeholderBelow && (
-          <div className="h-0.5 bg-blue-500 rounded-full my-0.5 mx-2 shadow-sm" style={{ marginLeft: `${depth * INDENT_PX + 4}px` }} />
+        {/* Children rendered as nested <ul> */}
+        {isExpanded && hasChildren && (
+          <ul data-sortable className="ml-5 pl-2 border-l-2 border-slate-100">
+            {item.children!.sort((a: any, b: any) => a.order - b.order).map((child: any) => renderTreeItem(child, depth + 1))}
+          </ul>
         )}
-
-        {/* Children */}
-        {isExpanded && hasChildren && item.children!.sort((a: any, b: any) => a.order - b.order).map((child: any) => renderTreeItem(child, depth + 1))}
-      </div>
+      </li>
     );
   };
-
-  // Get the ghost item info
-  const ghostItem = drag.sourceId ? items.find(i => i.id === drag.sourceId) : null;
-  const GhostIcon = ghostItem ? (AVAILABLE_ICONS[ghostItem.iconName] || NavIcon) : null;
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 min-h-[600px]">
@@ -669,8 +504,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
           <div className="flex items-center gap-3 text-[10px] text-slate-500">
             <span className="flex items-center gap-1"><GripVertical className="w-3 h-3" /> Drag grip to reorder</span>
-            <span>Drag right → indent (nest)</span>
-            <span>Drag left ← outdent</span>
+            <span>Nest by dragging between levels</span>
             <span className="flex items-center gap-1"><Edit2 className="w-3 h-3" /> Click title to rename</span>
           </div>
         </div>
@@ -698,7 +532,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         </div>
 
         {/* Menu Tree */}
-        <div ref={treeRef} className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <div ref={sortableContainerRef} className="flex-1 overflow-y-auto p-3">
           {tree.length === 0 ? (
             <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
               <LayoutDashboard className="w-12 h-12 text-slate-200 mx-auto mb-3" />
@@ -706,7 +540,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               <p className="text-slate-400 text-xs">Click "Add Items" to start building your menu</p>
             </div>
           ) : (
-            tree.map(item => renderTreeItem(item, 0))
+            <ul data-sortable className="flex flex-col">
+              {tree.map(item => renderTreeItem(item, 0))}
+            </ul>
           )}
         </div>
 
@@ -752,25 +588,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             })}
           </div>
           <CustomLinkAdder onAdd={handleAddCustomLink} />
-        </div>
-      )}
-
-      {/* DRAG GHOST OVERLAY */}
-      {drag.active && ghostItem && GhostIcon && (
-        <div
-          id="nav-drag-ghost"
-          className="fixed z-[9999] pointer-events-none flex items-center gap-2 px-3 py-2 rounded-xl bg-white border-2 border-blue-500 shadow-2xl opacity-90"
-          style={{
-            left: drag.ghostX,
-            top: drag.ghostY,
-            width: drag.ghostWidth,
-            marginLeft: `${drag.dropDepth * INDENT_PX}px`,
-          }}
-        >
-          <GripVertical className="w-4 h-4 text-blue-400 shrink-0" />
-          <GhostIcon className="w-4 h-4 text-blue-600 shrink-0" />
-          <span className="text-xs font-bold text-blue-800 truncate">{ghostItem.title}</span>
-          <span className="text-[9px] font-mono text-blue-400 ml-auto shrink-0">L{drag.dropDepth}</span>
         </div>
       )}
     </div>

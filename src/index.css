@@ -599,3 +599,40 @@ html.dark .payees-registry-table tr:hover {
   max-width: 600px;
 }
 
+/* Sortable.js Drag States */
+.nav-sortable-ghost {
+  opacity: 0.4;
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+.nav-sortable-chosen {
+  box-shadow: 0 0 0 2px #3b82f6;
+  background-color: #f0f9ff !important;
+}
+
+.nav-sortable-drag {
+  opacity: 0.9;
+  background-color: white !important;
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 0.5rem !important;
+  z-index: 9999;
+}
+
+/* Sortable.js override for nested list borders */
+[data-sortable] {
+  min-height: 4px;
+}
+
+[data-sortable]:empty::before {
+  content: 'Drop here';
+  display: block;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  border: 2px dashed #e2e8f0;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
