@@ -612,11 +612,17 @@ export function App() {
         css_override: { tab: 'custom_css', key: 'custom_css' },
       };
 
-      // 404 or Invalid Route -> Redirect to dashboard
+      // 404 or Invalid Route -> Try dynamic nav items from DB, then fallback to dashboard
       if (!routeMap[hash]) {
-        setActiveTab('dashboard');
-        setActiveMenuItemKey('dashboard');
-        window.location.hash = '#dashboard';
+        const dynamicItem = navItems.find((n) => n.uniqueKey === hash || n.tabKey === hash);
+        if (dynamicItem && dynamicItem.isVisible) {
+          setActiveTab(dynamicItem.tabKey as any || 'dashboard');
+          setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
+        } else {
+          setActiveTab('dashboard');
+          setActiveMenuItemKey('dashboard');
+          window.location.hash = '#dashboard';
+        }
         return;
       }
 
