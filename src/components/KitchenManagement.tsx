@@ -369,7 +369,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   // New Order Form State
   const activeGuests = isTestingMode
-    ? guests.filter((g) => g.status !== 'CheckedOut')
+    ? guests
     : guests.filter((g) => g.status === 'Active');
   const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
