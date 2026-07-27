@@ -106,6 +106,25 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             }
             break;
 
+        case 'delete_petty_cash':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $id = intval($input['id'] ?? 0);
+                if (!$id) {
+                    echo json_encode(['status' => 'error', 'message' => 'Expense id is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE id = ?");
+                    $stmt->execute([$id]);
+                } catch (PDOException $e) {
+                    $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE id = ?");
+                    $stmt->execute([$id]);
+                }
+                echo json_encode(['status' => 'success', 'message' => 'Expense entry deleted']);
+            }
+            break;
+
         case 'get_expense_item_prices':
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (

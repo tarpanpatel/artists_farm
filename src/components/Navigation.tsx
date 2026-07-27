@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getIconComponent } from '../utils/iconResolver';
 import {
   LayoutDashboard,
   User,
@@ -101,6 +102,7 @@ interface FlatNavItem {
   badge?: string | null;
   badgeClass?: string;
   roles?: string[];
+  subCategory?: string;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -118,6 +120,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onToggleIconOnly,
   activeRole = 'Super Admin',
   onLogout,
+  navItems = [],
 }) => {
   // Collapsible Dropdown States
   const [isAdminControlOpen, setIsAdminControlOpen] = useState(true);
@@ -128,6 +131,28 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (activeRole === 'Super Admin') return true;
     return allowedRoles.includes(activeRole);
   };
+
+  // Convert dynamic navItems from MySQL into FlatNavItems with dynamic icon resolution
+  const dynamicFlatNavItems: FlatNavItem[] = (navItems && navItems.length > 0)
+    ? navItems
+        .filter((item) => item.isVisible)
+        .map((item) => ({
+          id: (item.tabKey || 'dashboard') as TabType,
+          uniqueKey: item.uniqueKey || item.tabKey,
+          label: item.title,
+          icon: getIconComponent(item.iconName),
+          roles: item.roles,
+          subCategory: item.category,
+          badge:
+            (item.uniqueKey === 'kitchen_orders' && pendingOrdersCount > 0) ? `${pendingOrdersCount}` :
+            (item.uniqueKey === 'stock_requests' && pendingReqCount > 0) ? `${pendingReqCount}` :
+            (item.uniqueKey === 'deficit_shortfalls_log' && lowStockCount > 0) ? `${lowStockCount} low` : null,
+          badgeClass:
+            item.uniqueKey === 'kitchen_orders' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300' :
+            item.uniqueKey === 'stock_requests' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300' :
+            item.uniqueKey === 'deficit_shortfalls_log' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300' : undefined,
+        }))
+    : [];
 
   // Top-level flat items in exact user requested order
   const topFlatItems: FlatNavItem[] = [

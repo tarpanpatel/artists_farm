@@ -481,6 +481,24 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             }
             break;
 
+        case 'delete_catalog_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $id = intval($input['id'] ?? 0);
+                if (!$id) {
+                    echo json_encode(['status' => 'error', 'message' => 'Item id is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM req_catalog WHERE id = ?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['status' => 'success', 'message' => 'Catalog item deleted']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         case 'update_catalog_item':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);

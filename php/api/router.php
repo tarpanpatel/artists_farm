@@ -73,6 +73,7 @@ switch ($action) {
     case 'add_material_category':
     case 'add_catalog_item':
     case 'update_catalog_item':
+    case 'delete_catalog_item':
     case 'bulk_update_catalog_category':
     case 'seed_catalog':
     case 'fix_orphan_categories':
@@ -83,6 +84,7 @@ switch ($action) {
     case 'get_petty_cash':
     case 'add_petty_cash':
     case 'update_petty_cash':
+    case 'delete_petty_cash':
     case 'get_expense_item_prices':
     case 'get_expense_items':
     case 'add_expense_item':

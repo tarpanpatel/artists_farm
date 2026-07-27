@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon } from 'lucide-react';
 import { PettyCashEntry, StaffMember } from '../types';
-import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, fetchStaffUsersFromDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, deleteExpenseFromDB, fetchStaffUsersFromDB } from '../services/api';
 
 const FALLBACK_EXPENSES = [
   'Badminton racket', 'Ball', 'Bat', 'Bedsheets', 'Blanket', 'Broom', 'Brush', 'Bucket',
@@ -19,6 +19,7 @@ interface PettyCashManagementProps {
   staff: StaffMember[];
   onAddEntry: (entry: PettyCashEntry) => void;
   onUpdateEntry?: (entry: PettyCashEntry) => void;
+  onDeleteEntry?: (id: string) => void;
   activeRole?: string;
 }
 
@@ -27,6 +28,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   staff,
   onAddEntry,
   onUpdateEntry,
+  onDeleteEntry,
   activeRole = 'Super Admin',
 }) => {
   // Form State - Default category is "Other"
@@ -234,6 +236,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       setItemPrices(prev => ({ ...prev, [editingEntry.description.trim()]: Number(editingEntry.amount) }));
     }
     setEditingEntry(null);
+  };
+
+  // Delete Expense
+  const handleDeleteExpense = (id: string, description: string) => {
+    (window as any).showConfirm(`Delete expense "${description}"? This cannot be undone.`, async () => {
+      const ok = await deleteExpenseFromDB(id);
+      if (ok && onDeleteEntry) {
+        onDeleteEntry(id);
+      }
+    });
   };
 
   // Filter entries
@@ -604,13 +616,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                     {(activeRole === 'Admin' || activeRole === 'Super Admin') && (
                       <td className="p-3 text-right">
-                        <button
-                          onClick={() => setEditingEntry(entry)}
-                          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ml-auto cursor-pointer transition-colors"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Edit</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setEditingEntry(entry)}
+                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteExpense(entry.id, entry.description)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <span>Delete</span>
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>

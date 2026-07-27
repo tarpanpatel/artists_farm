@@ -1039,6 +1039,11 @@ ${itemsStr}
     logAudit(`Updated petty cash entry #${updated.id}: ₹${updated.amount} - ${updated.description}`);
   };
 
+  const handleDeletePettyCash = (id: string) => {
+    setPettyCash((prev) => prev.filter((e) => e.id !== id));
+    logAudit(`Deleted petty cash entry #${id}`);
+  };
+
   const handleSendTestNotification = () => {
     const testTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Artists Farm Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
@@ -1237,6 +1242,7 @@ ${itemsStr}
               staff={staff}
               onAddEntry={handleAddPettyCash}
               onUpdateEntry={handleUpdatePettyCash}
+              onDeleteEntry={handleDeletePettyCash}
             />
           )}
 

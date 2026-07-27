@@ -158,6 +158,21 @@ export async function updateExpenseInDB(entry: any): Promise<boolean> {
   }
 }
 
+export async function deleteExpenseFromDB(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}?action=delete_petty_cash`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete expense from DB:', err);
+    return false;
+  }
+}
+
 export async function fetchExpenseItemPricesFromDB(): Promise<Record<string, number>> {
   try {
     const res = await fetch(`${API_BASE}?action=get_expense_item_prices`);
@@ -397,6 +412,21 @@ export async function updateCatalogItemDB(payload: { id: number; name: string; c
     return json.status === 'success';
   } catch (err) {
     console.error('Failed to update catalog item in DB:', err);
+    return false;
+  }
+}
+
+export async function deleteCatalogItemDB(id: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}?action=delete_catalog_item`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete catalog item from DB:', err);
     return false;
   }
 }

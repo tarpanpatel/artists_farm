@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate } from '../services/api';
 
 interface InventoryManagementProps {
   inventory: InventoryItem[];
@@ -174,6 +174,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         if (onLogAudit) {
           const currentUserName = currentUser?.name || 'Admin';
           onLogAudit(`${currentUserName} deleted material category '${name}'`);
+        }
+      }
+    });
+  };
+
+  const handleDeleteCatalogItem = (id: number, name: string) => {
+    (window as any).showConfirm(`Delete catalog item "${name}"? This cannot be undone.`, async () => {
+      const ok = await deleteCatalogItemDB(id);
+      if (ok) {
+        setCatalogItems((prev: CatalogItem[]) => prev.filter((item: CatalogItem) => item.id !== id));
+        if (onLogAudit) {
+          const currentUserName = currentUser?.name || 'Admin';
+          onLogAudit(`${currentUserName} deleted catalog item '${name}'`);
         }
       }
     });
@@ -1620,6 +1633,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             <button onClick={() => handleEditCatalogItem(item)} className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer">
                               Edit
                             </button>
+                            {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+                              <button onClick={() => handleDeleteCatalogItem(item.id, item.name)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">
+                                Delete
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
