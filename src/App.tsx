@@ -559,6 +559,8 @@ export function App() {
         errors: { tab: 'audit_logs', key: 'errors' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         staff_activity_trail: { tab: 'audit_logs', key: 'staff_activity_trail' },
+        login_logs: { tab: 'audit_logs', key: 'login_logs' },
+        system_health: { tab: 'audit_logs', key: 'system_health' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },

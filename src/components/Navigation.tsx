@@ -301,7 +301,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'export', uniqueKey: 'data_export_center', label: 'Data Export Center', icon: FileSpreadsheet, roles: ['Super Admin', 'Admin'] },
     { id: 'audit_logs', uniqueKey: 'system_health', label: 'System Health', icon: Activity, roles: ['Super Admin', 'Admin'] },
     { id: 'telegram', uniqueKey: 'telegram', label: 'Telegram', icon: Send, roles: ['Super Admin', 'Admin'] },
-    { id: 'errors', uniqueKey: 'errors', label: 'Error Logs', icon: AlertCircle, roles: ['Super Admin', 'Admin'] },
+    { id: 'errors', uniqueKey: 'errors', label: 'Error Logs', icon: AlertCircle, roles: ['Super Admin', 'Admin'], customUrl: './php/errors/index.php', openInNewTab: true },
     { id: 'kitchen', uniqueKey: 'beta_recipe_builder', label: 'Beta Recipe Builder', icon: CookingPot, roles: ['Super Admin', 'Admin', 'Chef'] },
     { id: 'custom_css', uniqueKey: 'custom_css', label: 'Custom CSS Override', icon: Paintbrush, roles: ['Super Admin', 'Admin'] },
   ];

@@ -74,7 +74,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       setActiveTab('receipts');
     } else if (activeMenuItemKey === 'staff_activity_trail') {
       setActiveTab('activity');
-    } else if (activeMenuItemKey === 'sys_logs_health') {
+    } else if (activeMenuItemKey === 'login_logs' || activeMenuItemKey === 'sys_logs_health') {
       setActiveTab('login');
     } else if (activeMenuItemKey === 'system_health') {
       setActiveTab('health');
