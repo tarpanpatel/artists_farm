@@ -7,9 +7,47 @@
 function handleKitchenRequests($pdo, $request_method, $action) {
     switch ($action) {
         case 'get_orders':
+            $count = 0;
+            try { $count = $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(); } catch (PDOException $e) {}
+            if ($count == 0) {
+                // Seed orders
+                $seedOrders = [
+                    ['1','7','2026-07-16 09:00:00','Served'],
+                    ['2','7','2026-07-16 10:00:00','Served'],
+                    ['3','7','2026-07-16 12:00:00','Served'],
+                    ['4','6','2026-07-15 20:00:00','Served'],
+                    ['5','6','2026-07-15 21:00:00','Cancelled'],
+                    ['6','8','2026-07-17 08:00:00','Served'],
+                    ['7','8','2026-07-17 12:30:00','Served'],
+                    ['8','8','2026-07-17 19:00:00','Served'],
+                    ['9','9','2026-07-16 10:00:00','Served'],
+                    ['10','5','2026-07-14 18:00:00','Served'],
+                    ['11','5','2026-07-14 20:00:00','Cancelled'],
+                ];
+                $stmt = $pdo->prepare("INSERT INTO orders (id, guest_id, order_time, status) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status=VALUES(status)");
+                foreach ($seedOrders as $o) {
+                    try { $stmt->execute($o); } catch (PDOException $e) {}
+                }
+                // Seed order_items
+                $seedItems = [
+                    ['1','10',2],['1','11',1],['1','12',2],
+                    ['2','18',1],['2','20',1],
+                    ['3','34',1],['3','48',4],['3','49',2],
+                    ['4','23',2],['4','24',1],
+                    ['6','53',4],['6','60',2],['6','67',4],
+                    ['7','34',1],['7','45',1],['7','48',4],
+                    ['8','33',1],['8','36',1],['8','47',1],
+                    ['9','10',2],['9','26',1],
+                    ['10','35',1],['10','42',1],['10','46',1],
+                ];
+                $stmt2 = $pdo->prepare("INSERT INTO order_items (order_id, menu_item_id, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity)");
+                foreach ($seedItems as $it) {
+                    try { $stmt2->execute($it); } catch (PDOException $e) {}
+                }
+            }
             try {
                 // Try orders + order_items first
-                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, COALESCE(g.guest_name, 'Walk-in') as guest_name 
+                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, COALESCE(g.guest_name, 'Walk-in') as guest_name, g.room_number
                         FROM orders o 
                         LEFT JOIN guests g ON o.guest_id = g.id 
                         ORDER BY o.order_time DESC";
@@ -27,6 +65,11 @@ function handleKitchenRequests($pdo, $request_method, $action) {
                     } catch (PDOException $ie) {
                         $order['items'] = [];
                     }
+                    $total = 0;
+                    foreach ($order['items'] as $item) {
+                        $total += ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1);
+                    }
+                    $order['total_amount'] = $total;
                 }
                 echo json_encode(['status' => 'success', 'data' => $orders]);
             } catch (PDOException $e) {

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2 } from 'lucide-react';
+import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2, LogOut, FlaskConical } from 'lucide-react';
 
 interface HeaderProps {
   activeRole: string;
   setActiveRole: (role: string) => void;
+  currentUser?: any;
+  onLogout?: () => void;
   stockAlertsCount: number;
   pendingOrdersCount: number;
   onOpenTelegramModal: () => void;
@@ -13,11 +15,16 @@ interface HeaderProps {
   onToggleIconOnly: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
+  isAuthenticated?: boolean;
+  isTestingMode?: boolean;
+  onToggleTestingMode?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeRole,
   setActiveRole,
+  currentUser,
+  onLogout,
   stockAlertsCount,
   pendingOrdersCount,
   onOpenTelegramModal,
@@ -27,6 +34,9 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleIconOnly,
   isDarkMode,
   onToggleDarkMode,
+  isAuthenticated = false,
+  isTestingMode = false,
+  onToggleTestingMode,
 }) => {
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
 
@@ -39,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
+    <header className="pos-main-header fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
       <div className="px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="flex items-center gap-2">
@@ -54,18 +64,18 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             title={isIconOnly ? "Expand Sidebar Menu" : "Collapse Sidebar Menu"}
             aria-label="Toggle Sidebar Navigation"
-            className="p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="btn-toggle-sidebar p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>
 
           {/* Flowbite Style Logo */}
-          <div className="flex items-center gap-2.5">
+          <div className="pos-logo-container flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs font-bold">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="block">
-              <span className="self-center text-base font-extrabold whitespace-nowrap text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+              <span className="stext-x font-medmium text-gray-700 tracking-tight flex items-center gap-2">
                 ARTISTS' FARM
                 <span className="hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                   POS
@@ -84,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
               title="Notifications"
               aria-label="View notifications"
-              className="relative p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              className="btn-notification-bell relative p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
               {(stockAlertsCount > 0 || pendingOrdersCount > 0) && (
@@ -94,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Notifications Popover Dropdown */}
             {showNotificationDropdown && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="notifications-popover-dropdown absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                     Notifications
@@ -145,33 +155,74 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
+          {/* Sandbox / Testing Mode Toggle Button */}
+          {onToggleTestingMode && (
+            <button
+              onClick={onToggleTestingMode}
+              title={isTestingMode ? 'Exit Testing Sandbox Mode (Return to Live Database)' : 'Enter Testing Sandbox Mode (Safely test without affecting Live DB)'}
+              aria-label="Toggle Testing Mode"
+              className={`btn-toggle-testingmode px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
+                isTestingMode
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 animate-pulse ring-2 ring-amber-400/50'
+                  : 'bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <FlaskConical className={`w-4 h-4 ${isTestingMode ? 'text-slate-950' : 'text-amber-500 dark:text-amber-400'}`} />
+              <span className="hidden sm:inline">
+                {isTestingMode ? '🧪 Testing Mode (ACTIVE)' : '🧪 Testing Mode'}
+              </span>
+              <span className="sm:hidden">
+                {isTestingMode ? '🧪 TEST' : '🧪 Test'}
+              </span>
+            </button>
+          )}
+
           {/* Dark Mode Toggle Button */}
           <button
             onClick={onToggleDarkMode}
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle Dark Mode"
-            className="p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="btn-toggle-darkmode p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
           </button>
 
 
-          {/* Flowbite User Profile with Username and Picture Avatar */}
-          <div className="flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-slate-700">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-              alt="User Avatar"
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30"
-            />
-            <div className="hidden sm:block text-left leading-tight">
-              <span className="block text-xs font-bold text-gray-900 dark:text-white">
-                Tarpan Patel
-              </span>
-              <span className="block text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                {activeRole}
-              </span>
+          {/* Flowbite User Profile with Username and Picture Avatar - only shown when authenticated */}
+          {isAuthenticated ? (
+            <div className="pos-user-profile-badge flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-slate-700">
+              <img
+                src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+                alt="User Avatar"
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30"
+              />
+              <div className="hidden sm:block text-left leading-tight">
+                <span className="block text-xs font-bold text-gray-900 dark:text-white">
+                  {currentUser?.name || 'Staff'}
+                </span>
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                  {activeRole}
+                </span>
+              </div>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Lock & Logout POS"
+                  aria-label="Logout POS"
+                  className="btn-logout-pos ml-1 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="pos-user-profile-badge flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-slate-700">
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center">
+                <UserCheck className="w-4 h-4 text-gray-400 dark:text-slate-500" />
+              </div>
+              <span className="hidden sm:block text-xs text-gray-400 dark:text-gray-500 font-medium">Not logged in</span>
+            </div>
+          )}
         </div>
       </div>
     </header>

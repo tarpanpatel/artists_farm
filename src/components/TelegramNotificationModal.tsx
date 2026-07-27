@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { TelegramConfig, TelegramDispatchLog } from '../types';
+import { invalidateTemplateCache } from '../services/api';
 
 export interface TelegramInlineButton {
   id: string;
@@ -50,6 +51,7 @@ interface TelegramNotificationModalProps {
   dispatchLogs: TelegramDispatchLog[];
   onSendTestNotification: () => void;
   isEmbedded?: boolean;
+  onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
 }
 
 const CATALOG_TEMPLATES: TelegramTemplateExtended[] = [
@@ -158,8 +160,8 @@ const CATALOG_TEMPLATES: TelegramTemplateExtended[] = [
     eventName: 'Stock Requisition Fulfilled',
     category: 'Requisitions & Inventory',
     description: 'Sent when a store inventory requisition is fulfilled or issued.',
-    variables: ['{req_id}', '{staff_name}', '{fulfillment_time}', '{status_label}', '{items_manifest}', '{status_title}'],
-    template: `📦 <b>STOCK {status_title}</b>\n━━━━━━━━━━━━━━━━━━\n🆔 <b>Sheet ID:</b> #{req_id}\n👤 <b>Processed By:</b> {staff_name}\n📅 <b>Fulfillment Time:</b> {fulfillment_time}\n🟢 <b>Global Status:</b> {status_label}\n━━━━━━━━━━━━━━━━━━\n📝 <b>Items Variance Manifest:</b>\n\n{items_manifest}`,
+    variables: ['{header_title}', '{req_id}', '{staff_name}', '{fulfillment_time}', '{status_label}', '{items_manifest}', '{status_title}'],
+    template: `{header_title}\n━━━━━━━━━━━━━━━━━━\n🆔 <b>Sheet ID:</b> #{req_id}\n👤 <b>Processed By:</b> {staff_name}\n📅 <b>Fulfillment Time:</b> {fulfillment_time}\n🟢 <b>Global Status:</b> {status_label}\n━━━━━━━━━━━━━━━━━━\n📝 <b>Items Variance Manifest:</b>\n\n{items_manifest}`,
   },
   {
     id: 'tpl-11',
@@ -175,6 +177,87 @@ const CATALOG_TEMPLATES: TelegramTemplateExtended[] = [
         { id: 'b11b', text: '❌ Reject', callback_data: 'reject_staff_meal' }
       ]
     ]
+  },
+  {
+    id: 'tpl-12',
+    dbKey: 'kitchen_requisition_approved',
+    eventName: 'Requisition Approved',
+    category: 'Requisitions & Inventory',
+    description: 'Sent when a kitchen material requisition is approved and released from store.',
+    variables: ['{req_id}', '{item_name}', '{qty}', '{unit}', '{requested_by}'],
+    template: `✅ <b>MATERIAL REQUISITION APPROVED #{req_id}</b>\n• Material: <b>{item_name}</b> ({qty} {unit})\n• Requested By: <b>{requested_by}</b>\n• Status: Released & Fulfilled from Store ✓`,
+  },
+  {
+    id: 'tpl-13',
+    dbKey: 'checkout_settlement_bill',
+    eventName: 'Guest Checkout Bill',
+    category: 'Billing & Financial',
+    description: 'Itemized settlement bill sent to finance group upon guest checkout.',
+    variables: ['{guest_name}', '{room_number}', '{receipt_id}', '{items_charges}', '{advance_paid}', '{balance_due}', '{total_bill}', '{payment_mode}'],
+    template: `🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>\n  Resident: <b>{guest_name}</b> (Room {room_number})\n  Receipt: #{receipt_id}\n\n<b>ITEMIZED CHARGES:</b>\n{items_charges}\n<b>SUMMARY:</b>\n  Advance Paid: <b>₹{advance_paid}</b>\n  Final Balance Due: <b>₹{balance_due}</b>\n  Total Bill: <b>₹{total_bill}</b>\n  Payment Mode: <b>{payment_mode}</b>`,
+  },
+  {
+    id: 'tpl-14',
+    dbKey: 'kitchen_order_status',
+    eventName: 'Kitchen Order Status Update',
+    category: 'Kitchen & Ordering',
+    description: 'Sent when a kitchen order status changes (Preparing, Fulfilled, Cancelled).',
+    variables: ['{status_emoji}', '{status}', '{order_id}', '{guest_info}', '{items_list}', '{ticket_total}', '{placed_at}', '{status_detail}'],
+    template: `{status_emoji} <b>KITCHEN ORDER {status} #{order_id}</b>\n• Resident: <b>{guest_info}</b>\n• Items Included:\n{items_list}\n• Ticket Total: <b>₹{ticket_total}</b>\n• Placed At: <b>{placed_at}</b>\n• Current Status: <b>{status_detail}</b>`,
+  },
+  {
+    id: 'tpl-15',
+    dbKey: 'kitchen_staff_meal',
+    eventName: 'Staff Duty Meal Dispatched',
+    category: 'Kitchen & Ordering',
+    description: 'Sent when a staff duty meal is dispatched from the kitchen.',
+    variables: ['{order_id}', '{beneficiary}', '{meal_details}'],
+    template: `🍛 <b>STAFF DUTY MEAL DISPATCHED #{order_id}</b>\n• Beneficiary: <b>{beneficiary}</b>\n• Details: <b>{meal_details}</b>\n• Location: <b>Staff Pantry</b>`,
+  },
+  {
+    id: 'tpl-16',
+    dbKey: 'material_requisition_single',
+    eventName: 'Single Material Requisition',
+    category: 'Requisitions & Inventory',
+    description: 'Sent when a single material requisition is created from the kitchen dashboard.',
+    variables: ['{req_id}', '{requested_by}', '{qty}', '{unit}', '{item_name}', '{status}'],
+    template: `📦 <b>NEW MATERIAL REQUISITION SHEET #{req_id}</b>\n• Requested By: <b>{requested_by}</b>\n• Material Item: <b>{qty} {unit}</b> of <b>{item_name}</b>\n• Initial Status: <b>{status}</b>`,
+  },
+  {
+    id: 'tpl-17',
+    dbKey: 'inventory_low_stock',
+    eventName: 'Low Stock Alert',
+    category: 'Requisitions & Inventory',
+    description: 'Sent when an inventory item drops below its minimum threshold.',
+    variables: ['{item_name}', '{current_stock}', '{unit}', '{min_threshold}'],
+    template: `⚠️ <b>LOW STOCK WARNING ALERT</b>\n• Inventory Item: <b>{item_name}</b>\n• Current Balance: <b>{current_stock} {unit}</b> (Min Threshold: {min_threshold} {unit})\n• Action Required: Reorder stock from vendor.`,
+  },
+  {
+    id: 'tpl-18',
+    dbKey: 'finance_petty_cash_expense',
+    eventName: 'Petty Cash Expense',
+    category: 'Billing & Financial',
+    description: 'Sent to finance group when a petty cash expense or income is recorded.',
+    variables: ['{entry_type}', '{amount}', '{category}', '{vendor}', '{description}'],
+    template: `💰 <b>PETTY CASH {entry_type} RECORDED</b>\n• Amount: <b>₹{amount}</b>\n• Category: <b>{category}</b>\n• Vendor / Payee: <b>{vendor}</b>\n• Description: {description}`,
+  },
+  {
+    id: 'tpl-19',
+    dbKey: 'webhook_dish_served_edit',
+    eventName: 'Dish Served (Webhook Edit)',
+    category: 'Telegram Webhooks',
+    description: 'Edit text applied to the original Telegram message when a dish is marked served via inline button callback.',
+    variables: ['{original_text}', '{staff_name}', '{serve_time}'],
+    template: `✅ <b>DISH SERVED</b>\n\n{original_text}\n\n👨‍🍳 <b>Served By:</b> {staff_name}\n🕒 <b>At:</b> {serve_time}`,
+  },
+  {
+    id: 'tpl-20',
+    dbKey: 'webhook_order_completed',
+    eventName: 'Order Completed (Webhook Edit)',
+    category: 'Telegram Webhooks',
+    description: 'Edit text applied to the original Telegram message when an entire order is marked completed via inline button callback.',
+    variables: ['{original_text}', '{staff_name}', '{serve_time}'],
+    template: `✅ <b>ORDER COMPLETED</b>\n\n{original_text}\n\n👨‍🍳 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {serve_time}`,
   },
 ];
 
@@ -240,8 +323,21 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   dispatchLogs,
   onSendTestNotification,
   isEmbedded = false,
+  onLogAudit,
 }) => {
   const [config, setConfig] = useState<TelegramConfig>(telegramConfig);
+  const getLoggedInUserName = () => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('artists_farm_user');
+      if (savedUser) {
+        try {
+          const userObj = JSON.parse(savedUser);
+          return userObj.username || userObj.name || 'Admin';
+        } catch (e) {}
+      }
+    }
+    return 'Admin';
+  };
   const [templatesList, setTemplatesList] = useState<TelegramTemplateExtended[]>(CATALOG_TEMPLATES);
   const [activeTemplateId, setActiveTemplateId] = useState<string>(CATALOG_TEMPLATES[0].id);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -478,12 +574,18 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         template_key: currentTpl.dbKey,
         content: currentTpl.template,
         buttons: JSON.stringify(currentTpl.buttons || []),
+        staff_user: getLoggedInUserName(),
       }),
     })
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success || resData.status === 'ok') {
           setSaveStatus('✔ Saved to Database!');
+          invalidateTemplateCache();
+          if (onLogAudit) {
+            const currentUserName = getLoggedInUserName();
+            onLogAudit(`${currentUserName} updated Telegram template "${currentTpl.eventName}" (${currentTpl.dbKey}) — template content edited and saved to database`, { module: 'telegram_template', status: 'Success', user: currentUserName });
+          }
         } else {
           setSaveStatus('✔ Saved locally!');
         }

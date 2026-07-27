@@ -60,7 +60,7 @@ if (!class_exists('TelescopeLogger')) {
         /**
          * Read logs with filtering
          */
-        public static function getLogs($portal = 'all', $search = '', $timeframe = 'all') {
+        public static function getLogs($portal = 'all', $search = '', $timeframe = 'all', $dateFrom = '', $dateTo = '') {
             $file = self::$logFile;
             if (!file_exists($file)) {
                 return ['logs' => [], 'counts' => self::getEmptyCounts()];
@@ -76,7 +76,8 @@ if (!class_exists('TelescopeLogger')) {
                 'js' => 0,
                 'telegram' => 0,
                 'security' => 0,
-                '404' => 0
+                '404' => 0,
+                'audit' => 0
             ];
 
             $filteredLogs = [];
@@ -93,7 +94,7 @@ if (!class_exists('TelescopeLogger')) {
                     continue;
                 }
 
-                // Check timeframe filter
+                // Check timeframe filter (quick presets)
                 if ($timeframe !== 'all' && !empty($log['timestamp'])) {
                     $logTime = strtotime($log['timestamp']);
                     if ($timeframe === 'today' && date('Y-m-d', $logTime) !== date('Y-m-d', $now)) {
@@ -101,6 +102,17 @@ if (!class_exists('TelescopeLogger')) {
                     } elseif ($timeframe === 'yesterday' && date('Y-m-d', $logTime) !== date('Y-m-d', $now - 86400)) {
                         continue;
                     } elseif ($timeframe === '7days' && $logTime < ($now - 7 * 86400)) {
+                        continue;
+                    }
+                }
+
+                // Check custom date range filter
+                if ((!empty($dateFrom) || !empty($dateTo)) && !empty($log['timestamp'])) {
+                    $logDate = date('Y-m-d', strtotime($log['timestamp']));
+                    if (!empty($dateFrom) && $logDate < $dateFrom) {
+                        continue;
+                    }
+                    if (!empty($dateTo) && $logDate > $dateTo) {
                         continue;
                     }
                 }
@@ -140,7 +152,8 @@ if (!class_exists('TelescopeLogger')) {
                 'js' => 0,
                 'telegram' => 0,
                 'security' => 0,
-                '404' => 0
+                '404' => 0,
+                'audit' => 0
             ];
         }
     }

@@ -57,6 +57,23 @@ export function recordTelescopeLog(
     window.dispatchEvent(new CustomEvent('telescope_log_added', { detail: newLog }));
   }
 
+  // Persist to server-side logs.json so standalone PHP dashboard also shows logs
+  try {
+    const base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
+    fetch(`${base}/php/errors/index.php?action=log_event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        portal: newLog.portal,
+        severity: newLog.severity,
+        msg: newLog.msg,
+        origin: newLog.origin,
+        extra: newLog.details || {},
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (_) {}
+
   return newLog;
 }
 

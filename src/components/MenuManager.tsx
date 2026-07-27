@@ -46,7 +46,7 @@ import {
   Link as LinkIcon,
   Info
 } from 'lucide-react';
-import { MenuItem, NavMenuItem } from '../types';
+import { MenuItem, NavMenuItem, StaffMember } from '../types';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -57,6 +57,7 @@ interface MenuManagerProps {
   onUpdateNavItems: (items: NavMenuItem[]) => void;
   activeRole: string;
   activeMenuItemKey?: string;
+  staff: StaffMember[];
 }
 
 const AVAILABLE_ICONS = [
@@ -84,7 +85,7 @@ const AVAILABLE_ICONS = [
   { name: 'NavIcon', icon: NavIcon },
 ];
 
-const ROLES_LIST = ['Super Admin', 'Manager', 'Chef', 'Staff', 'Housekeeping'];
+const DEFAULT_SYSTEM_ROLES = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
 
 const NAV_CATEGORIES = [
   'All Categories',
@@ -108,6 +109,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   onUpdateNavItems,
   activeRole,
   activeMenuItemKey,
+  staff,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>('food_menu');
 
@@ -174,6 +176,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [draggedFoodIndex, setDraggedFoodIndex] = useState<number | null>(null);
   const [dragOverFoodIndex, setDragOverFoodIndex] = useState<number | null>(null);
 
+  // Passcode verification modal
+  const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
+  const [pendingPasscodeAction, setPendingPasscodeAction] = useState<(() => void) | null>(null);
+
   const foodCategories = [
     'All',
     'Starters',
@@ -201,6 +209,30 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       selectedNavCategory === 'All Categories' || item.category === selectedNavCategory;
     return matchesSearch && matchesCat;
   });
+
+  // Passcode verification
+  const requirePasscode = (action: () => void) => {
+    setPasscodeInput('');
+    setPasscodeError('');
+    setPendingPasscodeAction(() => action);
+    setPasscodeModalOpen(true);
+  };
+
+  const handleVerifyPasscode = () => {
+    const entered = passcodeInput.trim();
+    const match = staff.find(s => (s.passcodePin || (s as any).passcode || '').toString().trim() === entered);
+    if (match) {
+      setPasscodeModalOpen(false);
+      setPasscodeInput('');
+      setPasscodeError('');
+      const action = pendingPasscodeAction;
+      setPendingPasscodeAction(null);
+      if (action) action();
+    } else {
+      setPasscodeError('Invalid passcode. Please try again.');
+      setPasscodeInput('');
+    }
+  };
 
   // Food Handlers
   const handleOpenAddFood = () => {
@@ -430,54 +462,58 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   };
 
   const handleDeleteNavItem = (id: string) => {
-    if (confirm('Are you sure you want to remove this menu item from the system menu?')) {
+    (window as any).showConfirm('Are you sure you want to remove this menu item from the system menu?', () => {
       const updated = navItems.filter((i) => i.id !== id).map((item, idx) => ({ ...item, order: idx + 1 }));
       onUpdateNavItems(updated);
-    }
+    });
   };
+
+  const isStandalonePage = activeMenuItemKey === 'edit_food_menu' || activeMenuItemKey === 'edit_main_menu';
 
   return (
     <div className="space-y-5">
-      {/* Flowbite Header Banner */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200">
-              <Grid className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">System Menu Manager</h2>
+      {/* Header Banner (Hidden on direct standalone pages) */}
+      {!isStandalonePage && (
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200">
+                <Grid className="w-4 h-4" />
+              </span>
+              <h2 className="text-sm sm:text-base font-extrabold text-gray-900 tracking-tight">System Menu Manager</h2>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Reorder main navigation items with drag & drop, configure access control (RBAC), and manage kitchen food catalog
+            </p>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Reorder main navigation items with drag & drop, configure access control (RBAC), and manage kitchen food catalog
-          </p>
-        </div>
 
-        {/* Sub-tab Navigation Switcher */}
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg border border-gray-200 w-full md:w-auto shrink-0">
-          <button
-            onClick={() => setActiveSubTab('nav_menu')}
-            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-              activeSubTab === 'nav_menu'
-                ? 'bg-blue-700 text-white shadow-2xs'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <NavIcon className="w-4 h-4" />
-            <span>Edit Main Menu ({navItems.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('food_menu')}
-            className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-              activeSubTab === 'food_menu'
-                ? 'bg-blue-700 text-white shadow-2xs'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Utensils className="w-4 h-4" />
-            <span>Food Catalog ({foodMenu.length})</span>
-          </button>
+          {/* Sub-tab Navigation Switcher */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg border border-gray-200 w-full md:w-auto shrink-0">
+            <button
+              onClick={() => setActiveSubTab('nav_menu')}
+              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                activeSubTab === 'nav_menu'
+                  ? 'bg-blue-700 text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <NavIcon className="w-4 h-4" />
+              <span>Edit Main Menu ({navItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab('food_menu')}
+              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                activeSubTab === 'food_menu'
+                  ? 'bg-blue-700 text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Utensils className="w-4 h-4" />
+              <span>Food Catalog ({foodMenu.length})</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SUB-TAB 1: DRAG & DROP MAIN MENU MANAGER */}
       {activeSubTab === 'nav_menu' && (
@@ -564,8 +600,25 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 const FoundIconObj = AVAILABLE_ICONS.find((i) => i.name === nav.iconName);
                 const DisplayIcon = FoundIconObj ? FoundIconObj.icon : NavIcon;
 
+                // Hierarchy Tiers:
+                // Tier 1: Top-level Parent Items & Top Group Dropdowns (e.g. Dashboard, Admin Control Group, Cash Drawer)
+                // Tier 2: Level 1 Children under Admin Control (Dashboard Analytics, Past Receipts Log, Edit Items Group, Staff & Permissions, Misc Charges, etc.)
+                // Tier 3: Level 2 Nested Children under Edit Items Group (Edit Food Menu, Edit Kitchen Stock, Edit Expense Items, Edit Main Menu & RBAC)
+
+                const tier2Keys = [
+                  'dashboard_analytics', 'past_receipts_log', 'edit_items_group',
+                  'staff_permissions', 'misc_charges', 'data_export_center', 'telegram', 'sys_logs_health', 'beta_recipe_builder'
+                ];
+                const tier3Keys = [
+                  'edit_food_menu', 'edit_kitchen_stock', 'edit_expense_items', 'edit_main_menu'
+                ];
+
                 const isBeingDragged = draggedNavIndex === index;
                 const isDragTarget = dragOverNavIndex === index;
+
+                const isTier2 = tier2Keys.includes(nav.uniqueKey);
+                const isTier3 = tier3Keys.includes(nav.uniqueKey);
+                const isHeaderGroup = nav.uniqueKey === 'admin_control_group' || nav.uniqueKey === 'edit_items_group';
 
                 return (
                   <div
@@ -576,6 +629,14 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     onDrop={(e) => handleNavDrop(e, index)}
                     onDragEnd={handleNavDragEnd}
                     className={`group p-4 rounded-xl border transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 cursor-grab active:cursor-grabbing ${
+                      isTier3
+                        ? 'ml-12 md:ml-20 border-l-4 border-l-amber-500 bg-amber-50/20'
+                        : isTier2
+                        ? 'ml-6 md:ml-10 border-l-4 border-l-purple-500 bg-purple-50/20'
+                        : isHeaderGroup
+                        ? 'border-l-4 border-l-blue-600 bg-blue-50/40'
+                        : ''
+                    } ${
                       isBeingDragged
                         ? 'opacity-40 border-blue-400 bg-blue-50/50 scale-[0.99]'
                         : isDragTarget
@@ -587,6 +648,16 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   >
                     {/* Drag Handle & Left Info */}
                     <div className="flex items-center gap-3 w-full lg:w-auto">
+                      {isTier3 ? (
+                        <div className="text-amber-500 font-mono font-bold text-xs shrink-0 select-none flex items-center gap-0.5" title="Tier 3 Nested Sub Item">
+                          <span>└─</span>
+                          <span>└─</span>
+                        </div>
+                      ) : isTier2 ? (
+                        <div className="text-purple-500 font-mono font-bold text-xs shrink-0 select-none" title="Tier 2 Sub Item">
+                          └─
+                        </div>
+                      ) : null}
                       {/* Drag Grip Handle */}
                       <div
                         className="p-1.5 rounded-lg text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-200/80 transition-colors shrink-0"
@@ -630,6 +701,23 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       {/* Menu Item Details */}
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          {nav.uniqueKey === 'admin_control_group' || nav.uniqueKey === 'edit_items_group' ? (
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider bg-blue-600 text-white px-2 py-0.5 rounded shadow-xs">
+                              {nav.uniqueKey === 'edit_items_group' ? 'Tier 2 Dropdown Parent' : 'Tier 1 Dropdown Parent'}
+                            </span>
+                          ) : isTier3 ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
+                              Tier 3 Nested Sub-Item
+                            </span>
+                          ) : isTier2 ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-800 px-2 py-0.5 rounded border border-purple-300">
+                              Tier 2 Sub-Item
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-800 px-2 py-0.5 rounded">
+                              Tier 1 Parent Item
+                            </span>
+                          )}
                           <span className="font-extrabold text-slate-900 text-sm">{nav.title}</span>
                           <span className="text-[10px] font-mono bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-bold">
                             {nav.tabKey}
@@ -652,7 +740,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         Permitted User Roles:
                       </span>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {ROLES_LIST.map((role) => {
+                        {Array.from(new Set([...DEFAULT_SYSTEM_ROLES, ...navItems.flatMap((i) => i.roles || [])])).map((role) => {
                           const isAllowed = nav.roles.includes(role);
                           return (
                             <button
@@ -729,6 +817,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
+                  autoComplete="off"
                   value={foodSearch}
                   onChange={(e) => setFoodSearch(e.target.value)}
                   placeholder="Search food items..."
@@ -846,14 +935,14 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   <span className="text-[10px] font-mono text-gray-400">ID: {item.id}</span>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => handleOpenEditFood(item)}
+                      onClick={() => requirePasscode(() => handleOpenEditFood(item))}
                       className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
                       title="Edit Item"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => onDeleteFoodItem(item.id)}
+                      onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
                       className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
                       title="Delete Item"
                     >
@@ -995,7 +1084,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Permitted Roles (RBAC)</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {ROLES_LIST.map((role) => {
+                  {DEFAULT_SYSTEM_ROLES.map((role) => {
                     const isChecked = navForm.roles.includes(role);
                     return (
                       <button
@@ -1194,6 +1283,54 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PASSCODE VERIFICATION MODAL */}
+      {passcodeModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Passcode Required</h3>
+                <p className="text-slate-500 text-xs">Enter any staff passcode to proceed</p>
+              </div>
+            </div>
+
+            <input
+              type="password"
+              autoComplete="new-password"
+              autoFocus
+              maxLength={6}
+              value={passcodeInput}
+              onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleVerifyPasscode(); } }}
+              placeholder="Enter passcode"
+              className="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-center text-lg font-mono tracking-[0.3em] focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+            />
+
+            {passcodeError && (
+              <p className="text-red-500 text-xs font-bold text-center">{passcodeError}</p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setPasscodeModalOpen(false); setPendingPasscodeAction(null); setPasscodeInput(''); setPasscodeError(''); }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVerifyPasscode}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs cursor-pointer transition-colors shadow-sm"
+              >
+                Verify & Continue
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -49,7 +49,9 @@ export type TabType =
   | 'menu_manager'
   | 'export'
   | 'telegram'
-  | 'errors';
+  | 'errors'
+  | 'misc_charges'
+  | 'custom_css';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -66,6 +68,8 @@ interface NavigationProps {
   onToggleIconOnly: () => void;
   activeRole?: string;
   onLogout?: () => void;
+  navItems?: import('../types').NavMenuItem[];
+  guests?: import('../types').Guest[];
 }
 
 interface NavItem {

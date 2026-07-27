@@ -140,7 +140,19 @@ CREATE TABLE IF NOT EXISTS `petty_cash` (
   `approved_by` VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 7. STAFF & PAYROLL TABLE
+-- 7. CASH DRAWER ENTRIES (Handover & Accountability Tracking)
+CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `staff_id` VARCHAR(50) NOT NULL,
+  `staff_name` VARCHAR(150) NOT NULL,
+  `type` ENUM('handover','market_expense','manual_adjustment') NOT NULL,
+  `amount` DECIMAL(10,2) NOT NULL,
+  `handed_to` VARCHAR(150) DEFAULT NULL,
+  `notes` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. STAFF & PAYROLL TABLE
 CREATE TABLE IF NOT EXISTS `staff_attendance` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `attendance_date` DATE NOT NULL,
@@ -150,7 +162,7 @@ CREATE TABLE IF NOT EXISTS `staff_attendance` (
   `marked_by` VARCHAR(100) DEFAULT 'Tarpan'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 8. AUDIT TRAIL LOGS
+-- 9. AUDIT TRAIL LOGS
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `timestamp` DATETIME NOT NULL,
@@ -158,7 +170,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   `action` TEXT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 9. TELEGRAM NOTIFICATION TEMPLATES
+-- 10. TELEGRAM NOTIFICATION TEMPLATES
 CREATE TABLE IF NOT EXISTS `system_telegram_templates` (
   `template_key` VARCHAR(50) PRIMARY KEY,
   `title` VARCHAR(100) NOT NULL,

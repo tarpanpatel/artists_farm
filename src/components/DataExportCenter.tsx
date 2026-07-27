@@ -10,14 +10,19 @@ import {
   UserCheck,
   FileText,
   HardDriveDownload,
-  CheckCircle2
+  CheckCircle2,
+  Receipt,
+  ShoppingCart,
+  ScrollText,
+  Menu
 } from 'lucide-react';
-import { Guest, BillingReceipt, Order, InventoryItem, PettyCashEntry, StaffMember, AttendanceRecord, AuditLog } from '../types';
+import { Guest, BillingReceipt, Order, InventoryItem, PettyCashEntry, StaffMember, AttendanceRecord, AuditLog, MenuItem } from '../types';
 
 interface DataExportCenterProps {
   guests: Guest[];
   receipts: BillingReceipt[];
   orders: Order[];
+  menu: MenuItem[];
   inventory: InventoryItem[];
   expenses: PettyCashEntry[];
   staff: StaffMember[];
@@ -29,6 +34,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   guests,
   receipts,
   orders,
+  menu,
   inventory,
   expenses,
   staff,
@@ -99,8 +105,8 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       `"${g.bookingSource}"`,
       `"${g.phoneNumber}"`,
       g.numberOfGuests,
-      `"${g.checkInDate}"`,
-      `"${g.checkOutDate}"`,
+      `"${g.checkinDate || ''}"`,
+      `"${g.checkoutDate || ''}"`,
       g.roomRate,
       g.advanceAmount,
       g.foodBill,
@@ -205,7 +211,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     guests.forEach((g) => {
       if (g.advanceAmount > 0) {
         ledgerRows.push([
-          `"${g.checkInDate}"`,
+          `"${g.checkinDate || ''}"`,
           '"Room Rent (Advance)"',
           `"Booking Advance: ${g.guestName} (${g.roomNumber}) via ${g.bookingSource}"`,
           '"Front Desk"',
@@ -215,7 +221,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       }
       if (g.paymentStatus === 'Checked Out' && g.totalAmount > 0) {
         ledgerRows.push([
-          `"${g.checkOutDate}"`,
+          `"${g.checkoutDate || ''}"`,
           '"Room & Food Settlement"',
           `"Final Checkout Settlement: ${g.guestName} (${g.roomNumber})"`,
           '"Front Desk"',
@@ -241,23 +247,143 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     triggerDownload(`Farm_Report_MASTER_LEDGER_${monthName}_${selectedYear}.csv`, csvContent);
   };
 
-  // 6. Export Full SQL Database Snapshot Backup
+  // 6. Export Billing Receipts
+  const exportReceipts = () => {
+    const headers = [
+      'Receipt ID',
+      'Guest Name',
+      'Room Number',
+      'Check-In Date',
+      'Check-Out Date',
+      'Room Rent (INR)',
+      'Food Total (INR)',
+      'Misc Total (INR)',
+      'Discount (INR)',
+      'Grand Total (INR)',
+      'Advance Paid (INR)',
+      'Payment Method',
+      'Payment Status',
+      'Paid At',
+    ];
+
+    const rows = receipts.map((r) => [
+      `"${r.id}"`,
+      `"${r.guestName}"`,
+      `"${r.roomNumber}"`,
+      `"${r.checkinDate || ''}"`,
+      `"${r.checkoutDate || ''}"`,
+      r.roomRent || r.roomTotal || 0,
+      r.foodTotal || r.kitchenTotal || 0,
+      r.miscTotal || 0,
+      r.discount || 0,
+      r.grandTotal,
+      r.advancePaid || 0,
+      `"${r.paymentMethod || 'Cash'}"`,
+      `"${r.status}"`,
+      `"${r.paidAt || ''}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_RECEIPTS_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 7. Export Kitchen Orders
+  const exportOrders = () => {
+    const headers = [
+      'Order ID',
+      'Guest Name',
+      'Room Number',
+      'Order Time',
+      'Status',
+      'Items',
+      'Item Count',
+      'Total Amount (INR)',
+    ];
+
+    const rows = orders.map((o) => [
+      `"${o.id}"`,
+      `"${o.guestName}"`,
+      `"${o.roomNumber}"`,
+      `"${o.orderTime}"`,
+      `"${o.status}"`,
+      `"${o.items.map((i) => `${i.name} x${i.quantity}`).join('; ')}"`,
+      o.items.reduce((sum, i) => sum + i.quantity, 0),
+      o.totalAmount,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_ORDERS_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 8. Export Menu Catalog
+  const exportMenu = () => {
+    const headers = [
+      'Item ID',
+      'Item Name',
+      'Category',
+      'Price (INR)',
+      'Available',
+    ];
+
+    const rows = menu.map((m) => [
+      `"${m.id}"`,
+      `"${m.name}"`,
+      `"${m.category}"`,
+      m.price,
+      m.available ? 'Yes' : 'No',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_MENU_CATALOG_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 9. Export Audit Logs
+  const exportAuditLogs = () => {
+    const headers = [
+      'Log ID',
+      'Timestamp',
+      'User',
+      'Action',
+      'Status',
+      'Module',
+      'Browser',
+      'OS',
+      'Device Type',
+      'IP Address',
+    ];
+
+    const rows = auditLogs.map((l) => [
+      `"${l.id}"`,
+      `"${l.timestamp}"`,
+      `"${l.user}"`,
+      `"${l.action}"`,
+      `"${l.status || 'Success'}"`,
+      `"${l.module || ''}"`,
+      `"${l.browser || ''}"`,
+      `"${l.os || ''}"`,
+      `"${l.device_type || ''}"`,
+      `"${l.ip_address || ''}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    triggerDownload(`Farm_Report_AUDIT_LOGS_${monthName}_${selectedYear}.csv`, csvContent);
+  };
+
+  // 10. Export Full SQL Database Snapshot Backup (Server-Side)
   const exportFullSqlBackup = () => {
-    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    let sql = `-- ======================================================\n`;
-    sql += `-- AUTOMATED DATABASE SNAPSHOT BACKUP - ARTISTS FARM JAIPUR\n`;
-    sql += `-- Generated At: ${nowStr}\n`;
-    sql += `-- ======================================================\n\n`;
+    const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
+    const timestamp = Date.now();
+    const backupUrl = `${_base}/php/api/backup.php?t=${timestamp}`;
+    
+    const link = document.createElement('a');
+    link.href = backupUrl;
+    link.setAttribute('download', `Backup_Artists_Farm_Jaipur_${new Date().toISOString().slice(0, 10)}.sql`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    sql += `CREATE TABLE IF NOT EXISTS guests (\n  id VARCHAR(50) PRIMARY KEY,\n  guest_name VARCHAR(100),\n  room_number VARCHAR(50),\n  total_amount DECIMAL(10,2),\n  advance_amount DECIMAL(10,2)\n);\n\n`;
-
-    guests.forEach((g) => {
-      sql += `INSERT INTO guests (id, guest_name, room_number, total_amount, advance_amount) VALUES ('${g.id}', '${g.guestName.replace(/'/g, "''")}', '${g.roomNumber}', ${g.totalAmount}, ${g.advanceAmount});\n`;
-    });
-
-    sql += `\n-- End of Backup Dump\n`;
-
-    triggerDownload(`Backup_Artists_Farm_Jaipur_${new Date().toISOString().slice(0, 10)}.sql`, sql, 'text/plain;charset=utf-8;');
+    setDownloadSuccessMsg(`Downloaded file: Backup_Artists_Farm_Jaipur_${new Date().toISOString().slice(0, 10)}.sql`);
+    setTimeout(() => setDownloadSuccessMsg(null), 4000);
   };
 
   return (

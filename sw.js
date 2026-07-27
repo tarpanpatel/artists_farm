@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-pos-v2';
+const CACHE_NAME = 'farm-pos-v3';
 
 // 1. Install Event: Skip waiting to activate immediately
 self.addEventListener('install', event => {

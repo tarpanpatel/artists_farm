@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed,
   Plus,
@@ -11,15 +11,19 @@ import {
   AlertCircle,
   Upload,
   Image as ImageIcon,
-  RefreshCw
+  RefreshCw,
+  Search,
+  ShoppingCart
 } from 'lucide-react';
-import { Guest, Order, OrderItem, MenuItem, Requisition } from '../types';
+import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
+import { resolveTelegramTemplate } from '../services/api';
 
 interface KitchenManagementProps {
   guests: Guest[];
   orders: Order[];
   menu: MenuItem[];
+  inventory?: InventoryItem[];
   requisitions: Requisition[];
   onAddOrder: (order: Order) => void;
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
@@ -33,6 +37,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
   orders,
   menu,
+  inventory = [],
   requisitions,
   onAddOrder,
   onUpdateOrderStatus,
@@ -99,7 +104,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }, 500);
   };
 
-  const handleMarkDishReady = (ord: Order, itemIndex: number, item: OrderItem) => {
+  const handleMarkDishReady = async (ord: Order, itemIndex: number, item: OrderItem) => {
     const key = `${ord.id}_${itemIndex}`;
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setReadyItemKeys((prev) => ({ ...prev, [key]: true }));
@@ -107,7 +112,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
     if (onDispatchTelegram) {
       const cleanTicketId = ord.id.replace('#', '');
-      const singleItemReadyMsg = `🍳 <b>DISH READY TO SERVE</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Ready Dish: <b>${item.quantity}x ${item.name}</b>\n• Price: <b>₹${item.quantity * item.unitPrice}</b>\n• Time: <b>${nowTime}</b>\n• Status: <b>Ready for Room / Table Delivery 🍽️</b>`;
+      const dishReadyVars: Record<string, string> = {
+        order_id: cleanTicketId,
+        qty: String(item.quantity),
+        dish_name: item.name,
+        instruction_note: '',
+      };
+      const resolved = await resolveTelegramTemplate('kitchen_single_dish_ready', dishReadyVars);
       
       const inlineKeyboard = {
         inline_keyboard: [
@@ -115,7 +126,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         ]
       };
 
-      onDispatchTelegram('Single Dish Ready', singleItemReadyMsg, 'kitchen', inlineKeyboard);
+      const fallbackMsg = `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`;
+      onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard);
     }
 
     recordTelescopeLog({
@@ -127,7 +139,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   };
 
-  const handleMarkDishServed = (ord: Order, itemIndex: number, item: OrderItem) => {
+  const handleMarkDishServed = async (ord: Order, itemIndex: number, item: OrderItem) => {
     const key = `${ord.id}_${itemIndex}`;
     const cleanTicketId = ord.id.replace('#', '');
 
@@ -150,7 +162,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setServedLogs((prev) => [newLog, ...prev]);
 
     if (onDispatchTelegram) {
-      const singleItemServedMsg = `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>Cosmic (Service Staff)</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
+      const servedVars: Record<string, string> = {
+        item_name: item.name,
+        quantity: String(item.quantity),
+        guest_name: ord.guestName,
+        table_no: ord.roomNumber,
+        served_by: 'Cosmic (Service Staff)',
+        remaining_items: '0',
+      };
+      const resolved = await resolveTelegramTemplate('item_served', servedVars);
+      const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>Cosmic (Service Staff)</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
       onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen');
     }
 
@@ -176,13 +197,91 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [activeMenuItemKey]);
 
   // Staff Meals State
-  const [staffName, setStaffName] = useState('Chef Ramesh (Head Chef)');
-  const [staffMealType, setStaffMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Evening Tea'>('Lunch');
-  const [staffMealItems, setStaffMealItems] = useState('Staff Thali (Dal, Rice, Roti, Sabzi)');
-  const [staffNotes, setStaffNotes] = useState('Standard Duty Meal');
+  const [smDateRecord, setSmDateRecord] = useState('2026-07-25T12:07');
+  const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
+  const [smConsumptionType, setSmConsumptionType] = useState('Freshly Prepared (New Stock)');
+  const [smCustomMeal, setSmCustomMeal] = useState('');
+  const [smEstCost, setSmEstCost] = useState('');
+  const [smQuantity, setSmQuantity] = useState(1);
+  const [isCustomMealModalOpen, setIsCustomMealModalOpen] = useState(false);
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealCost, setNewMealCost] = useState('');
+  const [smMealOptions, setSmMealOptions] = useState([
+    { name: 'Rice, daal and sabzi', cost: 50 },
+    { name: 'Chapati & Chicken Curry', cost: 80 }
+  ]);
+  const [smLogs, setSmLogs] = useState([
+    { date: '25 Jul, 11:30 AM', staff: 'Abhijeet, Kinkar Sarkar, Pranay, Ramesh', food: '4x Rice, daal and sabzi', hasTag: false },
+    { date: '25 Jul, 10:20 AM', staff: 'Kamlesh', food: '1x Rice, daal and sabzi', hasTag: false },
+    { date: '14 Jul, 04:00 PM', staff: 'Abhijeet, Kamlesh, Kinkar Sarkar, Ramesh, Saha Das, Samar Sil', food: '6x Rice, daal and sabzi', hasTag: false },
+    { date: '14 Jul, 02:00 PM', staff: 'Ashish Mandal, Subrata, Abhijeet, Bikas, Kamlesh, Subrata, Kinkar', food: '7x Chapati & Chicken Curry', hasTag: false },
+    { date: '14 Jul, 01:30 PM', staff: 'Subrata, Rohit, Vikas, Kamlesh', food: '4x Leftover Buffer items', hasTag: true },
+    { date: '14 Jul, 01:00 PM', staff: 'Kamlesh, Rohit, Bikas, Subrata, Abhijeet, Kinkar, Vikas, Subrata, Kinkar, Subrata, Abhijeet, Kinkar', food: '12x Evening Chai', hasTag: false },
+  ]);
+  const [smVisibleCount, setSmVisibleCount] = useState(10);
+
+  const smStaffList = [
+    'ABHIJEET', 'ASHISH MANDAL', 'KAMLESH', 'KINKAR SARKAR', 'PRANAY',
+    'RAMESH', 'SAHA DAS', 'SAMAR SIL', 'SUBRATA', 'BIKAS'
+  ];
+
+
+  const handleSaveCustomMeal = () => {
+    if (!newMealName) return;
+    const cost = parseFloat(newMealCost) || 0;
+    setSmMealOptions(prev => [...prev, { name: newMealName, cost }]);
+    setSmCustomMeal(newMealName);
+    setSmEstCost(cost.toString());
+    setIsCustomMealModalOpen(false);
+    setNewMealName('');
+    setNewMealCost('');
+  };
+  const [smError, setSmError] = useState('');
+
+  const handleLogStaffMeal = () => {
+    if (smSelectedStaff.length === 0) {
+      setSmError("Please select at least one staff member.");
+      return;
+    }
+    
+    setSmError('');
+    
+    const now = new Date();
+    const formattedDate = `${now.getDate()} ${now.toLocaleString('en-US', {month: 'short'})}, ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}`;
+    
+    const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x ${smConsumptionType}`;
+    
+    const newLog = {
+      date: formattedDate,
+      staff: smSelectedStaff.join(', '),
+      food: foodStr,
+      hasTag: smConsumptionType === 'Leftover Buffer items'
+    };
+    
+    setSmLogs(prev => [newLog, ...prev]);
+    
+    // Reset Form
+    setSmSelectedStaff([]);
+    setSmQuantity(1);
+    setSmCustomMeal('');
+    setSmEstCost('');
+  };
+
+  const handleSmToggleStaff = (staff: string) => {
+    setSmSelectedStaff(prev => 
+      prev.includes(staff) ? prev.filter(s => s !== staff) : [...prev, staff]
+    );
+  };
 
   const handleDispatchStaffMeal = (e: React.FormEvent) => {
     e.preventDefault();
+    if (smSelectedStaff.length === 0) {
+      alert("Please select at least one staff member.");
+      return;
+    }
+    const staffName = smSelectedStaff.join(', ');
+    const foodStr = smCustomMeal ? smCustomMeal : smConsumptionType;
+
     const staffOrder: Order = {
       id: `STF-${Math.floor(100 + Math.random() * 900)}`,
       guestId: 'staff-duty',
@@ -193,8 +292,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       items: [
         {
           menuItemId: 'stf-meal',
-          name: `${staffMealType}: ${staffMealItems}`,
-          quantity: 1,
+          name: `Staff Meal: ${foodStr}`,
+          quantity: smQuantity,
           unitPrice: 0,
         },
       ],
@@ -202,6 +301,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     };
     onAddOrder(staffOrder);
     alert(`Staff meal ticket ${staffOrder.id} dispatched to Kitchen KDS Queue!`);
+    
+    // Reset Form
+    setSmSelectedStaff([]);
+    setSmQuantity(1);
+    setSmCustomMeal('');
+    setSmEstCost('');
     setActiveTab('kds');
   };
 
@@ -222,6 +327,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [newIngQty, setNewIngQty] = useState(0.1);
   const [newIngUnit, setNewIngUnit] = useState('kg');
   const [newIngCost, setNewIngCost] = useState(100);
+  const [selectedStockItemId, setSelectedStockItemId] = useState('');
+
+  const handleStockItemSelect = (itemId: string) => {
+    setSelectedStockItemId(itemId);
+    const item = inventory.find((i: InventoryItem) => i.id === itemId);
+    if (item) {
+      setNewIngName(item.name);
+      setNewIngUnit(item.unit || 'kg');
+      const estimatedCost = (item as any).price || (item as any).unitCost || 100;
+      setNewIngCost(estimatedCost);
+    } else {
+      setNewIngName('');
+    }
+  };
 
   const totalRecipeCost = recipeIngredients.reduce((sum, ing) => sum + ing.quantity * ing.costPerUnit, 0);
   const dishSellingPrice = selectedRecipeMenuItem?.price || 350;
@@ -241,6 +360,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         costPerUnit: Number(newIngCost),
       },
     ]);
+    setSelectedStockItemId('');
     setNewIngName('');
   };
   const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
@@ -248,7 +368,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // New Order Form State
   const activeGuests = guests.filter((g) => g.status === 'Active');
   const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
-  const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>([]);
+  const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
+  });
+  const [posSearch, setPosSearch] = useState('');
+  const [selectedPosCategory, setSelectedPosCategory] = useState<string>('All Menu');
+  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
+  const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
+
+  useEffect(() => { localStorage.setItem('kitchen_cart_items', JSON.stringify(cartItems)); }, [cartItems]);
 
   // Menu Modal State
   const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
@@ -310,7 +438,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
     onAddOrder(newOrder);
     setCartItems([]);
-    setActiveTab('kds');
   };
 
   // Submit New Menu Item
@@ -357,109 +484,38 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-lg border border-gray-200 shadow-2xs">
-        <div>
-          <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            Kitchen Ticketing & Requisition POS
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Manage live kitchen display system (KDS), create room orders, manage menu items & raw material requisitions
-          </p>
+      {/* Top Header (Hidden on Take Food Order POS view) */}
+      {activeTab !== 'new_order' && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xs">
+          <div>
+            <h2 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+              Kitchen Ticketing & Requisition POS
+            </h2>
+            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+              Manage live kitchen display system (KDS), create room orders, manage menu items & raw material requisitions
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeTab !== 'staff_meals' && (
+              <button
+                onClick={() => setActiveTab('new_order')}
+                className="text-white bg-blue-700 hover:bg-blue-800 font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Resident Order</span>
+              </button>
+            )}
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('new_order')}
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Resident Order</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-1">
-        <button
-          onClick={() => setActiveTab('kds')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'kds'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <UtensilsCrossed className="w-4 h-4 inline mr-1.5" />
-          KDS Ticket Queue ({orders.filter((o) => o.status !== 'Fulfilled').length} Active)
-        </button>
-
-        <button
-          onClick={() => setActiveTab('new_order')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'new_order'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 inline mr-1.5" />
-          Create Order POS
-        </button>
-
-        <button
-          onClick={() => setActiveTab('staff_meals')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'staff_meals'
-              ? 'border-amber-600 text-amber-700 font-bold'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <UtensilsCrossed className="w-4 h-4 inline mr-1.5 text-amber-600" />
-          Staff Meals POS
-        </button>
-
-        <button
-          onClick={() => setActiveTab('beta_recipe_builder')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'beta_recipe_builder'
-              ? 'border-indigo-600 text-indigo-700 font-bold'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ChefHat className="w-4 h-4 inline mr-1.5 text-indigo-600" />
-          Beta Recipe Builder 🧪
-        </button>
-
-        <button
-          onClick={() => setActiveTab('menu_catalog')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'menu_catalog'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ChefHat className="w-4 h-4 inline mr-1.5" />
-          Food Menu Catalog ({menu.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('requisitions')}
-          className={`pb-2.5 px-4 font-semibold text-xs transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'requisitions'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <Boxes className="w-4 h-4 inline mr-1.5" />
-          Raw Material Requisitions ({requisitions.length})
-        </button>
-      </div>
+      )}
 
       {/* TAB 1: KDS TICKET QUEUE */}
       {activeTab === 'kds' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200/80 text-xs gap-3 shadow-2xs">
+        <div className="kds-orders-container space-y-4">
+          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs gap-3 shadow-2xs">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700">Filter Orders:</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">Filter Orders:</span>
               <div className="flex items-center gap-1.5">
                 {(['All', 'Pending', 'Preparing', 'Fulfilled'] as const).map((status) => (
                   <button
@@ -467,8 +523,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     onClick={() => setKdsFilter(status)}
                     className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
                       kdsFilter === status
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        ? 'bg-slate-900 dark:bg-slate-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                     }`}
                   >
                     {status}
@@ -478,13 +534,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
 
             {/* Smart Polling / Live Sync Bar */}
-            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAutoSyncEnabled(!autoSyncEnabled)}
                   className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    autoSyncEnabled ? 'bg-emerald-500' : 'bg-slate-300'
+                    autoSyncEnabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
                   }`}
                   title={autoSyncEnabled ? 'Auto-Sync Active (Click to Pause)' : 'Auto-Sync Paused (Click to Resume)'}
                 >
@@ -495,12 +551,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   />
                 </button>
                 <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-ping' : autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-                  <span className="font-bold text-slate-700 text-[11px]">
+                  <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-ping' : autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400 dark:bg-slate-500'}`}></span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
                     {autoSyncEnabled ? 'Live KDS Sync' : 'Sync Paused'}
                   </span>
                   {autoSyncEnabled && (
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
                       ({syncCountdown}s)
                     </span>
                   )}
@@ -508,11 +564,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 hidden md:inline">Synced {lastSyncTime}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline">Synced {lastSyncTime}</span>
                 <button
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                  className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 font-semibold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
                   title="Check for kitchen updates immediately"
                 >
                   <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
@@ -522,30 +578,32 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredOrders.map((ord) => (
               <div
                 key={ord.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col justify-between min-h-[160px]"
+                className="kds-ticket-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 flex flex-col justify-between"
               >
                 <div>
-                  {/* Card Header matching original PHP site */}
-                  <div className="flex items-start justify-between">
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2 mb-2.5">
                     <div>
-                      <h3 className="font-extrabold text-slate-900 text-base">
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
                         Order #{ord.id.replace('#', '')}
                       </h3>
-                      <p className="text-slate-400 text-[11px] font-medium mt-0.5">
+                      <p className="text-slate-400 dark:text-slate-500 text-[10px] font-medium">
                         (Received: {ord.orderTime || '01:15 AM'})
                       </p>
                     </div>
-                    <span className="w-7 h-2 bg-sky-100/70 rounded-full inline-block mt-1"></span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      ord.status === 'Fulfilled' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {ord.status}
+                    </span>
                   </div>
 
-                  <div className="border-t border-dashed border-slate-200 my-3"></div>
-
                   {/* Items List */}
-                  <div className="space-y-2.5 text-xs mb-3">
+                  <div className="kds-ticket-items-list space-y-2 text-xs">
                     {ord.items.map((item, idx) => {
                       const itemKey = `${ord.id}_${idx}`;
                       const isReady = readyItemKeys[itemKey];
@@ -553,7 +611,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       const readyTime = itemReadyTimes[itemKey];
 
                       return (
-                        <div key={idx} className="flex justify-between items-center gap-2">
+                        <div key={idx} className="flex justify-between items-center gap-2 py-1 border-b border-slate-50 last:border-0">
                           <div className="flex items-center flex-wrap gap-1.5">
                             {isReady || isServed ? (
                               <>
@@ -561,28 +619,29 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   {item.quantity}x {item.name}
                                 </span>
                                 {readyTime && (
-                                  <span className="text-emerald-600 font-medium text-[11px] ml-1">
-                                    (Ready at {readyTime})
+                                  <span className="text-emerald-600 font-medium text-[10px] ml-1">
+                                    ({readyTime})
                                   </span>
                                 )}
                               </>
                             ) : (
-                              <span className="font-bold text-red-600 text-xs">
+                              <span className="font-extrabold text-rose-600 text-xs">
                                 {item.quantity}x {item.name}
                               </span>
                             )}
                           </div>
 
+                          {/* Mobile-Friendly Touch Ready Buttons */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isServed ? (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <span className="text-[11px] font-extrabold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
                                 ✓ Served
                               </span>
                             ) : isReady ? (
                               <button
                                 type="button"
                                 onClick={() => handleMarkDishServed(ord, idx, item)}
-                                className="border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs px-2.5 py-0.5 rounded transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                                className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                                 title="Click when served to resident"
                               >
                                 <span>✓ Served</span>
@@ -591,7 +650,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleMarkDishReady(ord, idx, item)}
-                                className="border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs px-2.5 py-0.5 rounded transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                                className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                               >
                                 <span>✓ Ready</span>
                               </button>
@@ -602,50 +661,25 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     })}
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex justify-between items-center text-[11px] text-slate-500 font-medium mb-2">
-                    <span>Resident: <strong>{ord.guestName}</strong> ({ord.roomNumber})</span>
-                    <span className="font-bold text-slate-900 font-mono">₹{ord.totalAmount}</span>
-                  </div>
-
-                  {ord.status === 'Pending' && (
-                    <button
-                      onClick={() => onUpdateOrderStatus(ord.id, 'Preparing')}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-1.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                      Start Preparing →
-                    </button>
-                  )}
-                  {ord.status === 'Preparing' && (
-                    <button
-                      onClick={() => onUpdateOrderStatus(ord.id, 'Fulfilled')}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Mark Ticket Fulfilled</span>
-                    </button>
-                  )}
-                </div>
               </div>
             ))}
           </div>
 
           {/* Today's Served Logs section matching original site bottom section */}
           <div className="mt-8 space-y-3">
-            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-sm">
               <span className="text-emerald-600">✅</span>
               <span>Today's Served Logs</span>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden">
               {servedLogs.map((log) => (
-                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-50/60 transition-colors">
+                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
                   <div className="flex items-center gap-4">
-                    <span className="font-extrabold text-slate-900 w-24">Ticket #{log.ticketId}</span>
-                    <span className="font-bold text-emerald-700 text-xs">{log.itemSummary}</span>
+                    <span className="font-extrabold text-slate-900 dark:text-white w-24">Ticket #{log.ticketId}</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{log.itemSummary}</span>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-medium">
-                    Served by <span className="font-bold text-slate-700">{log.servedBy}</span> for at <span className="font-bold text-slate-800">{log.servedAt}</span>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Served by <span className="font-bold text-slate-700 dark:text-slate-300">{log.servedBy}</span> for at <span className="font-bold text-slate-800 dark:text-slate-200">{log.servedAt}</span>
                   </div>
                 </div>
               ))}
@@ -655,132 +689,347 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       )}
 
       {/* TAB 2: CREATE ORDER POS */}
-      {activeTab === 'new_order' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Menu Catalog Items Selection */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm">Select Food Items from Menu</h3>
+      {activeTab === 'new_order' && (() => {
+        const activeGuest = activeGuests[0];
+        const selectedGuest = activeGuest || activeGuests.find((g) => g.id === selectedGuestId);
+        const filteredPosMenuItems = menu.filter((item) => {
+          const matchesSearch = item.name.toLowerCase().includes(posSearch.toLowerCase().trim());
+          const matchesCategory = selectedPosCategory === 'All Menu' || item.category === selectedPosCategory;
+          return matchesSearch && matchesCategory;
+        });
+        const posCategories = [
+          'All Menu',
+          'Starters',
+          'Chinese',
+          'Pizza & Sandwich',
+          'Main Course',
+          'Rice & Roti',
+          'Breakfast',
+          'Raita & Salad',
+          'Beverages',
+        ];
+        const totalCartSum = cartItems.reduce((sum, i) => sum + i.menuItem.price * i.quantity, 0);
+        const totalCartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {menu.map((item) => (
-                <div
-                  key={item.id}
-                  className="border border-slate-200 rounded-xl p-3 flex items-center justify-between bg-slate-50/50 hover:bg-emerald-50/40 hover:border-emerald-300 transition-all"
-                >
-                  <div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      {item.category}
-                    </span>
-                    <h4 className="font-bold text-slate-900 text-xs mt-1">{item.name}</h4>
-                    <p className="font-semibold text-slate-700 text-xs mt-0.5">₹{item.price}</p>
+        const handleAddToCartWithFeedback = (item: MenuItem) => {
+          handleAddToCart(item);
+          setRecentlyAddedId(item.id);
+          setTimeout(() => {
+            setRecentlyAddedId(null);
+          }, 750);
+        };
+
+        // Items to display in collapsed bottom drawer on mobile (Last 3 added items, newest on top)
+        const visibleDrawerItems = isCartDrawerExpanded ? [...cartItems].reverse() : [...cartItems].slice(-3).reverse();
+
+        return (
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+              {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
+              <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
+                {/* Sticky Search & Category Pills Bar */}
+                <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 dark:border-slate-700 shadow-2xs rounded-t-xl">
+                  {/* Quick Search Bar */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={posSearch}
+                      onChange={(e) => setPosSearch(e.target.value)}
+                      placeholder="Quick search menu items on the fly.."
+                      className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-2xs"
+                    />
+                    {posSearch && (
+                      <button
+                        onClick={() => setPosSearch('')}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
-                  <button
-                    onClick={() => handleAddToCart(item)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-xs transition-colors"
-                  >
-                    + Add
-                  </button>
+                  {/* Category Pills Bar */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+                    {posCategories.map((cat) => {
+                      const isSelected = selectedPosCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedPosCategory(cat)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-cyan-500 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Cart & Guest Selector */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col justify-between space-y-4">
-            <div className="space-y-4">
-              <h3 className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">
-                Order Summary Cart
-              </h3>
+                {/* Selected Category Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+                  <h3 className="font-extrabold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
+                    {selectedPosCategory === 'All Menu' ? 'ALL MENU ITEMS' : selectedPosCategory}
+                  </h3>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
+                    {filteredPosMenuItems.length} items
+                  </span>
+                </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold text-xs mb-1">
-                  Select Active Resident *
-                </label>
-                {activeGuests.length > 0 ? (
-                  <select
-                    value={selectedGuestId}
-                    onChange={(e) => setSelectedGuestId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {activeGuests.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.guestName} ({g.roomNumber})
-                      </option>
-                    ))}
-                  </select>
+                {/* Menu Items Grid with Dish Thumbnails (Mobile: 1 column, Sm: 2 cols, Lg: 3 cols) */}
+                {filteredPosMenuItems.length === 0 ? (
+                  <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
+                    <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-600 dark:text-slate-400 font-bold text-xs">No food items found matching "{posSearch}"</p>
+                  </div>
                 ) : (
-                  <div className="text-red-600 text-xs italic bg-red-50 p-2 rounded border border-red-200">
-                    No active residents checked in! Please check in a resident first.
+                  <div className="pos-menu-grid flex flex-col gap-2.5">
+                    {filteredPosMenuItems.map((item) => {
+                      const isRecentlyAdded = recentlyAddedId === item.id;
+                      return (
+                        <div
+                          key={item.id}
+                          className={`pos-food-card bg-white dark:bg-slate-800 rounded-xl border p-2 flex items-center justify-between gap-2.5 transition-all ${
+                            isRecentlyAdded
+                              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-xs'
+                              : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {/* Dish Image Thumbnail */}
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[10px]">
+                              {item.imagePath ? (
+                                <img
+                                  src={item.imagePath}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <span>Dish</span>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">
+                                {item.name}
+                              </h4>
+                              <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[11px] mt-0.5">₹{item.price.toFixed(2)}</p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleAddToCartWithFeedback(item)}
+                            className={`btn-add-to-cart shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1 cursor-pointer min-h-[36px] ${
+                              isRecentlyAdded
+                                ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
+                                : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
+                            }`}
+                          >
+                            {isRecentlyAdded ? (
+                              <span>✓ Added!</span>
+                            ) : (
+                              <span>+ Add</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              <div className="divide-y divide-slate-100 text-xs">
-                {cartItems.length > 0 ? (
-                  cartItems.map((ci) => (
-                    <div key={ci.menuItem.id} className="py-2 flex items-center justify-between">
-                      <div>
-                        <span className="font-semibold text-slate-800">{ci.menuItem.name}</span>
-                        <p className="text-slate-500 text-[11px]">
-                          ₹{ci.menuItem.price} x {ci.quantity}
-                        </p>
+              {/* Right Side: DESKTOP ONLY Sticky Floating ORDER CART Panel (lg:col-span-1 hidden lg:flex) */}
+              <div
+                id="pos-order-cart-panel"
+                className="hidden lg:flex lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs p-4 flex-col justify-between space-y-4 min-h-[450px] sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2.5">
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
+                      <ShoppingCart className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                      <span>ORDER CART</span>
+                    </h3>
+                    <span className="text-[10px] font-extrabold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
+                      {totalCartCount} Items
+                    </span>
+                  </div>
+
+                  {/* Cart Items List */}
+                  <div className="pos-cart-items-list space-y-2 max-h-[380px] overflow-y-auto pr-0.5 divide-y divide-slate-100 dark:divide-slate-700">
+                    {cartItems.length > 0 ? (
+                      cartItems.map((ci) => (
+                        <div
+                          key={ci.menuItem.id}
+                          className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="flex-1 pr-1">
+                            <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">
+                              {ci.menuItem.name} <span className="text-slate-400 dark:text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
+                            </h4>
+                          </div>
+
+                          <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 overflow-hidden shrink-0">
+                            <button
+                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
+                              className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                            >
+                              -
+                            </button>
+                            <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                              {ci.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
+                              className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 text-slate-400 dark:text-slate-500">
+                        <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Your order cart is empty</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Click + Add on items from the menu</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cart Total & Submit Button */}
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-xs">TOTAL:</span>
+                    <span className="font-black text-emerald-600 text-base">
+                      ₹{totalCartSum.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={handleOrderSubmit}
+                    disabled={cartItems.length === 0 || !selectedGuest || activeGuests.length === 0}
+                    title={
+                      activeGuests.length === 0
+                        ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
+                        : cartItems.length === 0
+                        ? 'Order cart is empty'
+                        : 'Send Order to Kitchen'
+                    }
+                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
+                  >
+                    <span>Send Order to Kitchen</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
+            {cartItems.length > 0 && (
+              <div
+                className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
+                  isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
+                }`}
+              >
+                {/* Header Bar */}
+                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-t-2xl border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-extrabold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
+                      <ShoppingCart className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-500" />
+                      <span>{totalCartCount} Items</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">TOTAL: </span>
+                      <span className="text-emerald-600 font-black text-sm">₹{totalCartSum.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
+                    className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-cyan-700 dark:text-cyan-400 font-extrabold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 dark:border-cyan-700 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                  >
+                    {isCartDrawerExpanded ? (
+                      <span>▼ Collapse</span>
+                    ) : (
+                      <span>▲ Expand Cart (50%)</span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
+                <div className="pos-cart-items-list p-3 flex-1 overflow-y-auto space-y-2">
+                  {!isCartDrawerExpanded && cartItems.length > 3 && (
+                    <p className="text-[10px] text-cyan-700 font-extrabold tracking-wide uppercase text-center pb-1">
+                      Showing Last 3 Added Items (Click Expand for all {cartItems.length} items)
+                    </p>
+                  )}
+                  {visibleDrawerItems.map((ci) => (
+                    <div
+                      key={ci.menuItem.id}
+                      className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs text-slate-900"
+                    >
+                      <div className="flex-1 pr-1 truncate">
+                        <h4 className="font-bold text-slate-900 text-xs truncate">
+                          {ci.menuItem.name} <span className="text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
+                        </h4>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center"
+                          className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           -
                         </button>
-                        <span className="font-bold px-1 text-xs">{ci.quantity}</span>
+                        <span className="w-6 text-center font-extrabold text-slate-900 text-xs">
+                          {ci.quantity}
+                        </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center"
+                          className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           +
                         </button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <p className="py-6 text-center text-slate-400 text-xs italic">
-                    Cart is empty. Click + Add on menu items.
-                  </p>
-                )}
-              </div>
-            </div>
+                  ))}
+                </div>
 
-            <div>
-              <div className="flex justify-between items-center text-sm font-bold text-slate-900 border-t border-slate-100 pt-3 mb-3">
-                <span>Total Amount:</span>
-                <span className="text-emerald-700">
-                  ₹
-                  {cartItems.reduce(
-                    (sum, i) => sum + i.menuItem.price * i.quantity,
-                    0
-                  )}
-                </span>
+                {/* Action Footer */}
+                <div className="p-3 bg-white border-t border-slate-200 shrink-0">
+                  <button
+                    onClick={handleOrderSubmit}
+                    disabled={cartItems.length === 0 || !selectedGuest || activeGuests.length === 0}
+                    title={
+                      activeGuests.length === 0
+                        ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
+                        : cartItems.length === 0
+                        ? 'Order cart is empty'
+                        : 'Send Order to Kitchen'
+                    }
+                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
+                  >
+                    <span>Send Order to Kitchen</span>
+                  </button>
+                </div>
               </div>
-
-              <button
-                disabled={cartItems.length === 0 || !selectedGuestId}
-                onClick={handleOrderSubmit}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-xs"
-              >
-                Dispatch Ticket to Kitchen KDS
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB 3: MENU CATALOG */}
       {activeTab === 'menu_catalog' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 text-sm">Resort Food & Beverage Catalog</h3>
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Resort Food & Beverage Catalog</h3>
             <button
               onClick={() => setIsNewMenuModalOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
@@ -791,12 +1040,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
             {menu.map((item) => (
-              <div key={item.id} className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+              <div key={item.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-700/50">
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
                   {item.category}
                 </span>
-                <h4 className="font-bold text-slate-900 text-sm mt-1">{item.name}</h4>
-                <p className="font-bold text-emerald-700 text-sm mt-0.5">₹{item.price}</p>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-1">{item.name}</h4>
+                <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm mt-0.5">₹{item.price}</p>
               </div>
             ))}
           </div>
@@ -805,9 +1054,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 4: RAW MATERIAL REQUISITIONS */}
       {activeTab === 'requisitions' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 text-sm">Kitchen Raw Material Requisitions Log</h3>
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Kitchen Raw Material Requisitions Log</h3>
             <button
               onClick={() => setIsReqModalOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
@@ -817,8 +1066,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           <div className="overflow-x-auto text-xs">
-            <table className="w-full text-left text-slate-700">
-              <thead className="bg-slate-50 font-bold border-b border-slate-200 uppercase text-[11px]">
+            <table className="w-full text-left text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-700 font-bold border-b border-slate-200 dark:border-slate-600 uppercase text-[11px]">
                 <tr>
                   <th className="py-2.5 px-3">Req ID</th>
                   <th className="py-2.5 px-3">Material Name</th>
@@ -829,11 +1078,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   <th className="py-2.5 px-3 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {requisitions.map((req) => (
                   <tr key={req.id}>
                     <td className="py-2.5 px-3 font-bold">{req.id}</td>
-                    <td className="py-2.5 px-3 font-semibold text-slate-900">{req.itemName}</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{req.itemName}</td>
                     <td className="py-2.5 px-3">
                       {req.requestedQty} {req.unit}
                     </td>
@@ -855,8 +1104,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           onClick={() => {
                             req.status = 'Approved';
                             if (onDispatchTelegram) {
-                              const reqMsg = `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
-                              onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen');
+                              (async () => {
+                                const reqApprVars: Record<string, string> = {
+                                  req_id: req.id,
+                                  item_name: req.itemName,
+                                  qty: String(req.requestedQty),
+                                  unit: req.unit,
+                                  requested_by: req.requestedBy,
+                                };
+                                const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
+                                const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
+                                onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen');
+                              })();
                             }
                             recordTelescopeLog({
                               portal: 'requests',
@@ -884,119 +1143,239 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB: STAFF MEALS POS */}
       {activeTab === 'staff_meals' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>🍛</span> Staff Duty Meals Order Dispatch
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Record staff meal allocations and dispatch zero-cost kitchen orders directly to the KDS Ticket Queue.
-              </p>
-            </div>
-            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200">
-              Staff Pantry POS
-            </span>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Left Panel: Record Consumption */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+              <span>➕</span> RECORD CONSUMPTION
+            </h3>
 
-          <form onSubmit={handleDispatchStaffMeal} className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
             <div className="space-y-4">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Staff Member Name / Designation *</label>
-                <input
-                  type="text"
-                  required
-                  value={staffName}
-                  onChange={(e) => setStaffName(e.target.value)}
-                  placeholder="e.g. Chef Ramesh / Sunil (Housekeeping)"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold bg-slate-50"
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Date & Time of Record</label>
+                <input 
+                  type="datetime-local" 
+                  value={smDateRecord}
+                  onChange={(e) => setSmDateRecord(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden focus:border-cyan-500 shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Shift Meal Type</label>
-                <select
-                  value={staffMealType}
-                  onChange={(e) => setStaffMealType(e.target.value as any)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-bold bg-white"
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Consuming Staff Members</label>
+                <div className="grid grid-cols-2 gap-3 p-4 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                  {smStaffList.map(staff => (
+                    <label key={staff} className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={smSelectedStaff.includes(staff)}
+                        onChange={() => handleSmToggleStaff(staff)}
+                        className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{staff}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Consumption Type</label>
+                <select 
+                  value={smConsumptionType}
+                  onChange={(e) => setSmConsumptionType(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden focus:border-cyan-500 shadow-2xs cursor-pointer"
                 >
-                  <option value="Breakfast">Breakfast (Morning Duty Shift)</option>
-                  <option value="Lunch">Lunch (Midday Duty Shift)</option>
-                  <option value="Evening Tea">Evening Tea & Snack</option>
-                  <option value="Dinner">Dinner (Night Shift Duty)</option>
+                  <option value="Freshly Prepared (New Stock)">Freshly Prepared (New Stock)</option>
+                  <option value="Leftover Buffer items">Leftover Buffer items</option>
+                  <option value="Evening Chai">Evening Chai</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Meal Items & Portions</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={staffMealItems}
-                  onChange={(e) => setStaffMealItems(e.target.value)}
-                  placeholder="e.g. Staff Thali (Dal, Rice, Roti, Sabzi) x 1"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 border-b pb-2 flex items-center justify-between">
-                  <span>Ticket Preview</span>
-                  <span className="text-emerald-600 font-mono font-bold">₹0.00 (Duty Meal)</span>
-                </h4>
-
-                <div className="space-y-1.5 text-slate-600">
-                  <p>• <b>Beneficiary:</b> {staffName}</p>
-                  <p>• <b>Shift Meal:</b> {staffMealType}</p>
-                  <p>• <b>Order Item:</b> {staffMealItems}</p>
-                  <p>• <b>Destination:</b> Staff Pantry / Kitchen Counter</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Custom Meal Combination</label>
+                  <div className="flex gap-2">
+                    <select 
+                      value={smCustomMeal}
+                      onChange={(e) => {
+                        setSmCustomMeal(e.target.value);
+                        const selected = smMealOptions.find(m => m.name === e.target.value);
+                        if (selected) setSmEstCost(selected.cost.toString());
+                      }}
+                      className="flex-1 p-2.5 rounded-xl border border-cyan-300 dark:border-cyan-700 font-semibold bg-white dark:bg-slate-900 text-cyan-700 dark:text-cyan-400 text-xs focus:outline-hidden shadow-2xs cursor-pointer"
+                    >
+                      <option value="">-- Select Database Meal --</option>
+                      {smMealOptions.map((opt, i) => (
+                        <option key={i} value={opt.name}>{opt.name}</option>
+                      ))}
+                    </select>
+                    <button 
+                      onClick={() => setIsCustomMealModalOpen(true)}
+                      className="bg-slate-700 hover:bg-slate-800 text-white px-3 rounded-xl shadow-2xs font-bold text-xs flex items-center justify-center cursor-pointer transition-all"
+                    >
+                      + New
+                    </button>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Additional Kitchen Instructions</label>
-                  <input
-                    type="text"
-                    value={staffNotes}
-                    onChange={(e) => setStaffNotes(e.target.value)}
-                    placeholder="e.g. Mild spice / Less oil"
-                    className="w-full p-2 rounded-xl border border-slate-200 bg-white"
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase text-right">Est. Cost Value (₹)</label>
+                  <input 
+                    type="number" 
+                    value={smEstCost}
+                    onChange={(e) => setSmEstCost(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden shadow-2xs text-right"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs flex items-center justify-center gap-2"
-              >
-                <UtensilsCrossed className="w-4 h-4" />
-                <span>Dispatch Staff Meal Ticket to Kitchen KDS</span>
-              </button>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Quantity</label>
+                <div className="flex items-center gap-1 w-32">
+                  <button onClick={() => setSmQuantity(Math.max(1, smQuantity - 1))} type="button" className="w-10 h-10 flex items-center justify-center bg-cyan-500 text-white rounded-l-xl font-bold hover:bg-cyan-600 transition-colors cursor-pointer shadow-2xs">-</button>
+                  <div className="h-10 flex-1 flex items-center justify-center bg-white dark:bg-slate-900 border-y border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-2xs">{smQuantity}</div>
+                  <button onClick={() => setSmQuantity(smQuantity + 1)} type="button" className="w-10 h-10 flex items-center justify-center bg-cyan-500 text-white rounded-r-xl font-bold hover:bg-cyan-600 transition-colors cursor-pointer shadow-2xs">+</button>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                {smError && (
+                  <p className="text-red-500 text-[10px] font-bold mb-2 text-center animate-pulse">{smError}</p>
+                )}
+                <button type="button" onClick={handleLogStaffMeal} className="w-full mx-auto block py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-2xs transition-all cursor-pointer text-xs">
+                  Log Staff Meal
+                </button>
+              </div>
             </div>
-          </form>
+          </div>
+
+          {/* Right Panel: Monthly Tracking Log */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col h-full">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span>📋</span> MONTHLY TRACKING LOG (JUL 2026)
+              </div>
+              <div className="flex items-center gap-2 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">July, 2026</span>
+                <span className="text-[10px]">📅</span>
+              </div>
+            </h3>
+            
+            <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
+              <table className="w-full text-left">
+                <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/4">Date & Time</th>
+                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/2">Staff Members</th>
+                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/4">Total Food Consumed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {smLogs.slice(0, smVisibleCount).map((log, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="py-4 pr-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 align-top">
+                        {log.date.replace(', ', '\n').split('\n').map((l, idx) => <div key={idx}>{l}</div>)}
+                      </td>
+                      <td className="py-4 pr-3 text-[10px] font-bold text-slate-700 align-top leading-relaxed">
+                        {log.staff}
+                      </td>
+                      <td className="py-4 pr-3 text-[10px] font-semibold text-slate-600 align-top relative">
+                        {log.food}
+                        {log.hasTag && (
+                          <div className="absolute right-0 top-4 w-3 h-3 bg-amber-200 rounded-sm flex items-center justify-center text-[7px] text-amber-700 font-bold border border-amber-300">
+                            G
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {smLogs.length > smVisibleCount && (
+              <div className="pt-4 mt-4 text-center border-t border-slate-100">
+                <button 
+                  onClick={() => setSmVisibleCount((prev: number) => prev + 10)}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-[10px] px-6 py-2 rounded-full shadow-2xs transition-colors cursor-pointer"
+                >
+                  Load More Entries ({smLogs.length - smVisibleCount} remaining)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
+        {/* CUSTOM MEAL MODAL */}
+        {isCustomMealModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
+                  <span className="text-sm">➕</span> CREATE CUSTOM MEAL TEMPLATE
+                </h3>
+              </div>
+              
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">Combo/Meal Name</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g., 2 Roti, Dal & Rice"
+                    value={newMealName}
+                    onChange={(e) => setNewMealName(e.target.value)}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">Default Estimated Price (₹)</label>
+                  <input 
+                    type="number"
+                    placeholder="50.00"
+                    value={newMealCost}
+                    onChange={(e) => setNewMealCost(e.target.value)}
+                    className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-xs"
+                  />
+                </div>
+              </div>
+              
+              <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsCustomMealModalOpen(false)}
+                  className="px-5 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveCustomMeal}
+                  className="px-5 py-2 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-xs transition-colors cursor-pointer"
+                >
+                  Save to Database
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* TAB: BETA RECIPE BUILDER */}
       {activeTab === 'beta_recipe_builder' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="beta-recipe-builder-container bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
+          <div className="border-b border-slate-100 dark:border-slate-700 pb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>🧪</span> Beta Recipe Costing & Food Margin Builder
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Calculate precise raw material ingredient costs, portion yield, and food profit margins for menu items.
               </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-700">Target Dish:</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Target Dish:</span>
               <select
                 value={selectedRecipeMenuItemId}
                 onChange={(e) => setSelectedRecipeMenuItemId(e.target.value)}
-                className="p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900"
+                className="recipe-dish-selector p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900"
               >
                 {menu.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -1009,10 +1388,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           {/* Metrics Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <p className="text-slate-500 font-bold uppercase text-[10px]">Dish Selling Price</p>
-              <p className="text-xl font-extrabold text-slate-900 mt-1">₹{dishSellingPrice}</p>
-              <span className="text-[10px] text-slate-400">Current Guest Billing Price</span>
+            <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Dish Selling Price</p>
+              <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">Current Guest Billing Price</span>
             </div>
 
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
@@ -1038,15 +1417,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-900 text-sm border-l-3 border-indigo-600 pl-2.5">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-indigo-600 pl-2.5">
                   Raw Ingredients Breakdown for {selectedRecipeMenuItem?.name}
                 </h4>
-                <span className="text-slate-400 font-mono text-[11px]">{recipeIngredients.length} Ingredients</span>
+                <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px]">{recipeIngredients.length} Ingredients</span>
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200">
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-600 rounded-xl">
+                <table className="recipe-ingredients-table w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-700 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-600">
                     <tr>
                       <th className="p-3">Ingredient</th>
                       <th className="p-3 text-center">Quantity per Portion</th>
@@ -1055,10 +1434,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <th className="p-3 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-600">
                     {recipeIngredients.map((ing) => (
-                      <tr key={ing.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{ing.name}</td>
+                      <tr key={ing.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                        <td className="p-3 font-bold text-slate-900 dark:text-white">{ing.name}</td>
                         <td className="p-3 text-center font-mono">
                           {ing.quantity} {ing.unit}
                         </td>
@@ -1069,7 +1448,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <td className="p-3 text-center">
                           <button
                             onClick={() => setRecipeIngredients(recipeIngredients.filter((i) => i.id !== ing.id))}
-                            className="text-red-500 hover:text-red-700 font-bold cursor-pointer"
+                            className="btn-remove-ingredient text-red-500 hover:text-red-700 font-bold cursor-pointer"
                           >
                             Remove
                           </button>
@@ -1082,19 +1461,30 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
 
             {/* Add Ingredient Form */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-              <h4 className="font-bold text-slate-900 text-sm">➕ Add Raw Ingredient to Recipe</h4>
+            <div className="add-ingredient-form-card bg-slate-50 dark:bg-slate-700/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-600 space-y-3">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm">➕ Add Raw Ingredient to Recipe</h4>
               <form onSubmit={handleAddIngredient} className="space-y-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Ingredient Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newIngName}
-                    onChange={(e) => setNewIngName(e.target.value)}
-                    placeholder="e.g. Cashew Paste / Whole Spices"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white"
-                  />
+                  <label className="block font-bold text-slate-700 mb-1">Select Ingredient from Kitchen Stock</label>
+                  {inventory && inventory.length > 0 ? (
+                    <select
+                      required
+                      value={selectedStockItemId}
+                      onChange={(e) => handleStockItemSelect(e.target.value)}
+                      className="select-kitchen-stock-dropdown w-full p-2.5 rounded-xl border border-indigo-300 bg-white font-medium text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 shadow-xs"
+                    >
+                      <option value="">-- Choose Stock Ingredient --</option>
+                      {inventory.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} ({item.category}) — Stock: {item.currentStock} {item.unit}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs">
+                      ⚠️ No items found in Kitchen Stock. Please add raw materials in <strong>Edit Kitchen Stock</strong> first.
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1139,7 +1529,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs"
+                  className="btn-save-ingredient w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs"
                 >
                   Save Ingredient to Recipe
                 </button>

@@ -23,6 +23,8 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
     $portal = $_GET['portal'] ?? 'all';
     $search = $_GET['search'] ?? '';
     $timeframe = $_GET['timeframe'] ?? 'all';
+    $dateFrom = $_GET['date_from'] ?? '';
+    $dateTo = $_GET['date_to'] ?? '';
 
     if ($action === 'log_event') {
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
@@ -38,7 +40,7 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
         exit();
     }
 
-    $data = TelescopeLogger::getLogs($portal, $search, $timeframe);
+    $data = TelescopeLogger::getLogs($portal, $search, $timeframe, $dateFrom, $dateTo);
     echo json_encode([
         'status' => 'success',
         'logs' => $data['logs'],
@@ -78,12 +80,19 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
             </div>
         </div>
         <div class="flex items-center gap-4 text-xs font-sans">
-            <label class="flex items-center gap-2 cursor-pointer text-gray-300">
-                <input type="checkbox" id="livePollingToggle" checked onchange="togglePollingMode()" class="accent-cyan-500 rounded">
-                <span>Live Polling</span>
+            <button onclick="resetLogs()" class="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700 cursor-pointer" title="Clear and reset Telescope logs">
+                <i class="fa-solid fa-trash text-red-400 text-[11px]"></i>
+                <span>Reset Logs</span>
+            </button>
+            <label class="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white transition">
+                <input type="checkbox" id="livePollingToggle" checked onchange="togglePollingMode()" class="accent-cyan-500 rounded cursor-pointer">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-sync text-[11px]" id="pollingIcon"></i>
+                    Live Polling
+                </span>
             </label>
             <a href="../../index.php" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-md font-semibold transition border border-gray-700">
-                ← POS Home
+                &larr; Back to App
             </a>
         </div>
     </header>
@@ -92,12 +101,26 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
         <aside class="w-64 border-r border-gray-800 bg-[#0f172a]/50 p-4 flex flex-col gap-6 flex-shrink-0">
             <div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2 font-sans">Timeframe Filter</label>
-                <select id="timeframeSelect" onchange="loadPortalLogs()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
+                <select id="timeframeSelect" onchange="onTimeframeChange()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
                     <option value="all" selected>All Time (Default)</option>
                     <option value="today">Today</option>
                     <option value="yesterday">Yesterday</option>
                     <option value="7days">Last 7 Days</option>
+                    <option value="custom">Custom Date Range</option>
                 </select>
+            </div>
+
+            <div id="customDateRangePanel" class="hidden space-y-2">
+                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block font-sans">Custom Date Range</label>
+                <div>
+                    <label class="text-[9px] text-gray-500 font-sans block mb-0.5">From Date</label>
+                    <input type="date" id="dateFromInput" onchange="loadPortalLogs()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
+                </div>
+                <div>
+                    <label class="text-[9px] text-gray-500 font-sans block mb-0.5">To Date</label>
+                    <input type="date" id="dateToInput" onchange="loadPortalLogs()" class="w-full bg-gray-900 border border-gray-800 text-gray-300 text-xs rounded-lg p-2 outline-none font-sans">
+                </div>
+                <button onclick="clearCustomDates()" class="w-full text-[10px] text-gray-500 hover:text-gray-300 font-sans py-1 transition">Clear Dates</button>
             </div>
 
             <div>
@@ -136,6 +159,16 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
                     <button onclick="switchPortal('404', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><i class="fa-solid fa-link-slash text-rose-400 w-4"></i>404 Sentinel</span>
                         <span id="badge-404" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                    </button>
+
+                    <button onclick="switchPortal('audit', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+                        <span class="flex items-center gap-2.5"><i class="fa-solid fa-clipboard-list text-teal-400 w-4"></i>Audit Trail</span>
+                        <span id="badge-audit" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                    </button>
+
+                    <button onclick="switchPortal('login', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+                        <span class="flex items-center gap-2.5"><i class="fa-solid fa-lock text-orange-400 w-4"></i>Login Portal</span>
+                        <span id="badge-login" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
                     </button>
                 </nav>
             </div>
@@ -178,8 +211,37 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
     </div>
 
     <script>
+    const LS_KEY = 'telescope_system_logs';
     let activePortal = 'requests';
     let pollingIntervalToken = null;
+
+    function getClientLogs() {
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) { return []; }
+    }
+
+    function onTimeframeChange() {
+        const tf = document.getElementById('timeframeSelect').value;
+        const panel = document.getElementById('customDateRangePanel');
+        if (tf === 'custom') {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+            document.getElementById('dateFromInput').value = '';
+            document.getElementById('dateToInput').value = '';
+        }
+        loadPortalLogs();
+    }
+
+    function clearCustomDates() {
+        document.getElementById('dateFromInput').value = '';
+        document.getElementById('dateToInput').value = '';
+        loadPortalLogs();
+    }
 
     function switchPortal(portalName, buttonEl) {
         document.querySelectorAll('.nav-portal-item').forEach(el => el.classList.remove('active'));
@@ -191,47 +253,149 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
     async function loadPortalLogs() {
         const search = document.getElementById('searchInput').value;
         const timeframe = document.getElementById('timeframeSelect').value;
+        const dateFrom = document.getElementById('dateFromInput').value;
+        const dateTo = document.getElementById('dateToInput').value;
         const tbody = document.getElementById('logsTableBody');
-        
+        let allLogs = getClientLogs();
+
         try {
-            const res = await fetch(`index.php?action=fetch_logs&portal=${activePortal}&search=${encodeURIComponent(search)}&timeframe=${timeframe}`);
+            const params = new URLSearchParams({ action: 'fetch_logs', portal: activePortal, search, timeframe });
+            if (dateFrom) params.set('date_from', dateFrom);
+            if (dateTo) params.set('date_to', dateTo);
+            const res = await fetch(`index.php?${params.toString()}`);
             const data = await res.json();
-            
-            if (data.status === 'success') {
-                if (data.counts) {
-                    for (const [key, count] of Object.entries(data.counts)) {
-                        const badge = document.getElementById(`badge-${key}`);
-                        if (badge) badge.innerText = count;
+
+            if (data.status === 'success' && Array.isArray(data.logs)) {
+                const existingIds = new Set(allLogs.map(l => l.id));
+                for (const sLog of data.logs) {
+                    if (!existingIds.has(sLog.id)) allLogs.push(sLog);
+                }
+            }
+        } catch (e) {}
+
+        // Fetch audit_logs from DB for the audit portal
+        if (activePortal === 'audit') {
+            try {
+                const aRes = await fetch(`../api/router.php?action=get_audit_logs`);
+                const aData = await aRes.json();
+                if (Array.isArray(aData.data)) {
+                    const auditLogs = aData.data.map(l => ({
+                        id: `audit-${l.id}`,
+                        portal: 'audit',
+                        severity: l.status === 'Failed' ? 'Warning' : 'Info',
+                        msg: l.action,
+                        origin: l.user || 'System',
+                        timestamp: l.timestamp,
+                        details: { browser: l.browser, os: l.os, device_type: l.device_type, ip_address: l.ip_address, user_agent: l.user_agent, status: l.status, module: l.module }
+                    }));
+                    const existingIds = new Set(allLogs.map(l => l.id));
+                    for (const al of auditLogs) {
+                        if (!existingIds.has(al.id)) allLogs.push(al);
                     }
                 }
-                
-                if (data.logs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
-                    return;
-                }
-                
-                tbody.innerHTML = data.logs.map(r => {
-                    let sevClass = 'text-gray-400 bg-gray-800';
-                    const sev = (r.severity || '').toLowerCase();
-                    if (sev.includes('fatal') || sev.includes('error') || sev.includes('exception')) sevClass = 'text-red-400 bg-red-950/60 border border-red-800/40';
-                    else if (sev.includes('warning') || sev.includes('notice')) sevClass = 'text-amber-400 bg-amber-950/60 border border-amber-800/40';
-                    else if (sev.includes('sql') || sev.includes('js') || sev.includes('telegram')) sevClass = 'text-cyan-400 bg-cyan-950/60 border border-cyan-800/40';
+            } catch (e) {}
+        }
 
-                    const rowJson = escapeHtml(JSON.stringify(r));
-                    return `
-                        <tr class="hover:bg-gray-800/40 transition cursor-pointer" onclick='openModal(${rowJson})'>
-                            <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${r.timestamp || ''}</td>
-                            <td class="px-4 py-2.5 whitespace-nowrap">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sevClass}">${r.severity || 'LOG'}</span>
-                            </td>
-                            <td class="px-4 py-2.5 text-gray-200 truncate max-w-md">${escapeHtml(r.msg || '')}</td>
-                            <td class="px-4 py-2.5 text-gray-400 truncate">${escapeHtml(r.origin || '')}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-red-400 italic">Failed to communicate with Telescope log stream.</td></tr>`;
+        if (activePortal === 'login') {
+            try {
+                const aRes = await fetch(`../api/router.php?action=get_audit_logs`);
+                const aData = await aRes.json();
+                if (Array.isArray(aData.data)) {
+                    const loginLogs = aData.data.filter(l => l.module === 'login');
+                    const existingIds = new Set(allLogs.map(l => l.id));
+                    for (const al of loginLogs) {
+                        if (!existingIds.has(al.id)) {
+                            allLogs.push({
+                                id: `login-${al.id}`, portal: 'login',
+                                severity: al.status === 'Failed' ? 'Warning' : 'Info',
+                                msg: al.action, origin: al.user,
+                                timestamp: al.timestamp,
+                                details: { browser: al.browser, os: al.os, device_type: al.device_type, ip_address: al.ip_address, user_agent: al.user_agent, status: al.status }
+                            });
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, security: 0, 404: 0, audit: 0, login: 0 };
+        allLogs.forEach(l => {
+            const p = (l.portal || '').toLowerCase();
+            if (counts[p] !== undefined) counts[p]++;
+            else counts.requests++;
+        });
+        for (const [key, count] of Object.entries(counts)) {
+            const badge = document.getElementById(`badge-${key}`);
+            if (badge) badge.innerText = count;
+        }
+
+        let filtered = allLogs.filter(l => (l.portal || '').toLowerCase() === activePortal.toLowerCase());
+
+        if (search.trim()) {
+            const term = search.toLowerCase();
+            filtered = filtered.filter(l =>
+                (l.msg || '').toLowerCase().includes(term) ||
+                (l.origin || '').toLowerCase().includes(term) ||
+                (l.severity || '').toLowerCase().includes(term) ||
+                JSON.stringify(l.details || {}).toLowerCase().includes(term)
+            );
+        }
+
+        // Client-side date filtering for localStorage logs and audit/login portal data
+        if (timeframe !== 'all' && timeframe !== 'custom') {
+            const now = Date.now();
+            filtered = filtered.filter(l => {
+                const t = new Date(l.timestamp).getTime();
+                if (isNaN(t)) return true;
+                const h = (now - t) / 3600000;
+                if (timeframe === 'today') return h <= 24;
+                if (timeframe === 'yesterday') return h > 24 && h <= 48;
+                if (timeframe === '7days') return h <= 168;
+                return true;
+            });
+        }
+
+        if (timeframe === 'custom' && (dateFrom || dateTo)) {
+            filtered = filtered.filter(l => {
+                if (!l.timestamp) return true;
+                const logDate = l.timestamp.split(' ')[0].split('T')[0];
+                if (dateFrom && logDate < dateFrom) return false;
+                if (dateTo && logDate > dateTo) return false;
+                return true;
+            });
+        }
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(r => {
+            let sevClass = 'text-gray-400 bg-gray-800';
+            const sev = (r.severity || '').toLowerCase();
+            if (sev.includes('fatal') || sev.includes('error') || sev.includes('exception')) sevClass = 'text-red-400 bg-red-950/60 border border-red-800/40';
+            else if (sev.includes('warning') || sev.includes('notice')) sevClass = 'text-amber-400 bg-amber-950/60 border border-amber-800/40';
+            else if (sev.includes('sql') || sev.includes('js') || sev.includes('telegram')) sevClass = 'text-cyan-400 bg-cyan-950/60 border border-cyan-800/40';
+            else if (sev.includes('info') || sev.includes('success')) sevClass = 'text-teal-400 bg-teal-950/60 border border-teal-800/40';
+
+            const rowJson = escapeHtml(JSON.stringify(r));
+            return `
+                <tr class="hover:bg-gray-800/40 transition cursor-pointer" onclick='openModal(${rowJson})'>
+                    <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">${r.timestamp || ''}</td>
+                    <td class="px-4 py-2.5 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sevClass}">${r.severity || 'LOG'}</span>
+                    </td>
+                    <td class="px-4 py-2.5 text-gray-200 truncate max-w-md">${escapeHtml(r.msg || '')}</td>
+                    <td class="px-4 py-2.5 text-gray-400 truncate">${escapeHtml(r.origin || '')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function resetLogs() {
+        if (confirm('Clear all Telescope logs and reset to defaults?')) {
+            localStorage.removeItem(LS_KEY);
+            loadPortalLogs();
         }
     }
 
@@ -240,7 +404,8 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
         let html = '';
         for (const [key, val] of Object.entries(logObj)) {
             if (val !== null && val !== '') {
-                html += `<div><span class="text-gray-500 font-sans uppercase text-[10px] block">${key}:</span><div class="bg-gray-950 p-2 rounded border border-gray-800 mt-1 text-gray-200">${escapeHtml(String(val))}</div></div>`;
+                const displayVal = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+                html += `<div><span class="text-gray-500 font-sans uppercase text-[10px] block mb-1">${key}:</span><div class="bg-gray-950 p-2 rounded border border-gray-800 text-gray-200">${escapeHtml(displayVal)}</div></div>`;
             }
         }
         document.getElementById('modalContent').innerHTML = html;
@@ -258,11 +423,14 @@ if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVE
     function togglePollingMode() {
         const isChecked = document.getElementById('livePollingToggle').checked;
         if (isChecked) {
-            pollingIntervalToken = setInterval(loadPortalLogs, 5000);
+            pollingIntervalToken = setInterval(loadPortalLogs, 4000);
         } else {
             clearInterval(pollingIntervalToken);
         }
     }
+
+    window.addEventListener('telescope_log_added', () => loadPortalLogs());
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     loadPortalLogs();
     togglePollingMode();

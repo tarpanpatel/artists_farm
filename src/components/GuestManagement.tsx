@@ -21,13 +21,14 @@ import {
   Trash2,
   Sparkles
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { Guest, BillingReceipt, Order } from '../types';
+import * as htmlToImage from 'html-to-image';
+import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate } from '../types';
 
 interface GuestManagementProps {
   guests: Guest[];
   receipts: BillingReceipt[];
   orders: Order[];
+  staff: StaffMember[];
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   activeMenuItemKey?: string;
@@ -136,19 +137,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   guests,
   receipts,
   orders,
+  staff,
   onAddGuest,
   onCheckoutGuest,
   activeMenuItemKey,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'residents' | 'billing' | 'receipts'>('residents');
-
-  useEffect(() => {
-    if (activeMenuItemKey === 'billing_checkout') {
-      setActiveSubTab('billing');
-    } else if (activeMenuItemKey === 'guest_registration') {
-      setActiveSubTab('residents');
-    }
-  }, [activeMenuItemKey]);
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -164,6 +157,38 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
   );
   const [notes, setNotes] = useState('');
+  
+  // Registration Form State
+  const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
+  const [bookingAdvance, setBookingAdvance] = useState<number>(0);
+  const [bookingPending, setBookingPending] = useState<number>(0);
+  const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
+  const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
+
+  useEffect(() => {
+    const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
+    const API_BASE = `${_base}/php/api/router.php`;
+    fetch(`${API_BASE}?action=get_misc_catalog`)
+      .then(r => r.json())
+      .then(res => {
+        if (res?.status === 'success') {
+          setMiscChargesList(res.data);
+        }
+      }).catch(console.error);
+  }, []);
+
+  const handleTariffChange = (val: number) => {
+    setBookingRoomTariff(val);
+    setBookingPending(val - bookingAdvance);
+  };
+  const handleAdvanceChange = (val: number) => {
+    setBookingAdvance(val);
+    setBookingPending(bookingRoomTariff - val);
+  };
+  const handlePendingChange = (val: number) => {
+    setBookingPending(val);
+    setBookingAdvance(bookingRoomTariff - val);
+  };
 
   // Selected Active Guest for Billing
   const [selectedGuestId, setSelectedGuestId] = useState<string>(guests[0]?.id || '');
@@ -217,6 +242,26 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [qrModalTitle, setQrModalTitle] = useState('');
   const [qrModalHasCode, setQrModalHasCode] = useState(false);
 
+  // Track which order-items the cashier manually removed — persisted to localStorage so page refresh doesn't restore them
+  const getRemovedKey = (guestId: string) => `billing_removed_${guestId}`;
+
+  const getRemovedIds = (guestId: string): Set<string> => {
+    try {
+      const saved = localStorage.getItem(getRemovedKey(guestId));
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  };
+
+  const addRemovedId = (guestId: string, itemId: string) => {
+    const set = getRemovedIds(guestId);
+    set.add(itemId);
+    localStorage.setItem(getRemovedKey(guestId), JSON.stringify([...set]));
+  };
+
+  const clearRemovedIds = (guestId: string) => {
+    localStorage.removeItem(getRemovedKey(guestId));
+  };
+
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -226,25 +271,29 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Whenever selected guest changes, auto-load their fulfilled orders into incidentals
   useEffect(() => {
     if (currentGuest) {
+      const savedRemoved = getRemovedIds(currentGuest.id);
       const guestOrders = orders.filter((o) => o.guestId === currentGuest.id || o.guestName === currentGuest.guestName);
       if (guestOrders.length > 0) {
         const loadedItems: IncidentalsItem[] = [];
         guestOrders.forEach((o) => {
           o.items.forEach((it, idx) => {
-            loadedItems.push({
-              id: `order-${o.id}-${idx}`,
-              name: it.name,
-              price: it.unitPrice,
-              quantity: it.quantity,
-            });
+            const itemId = `order-${o.id}-${idx}`;
+            if (!savedRemoved.has(itemId)) {
+              loadedItems.push({
+                id: itemId,
+                name: it.name,
+                price: it.unitPrice,
+                quantity: it.quantity,
+              });
+            }
           });
         });
-        if (loadedItems.length > 0) {
-          setIncidentals(loadedItems);
-        }
+        setIncidentals(loadedItems);
+      } else {
+        setIncidentals([]);
       }
     }
-  }, [selectedGuestId, orders]);
+  }, [selectedGuestId]);
 
   // Calculate Subtotals & Totals
   const foodTotal = incidentals.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -278,7 +327,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         .map((item) => {
           if (item.id === id) {
             const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            if (newQty <= 0) {
+              // Persist removal to localStorage so it survives page refresh
+              if (currentGuest) addRemovedId(currentGuest.id, id);
+              return null;
+            }
+            return { ...item, quantity: newQty };
           }
           return item;
         })
@@ -409,33 +463,37 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       return;
     }
 
-    if (!confirm('Finalize room contract checkout distribution operations?')) return;
+    if (window.confirm('Finalize room contract checkout distribution operations?')) {
+      if (currentGuest) {
+        const checkoutDateStr = new Date().toISOString().split('T')[0];
+        const primaryMode = splitRows[0]?.mode || 'UPI';
 
-    if (currentGuest) {
-      const checkoutDateStr = new Date().toISOString().split('T')[0];
-      const primaryMode = splitRows[0]?.mode || 'UPI';
+        const receipt: BillingReceipt = {
+          id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+          guestId: currentGuest.id,
+          guestName: currentGuest.guestName,
+          roomNumber: currentGuest.roomNumber,
+          checkinDate: currentGuest.checkinDate,
+          checkoutDate: checkoutDateStr,
+          roomRatePerNight: Math.round(baseLodging / 2),
+          nightsCount: 2,
+          roomTotal: lodgingPendingDue,
+          kitchenTotal: foodTotal,
+          miscTotal: extraCharges,
+          discount: discounts,
+          grandTotal: grandTargetDue,
+          status: 'Paid',
+          paidAt: `${checkoutDateStr} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+          paymentMethod: primaryMode,
+          advancePaid: advancePaid,
+          foodItems: incidentals.map(i => ({ name: i.name, quantity: i.quantity, unitPrice: i.price, total: i.price * i.quantity })),
+          adjustments: adjustments.map(a => ({ type: a.type, label: a.reason, amount: a.amount }))
+        };
 
-      const receipt: BillingReceipt = {
-        id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-        guestId: currentGuest.id,
-        guestName: currentGuest.guestName,
-        roomNumber: currentGuest.roomNumber,
-        checkinDate: currentGuest.checkinDate,
-        checkoutDate: checkoutDateStr,
-        roomRatePerNight: Math.round(baseLodging / 2),
-        nightsCount: 2,
-        roomTotal: lodgingPendingDue,
-        kitchenTotal: foodTotal,
-        miscTotal: extraCharges,
-        discount: discounts,
-        grandTotal: grandTargetDue,
-        status: 'Paid',
-        paidAt: `${checkoutDateStr} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
-        paymentMethod: primaryMode,
-      };
-
-      onCheckoutGuest(receipt);
-      alert(`✅ Settlement completed for ${currentGuest.guestName}! Receipt generated.`);
+        onCheckoutGuest(receipt);
+        window.alert(`✅ Settlement completed for ${currentGuest.guestName}! Receipt generated.`);
+        window.location.hash = '#dashboard';
+      }
     }
   };
 
@@ -448,22 +506,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     if (actionsBar) actionsBar.style.display = 'none';
 
     try {
-      const canvas = await html2canvas(receiptBox, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `Bill_${Date.now()}.png`, { type: 'image/png' });
+      const blob = await htmlToImage.toBlob(receiptBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      if (!blob) return;
+      const file = new File([blob], `Bill_${Date.now()}.png`, { type: 'image/png' });
 
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'Final Bill Settlement' });
-        } else {
-          const link = document.createElement('a');
-          link.download = `Bill_${Date.now()}.png`;
-          link.href = URL.createObjectURL(blob);
-          link.click();
-        }
-      }, 'image/png');
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Final Bill Settlement' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `Bill_${Date.now()}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      }
     } catch (err) {
-      alert('Failed to generate image print.');
+      alert('Failed to generate image print: ' + (err instanceof Error ? err.message : String(err)));
+      console.error(err);
     } finally {
       if (actionsBar) actionsBar.style.display = 'flex';
     }
@@ -502,9 +559,202 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     return matchesStatus && matchesSearch;
   });
 
+  if (activeMenuItemKey === 'guest_registration') {
+    return (
+      <div className="guest-management-container grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+        {/* Left Column: Form */}
+        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
+              Add Guest Booking (Backdating Allowed)
+            </h3>
+            <button
+              onClick={() => setIsCheckinModalOpen(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" /> Check-in Now
+            </button>
+          </div>
+          
+          <form className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
+            e.preventDefault();
+            onAddGuest({
+              id: Math.random().toString(36).substr(2, 9),
+              guestName,
+              phoneNumber,
+              roomNumber,
+              checkinDate,
+              expectedCheckout,
+              status: 'Booked'
+            });
+            alert('Guest booked successfully!');
+          }}>
+            <div>
+              <label className="block mb-1">Contact Phone Number *</label>
+              <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter mobile number" className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1">Booking Source</label>
+                <select className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option>Offline</option>
+                  <option>Online</option>
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1">Total Headcount</label>
+                <input type="number" min="1" defaultValue="1" className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1">Check-In Date *</label>
+                <input type="date" value={checkinDate} onChange={e => setCheckinDate(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
+              </div>
+              <div>
+                <label className="block mb-1">Check-Out Date *</label>
+                <input type="date" value={expectedCheckout} onChange={e => setExpectedCheckout(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1">Total Room Tariff (₹)</label>
+              <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label>Dynamic Incidentals (Pets, Decoration etc)</label>
+                <button type="button" onClick={() => setBookingIncidentals([...bookingIncidentals, {type: '', amount: 0}])} className="bg-blue-500 text-white px-2 py-0.5 rounded text-[10px]">+ Add Line</button>
+              </div>
+              {bookingIncidentals.length === 0 ? (
+                <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50 text-center text-slate-400">
+                  No incidentals added
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {bookingIncidentals.map((inc, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <select 
+                        value={inc.type}
+                        onChange={(e) => {
+                          const newInc = [...bookingIncidentals];
+                          newInc[idx].type = e.target.value;
+                          setBookingIncidentals(newInc);
+                        }}
+                        className="flex-1 p-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                      >
+                        <option value="">-- Select Type --</option>
+                        {miscChargesList.map(m => (
+                          <option key={m.id} value={m.label}>{m.label}</option>
+                        ))}
+                      </select>
+                      <input 
+                        type="number" 
+                        value={inc.amount || ''}
+                        onChange={(e) => {
+                          const newInc = [...bookingIncidentals];
+                          newInc[idx].amount = Number(e.target.value);
+                          setBookingIncidentals(newInc);
+                        }}
+                        placeholder="Amount"
+                        className="w-24 p-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                        required={!!inc.type}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setBookingIncidentals(bookingIncidentals.filter((_, i) => i !== idx))}
+                        className="text-slate-400 hover:text-red-500 p-2 rounded-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1">Advance Paid (₹)</label>
+                <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div>
+                <label className="block mb-1">Advance Received By *</label>
+                <select required className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="">-- Select Staff/User --</option>
+                  {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1">Pending Balance (₹)</label>
+                <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div>
+                <label className="block mb-1">Pending Received By</label>
+                <select className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="">-- Select Staff/User --</option>
+                  {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1">Guest Notes</label>
+              <textarea placeholder="Dietary adjustments..." rows={2} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            </div>
+
+            <button type="submit" className="btn-register-guest w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl shadow-md transition-colors text-sm">
+              Save Guest Booking
+            </button>
+          </form>
+        </div>
+
+        {/* Right Column: Calendar */}
+        <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg uppercase tracking-wider">{new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h3>
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 italic">Active Tracking Matrix</span>
+          </div>
+          
+          <div className="grid grid-cols-7 gap-3 mb-2">
+            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+              <div key={day} className="text-center text-[10px] font-extrabold text-slate-400 tracking-wider">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 gap-3 auto-rows-[100px]">
+            {Array.from({ length: 31 }).map((_, i) => (
+              <div key={i} className="border border-slate-200 rounded-xl p-2 relative">
+                <span className={`text-xs font-bold ${i === new Date().getDate() - 1 ? 'text-blue-600' : 'text-slate-500'}`}>{i + 1}</span>
+                {/* Mock overlays based on guests */}
+                {guests.filter(g => {
+                    const start = new Date(g.checkinDate).getDate();
+                    const end = new Date(g.expectedCheckout).getDate();
+                    return (i + 1) >= start && (i + 1) < end;
+                }).map((g, idx) => (
+                  <div key={idx} className={`absolute bottom-2 left-2 right-2 rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold text-white truncate shadow-xs ${g.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                    👤 {g.guestName.split(' ')[0]} ({g.phoneNumber.slice(-4)})
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Top Banner Header */}
+    <div className="guest-management-container space-y-6">
+      {/* Top Banner Header for Billing */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
         <div>
           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
@@ -515,158 +765,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             Manage lodging contracts, insert food incidentals, apply adjustments, and run split settlement checkouts
           </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsCheckinModalOpen(true)}
-            className="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Check-in New Resident</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-2 border-b border-gray-200 text-xs font-bold">
-        <button
-          onClick={() => setActiveSubTab('residents')}
-          className={`pb-2.5 px-4 transition-colors border-b-2 cursor-pointer ${
-            activeSubTab === 'residents'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <Users className="w-4 h-4 inline mr-1.5" />
-          Resident Roster ({guests.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('billing')}
-          className={`pb-2.5 px-4 transition-colors border-b-2 cursor-pointer ${
-            activeSubTab === 'billing'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <CreditCard className="w-4 h-4 inline mr-1.5" />
-          Billing & Checkout Workspace
-        </button>
-        <button
-          onClick={() => setActiveSubTab('receipts')}
-          className={`pb-2.5 px-4 transition-colors border-b-2 cursor-pointer ${
-            activeSubTab === 'receipts'
-              ? 'border-blue-600 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <Receipt className="w-4 h-4 inline mr-1.5" />
-          Past Receipts Log ({receipts.length})
-        </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* SUB-TAB 1: RESIDENT ROSTER                                                */}
+      {/* BILLING & CHECKOUT WORKSPACE                                               */}
       {/* ========================================================================= */}
-      {activeSubTab === 'residents' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search resident name, phone, villa..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="text-xs text-gray-500 font-medium">Status:</span>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="text-xs font-semibold bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Active">Active Residents</option>
-                <option value="Booked">Booked Ahead</option>
-                <option value="CheckedOut">Checked Out</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                  <tr>
-                    <th className="py-3 px-4">Resident Profile</th>
-                    <th className="py-3 px-4">Assigned Unit</th>
-                    <th className="py-3 px-4">Stay Dates</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredGuests.map((guest) => (
-                    <tr key={guest.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 text-sm">{guest.guestName}</div>
-                        <div className="text-slate-500 text-[11px] flex items-center gap-1 mt-0.5">
-                          <Phone className="w-3 h-3 text-slate-400" /> {guest.phoneNumber}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-semibold bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
-                          {guest.roomNumber}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-slate-800 font-medium">{guest.checkinDate}</div>
-                        <div className="text-slate-500 text-[11px]">to {guest.expectedCheckout}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                            guest.status === 'Active'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : guest.status === 'Booked'
-                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                              : 'bg-slate-100 text-slate-600 border border-slate-300'
-                          }`}
-                        >
-                          {guest.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {guest.status === 'Active' ? (
-                          <button
-                            onClick={() => {
-                              setSelectedGuestId(guest.id);
-                              setActiveSubTab('billing');
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
-                          >
-                            Open Billing Workspace →
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 text-[11px] italic">Checked Out</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUB-TAB 2: BILLING & CHECKOUT WORKSPACE (FULL MATCH TO ATTACHED CODE)    */}
-      {/* ========================================================================= */}
-      {activeSubTab === 'billing' && (
+      {activeMenuItemKey === 'billing_checkout' && (
         <div className="space-y-6">
           {/* Active Resident Selector Bar */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -722,7 +826,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               {/* CARD 2: FOOD ORDERS & INCIDENTALS LOG */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
+              <div className="receipts-log-table-card bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
                 <div className="text-sm font-extrabold text-slate-900 border-b border-gray-100 pb-2 flex items-center gap-2">
                   <span>🍽️</span> Food Orders & Incidentals Log
                 </div>
@@ -1147,7 +1251,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPrintModalOpen(true)}
-                      className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
+                      className="btn-print-receipt w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
                     >
                       <Printer className="w-4 h-4" /> View Print Receipt
                     </button>
@@ -1155,7 +1259,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <button
                       type="submit"
                       disabled={!isSplitMatching}
-                      className={`w-full py-3 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer ${
+                      className={`btn-checkout-guest w-full py-3 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer ${
                         isSplitMatching
                           ? 'bg-emerald-600 hover:bg-emerald-700'
                           : 'bg-slate-300 text-slate-500 cursor-not-allowed'
@@ -1171,53 +1275,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SUB-TAB 3: PAST RECEIPTS LOG                                             */}
-      {/* ========================================================================= */}
-      {activeSubTab === 'receipts' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-4 space-y-3">
-          <h3 className="font-bold text-slate-800 text-sm">Settled Bills & Payment Receipts</h3>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">Receipt ID</th>
-                  <th className="py-3 px-4">Guest Name</th>
-                  <th className="py-3 px-4">Room</th>
-                  <th className="py-3 px-4">Stay Dates</th>
-                  <th className="py-3 px-4">Breakdown (Room + Kitchen)</th>
-                  <th className="py-3 px-4">Grand Total</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {receipts.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900">{rec.id}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{rec.guestName}</td>
-                    <td className="py-3 px-4">{rec.roomNumber}</td>
-                    <td className="py-3 px-4 text-[11px] text-slate-500">
-                      {rec.checkinDate} to {rec.checkoutDate}
-                    </td>
-                    <td className="py-3 px-4 text-[11px]">
-                      ₹{rec.roomTotal} (Room) + ₹{rec.kitchenTotal} (Food)
-                    </td>
-                    <td className="py-3 px-4 font-bold text-emerald-700 text-sm">
-                      ₹{rec.grandTotal.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                        {rec.status} ({rec.paymentMethod})
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* CHECK-IN NEW RESIDENT MODAL                                               */}
@@ -1407,11 +1465,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Receipt Content */}
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base text-slate-900">ARTISTS FARM JAIPUR</h3>
-                <p className="text-[11px] text-slate-500 font-medium">Consolidated Stay & KOT Settlement</p>
+                <h3 className="font-extrabold text-base text-black">ARTISTS FARM JAIPUR</h3>
+                <p className="text-[11px] text-black font-medium">Consolidated Stay & KOT Settlement</p>
               </div>
 
-              <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-slate-600 font-semibold">
+              <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
                 <span>
                   <b>Phone:</b> 8888888
                 </span>
@@ -1422,18 +1480,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               {/* Stay Logistics */}
               <div className="space-y-1">
-                <div className="font-bold border-l-2 border-sky-500 pl-2 text-slate-800 text-xs">
+                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   Stay Logistics
                 </div>
-                <div className="flex justify-between text-slate-700">
+                <div className="flex justify-between text-black">
                   <span>Lodging Contract Charges:</span>
                   <span>Rm ₹{baseLodging.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-emerald-600 font-semibold">
+                <div className="flex justify-between text-black font-semibold">
                   <span>[-] Advance Paid:</span>
                   <span>₹{advancePaid.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-900 font-bold border-t border-dashed border-slate-200 pt-1">
+                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
                   <span>Pending Lodging Settled:</span>
                   <span>₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
@@ -1441,13 +1499,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               {/* KOT Kitchen Incidentals */}
               <div className="space-y-1 pt-2">
-                <div className="flex justify-between items-center font-bold border-l-2 border-sky-500 pl-2 text-slate-800 text-xs">
+                <div className="flex justify-between items-center font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   <span>KOT Kitchen Incidentals</span>
                   <span>Subtotal: ₹{foodTotal.toFixed(2)}</span>
                 </div>
                 <div className="space-y-1 pt-1">
                   {incidentals.map((it) => (
-                    <div key={it.id} className="flex justify-between text-slate-700">
+                    <div key={it.id} className="flex justify-between text-black">
                       <span>
                         {it.name} x{it.quantity}
                       </span>
@@ -1460,18 +1518,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* Adjustments: Extra Charges and Discounts */}
               {adjustments.length > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-amber-500 pl-2 text-slate-800 text-xs">
+                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     Applied Adjustments
                   </div>
                   <div className="space-y-1 pt-1">
                     {adjustments.map((adj) => (
-                      <div key={adj.id} className="flex justify-between text-slate-700">
+                      <div key={adj.id} className="flex justify-between text-black">
                         <span>↳ {adj.reason}</span>
-                        <span
-                          className={
-                            adj.type === 'charge' ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'
-                          }
-                        >
+                        <span className="font-semibold">
                           {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
                         </span>
                       </div>
@@ -1481,7 +1535,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               )}
 
               {/* Grand Total */}
-              <div className="border-t-2 border-b-2 border-slate-900 py-2 flex justify-between font-extrabold text-sm text-slate-900">
+              <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
                 <span>Grand Total Payable:</span>
                 <span>₹{grandTargetDue.toFixed(2)}</span>
               </div>

@@ -433,31 +433,272 @@ export const INITIAL_ORDERS: Order[] = [
   }
 ];
 
-export const INITIAL_INVENTORY: InventoryItem[] = [
-  { id: '1', name: 'Aachar', category: 'Spices & Seasonings', currentStock: 12, minThreshold: 2, unit: 'Kg' },
-  { id: '3', name: 'Ajino Moto', category: 'Spices & Seasonings', currentStock: 20, minThreshold: 50, unit: 'Gm' },
-  { id: '4', name: 'Apple', category: 'Fruits & Desserts', currentStock: 6, minThreshold: 2, unit: 'Kg' },
-  { id: '6', name: 'Atta (Wheat Flour)', category: 'Flours & Grains', currentStock: 40, minThreshold: 10, unit: 'Kg' },
-  { id: '10', name: 'Beans', category: 'Vegetables & Fresh Produce', currentStock: 5, minThreshold: 2, unit: 'Kg' },
-  { id: '17', name: 'Brinjal', category: 'Vegetables & Fresh Produce', currentStock: 4, minThreshold: 2, unit: 'Kg' },
-  { id: '18', name: 'Butter', category: 'Dairy', currentStock: 600, minThreshold: 1000, unit: 'Gms' },
-  { id: '24', name: 'Chicken', category: 'Non Veg', currentStock: 8, minThreshold: 3, unit: 'Kg' },
-  { id: '30', name: 'Curd', category: 'Dairy', currentStock: 4, minThreshold: 2, unit: 'Kg' },
-  { id: '41', name: 'French Fries', category: 'Frozen / Cold', currentStock: 5, minThreshold: 2, unit: 'Kg' },
-  { id: '43', name: 'Garlic', category: 'Vegetables & Fresh Produce', currentStock: 3, minThreshold: 1, unit: 'Kg' },
-  { id: '46', name: 'Ginger', category: 'Vegetables & Fresh Produce', currentStock: 2, minThreshold: 1, unit: 'Kg' },
-  { id: '73', name: 'Milk', category: 'Dairy', currentStock: 2.5, minThreshold: 5, unit: 'Liter' },
-  { id: '81', name: 'Mustard Oil', category: 'Oils & Dairy Staples', currentStock: 4, minThreshold: 5, unit: 'Liter' },
-  { id: '82', name: 'Mutton', category: 'Non Veg', currentStock: 4, minThreshold: 2, unit: 'Kg' },
-  { id: '86', name: 'Onion', category: 'Vegetables & Fresh Produce', currentStock: 25, minThreshold: 10, unit: 'Kg' },
-  { id: '89', name: 'Paneer', category: 'Dairy', currentStock: 3, minThreshold: 5, unit: 'Kg' },
-  { id: '97', name: 'Potato', category: 'Vegetables & Fresh Produce', currentStock: 30, minThreshold: 10, unit: 'Kg' },
-  { id: '106', name: 'Sugar', category: 'Spices & Seasonings', currentStock: 15, minThreshold: 5, unit: 'Kg' },
-  { id: '113', name: 'Tomato', category: 'Vegetables & Fresh Produce', currentStock: 18, minThreshold: 5, unit: 'Kg' },
-  { id: '176', name: 'Amul Butter', category: 'Dairy', currentStock: 500, minThreshold: 200, unit: 'Gms' },
-  { id: '177', name: 'Basmati Rice', category: 'Flours & Grains', currentStock: 25, minThreshold: 10, unit: 'Kg' },
-  { id: '178', name: 'LPG Gas Cylinder', category: 'Kitchen Appliance Repairs', currentStock: 2, minThreshold: 3, unit: 'Pcs' }
+export interface CatalogItem {
+id: number;
+name: string;
+category: string;
+categoryId: number;
+price: number;
+packSize: number;
+packUnit: string;
+unitLabel: string;
+is_verified?: boolean;
+imagePath?: string;
+specification?: string;
+unit_cost?: number;
+}
+
+export interface Category {
+id: number;
+name: string;
+}
+
+export const CATEGORIES_DATA: Category[] = [
+{ id: 1, name: "Spices & Seasonings" },
+{ id: 2, name: "Flours & Grains" },
+{ id: 3, name: "Lentils & Pulses" },
+{ id: 4, name: "Oils & Dairy Staples" },
+{ id: 5, name: "Vegetables & Fresh Produce" },
+{ id: 6, name: "Fruits & Desserts" },
+{ id: 7, name: "Chinese & Continental Sauces" },
+{ id: 8, name: "Beverages & Breakfast" },
+{ id: 9, name: "Housekeeping & Disposables" },
+{ id: 10, name: "Dairy" },
+{ id: 11, name: "Bakery" },
+{ id: 12, name: "Frozen / Cold" },
+{ id: 13, name: "Sauce" },
+{ id: 14, name: "Non Veg" },
+{ id: 15, name: "Vegetables" },
+{ id: 16, name: "Crockery & Cutlery" },
+{ id: 17, name: "Disposables" },
+{ id: 18, name: "Kitchen Appliance Repairs" }
 ];
+
+export const initialCatalogItems: CatalogItem[] = [
+// 1. Spices & Seasonings (Category ID: 1)
+{ id: 1, name: "Aachar", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 3, name: "Ajino Moto", category: "Spices & Seasonings", categoryId: 1, price: 15.00, packSize: 1.00, packUnit: "Gm", unitLabel: "Gm", is_verified: true },
+{ id: 23, name: "Chhola Masala", category: "Spices & Seasonings", categoryId: 1, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 32, name: "Dalchini", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 100.00, packUnit: "Gms", unitLabel: "Gms", is_verified: true },
+{ id: 33, name: "Degi Mirchi Powder", category: "Spices & Seasonings", categoryId: 1, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 34, name: "Dhaniya", category: "Spices & Seasonings", categoryId: 1, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 35, name: "Dhaniya Powder", category: "Spices & Seasonings", categoryId: 1, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 38, name: "Doda Elaichi", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 55, name: "Haldi", category: "Spices & Seasonings", categoryId: 1, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 61, name: "Jeera", category: "Spices & Seasonings", categoryId: 1, price: 340.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 75, name: "Mirchi", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 77, name: "Mirchi Red", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 78, name: "Mix Aachar", category: "Spices & Seasonings", categoryId: 1, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 100, name: "Salt", category: "Spices & Seasonings", categoryId: 1, price: 29.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 119, name: "Strawberries", category: "Spices & Seasonings", categoryId: 1, price: 300.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 120, name: "Chiku", category: "Spices & Seasonings", categoryId: 1, price: 120.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 121, name: "Amla", category: "Spices & Seasonings", categoryId: 1, price: 130.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 122, name: "Ragi Flour", category: "Spices & Seasonings", categoryId: 1, price: 350.00, packSize: 1.00, packUnit: "Gm", unitLabel: "Gm", is_verified: true },
+{ id: 123, name: "Jwar Atta", category: "Spices & Seasonings", categoryId: 1, price: 128.00, packSize: 250.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 124, name: "White Flour", category: "Spices & Seasonings", categoryId: 1, price: 140.00, packSize: 250.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 125, name: "oats", category: "Spices & Seasonings", categoryId: 1, price: 420.00, packSize: 2.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 160, name: "Mirch Powder", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 161, name: "Jeera powder", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 162, name: "Garam Masala", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 163, name: "Black Pepper", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 164, name: "Kitchen king Masala", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 165, name: "Chat Masala", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 166, name: "Chilli flake", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Gms", unitLabel: "Gms", is_verified: true },
+{ id: 167, name: "Tea Masala", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 177, name: "Basmati Rice", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pc", unitLabel: "Pc", is_verified: true },
+{ id: 178, name: "LPG Gas Cylinder", category: "Spices & Seasonings", categoryId: 1, price: 0.00, packSize: 1.00, packUnit: "Pc", unitLabel: "Pc", is_verified: true },
+
+// 2. Flours & Grains (Category ID: 2)
+{ id: 6, name: "Atta", category: "Flours & Grains", categoryId: 2, price: 40.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 7, name: "Bajara Atta", category: "Flours & Grains", categoryId: 2, price: 45.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 9, name: "Basan", category: "Flours & Grains", categoryId: 2, price: 86.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 53, name: "Guest Rice", category: "Flours & Grains", categoryId: 2, price: 110.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 69, name: "Maida", category: "Flours & Grains", categoryId: 2, price: 48.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 96, name: "Poha", category: "Flours & Grains", categoryId: 2, price: 76.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 105, name: "Staff Rice", category: "Flours & Grains", categoryId: 2, price: 110.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 126, name: "Black Flour", category: "Flours & Grains", categoryId: 2, price: 0.00, packSize: 100.00, packUnit: "Gms", unitLabel: "Kg", is_verified: true },
+{ id: 141, name: "papad", category: "Flours & Grains", categoryId: 2, price: 0.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 143, name: "Corn flour", category: "Flours & Grains", categoryId: 2, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 144, name: "Sev tomato", category: "Flours & Grains", categoryId: 2, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 3. Lentils & Pulses (Category ID: 3)
+{ id: 70, name: "Masoor Dal", category: "Lentils & Pulses", categoryId: 3, price: 90.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 79, name: "Moong Mogar Dal", category: "Lentils & Pulses", categoryId: 3, price: 110.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 115, name: "Urad Dal", category: "Lentils & Pulses", categoryId: 3, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 138, name: "Moong dal", category: "Lentils & Pulses", categoryId: 3, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 139, name: "Chana dal", category: "Lentils & Pulses", categoryId: 3, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 140, name: "Arhar dal", category: "Lentils & Pulses", categoryId: 3, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 4. Oils & Dairy Staples (Category ID: 4)
+{ id: 22, name: "Cheese", category: "Oils & Dairy Staples", categoryId: 4, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 29, name: "Cream", category: "Oils & Dairy Staples", categoryId: 4, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 36, name: "Diced Cheese", category: "Oils & Dairy Staples", categoryId: 4, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 81, name: "Mustard Oil", category: "Oils & Dairy Staples", categoryId: 4, price: 180.00, packSize: 1.00, packUnit: "Liter", unitLabel: "Liter", is_verified: true },
+{ id: 85, name: "Oil", category: "Oils & Dairy Staples", categoryId: 4, price: 2539.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 103, name: "Slice Cheese", category: "Oils & Dairy Staples", categoryId: 4, price: 275.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 5. Vegetables & Fresh Produce (Category ID: 5)
+{ id: 44, name: "Garlic Chila Huaa", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 48, name: "Gobhi", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 51, name: "Green Mirchi Small", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 52, name: "Green Pea", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 57, name: "Hari Mirchi", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 74, name: "Mint", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 102, name: "Shimla Mirch Red", category: "Vegetables & Fresh Produce", categoryId: 5, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 6. Fruits & Desserts (Category ID: 6)
+{ id: 4, name: "Apple", category: "Fruits & Desserts", categoryId: 6, price: 200.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 8, name: "Banana", category: "Fruits & Desserts", categoryId: 6, price: 60.00, packSize: 1.00, packUnit: "Doz", unitLabel: "Doz", is_verified: true },
+{ id: 28, name: "Coconut Powder", category: "Fruits & Desserts", categoryId: 6, price: 250.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 54, name: "Gulab Jamun", category: "Fruits & Desserts", categoryId: 6, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 60, name: "Jam Jam", category: "Fruits & Desserts", categoryId: 6, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 118, name: "Oranges", category: "Fruits & Desserts", categoryId: 6, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 157, name: "Mango", category: "Fruits & Desserts", categoryId: 6, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 158, name: "Papaya", category: "Fruits & Desserts", categoryId: 6, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 159, name: "Watermelon", category: "Fruits & Desserts", categoryId: 6, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+
+// 7. Chinese & Continental Sauces (Category ID: 7)
+{ id: 16, name: "Bread Crumb", category: "Chinese & Continental Sauces", categoryId: 7, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 27, name: "Chocolate Sauce", category: "Chinese & Continental Sauces", categoryId: 7, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 84, name: "Noodles", category: "Chinese & Continental Sauces", categoryId: 7, price: 60.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 93, name: "Pizza Cheese", category: "Chinese & Continental Sauces", categoryId: 7, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 111, name: "Thousand Sauce", category: "Chinese & Continental Sauces", categoryId: 7, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 142, name: "Maggi", category: "Chinese & Continental Sauces", categoryId: 7, price: 0.00, packSize: 1.00, packUnit: "Box", unitLabel: "Box", is_verified: true },
+
+// 8. Beverages & Breakfast (Category ID: 8)
+{ id: 2, name: "Aarmant", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 12, name: "Biscuit", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 14, name: "Bowl", category: "Beverages & Breakfast", categoryId: 8, price: 95.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 40, name: "Fish", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 63, name: "Kaju", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 64, name: "Kala Chana", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 68, name: "Magaj", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 83, name: "Namkeen", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 88, name: "Palak", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 90, name: "Peanut", category: "Beverages & Breakfast", categoryId: 8, price: 160.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 110, name: "Tash Patti", category: "Beverages & Breakfast", categoryId: 8, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 9. Housekeeping & Disposables (Category ID: 9)
+{ id: 13, name: "Black Polish", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 31, name: "Cylinder", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 37, name: "Dish Wash", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 42, name: "Garbage Bag", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 47, name: "Glass Water", category: "Housekeeping & Disposables", categoryId: 9, price: 35.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 56, name: "Happy Birthday Name", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 62, name: "Juna", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 72, name: "Match Box", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 87, name: "Other", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 91, name: "Pink Balloon", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Pack", unitLabel: "Pack", is_verified: true },
+{ id: 95, name: "Plate", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 98, name: "Red Balloon", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 106, name: "Sugar", category: "Housekeeping & Disposables", categoryId: 9, price: 46.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 107, name: "Surf Excel", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 112, name: "Tissue", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 116, name: "Vim Bar", category: "Housekeeping & Disposables", categoryId: 9, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 172, name: "RO", category: "Housekeeping & Disposables", categoryId: 9, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+
+// 10. Dairy (Category ID: 10)
+{ id: 18, name: "Butter", category: "Dairy", categoryId: 10, price: 620.00, packSize: 1.00, packUnit: "Gms", unitLabel: "Kg", is_verified: true },
+{ id: 30, name: "Curd", category: "Dairy", categoryId: 10, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 45, name: "Ghee", category: "Dairy", categoryId: 10, price: 570.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 73, name: "Milk", category: "Dairy", categoryId: 10, price: 56.00, packSize: 1.00, packUnit: "Liter", unitLabel: "Liter", is_verified: true },
+{ id: 89, name: "Paneer", category: "Dairy", categoryId: 10, price: 300.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 176, name: "Amul Butter", category: "Dairy", categoryId: 10, price: 63.00, packSize: 100.00, packUnit: "Gms", unitLabel: "Gms", is_verified: true },
+
+// 11. Bakery (Category ID: 11)
+{ id: 15, name: "Bread", category: "Bakery", categoryId: 11, price: 60.00, packSize: 1.00, packUnit: "Pack", unitLabel: "Pack", is_verified: true },
+{ id: 92, name: "Pizza Base", category: "Bakery", categoryId: 11, price: 50.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 12. Frozen / Cold (Category ID: 12)
+{ id: 41, name: "French Fries", category: "Frozen / Cold", categoryId: 12, price: 350.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 58, name: "Ice", category: "Frozen / Cold", categoryId: 12, price: 25.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 59, name: "Ice Cream", category: "Frozen / Cold", categoryId: 12, price: 100.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 80, name: "Mozzarella Cheese", category: "Frozen / Cold", categoryId: 12, price: 550.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 104, name: "Spring Roll Sheet", category: "Frozen / Cold", categoryId: 12, price: 220.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 109, name: "Sweet Corn", category: "Frozen / Cold", categoryId: 12, price: 360.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 127, name: "Cheese Slice", category: "Frozen / Cold", categoryId: 12, price: 0.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+
+// 13. Sauce (Category ID: 13)
+{ id: 49, name: "Green Chili Sauce", category: "Sauce", categoryId: 13, price: 60.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 94, name: "Pizza Sauce", category: "Sauce", categoryId: 13, price: 210.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 99, name: "Red Chili Sauce", category: "Sauce", categoryId: 13, price: 60.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 108, name: "Sweet Chili Sauce", category: "Sauce", categoryId: 13, price: 270.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 114, name: "Tomato Ketchup", category: "Sauce", categoryId: 13, price: 105.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 130, name: "Ketchup", category: "Sauce", categoryId: 13, price: 0.00, packSize: 1.00, packUnit: "Packets", unitLabel: "Packets", is_verified: true },
+{ id: 131, name: "Sweet Chilli Sauce", category: "Sauce", categoryId: 13, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 14. Non Veg (Category ID: 14)
+{ id: 24, name: "Chicken", category: "Non Veg", categoryId: 14, price: 240.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 25, name: "Chicken Boneless", category: "Non Veg", categoryId: 14, price: 280.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 26, name: "Chicken Seekh Kabab", category: "Non Veg", categoryId: 14, price: 700.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 39, name: "Eggs", category: "Non Veg", categoryId: 14, price: 210.00, packSize: 1.00, packUnit: "Pc", unitLabel: "Pc", is_verified: true },
+{ id: 82, name: "Mutton", category: "Non Veg", categoryId: 14, price: 760.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 128, name: "Boneless Chicken", category: "Non Veg", categoryId: 14, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 129, name: "Mutton Seekh Kabab", category: "Non Veg", categoryId: 14, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 15. Vegetables (Category ID: 15)
+{ id: 5, name: "Arbi", category: "Vegetables", categoryId: 15, price: 76.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 10, name: "Beans", category: "Vegetables", categoryId: 15, price: 180.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 11, name: "Bhindi", category: "Vegetables", categoryId: 15, price: 40.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 17, name: "Brinjal", category: "Vegetables", categoryId: 15, price: 60.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 19, name: "Cabbage", category: "Vegetables", categoryId: 15, price: 35.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 20, name: "Carrot", category: "Vegetables", categoryId: 15, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 21, name: "Cauliflower", category: "Vegetables", categoryId: 15, price: 50.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 43, name: "Garlic", category: "Vegetables", categoryId: 15, price: 280.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 46, name: "Ginger", category: "Vegetables", categoryId: 15, price: 180.00, packSize: 100.00, packUnit: "Liter", unitLabel: "Gms", is_verified: true },
+{ id: 50, name: "Green Mirchi Big", category: "Vegetables", categoryId: 15, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 65, name: "Karela", category: "Vegetables", categoryId: 15, price: 50.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 66, name: "Khira", category: "Vegetables", categoryId: 15, price: 38.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 67, name: "Lemon", category: "Vegetables", categoryId: 15, price: 110.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 71, name: "Matar", category: "Vegetables", categoryId: 15, price: 45.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 76, name: "Mirchi Choti", category: "Vegetables", categoryId: 15, price: 120.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 86, name: "Onion", category: "Vegetables", categoryId: 15, price: 25.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 97, name: "Potato", category: "Vegetables", categoryId: 15, price: 18.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 101, name: "Shimla Mirch", category: "Vegetables", categoryId: 15, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 113, name: "Tomato", category: "Vegetables", categoryId: 15, price: 54.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 132, name: "Shimla Mirchi", category: "Vegetables", categoryId: 15, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 133, name: "Hari Mirchi choti", category: "Vegetables", categoryId: 15, price: 120.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 134, name: "Hari mirchi Big", category: "Vegetables", categoryId: 15, price: 80.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 135, name: "Kaddu", category: "Vegetables", categoryId: 15, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 136, name: "Sukha Mrchi", category: "Vegetables", categoryId: 15, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+{ id: 137, name: "Loki", category: "Vegetables", categoryId: 15, price: 0.00, packSize: 1.00, packUnit: "Kg", unitLabel: "Kg", is_verified: true },
+
+// 16. Crockery & Cutlery (Category ID: 16)
+{ id: 145, name: "Plates", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 146, name: "Bowls", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 147, name: "Cups", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 148, name: "Glasses", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 149, name: "Spoons", category: "Crockery & Cutlery", categoryId: 16, price: 40.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 150, name: "Forks", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 151, name: "Knife", category: "Crockery & Cutlery", categoryId: 16, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+
+// 17. Disposables (Category ID: 17)
+{ id: 152, name: "Quarter plates", category: "Disposables", categoryId: 17, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 153, name: "Pizza Plates", category: "Disposables", categoryId: 17, price: 120.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 154, name: "Dinner Plates", category: "Disposables", categoryId: 17, price: 170.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 155, name: "Water Glass", category: "Disposables", categoryId: 17, price: 35.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 156, name: "Tissue paper", category: "Disposables", categoryId: 17, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+
+// 18. Kitchen Appliance Repairs (Category ID: 18)
+{ id: 168, name: "Fridge", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 169, name: "Mixer", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 170, name: "Air fryer", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 171, name: "Exhaust fan", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 173, name: "Microwave Oven", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 174, name: "Kettle", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true },
+{ id: 175, name: "Sandwich Maker", category: "Kitchen Appliance Repairs", categoryId: 18, price: 0.00, packSize: 1.00, packUnit: "Pcs", unitLabel: "Pcs", is_verified: true }
+];
+
+
+export const INITIAL_INVENTORY: InventoryItem[] = initialCatalogItems.map(item => ({
+  id: item.id.toString(),
+  name: item.name,
+  category: item.category,
+  currentStock: 10,
+  minThreshold: 5,
+  unit: item.unitLabel
+}));
+
 
 export const INITIAL_REQUISITIONS: Requisition[] = [
   {

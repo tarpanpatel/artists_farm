@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -18,7 +18,6 @@ import {
   Edit2,
   Trash2,
   Upload,
-  UserGear,
   Key,
   Store
 } from 'lucide-react';
@@ -30,6 +29,11 @@ interface StaffManagementProps {
   attendance: AttendanceRecord[];
   onAddStaff: (member: StaffMember) => void;
   onRecordAttendance: (record: AttendanceRecord) => void;
+  activeMenuItemKey?: string;
+  onReloadStaff?: () => void;
+  expenses?: any[];
+  auditLogs?: any[];
+  onLogAudit?: (actionText: string) => void;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -37,8 +41,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   attendance,
   onAddStaff,
   onRecordAttendance,
+  activeMenuItemKey,
+  onReloadStaff,
+  expenses,
+  auditLogs,
+  onLogAudit,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
+
+  useEffect(() => {
+    if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
+    else if (activeMenuItemKey === 'staff_directory_salaries') setActiveSubTab('roster');
+    else if (activeMenuItemKey === 'staff_permissions' || activeMenuItemKey === 'staff_payees_control') setActiveSubTab('control_center');
+    else setActiveSubTab('calendar');
+  }, [activeMenuItemKey]);
 
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>(INITIAL_USER_ACCOUNTS);

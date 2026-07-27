@@ -37,25 +37,41 @@ if (isset($pdo)) {
     }
 }
 
-if (preg_match('/^serve_item_(\d+)$/', $callback_data, $matches)) {
-    $item_id = $matches[1];
+if (preg_match('/^serve_item_(\d+)_(\d+)$/', $callback_data, $matches)) {
+    $order_id = $matches[1];
+    $item_index = intval($matches[2]);
 
     if (isset($pdo)) {
+        // Find the specific order_item by order_id and array position
         $checkStmt = $pdo->prepare("
-            SELECT oi.id, oi.order_id, oi.item_status, oi.quantity, mi.name as dish_name, o.guest_id, g.guest_name, '1' as table_no 
+            SELECT oi.id, oi.order_id, oi.item_status, oi.quantity, mi.name as dish_name, o.guest_id, g.guest_name, g.room_number as table_no
             FROM order_items oi 
             JOIN orders o ON oi.order_id = o.id 
             JOIN menu_items mi ON oi.menu_item_id = mi.id 
             LEFT JOIN guests g ON o.guest_id = g.id
-            WHERE oi.id = ?
+            WHERE oi.order_id = ?
+            ORDER BY oi.id ASC
         ");
-        $checkStmt->execute([$item_id]);
-        $itemRow = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        $checkStmt->execute([$order_id]);
+        $allItems = $checkStmt->fetchAll(PDO::FETCH_ASSOC);
+        $itemRow = $allItems[$item_index] ?? null;
 
         if ($itemRow && strtolower($itemRow['item_status']) !== 'served') {
             
-            $pdo->prepare("UPDATE order_items SET item_status = 'Served', served_at = NOW(), served_by_name = ? WHERE id = ?")
-                ->execute([$staff_name, $item_id]);
+            $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE id = ?")
+                ->execute([$itemRow['id']]);
+
+            // Immutable Audit Log trace
+            try {
+                $guestName = $itemRow['guest_name'] ?: 'Walk-in';
+                $actionText = "{$staff_name} marked {$itemRow['quantity']}x {$itemRow['dish_name']} served for guest {$guestName}";
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (timestamp, user, action) VALUES (?, ?, ?)");
+                $stmtAudit->execute([
+                    date('Y-m-d H:i:s'),
+                    $staff_name,
+                    $actionText
+                ]);
+            } catch (PDOException $ea) {}
 
             // Calculate actual remaining unserved items for this order ticket
             $remStmt = $pdo->prepare("
@@ -68,13 +84,25 @@ if (preg_match('/^serve_item_(\d+)$/', $callback_data, $matches)) {
 
             // Automatically mark the entire order completed if all items are served
             if ($remaining_count === 0) {
-                $pdo->prepare("UPDATE orders SET status = 'Completed' WHERE id = ?")->execute([$itemRow['order_id']]);
+                $pdo->prepare("UPDATE orders SET status = 'Completed', served_at = NOW(), served_by_name = ? WHERE id = ?")
+                    ->execute([$staff_name, $itemRow['order_id']]);
             }
 
             $remaining_text = $remaining_count > 0 ? "$remaining_count item(s) pending" : "0 (All items served!)";
 
             // Edit current message in Telegram to clear button
-            $edited_text = "✅ <b>DISH SERVED</b>\n\n" . $original_text . "\n\n👨‍🍳 <b>Served By:</b> {$staff_name}\n🕒 <b>At:</b> " . date('h:i A');
+            $editTplStmt = $pdo->prepare("SELECT content FROM system_telegram_templates WHERE template_key = 'webhook_dish_served_edit' LIMIT 1");
+            $editTplStmt->execute();
+            $editTplContent = $editTplStmt->fetchColumn();
+            if ($editTplContent) {
+                $edited_text = str_replace(
+                    ['{original_text}', '{staff_name}', '{serve_time}'],
+                    [$original_text, $staff_name, date('h:i A')],
+                    $editTplContent
+                );
+            } else {
+                $edited_text = "✅ <b>DISH SERVED</b>\n\n" . $original_text . "\n\n👨‍🍳 <b>Served By:</b> {$staff_name}\n🕒 <b>At:</b> " . date('h:i A');
+            }
             if ($chat_id && $message_id) {
                 editTelegramMessageText($chat_id, $message_id, $edited_text, null); 
             }
@@ -111,6 +139,46 @@ if (preg_match('/^serve_item_(\d+)$/', $callback_data, $matches)) {
         } else {
             answerTelegramCallbackQuery($cq_id, "This dish is already marked as served.", true);
         }
+    }
+} elseif (preg_match('/^serve_order_(\d+)$/', $callback_data, $matches)) {
+    $order_id = $matches[1];
+
+    if (isset($pdo)) {
+        // Mark all unserved items in this order as served
+        $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')")
+            ->execute([$order_id]);
+
+        $pdo->prepare("UPDATE orders SET status = 'Completed', served_at = NOW(), served_by_name = ? WHERE id = ?")
+            ->execute([$staff_name, $order_id]);
+
+        // Audit log
+        try {
+            $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (timestamp, user, action) VALUES (?, ?, ?)");
+            $stmtAudit->execute([
+                date('Y-m-d H:i:s'),
+                $staff_name,
+                "Staff member {$staff_name} marked entire order #{$order_id} as served via Telegram callback"
+            ]);
+        } catch (PDOException $ea) {}
+
+        // Edit message to remove button
+        $editTplStmt2 = $pdo->prepare("SELECT content FROM system_telegram_templates WHERE template_key = 'webhook_order_completed' LIMIT 1");
+        $editTplStmt2->execute();
+        $editTplContent2 = $editTplStmt2->fetchColumn();
+        if ($editTplContent2) {
+            $edited_text = str_replace(
+                ['{original_text}', '{staff_name}', '{serve_time}'],
+                [$original_text, $staff_name, date('h:i A')],
+                $editTplContent2
+            );
+        } else {
+            $edited_text = "✅ <b>ORDER COMPLETED</b>\n\n" . $original_text . "\n\n👨‍🍳 <b>Fulfilled By:</b> {$staff_name}\n🕒 <b>At:</b> " . date('h:i A');
+        }
+        if ($chat_id && $message_id) {
+            editTelegramMessageText($chat_id, $message_id, $edited_text, null);
+        }
+
+        answerTelegramCallbackQuery($cq_id, "Order #{$order_id} marked as completed!");
     }
 }
 

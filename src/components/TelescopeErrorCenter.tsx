@@ -13,9 +13,11 @@ import {
   Clock,
   Terminal,
   Server,
-  Trash2
+  Trash2,
+  Lock
 } from 'lucide-react';
 import { getTelescopeLogs, clearTelescopeLogs, TelescopeLogEntry } from '../utils/telescopeLogger';
+import { fetchAuditLogsFromDB } from '../services/api';
 
 interface LogEntry extends TelescopeLogEntry {}
 
@@ -33,6 +35,7 @@ export const TelescopeErrorCenter: React.FC = () => {
     telegram: 0,
     security: 0,
     404: 0,
+    login: 0,
   });
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -52,7 +55,6 @@ export const TelescopeErrorCenter: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'success' && Array.isArray(data.logs)) {
-          // Merge server logs if available
           const existingIds = new Set(allLogs.map((l) => l.id));
           for (const sLog of data.logs) {
             if (!existingIds.has(sLog.id)) {
@@ -65,6 +67,37 @@ export const TelescopeErrorCenter: React.FC = () => {
       // Standalone client mode notice
     }
 
+    // For login portal, also fetch audit logs from DB
+    if (activePortal === 'login') {
+      try {
+        const auditLogs = await fetchAuditLogsFromDB();
+        const loginLogs = (auditLogs || []).filter((log: any) => log.module === 'login');
+        const existingIds = new Set(allLogs.map((l) => l.id));
+        for (const al of loginLogs) {
+          if (!existingIds.has(al.id)) {
+            allLogs.push({
+              id: al.id,
+              portal: 'login',
+              severity: al.status === 'Failed' ? 'Warning' : 'Info',
+              msg: al.action,
+              origin: al.user,
+              timestamp: al.timestamp,
+              details: {
+                browser: al.browser,
+                os: al.os,
+                device_type: al.device_type,
+                ip_address: al.ip_address,
+                user_agent: al.user_agent,
+                status: al.status,
+              },
+            });
+          }
+        }
+      } catch (err) {
+        // Silent fail for audit log fetch
+      }
+    }
+
     // Compute portal counts across all logs
     const newCounts: Record<string, number> = {
       requests: 0,
@@ -74,6 +107,7 @@ export const TelescopeErrorCenter: React.FC = () => {
       telegram: 0,
       security: 0,
       404: 0,
+      login: 0,
     };
 
     allLogs.forEach((log) => {
@@ -163,6 +197,8 @@ export const TelescopeErrorCenter: React.FC = () => {
         return <ShieldAlert className="w-4 h-4 text-purple-400" />;
       case '404':
         return <Unlink className="w-4 h-4 text-pink-400" />;
+      case 'login':
+        return <Lock className="w-4 h-4 text-orange-400" />;
       default:
         return <Terminal className="w-4 h-4 text-slate-400" />;
     }
@@ -190,6 +226,7 @@ export const TelescopeErrorCenter: React.FC = () => {
     { key: 'telegram', label: 'Telegram API', icon: <Send className="w-4 h-4 text-sky-400" /> },
     { key: 'security', label: 'Security Audits', icon: <ShieldAlert className="w-4 h-4 text-purple-400" /> },
     { key: '404', label: '404 Sentinel', icon: <Unlink className="w-4 h-4 text-pink-400" /> },
+    { key: 'login', label: 'Login Portal', icon: <Lock className="w-4 h-4 text-orange-400" /> },
   ];
 
   return (
@@ -216,10 +253,10 @@ export const TelescopeErrorCenter: React.FC = () => {
         <div className="flex items-center gap-4 text-xs font-sans">
           <button
             onClick={() => {
-              if (confirm('Clear all Telescope logs and reset to defaults?')) {
-                clearTelescopeLogs();
-                fetchLogs();
-              }
+              (window as any).showConfirm('Clear all Telescope logs and reset to defaults?', () => {
+                localStorage.removeItem('telescopeLogs');
+                window.location.reload();
+              });
             }}
             className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700 cursor-pointer"
             title="Clear and reset Telescope logs"

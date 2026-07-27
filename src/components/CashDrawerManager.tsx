@@ -1,0 +1,429 @@
+import React, { useState, useEffect } from 'react';
+import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, X, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { CashDrawerEntry, CashDrawerSummary, StaffMember } from '../types';
+import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, fetchStaffUsersFromDB, resolveTelegramTemplate } from '../services/api';
+
+interface CashDrawerManagerProps {
+  staff: StaffMember[];
+  activeRole?: string;
+  onLogAudit?: (action: string, extra?: any) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: string) => void;
+}
+
+export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
+  staff,
+  activeRole = 'Super Admin',
+  onLogAudit,
+  onDispatchTelegram,
+}) => {
+  const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
+  const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeForm, setActiveForm] = useState<'handover' | 'market_expense' | 'manual_adjustment'>('handover');
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [amount, setAmount] = useState<number | ''>('');
+  const [handedTo, setHandedTo] = useState('');
+  const [notes, setNotes] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+
+  const isAdmin = activeRole === 'Super Admin' || activeRole === 'Admin';
+
+  const loadAll = async () => {
+    setIsLoading(true);
+    const [sumData, entriesData] = await Promise.all([
+      fetchCashDrawerSummaryFromDB(),
+      fetchDrawerEntriesFromDB(),
+    ]);
+    if (sumData && sumData.length > 0) setSummaries(sumData);
+    if (entriesData && entriesData.length > 0) setDrawerEntries(entriesData);
+    setIsLoading(false);
+  };
+
+  useEffect(() => { loadAll(); }, []);
+
+  const selectedStaff = summaries.find(s => s.staffId === selectedStaffId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaffId || !amount || Number(amount) <= 0) return;
+
+    const staffMember = summaries.find(s => s.staffId === selectedStaffId);
+    if (!staffMember) return;
+
+    if (activeForm === 'handover' && Number(amount) > staffMember.netBalance) {
+      if (!window.confirm(`Warning: Handover amount (₹${amount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`)) {
+        return;
+      }
+    }
+
+    const entry = {
+      staff_id: selectedStaffId,
+      staff_name: staffMember.username,
+      type: activeForm,
+      amount: Number(amount),
+      handed_to: activeForm === 'handover' ? handedTo : undefined,
+      notes: notes || undefined,
+    };
+
+    const ok = await addDrawerEntryToDB(entry);
+    if (ok) {
+      const typeLabel = activeForm === 'handover' ? 'Cash Handover' : activeForm === 'market_expense' ? 'Market Expense' : 'Manual Adjustment';
+      onLogAudit?.(`Recorded ${typeLabel}: ₹${amount} for ${staffMember.staffName}${activeForm === 'handover' ? ` (handed to ${handedTo})` : ''}`);
+
+      if (onDispatchTelegram) {
+        const emoji = activeForm === 'handover' ? '🤝' : activeForm === 'market_expense' ? '🛒' : '⚙️';
+        const fallbackMsg = `${emoji} <b>CASH DRAWER ${typeLabel.toUpperCase()}</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(amount).toLocaleString('en-IN')}</b>${activeForm === 'handover' ? `\n• Handed To: <b>${handedTo}</b>` : ''}${notes ? `\n• Notes: ${notes}` : ''}\n• Net Balance After: <b>₹${activeForm === 'handover' ? (staffMember.netBalance - Number(amount)).toLocaleString('en-IN') : staffMember.netBalance.toLocaleString('en-IN')}</b>`;
+        const templateVars: Record<string, string> = {
+          staff_name: staffMember.staffName,
+          action_type: typeLabel,
+          amount: String(Number(amount).toLocaleString('en-IN')),
+          remarks: notes || (activeForm === 'handover' ? `Handed to ${handedTo}` : ''),
+        };
+        const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
+        onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance');
+      }
+
+      setAmount('');
+      setHandedTo('');
+      setNotes('');
+      loadAll();
+    }
+  };
+
+  const filteredSummaries = summaries.filter(s => {
+    const text = `${s.staffName} ${s.username} ${s.role}`.toLowerCase();
+    return text.includes(searchQuery.toLowerCase());
+  });
+
+  const totalCashInSystem = summaries.reduce((sum, s) => sum + s.netBalance, 0);
+  const totalCollected = summaries.reduce((sum, s) => sum + s.cashCollected, 0);
+  const totalHandedOver = summaries.reduce((sum, s) => sum + s.drawerHandovers, 0);
+
+  return (
+    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+      {/* Title */}
+      <div>
+        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          <Wallet className="w-6 h-6 text-emerald-600" />
+          Cash Drawer Manager
+        </h2>
+        <p className="text-xs text-gray-500 mt-1">
+          Digital lockbox tracking who holds the farm's cash. Accountability & reconciliation at a glance.
+        </p>
+      </div>
+
+      {/* System Totals Bar */}
+      <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-4 text-white shadow-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">Total Cash Collected</p>
+            <p className="text-2xl font-black mt-1">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-emerald-200 text-[10px]">From Guest Checkouts</p>
+          </div>
+          <div>
+            <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">Total Handed Over</p>
+            <p className="text-2xl font-black mt-1">₹{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-emerald-200 text-[10px]">To Owner / Next Shift</p>
+          </div>
+          <div>
+            <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">Net Cash In System</p>
+            <p className="text-2xl font-black mt-1">₹{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-emerald-200 text-[10px]">Unaccounted: Should Match Cash Box</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Action Tabs */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
+        {[
+          { key: 'handover' as const, label: '🤝 Handover', desc: 'Cash Given to Owner' },
+          { key: 'market_expense' as const, label: '🛒 Market Expense', desc: 'Cash Spent at Market' },
+          { key: 'manual_adjustment' as const, label: '⚙️ Adjustment', desc: 'Admin Correction' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveForm(tab.key)}
+            className={`flex-1 py-3 px-2 rounded-xl text-center transition-all cursor-pointer ${
+              activeForm === tab.key
+                ? 'bg-emerald-600 text-white shadow-md font-bold'
+                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold'
+            }`}
+          >
+            <div className="text-[11px]">{tab.label}</div>
+            <div className={`text-[9px] mt-0.5 ${activeForm === tab.key ? 'text-emerald-100' : 'text-slate-400'}`}>{tab.desc}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Entry Form */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-emerald-500 pl-2.5 mb-4 flex items-center gap-1.5">
+          {activeForm === 'handover' && '🤝 RECORD CASH HANDOVER'}
+          {activeForm === 'market_expense' && '🛒 RECORD MARKET EXPENSE'}
+          {activeForm === 'manual_adjustment' && '⚙️ MANUAL BALANCE ADJUSTMENT'}
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Select Staff Member *</label>
+              <select
+                required
+                value={selectedStaffId}
+                onChange={e => setSelectedStaffId(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
+              >
+                <option value="">-- Choose Staff --</option>
+                {summaries.map(s => (
+                  <option key={s.staffId} value={s.staffId}>
+                    {s.staffName} (Balance: ₹{s.netBalance.toLocaleString('en-IN')})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Amount (₹) *</label>
+              <input
+                type="number"
+                required
+                min="1"
+                step="any"
+                value={amount}
+                onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="Enter amount"
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-lg"
+              />
+              {selectedStaff && activeForm === 'handover' && amount && Number(amount) > selectedStaff.netBalance && (
+                <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Exceeds current balance of ₹{selectedStaff.netBalance.toLocaleString('en-IN')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {activeForm === 'handover' && (
+            <div>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Handing Over To *</label>
+              <select
+                required
+                value={handedTo}
+                onChange={e => setHandedTo(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
+              >
+                <option value="">-- Select Recipient --</option>
+                <option value="Tarpan (Owner)">Tarpan (Owner)</option>
+                {staff.filter(s => s.status === 'Active').map(s => (
+                  <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Notes (Optional)</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder={activeForm === 'handover' ? 'e.g., End of day handover, shift change...' : activeForm === 'market_expense' ? 'e.g., Vegetables from local market...' : 'e.g., Correcting yesterday\'s error...'}
+              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
+            />
+          </div>
+
+          {/* Balance Preview */}
+          {selectedStaff && (
+            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                <span>Current Net Balance</span>
+                <span className="text-slate-900 dark:text-white text-sm">₹{selectedStaff.netBalance.toLocaleString('en-IN')}</span>
+              </div>
+              {amount && Number(amount) > 0 && (
+                <div className="flex items-center justify-between text-[10px] font-bold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                  <span>After This {activeForm === 'handover' ? 'Handover' : activeForm === 'market_expense' ? 'Expense' : 'Adjustment'}</span>
+                  <span className="text-sm">
+                    ₹{(activeForm === 'manual_adjustment'
+                      ? selectedStaff.netBalance + Number(amount)
+                      : selectedStaff.netBalance - Number(amount)
+                    ).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {activeForm === 'handover' && 'RECORD HANDOVER'}
+                {activeForm === 'market_expense' && 'RECORD MARKET EXPENSE'}
+                {activeForm === 'manual_adjustment' && 'APPLY ADJUSTMENT'}
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Staff Balance Cards */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-extrabold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+            <Users className="w-4 h-4 text-emerald-600" />
+            STAFF CASH RESPONSIBILITY
+          </h3>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Filter staff..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-[11px] font-medium focus:border-emerald-500 focus:outline-hidden w-48"
+            />
+            <Search className="absolute left-2 top-2 text-slate-400 w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="text-center p-6 text-slate-400 font-semibold flex items-center justify-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading drawer data...
+          </div>
+        ) : filteredSummaries.length === 0 ? (
+          <div className="text-center p-6 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold">
+            No staff data available.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filteredSummaries.map(s => (
+              <div
+                key={s.staffId}
+                className={`rounded-xl border-2 p-4 transition-all ${
+                  s.netBalance > 0
+                    ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20'
+                    : s.netBalance < 0
+                    ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-extrabold text-slate-900 dark:text-white text-sm">{s.staffName}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">{s.role}</p>
+                  </div>
+                  {s.netBalance > 0 ? (
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  ) : s.netBalance < 0 ? (
+                    <TrendingDown className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <IndianRupee className="w-5 h-5 text-slate-400" />
+                  )}
+                </div>
+
+                {/* Net Balance - Bold */}
+                <div className={`text-2xl font-black mb-3 ${
+                  s.netBalance > 0 ? 'text-emerald-700 dark:text-emerald-400' : s.netBalance < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'
+                }`}>
+                  ₹{s.netBalance.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                </div>
+
+                {/* Breakdown */}
+                <div className="space-y-1 text-[10px] font-semibold">
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                    <span>Cash Collected</span>
+                    <span>+₹{s.cashCollected.toLocaleString('en-IN')}</span>
+                  </div>
+                  {s.cashExpenses > 0 && (
+                    <div className="flex justify-between text-amber-700 dark:text-amber-400">
+                      <span>Cash Expenses</span>
+                      <span>-₹{s.cashExpenses.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  {s.drawerHandovers > 0 && (
+                    <div className="flex justify-between text-blue-700 dark:text-blue-400">
+                      <span>Handed Over</span>
+                      <span>-₹{s.drawerHandovers.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  {s.marketExpenses > 0 && (
+                    <div className="flex justify-between text-purple-700 dark:text-purple-400">
+                      <span>Market Expenses</span>
+                      <span>-₹{s.marketExpenses.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  {s.manualAdjustments !== 0 && (
+                    <div className={`flex justify-between ${s.manualAdjustments > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      <span>Adjustments</span>
+                      <span>{s.manualAdjustments > 0 ? '+' : '-'}₹{Math.abs(s.manualAdjustments).toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Drawer Entry History */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+        >
+          <h3 className="font-extrabold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+            <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
+            DRAWER ENTRY HISTORY
+            <span className="text-[10px] text-slate-400 font-semibold ml-1">({drawerEntries.length} entries)</span>
+          </h3>
+          <span className="text-slate-400 text-lg">{showHistory ? '▲' : '▼'}</span>
+        </button>
+
+        {showHistory && (
+          <div className="border-t border-slate-100 dark:border-slate-700 p-4">
+            {drawerEntries.length === 0 ? (
+              <div className="text-center p-6 text-slate-400 font-semibold">No drawer entries recorded yet.</div>
+            ) : (
+              <div className="overflow-x-auto text-xs">
+                <table className="w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">Date & Time</th>
+                      <th className="p-3">Staff</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Handed To</th>
+                      <th className="p-3">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {drawerEntries.slice(0, 20).map(entry => (
+                      <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="p-3 font-mono text-slate-500">{entry.created_at}</td>
+                        <td className="p-3 font-semibold">{entry.staff_name}</td>
+                        <td className="p-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            entry.type === 'market_expense' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                            'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                          }`}>
+                            {entry.type === 'handover' ? '🤝 Handover' : entry.type === 'market_expense' ? '🛒 Market' : '⚙️ Adjustment'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</td>
+                        <td className="p-3 text-slate-500">{entry.handed_to || '-'}</td>
+                        <td className="p-3 text-slate-500 text-[10px] max-w-[200px] truncate">{entry.notes || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

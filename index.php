@@ -6,6 +6,11 @@
 
 $dist_index = __DIR__ . '/dist/index.html';
 
+// Prevent caching of the main entry point to ensure Vite HMR and new builds always load
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 if (file_exists($dist_index)) {
     // Serve the production single-page application built from React
     $html = file_get_contents($dist_index);
