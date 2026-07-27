@@ -51,6 +51,7 @@ switch ($action) {
     case 'add_menu_item':
     case 'update_menu_item':
     case 'delete_menu_item':
+    case 'dedup_menu':
     case 'get_nav_menu':
     case 'save_nav_menu':
         handleMenuRequests($pdo, $request_method, $action);

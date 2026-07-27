@@ -781,64 +781,64 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </span>
                 </div>
 
-                {/* Menu Items Grid with Dish Thumbnails (Mobile: 1 column, Sm: 2 cols, Lg: 3 cols) */}
+                {/* Menu Items Grid with Dish Thumbnails (Compact POS Layout) */}
                 {filteredPosMenuItems.length === 0 ? (
                   <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
                     <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                     <p className="text-slate-600 dark:text-slate-400 font-bold text-xs">No food items found matching "{posSearch}"</p>
                   </div>
                 ) : (
-                  <div className="pos-menu-grid grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {filteredPosMenuItems.map((item) => {
                       const isRecentlyAdded = recentlyAddedId === item.id;
                       return (
                         <div
                           key={item.id}
-                          className={`pos-food-card bg-white dark:bg-slate-800 rounded-xl border p-2 flex items-center justify-between gap-2.5 transition-all ${
+                          className={`pos-food-card bg-white dark:bg-slate-800 rounded-lg border p-1.5 flex flex-col gap-1.5 transition-all ${
                             isRecentlyAdded
                               ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-xs'
                               : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            {/* Dish Image Thumbnail */}
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[10px]">
-                              {item.imagePath ? (
-                                <img
-                                  src={item.imagePath}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <span>Dish</span>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">
-                                {item.name}
-                              </h4>
-                              <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[11px] mt-0.5">₹{item.price.toFixed(2)}</p>
-                            </div>
+                          {/* Dish Image Thumbnail - Compact */}
+                          <div className="w-full h-14 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[8px]">
+                            {item.imagePath ? (
+                              <img
+                                src={item.imagePath}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <UtensilsCrossed className="w-4 h-4 text-slate-300" />
+                            )}
                           </div>
 
-                          <button
-                            onClick={() => handleAddToCartWithFeedback(item)}
-                            className={`btn-add-to-cart shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1 cursor-pointer min-h-[36px] ${
-                              isRecentlyAdded
-                                ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
-                                : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
-                            }`}
-                          >
-                            {isRecentlyAdded ? (
-                              <span>✓ Added!</span>
-                            ) : (
-                              <span>+ Add</span>
-                            )}
-                          </button>
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">
+                                {item.name}
+                              </h4>
+                              <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                            </div>
+
+                            <button
+                              onClick={() => handleAddToCartWithFeedback(item)}
+                              className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-extrabold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
+                                isRecentlyAdded
+                                  ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
+                                  : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
+                              }`}
+                            >
+                              {isRecentlyAdded ? (
+                                <span className="text-[9px]">✓</span>
+                              ) : (
+                                <span>+</span>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

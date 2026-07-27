@@ -259,9 +259,16 @@ function handleMenuRequests($pdo, $request_method, $action) {
         case 'dedup_menu':
             if ($request_method === 'POST') {
                 try {
-                    $pdo->exec("CREATE TEMPORARY TABLE IF NOT EXISTS tmp_dedup AS SELECT MIN(id) AS keep_id, name FROM menu_items GROUP BY name");
-                    $removed = $pdo->exec("DELETE FROM menu_items WHERE id NOT IN (SELECT keep_id FROM tmp_dedup)");
-                    $pdo->exec("DROP TEMPORARY TABLE IF EXISTS tmp_dedup");
+                    $minIds = $pdo->query("SELECT MIN(id) AS keep_id, name FROM menu_items GROUP BY name")->fetchAll(PDO::FETCH_ASSOC);
+                    $keepIds = array_column($minIds, 'keep_id');
+                    if (count($keepIds) > 0) {
+                        $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
+                        $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id NOT IN ($placeholders)");
+                        $stmt->execute($keepIds);
+                        $removed = $stmt->rowCount();
+                    } else {
+                        $removed = 0;
+                    }
                     $count = $pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
                     echo json_encode(['status' => 'success', 'removed' => $removed, 'remaining' => (int)$count]);
                 } catch (PDOException $e) {
