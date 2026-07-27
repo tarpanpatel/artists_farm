@@ -39,7 +39,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
 
                 $data = array_map(function($r) {
                     return [
-                        'id' => (string)$r['id'],
+                        'id' => (int)$r['id'],
                         'name' => $r['name'],
                         'categoryId' => isset($r['category_id']) && $r['category_id'] !== null ? (string)$r['category_id'] : null,
                         'category' => $r['category'],
@@ -80,7 +80,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     } catch (PDOException $e1) {
                         $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, price, available, image_path) VALUES (?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
-                            $input['id'] ?? ('m-' . time()),
+                            $input['id'] ?? null,
                             $input['name'],
                             $input['category'] ?? 'Starters',
                             $input['price'],

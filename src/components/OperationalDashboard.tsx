@@ -74,27 +74,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </button>
       </div>
 
-      {/* Flowbite Stock Alerts Banner */}
-      {stockAlerts.length > 0 && (
-        <div className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs" role="alert">
-          <div className="flex items-center gap-2 font-bold text-xs text-red-700">
-            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-            <span>Low Stock Alert Boundary Exceeded ({stockAlerts.length} items):</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {stockAlerts.map((alert) => (
-              <span
-                key={alert.id}
-                className="bg-red-100 border border-red-300 text-red-800 text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1"
-              >
-                <span>{alert.name}</span>
-                <span className="text-red-600 font-normal">({alert.currentStock} {alert.unit})</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Flowbite Stat Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">

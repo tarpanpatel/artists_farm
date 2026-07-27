@@ -711,7 +711,7 @@ export async function addMenuItemDB(item: any): Promise<boolean> {
   }
 }
 
-export async function updateMenuItemDB(id: string, updated: any): Promise<boolean> {
+export async function updateMenuItemDB(id: number, updated: any): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}?action=update_menu_item`, {
       method: 'POST',
@@ -726,7 +726,7 @@ export async function updateMenuItemDB(id: string, updated: any): Promise<boolea
   }
 }
 
-export async function deleteMenuItemDB(id: string): Promise<boolean> {
+export async function deleteMenuItemDB(id: number): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}?action=delete_menu_item`, {
       method: 'POST',

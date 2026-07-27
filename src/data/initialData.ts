@@ -185,94 +185,94 @@ export const INITIAL_RECEIPTS: BillingReceipt[] = [
 
 export const INITIAL_MENU: MenuItem[] = [
   // Starters
-  { id: '1', name: 'Paneer Tikka (8-10pcs)', category: 'Starters', price: 249, available: true },
-  { id: '2', name: 'Paneer Pakoda (10pcs)', category: 'Starters', price: 195, available: true },
-  { id: '3', name: 'Pyaz Pakoda (10pcs)', category: 'Starters', price: 149, available: true },
-  { id: '4', name: 'Aloo Pakoda (6-8pcs)', category: 'Starters', price: 149, available: true },
-  { id: '5', name: 'Mix-Veg Pakoda (12pcs)', category: 'Starters', price: 198, available: true },
-  { id: '6', name: 'Kabuli Chana Chaat', category: 'Starters', price: 149, available: true },
-  { id: '7', name: 'Kaala Chana Chaat', category: 'Starters', price: 149, available: true },
-  { id: '8', name: 'Peanut Masala', category: 'Starters', price: 125, available: true },
-  { id: '9', name: 'Pani Puri (8)', category: 'Starters', price: 49, available: true },
-  { id: '10', name: 'French Fries Regular', category: 'Starters', price: 149, available: true },
-  { id: '11', name: 'French Fries Peri-Peri', category: 'Starters', price: 179, available: true },
-  { id: '12', name: 'Chicken Tikka', category: 'Starters', price: 359, available: true },
-  { id: '13', name: 'Chicken Seekh Kebab', category: 'Starters', price: 289, available: true },
-  { id: '14', name: 'Mutton Seekh Kebab', category: 'Starters', price: 389, available: true },
-  { id: '15', name: 'Roasted Papad', category: 'Starters', price: 30, available: true },
-  { id: '16', name: 'Fried Papad', category: 'Starters', price: 40, available: true },
-  { id: '17', name: 'Masala Papad', category: 'Starters', price: 49, available: true },
-  { id: '74', name: 'Laal Maans', category: 'Starters', price: 800, available: true },
+  { id: 1, name: 'Paneer Tikka (8-10pcs)', category: 'Starters', price: 249, available: true },
+  { id: 2, name: 'Paneer Pakoda (10pcs)', category: 'Starters', price: 195, available: true },
+  { id: 3, name: 'Pyaz Pakoda (10pcs)', category: 'Starters', price: 149, available: true },
+  { id: 4, name: 'Aloo Pakoda (6-8pcs)', category: 'Starters', price: 149, available: true },
+  { id: 5, name: 'Mix-Veg Pakoda (12pcs)', category: 'Starters', price: 198, available: true },
+  { id: 6, name: 'Kabuli Chana Chaat', category: 'Starters', price: 149, available: true },
+  { id: 7, name: 'Kaala Chana Chaat', category: 'Starters', price: 149, available: true },
+  { id: 8, name: 'Peanut Masala', category: 'Starters', price: 125, available: true },
+  { id: 9, name: 'Pani Puri (8)', category: 'Starters', price: 49, available: true },
+  { id: 10, name: 'French Fries Regular', category: 'Starters', price: 149, available: true },
+  { id: 11, name: 'French Fries Peri-Peri', category: 'Starters', price: 179, available: true },
+  { id: 12, name: 'Chicken Tikka', category: 'Starters', price: 359, available: true },
+  { id: 13, name: 'Chicken Seekh Kebab', category: 'Starters', price: 289, available: true },
+  { id: 14, name: 'Mutton Seekh Kebab', category: 'Starters', price: 389, available: true },
+  { id: 15, name: 'Roasted Papad', category: 'Starters', price: 30, available: true },
+  { id: 16, name: 'Fried Papad', category: 'Starters', price: 40, available: true },
+  { id: 17, name: 'Masala Papad', category: 'Starters', price: 49, available: true },
+  { id: 74, name: 'Laal Maans', category: 'Starters', price: 800, available: true },
 
   // Chinese
-  { id: '18', name: 'Chow mein', category: 'Chinese', price: 149, available: true },
-  { id: '19', name: 'Veg Spring roll (6-8pcs)', category: 'Chinese', price: 149, available: true },
-  { id: '20', name: 'Chilly Paneer (8-10pcs)', category: 'Chinese', price: 249, available: true },
-  { id: '21', name: 'Chilly Potatoes (8-10pcs)', category: 'Chinese', price: 198, available: true },
-  { id: '22', name: 'Sweet Corn Chaat', category: 'Chinese', price: 198, available: true },
-  { id: '23', name: 'Maggie Regular', category: 'Chinese', price: 98, available: true },
-  { id: '24', name: 'Masala Maggie', category: 'Chinese', price: 149, available: true },
-  { id: '25', name: 'Chinese Pakoda (6-8pcs)', category: 'Chinese', price: 169, available: true },
+  { id: 18, name: 'Chow mein', category: 'Chinese', price: 149, available: true },
+  { id: 19, name: 'Veg Spring roll (6-8pcs)', category: 'Chinese', price: 149, available: true },
+  { id: 20, name: 'Chilly Paneer (8-10pcs)', category: 'Chinese', price: 249, available: true },
+  { id: 21, name: 'Chilly Potatoes (8-10pcs)', category: 'Chinese', price: 198, available: true },
+  { id: 22, name: 'Sweet Corn Chaat', category: 'Chinese', price: 198, available: true },
+  { id: 23, name: 'Maggie Regular', category: 'Chinese', price: 98, available: true },
+  { id: 24, name: 'Masala Maggie', category: 'Chinese', price: 149, available: true },
+  { id: 25, name: 'Chinese Pakoda (6-8pcs)', category: 'Chinese', price: 169, available: true },
 
   // Pizza & Sandwich
-  { id: '26', name: 'OTC Pizza', category: 'Pizza & Sandwich', price: 198, available: true },
-  { id: '27', name: 'Paneer Pizza', category: 'Pizza & Sandwich', price: 298, available: true },
-  { id: '28', name: 'Cheese Corn Pizza', category: 'Pizza & Sandwich', price: 298, available: true },
-  { id: '29', name: 'Veg Grilled Sandwich', category: 'Pizza & Sandwich', price: 149, available: true },
-  { id: '30', name: 'Cheese Grilled Sandwich', category: 'Pizza & Sandwich', price: 198, available: true },
-  { id: '31', name: 'Cheesy Garlic Bread (6pcs)', category: 'Pizza & Sandwich', price: 149, available: true },
+  { id: 26, name: 'OTC Pizza', category: 'Pizza & Sandwich', price: 198, available: true },
+  { id: 27, name: 'Paneer Pizza', category: 'Pizza & Sandwich', price: 298, available: true },
+  { id: 28, name: 'Cheese Corn Pizza', category: 'Pizza & Sandwich', price: 298, available: true },
+  { id: 29, name: 'Veg Grilled Sandwich', category: 'Pizza & Sandwich', price: 149, available: true },
+  { id: 30, name: 'Cheese Grilled Sandwich', category: 'Pizza & Sandwich', price: 198, available: true },
+  { id: 31, name: 'Cheesy Garlic Bread (6pcs)', category: 'Pizza & Sandwich', price: 149, available: true },
 
   // Main Course
-  { id: '32', name: 'Shahi Paneer', category: 'Main Course', price: 285, available: true },
-  { id: '33', name: 'Kadhai Paneer', category: 'Main Course', price: 285, available: true },
-  { id: '34', name: 'Paneer Butter Masala', category: 'Main Course', price: 285, available: true },
-  { id: '35', name: 'Chicken Curry (4pcs)', category: 'Main Course', price: 389, available: true },
-  { id: '36', name: 'Mutton Curry (4pcs)', category: 'Main Course', price: 489, available: true },
-  { id: '37', name: 'Paneer Bhurji', category: 'Main Course', price: 298, available: true },
-  { id: '38', name: 'Jeera Aloo', category: 'Main Course', price: 249, available: true },
-  { id: '39', name: 'Gatta Masala', category: 'Main Course', price: 198, available: true },
-  { id: '40', name: 'Daal Tadka', category: 'Main Course', price: 198, available: true },
-  { id: '41', name: 'Daal Fry', category: 'Main Course', price: 149, available: true },
-  { id: '42', name: 'Kadhi Pakoda', category: 'Main Course', price: 198, available: true },
-  { id: '43', name: 'Sev Tamatar', category: 'Main Course', price: 249, available: true },
-  { id: '44', name: 'Dinner Buffet (Per Person)', category: 'Main Course', price: 600, available: true },
+  { id: 32, name: 'Shahi Paneer', category: 'Main Course', price: 285, available: true },
+  { id: 33, name: 'Kadhai Paneer', category: 'Main Course', price: 285, available: true },
+  { id: 34, name: 'Paneer Butter Masala', category: 'Main Course', price: 285, available: true },
+  { id: 35, name: 'Chicken Curry (4pcs)', category: 'Main Course', price: 389, available: true },
+  { id: 36, name: 'Mutton Curry (4pcs)', category: 'Main Course', price: 489, available: true },
+  { id: 37, name: 'Paneer Bhurji', category: 'Main Course', price: 298, available: true },
+  { id: 38, name: 'Jeera Aloo', category: 'Main Course', price: 249, available: true },
+  { id: 39, name: 'Gatta Masala', category: 'Main Course', price: 198, available: true },
+  { id: 40, name: 'Daal Tadka', category: 'Main Course', price: 198, available: true },
+  { id: 41, name: 'Daal Fry', category: 'Main Course', price: 149, available: true },
+  { id: 42, name: 'Kadhi Pakoda', category: 'Main Course', price: 198, available: true },
+  { id: 43, name: 'Sev Tamatar', category: 'Main Course', price: 249, available: true },
+  { id: 44, name: 'Dinner Buffet (Per Person)', category: 'Main Course', price: 600, available: true },
 
   // Rice & Roti
-  { id: '45', name: 'Plain Rice', category: 'Rice & Roti', price: 198, available: true },
-  { id: '46', name: 'Jeera Rice', category: 'Rice & Roti', price: 248, available: true },
-  { id: '47', name: 'Veg Pulao', category: 'Rice & Roti', price: 298, available: true },
-  { id: '48', name: 'Plain Chapati', category: 'Rice & Roti', price: 29, available: true },
-  { id: '49', name: 'Chapati With Butter', category: 'Rice & Roti', price: 38, available: true },
-  { id: '50', name: 'Paratha Plain', category: 'Rice & Roti', price: 59, available: true },
-  { id: '51', name: 'Aloo Paratha', category: 'Rice & Roti', price: 149, available: true },
-  { id: '52', name: 'Pyaz Paratha', category: 'Rice & Roti', price: 149, available: true },
+  { id: 45, name: 'Plain Rice', category: 'Rice & Roti', price: 198, available: true },
+  { id: 46, name: 'Jeera Rice', category: 'Rice & Roti', price: 248, available: true },
+  { id: 47, name: 'Veg Pulao', category: 'Rice & Roti', price: 298, available: true },
+  { id: 48, name: 'Plain Chapati', category: 'Rice & Roti', price: 29, available: true },
+  { id: 49, name: 'Chapati With Butter', category: 'Rice & Roti', price: 38, available: true },
+  { id: 50, name: 'Paratha Plain', category: 'Rice & Roti', price: 59, available: true },
+  { id: 51, name: 'Aloo Paratha', category: 'Rice & Roti', price: 149, available: true },
+  { id: 52, name: 'Pyaz Paratha', category: 'Rice & Roti', price: 149, available: true },
 
   // Breakfast
-  { id: '53', name: 'Bread Toast Butter (2)', category: 'Breakfast', price: 50, available: true },
-  { id: '54', name: 'Bread Toast Jam (2)', category: 'Breakfast', price: 60, available: true },
-  { id: '55', name: 'Boiled Eggs', category: 'Breakfast', price: 149, available: true },
-  { id: '56', name: 'Egg Bhurji', category: 'Breakfast', price: 149, available: true },
-  { id: '57', name: 'Poha', category: 'Breakfast', price: 98, available: true },
-  { id: '58', name: 'Bread Pakoda', category: 'Breakfast', price: 98, available: true },
-  { id: '59', name: 'French Toast', category: 'Breakfast', price: 149, available: true },
-  { id: '60', name: 'Omelette', category: 'Breakfast', price: 98, available: true },
-  { id: '61', name: 'Breakfast Buffet (Per Person)', category: 'Breakfast', price: 300, available: true },
+  { id: 53, name: 'Bread Toast Butter (2)', category: 'Breakfast', price: 50, available: true },
+  { id: 54, name: 'Bread Toast Jam (2)', category: 'Breakfast', price: 60, available: true },
+  { id: 55, name: 'Boiled Eggs', category: 'Breakfast', price: 149, available: true },
+  { id: 56, name: 'Egg Bhurji', category: 'Breakfast', price: 149, available: true },
+  { id: 57, name: 'Poha', category: 'Breakfast', price: 98, available: true },
+  { id: 58, name: 'Bread Pakoda', category: 'Breakfast', price: 98, available: true },
+  { id: 59, name: 'French Toast', category: 'Breakfast', price: 149, available: true },
+  { id: 60, name: 'Omelette', category: 'Breakfast', price: 98, available: true },
+  { id: 61, name: 'Breakfast Buffet (Per Person)', category: 'Breakfast', price: 300, available: true },
 
   // Raita & Salad
-  { id: '62', name: 'Boondi Raita', category: 'Raita & Salad', price: 95, available: true },
-  { id: '63', name: 'Veg Raita', category: 'Raita & Salad', price: 149, available: true },
-  { id: '64', name: 'Plain Curd', category: 'Raita & Salad', price: 58, available: true },
-  { id: '65', name: 'Chaach', category: 'Raita & Salad', price: 68, available: true },
-  { id: '66', name: 'Green Salad', category: 'Raita & Salad', price: 119, available: true },
+  { id: 62, name: 'Boondi Raita', category: 'Raita & Salad', price: 95, available: true },
+  { id: 63, name: 'Veg Raita', category: 'Raita & Salad', price: 149, available: true },
+  { id: 64, name: 'Plain Curd', category: 'Raita & Salad', price: 58, available: true },
+  { id: 65, name: 'Chaach', category: 'Raita & Salad', price: 68, available: true },
+  { id: 66, name: 'Green Salad', category: 'Raita & Salad', price: 119, available: true },
 
   // Beverages
-  { id: '67', name: 'Regular Tea', category: 'Beverages', price: 48, available: true },
-  { id: '68', name: 'Masala Tea', category: 'Beverages', price: 58, available: true },
-  { id: '69', name: 'Coffee', category: 'Beverages', price: 80, available: true },
-  { id: '70', name: 'Cold Coffee', category: 'Beverages', price: 148, available: true },
-  { id: '71', name: 'Nimbu Pani', category: 'Beverages', price: 49, available: true },
-  { id: '72', name: 'Nimbu Soda', category: 'Beverages', price: 59, available: true },
-  { id: '73', name: 'Hot Chocolate', category: 'Beverages', price: 249, available: true },
+  { id: 67, name: 'Regular Tea', category: 'Beverages', price: 48, available: true },
+  { id: 68, name: 'Masala Tea', category: 'Beverages', price: 58, available: true },
+  { id: 69, name: 'Coffee', category: 'Beverages', price: 80, available: true },
+  { id: 70, name: 'Cold Coffee', category: 'Beverages', price: 148, available: true },
+  { id: 71, name: 'Nimbu Pani', category: 'Beverages', price: 49, available: true },
+  { id: 72, name: 'Nimbu Soda', category: 'Beverages', price: 59, available: true },
+  { id: 73, name: 'Hot Chocolate', category: 'Beverages', price: 249, available: true },
 ];
 
 export const INITIAL_ORDERS: Order[] = [
@@ -284,8 +284,8 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-23 19:02:51',
     status: 'Pending',
     items: [
-      { menuItemId: '10', name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
-      { menuItemId: '16', name: 'Fried Papad', quantity: 1, unitPrice: 40 }
+      { menuItemId: 10, name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
+      { menuItemId: 16, name: 'Fried Papad', quantity: 1, unitPrice: 40 }
     ],
     totalAmount: 189
   },
@@ -297,8 +297,8 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-23 18:52:27',
     status: 'Pending',
     items: [
-      { menuItemId: '12', name: 'Chicken Tikka', quantity: 1, unitPrice: 359 },
-      { menuItemId: '13', name: 'Chicken Seekh Kebab', quantity: 1, unitPrice: 289 }
+      { menuItemId: 12, name: 'Chicken Tikka', quantity: 1, unitPrice: 359 },
+      { menuItemId: 13, name: 'Chicken Seekh Kebab', quantity: 1, unitPrice: 289 }
     ],
     totalAmount: 648
   },
@@ -310,7 +310,7 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 19:54:55',
     status: 'Pending',
     items: [
-      { menuItemId: '11', name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 }
+      { menuItemId: 11, name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 }
     ],
     totalAmount: 179
   },
@@ -322,7 +322,7 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 19:53:35',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '4', name: 'Aloo Pakoda (6-8pcs)', quantity: 1, unitPrice: 149 }
+      { menuItemId: 4, name: 'Aloo Pakoda (6-8pcs)', quantity: 1, unitPrice: 149 }
     ],
     totalAmount: 149
   },
@@ -334,8 +334,8 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 19:52:58',
     status: 'Pending',
     items: [
-      { menuItemId: '10', name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
-      { menuItemId: '16', name: 'Fried Papad', quantity: 1, unitPrice: 40 }
+      { menuItemId: 10, name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
+      { menuItemId: 16, name: 'Fried Papad', quantity: 1, unitPrice: 40 }
     ],
     totalAmount: 189
   },
@@ -347,8 +347,8 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 19:45:53',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '3', name: 'Pyaz Pakoda (10pcs)', quantity: 1, unitPrice: 149 },
-      { menuItemId: '8', name: 'Peanut Masala', quantity: 1, unitPrice: 125 }
+      { menuItemId: 3, name: 'Pyaz Pakoda (10pcs)', quantity: 1, unitPrice: 149 },
+      { menuItemId: 8, name: 'Peanut Masala', quantity: 1, unitPrice: 125 }
     ],
     totalAmount: 274
   },
@@ -360,9 +360,9 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 19:45:49',
     status: 'Pending',
     items: [
-      { menuItemId: '2', name: 'Paneer Pakoda (10pcs)', quantity: 1, unitPrice: 195 },
-      { menuItemId: '5', name: 'Mix-Veg Pakoda (12pcs)', quantity: 1, unitPrice: 198 },
-      { menuItemId: '14', name: 'Mutton Seekh Kebab', quantity: 1, unitPrice: 389 }
+      { menuItemId: 2, name: 'Paneer Pakoda (10pcs)', quantity: 1, unitPrice: 195 },
+      { menuItemId: 5, name: 'Mix-Veg Pakoda (12pcs)', quantity: 1, unitPrice: 198 },
+      { menuItemId: 14, name: 'Mutton Seekh Kebab', quantity: 1, unitPrice: 389 }
     ],
     totalAmount: 782
   },
@@ -374,8 +374,8 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 17:27:37',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '10', name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
-      { menuItemId: '11', name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 }
+      { menuItemId: 10, name: 'French Fries Regular', quantity: 1, unitPrice: 149 },
+      { menuItemId: 11, name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 }
     ],
     totalAmount: 328
   },
@@ -387,10 +387,10 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-21 10:54:01',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '11', name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 },
-      { menuItemId: '12', name: 'Chicken Tikka', quantity: 1, unitPrice: 359 },
-      { menuItemId: '13', name: 'Chicken Seekh Kebab', quantity: 1, unitPrice: 289 },
-      { menuItemId: '74', name: 'Laal Maans', quantity: 1, unitPrice: 800 }
+      { menuItemId: 11, name: 'French Fries Peri-Peri', quantity: 1, unitPrice: 179 },
+      { menuItemId: 12, name: 'Chicken Tikka', quantity: 1, unitPrice: 359 },
+      { menuItemId: 13, name: 'Chicken Seekh Kebab', quantity: 1, unitPrice: 289 },
+      { menuItemId: 74, name: 'Laal Maans', quantity: 1, unitPrice: 800 }
     ],
     totalAmount: 1627
   },
@@ -402,11 +402,11 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-18 07:14:26',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '35', name: 'Chicken Curry (4pcs)', quantity: 3, unitPrice: 389 },
-      { menuItemId: '36', name: 'Mutton Curry (4pcs)', quantity: 2, unitPrice: 489 },
-      { menuItemId: '39', name: 'Gatta Masala', quantity: 2, unitPrice: 198 },
-      { menuItemId: '41', name: 'Daal Fry', quantity: 2, unitPrice: 149 },
-      { menuItemId: '48', name: 'Plain Chapati', quantity: 6, unitPrice: 29 }
+      { menuItemId: 35, name: 'Chicken Curry (4pcs)', quantity: 3, unitPrice: 389 },
+      { menuItemId: 36, name: 'Mutton Curry (4pcs)', quantity: 2, unitPrice: 489 },
+      { menuItemId: 39, name: 'Gatta Masala', quantity: 2, unitPrice: 198 },
+      { menuItemId: 41, name: 'Daal Fry', quantity: 2, unitPrice: 149 },
+      { menuItemId: 48, name: 'Plain Chapati', quantity: 6, unitPrice: 29 }
     ],
     totalAmount: 3012
   },
@@ -418,16 +418,16 @@ export const INITIAL_ORDERS: Order[] = [
     orderTime: '2026-07-15 19:59:17',
     status: 'Fulfilled',
     items: [
-      { menuItemId: '12', name: 'Chicken Tikka', quantity: 2, unitPrice: 359 },
-      { menuItemId: '13', name: 'Chicken Seekh Kebab', quantity: 3, unitPrice: 289 },
-      { menuItemId: '51', name: 'Aloo Paratha', quantity: 1, unitPrice: 149 },
-      { menuItemId: '65', name: 'Chaach', quantity: 1, unitPrice: 68 },
-      { menuItemId: '35', name: 'Chicken Curry (4pcs)', quantity: 2, unitPrice: 389 },
-      { menuItemId: '55', name: 'Boiled Eggs', quantity: 1, unitPrice: 149 },
-      { menuItemId: '47', name: 'Veg Pulao', quantity: 1, unitPrice: 298 },
-      { menuItemId: '45', name: 'Plain Rice', quantity: 1, unitPrice: 198 },
-      { menuItemId: '61', name: 'Breakfast Buffet (Per Person)', quantity: 1, unitPrice: 300 },
-      { menuItemId: '9', name: 'Pani Puri (8)', quantity: 1, unitPrice: 49 }
+      { menuItemId: 12, name: 'Chicken Tikka', quantity: 2, unitPrice: 359 },
+      { menuItemId: 13, name: 'Chicken Seekh Kebab', quantity: 3, unitPrice: 289 },
+      { menuItemId: 51, name: 'Aloo Paratha', quantity: 1, unitPrice: 149 },
+      { menuItemId: 65, name: 'Chaach', quantity: 1, unitPrice: 68 },
+      { menuItemId: 35, name: 'Chicken Curry (4pcs)', quantity: 2, unitPrice: 389 },
+      { menuItemId: 55, name: 'Boiled Eggs', quantity: 1, unitPrice: 149 },
+      { menuItemId: 47, name: 'Veg Pulao', quantity: 1, unitPrice: 298 },
+      { menuItemId: 45, name: 'Plain Rice', quantity: 1, unitPrice: 198 },
+      { menuItemId: 61, name: 'Breakfast Buffet (Per Person)', quantity: 1, unitPrice: 300 },
+      { menuItemId: 9, name: 'Pani Puri (8)', quantity: 1, unitPrice: 49 }
     ],
     totalAmount: 3374
   }

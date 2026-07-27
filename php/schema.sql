@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `kitchen_orders` (
 
 -- 3. Menu Items Table
 CREATE TABLE IF NOT EXISTS `menu_items` (
-    `id` VARCHAR(50) PRIMARY KEY,
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
     `category` ENUM('Breakfast', 'Main Course', 'Beverages', 'Snacks', 'Desserts') NOT NULL,
     `price` DECIMAL(10,2) NOT NULL,
