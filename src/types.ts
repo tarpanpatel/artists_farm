@@ -50,6 +50,7 @@ export interface MenuItem {
   id: string;
   name: string;
   category: 'Starters' | 'Chinese' | 'Pizza & Sandwich' | 'Main Course' | 'Rice & Roti' | 'Breakfast' | 'Raita & Salad' | 'Beverages' | string;
+  categoryId?: string | number;
   price: number;
   available: boolean;
   imagePath?: string;

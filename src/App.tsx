@@ -1220,6 +1220,7 @@ ${itemsStr}
               onRequestMaterial={handleRequestMaterial}
               onDispatchTelegram={dispatchTelegramAlert}
               activeMenuItemKey={activeMenuItemKey}
+              isTestingMode={isTestingMode}
             />
           )}
 

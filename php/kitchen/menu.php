@@ -24,7 +24,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
         case 'get_menu':
             try {
                 // Try query with LEFT JOIN on menu_categories (for DB schema with category_id)
-                $sql = "SELECT m.id, m.name, COALESCE(c.name, 'Starters') AS category, m.price, (COALESCE(m.is_hidden, 0) = 0) AS available, COALESCE(m.image_path, '') AS image_path
+                $sql = "SELECT m.id, m.name, m.category_id, COALESCE(c.name, 'Starters') AS category, m.price, (COALESCE(m.is_hidden, 0) = 0) AS available, COALESCE(m.image_path, '') AS image_path
                         FROM menu_items m
                         LEFT JOIN menu_categories c ON m.category_id = c.id
                         ORDER BY COALESCE(c.sort_order, 99) ASC, m.name ASC";
@@ -33,7 +33,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 } catch (PDOException $e1) {
                     // Fallback query for DB schema with category column directly
-                    $stmt = $pdo->query("SELECT id, name, category, price, available, image_path FROM menu_items ORDER BY category ASC, name ASC");
+                    $stmt = $pdo->query("SELECT id, name, NULL AS category_id, category, price, available, image_path FROM menu_items ORDER BY category ASC, name ASC");
                     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
@@ -41,6 +41,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     return [
                         'id' => (string)$r['id'],
                         'name' => $r['name'],
+                        'categoryId' => isset($r['category_id']) && $r['category_id'] !== null ? (string)$r['category_id'] : null,
                         'category' => $r['category'],
                         'price' => (float)$r['price'],
                         'available' => isset($r['available']) ? (bool)$r['available'] : true,

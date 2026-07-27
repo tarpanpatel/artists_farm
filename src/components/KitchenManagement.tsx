@@ -31,6 +31,7 @@ interface KitchenManagementProps {
   onRequestMaterial: (req: Requisition) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any) => void;
   activeMenuItemKey?: string;
+  isTestingMode?: boolean;
 }
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
@@ -45,6 +46,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   onRequestMaterial,
   onDispatchTelegram,
   activeMenuItemKey,
+  isTestingMode = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
   const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({
@@ -366,13 +368,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
 
   // New Order Form State
-  const activeGuests = guests.filter((g) => g.status === 'Active');
+  const activeGuests = isTestingMode
+    ? guests.filter((g) => g.status !== 'CheckedOut')
+    : guests.filter((g) => g.status === 'Active');
   const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
   });
   const [posSearch, setPosSearch] = useState('');
-  const [selectedPosCategory, setSelectedPosCategory] = useState<string>('All Menu');
+  const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
   const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
 
@@ -694,19 +698,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const selectedGuest = activeGuest || activeGuests.find((g) => g.id === selectedGuestId);
         const filteredPosMenuItems = menu.filter((item) => {
           const matchesSearch = item.name.toLowerCase().includes(posSearch.toLowerCase().trim());
-          const matchesCategory = selectedPosCategory === 'All Menu' || item.category === selectedPosCategory;
+          const categoryKey = String(item.categoryId ?? `name:${item.category}`);
+          const matchesCategory = selectedPosCategory === 'all' || categoryKey === selectedPosCategory;
           return matchesSearch && matchesCategory;
         });
         const posCategories = [
-          'All Menu',
-          'Starters',
-          'Chinese',
-          'Pizza & Sandwich',
-          'Main Course',
-          'Rice & Roti',
-          'Breakfast',
-          'Raita & Salad',
-          'Beverages',
+          { id: 'all', label: 'All Menu' },
+          ...Array.from(new Map(menu.map((item) => [
+            String(item.categoryId ?? `name:${item.category}`),
+            { id: String(item.categoryId ?? `name:${item.category}`), label: item.category },
+          ])).values()),
         ];
         const totalCartSum = cartItems.reduce((sum, i) => sum + i.menuItem.price * i.quantity, 0);
         const totalCartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
@@ -752,18 +753,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {/* Category Pills Bar */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
                     {posCategories.map((cat) => {
-                      const isSelected = selectedPosCategory === cat;
+                      const isSelected = selectedPosCategory === cat.id;
                       return (
                         <button
-                          key={cat}
-                          onClick={() => setSelectedPosCategory(cat)}
+                          key={cat.id}
+                          onClick={() => setSelectedPosCategory(cat.id)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-cyan-500 text-white shadow-2xs'
                               : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
                           }`}
                         >
-                          {cat}
+                          {cat.label}
                         </button>
                       );
                     })}
@@ -773,7 +774,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Selected Category Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
                   <h3 className="font-extrabold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
-                    {selectedPosCategory === 'All Menu' ? 'ALL MENU ITEMS' : selectedPosCategory}
+                    {selectedPosCategory === 'all' ? 'ALL MENU ITEMS' : posCategories.find((category) => category.id === selectedPosCategory)?.label}
                   </h3>
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
                     {filteredPosMenuItems.length} items
@@ -915,9 +916,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || activeGuests.length === 0}
+                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && activeGuests.length === 0)}
                     title={
-                      activeGuests.length === 0
+                      !isTestingMode && activeGuests.length === 0
                         ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
                         : cartItems.length === 0
                         ? 'Order cart is empty'
@@ -1006,9 +1007,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="p-3 bg-white border-t border-slate-200 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || activeGuests.length === 0}
+                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && activeGuests.length === 0)}
                     title={
-                      activeGuests.length === 0
+                      !isTestingMode && activeGuests.length === 0
                         ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
                         : cartItems.length === 0
                         ? 'Order cart is empty'
