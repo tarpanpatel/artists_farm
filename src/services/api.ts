@@ -5,6 +5,7 @@
 // Dynamically resolve the API base to handle subfolder deployment (e.g. /artists_farm/)
 const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
 const API_BASE = `${_base}/php/api/router.php`;
+const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 
 export function isTestingModeActive(): boolean {
   if (typeof window !== 'undefined') {
@@ -170,6 +171,25 @@ export async function deleteExpenseFromDB(id: string): Promise<boolean> {
   } catch (err) {
     console.error('Failed to delete expense from DB:', err);
     return false;
+  }
+}
+
+export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'catalog' | 'misc' = 'misc'): Promise<string | null> {
+  try {
+    const res = await fetch(UPLOAD_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64DataUri, folder }),
+    });
+    const json = await res.json();
+    if (json.status === 'success' && json.url) {
+      return json.url;
+    }
+    console.error('Image upload failed:', json.message);
+    return null;
+  } catch (err) {
+    console.error('Failed to upload image:', err);
+    return null;
   }
 }
 
@@ -386,7 +406,7 @@ export async function deleteKitchenPurchaseDB(payload: any): Promise<boolean> {
   }
 }
 
-export async function addCatalogItemDB(payload: { name: string; category: string; price?: number; packSize?: number; unit?: string }): Promise<boolean> {
+export async function addCatalogItemDB(payload: { name: string; category: string; price?: number; packSize?: number; unit?: string; imagePath?: string }): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}?action=add_catalog_item`, {
       method: 'POST',
@@ -396,12 +416,12 @@ export async function addCatalogItemDB(payload: { name: string; category: string
     const json = await res.json();
     return json.status === 'success';
   } catch (err) {
-    console.error('Failed to add catalog item in DB:', err);
+    console.error('Failed to add catalog item to DB:', err);
     return false;
   }
 }
 
-export async function updateCatalogItemDB(payload: { id: number; name: string; category: string; price?: number; unit?: string }): Promise<boolean> {
+export async function updateCatalogItemDB(payload: { id: number; name: string; category: string; price?: number; unit?: string; imagePath?: string }): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}?action=update_catalog_item`, {
       method: 'POST',
@@ -566,7 +586,7 @@ export async function fetchInventoryFromDB(): Promise<any[]> {
         minThreshold: Number(i.min_threshold) || 10,
         lastRestocked: i.last_restocked || '',
         costPerUnit: Number(i.cost_per_unit) || 0,
-        imageUrl: i.image_url || i.image_path || '',
+        imagePath: i.image_path || i.imageUrl || '',
       }));
     }
   } catch (err) {

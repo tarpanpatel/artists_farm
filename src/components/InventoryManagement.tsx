@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
 
 interface InventoryManagementProps {
   inventory: InventoryItem[];
@@ -269,6 +269,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     e.preventDefault();
     if (!catItemName) return;
     
+    // Upload image if one is selected (base64 data URI)
+    let savedImagePath = catImagePath;
+    if (catImagePath && catImagePath.startsWith('data:image')) {
+      const uploadedUrl = await uploadImageDB(catImagePath, 'catalog');
+      if (uploadedUrl) {
+        savedImagePath = uploadedUrl;
+      }
+    }
+
     if (editingCatalogItem) {
       const oldItem = editingCatalogItem;
       const changes: string[] = [];
@@ -286,10 +295,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         packSize: catPackSize,
         packUnit: catUnit,
         unitLabel: catUnit,
-        imagePath: catImagePath,
+        imagePath: savedImagePath,
         is_verified: true
       } : item));
-      await updateCatalogItemDB({ id: editingCatalogItem.id, name: catItemName, category: catCategory, price: catPrice, unit: catUnit });
+      await updateCatalogItemDB({ id: editingCatalogItem.id, name: catItemName, category: catCategory, price: catPrice, unit: catUnit, imagePath: savedImagePath });
       if (onLogAudit && changes.length > 0) {
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} updated catalog item ${oldItem.name}: ${changes.join(', ')}`);
@@ -304,7 +313,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         packSize: catPackSize,
         packUnit: catUnit,
         unitLabel: catUnit,
-        imagePath: catImagePath,
+        imagePath: savedImagePath,
         is_verified: true
       };
       setCatalogItems([newItem, ...catalogItems]);
@@ -317,12 +326,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         currentStock: 0,
         minThreshold: 5,
         unit: catUnit,
-        imagePath: catImagePath,
+        imagePath: savedImagePath,
       };
       onAddInventoryItem(invItem);
 
       // Persist to database
-      await addCatalogItemDB({ name: catItemName, category: catCategory, price: catPrice, packSize: catPackSize, unit: catUnit });
+      await addCatalogItemDB({ name: catItemName, category: catCategory, price: catPrice, packSize: catPackSize, unit: catUnit, imagePath: savedImagePath });
       if (onLogAudit) {
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} created catalog item ${catItemName} (Category: ${catCategory}, Price: ₹${catPrice}, Pack Size: ${catPackSize} ${catUnit})`);

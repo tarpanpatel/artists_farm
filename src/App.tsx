@@ -64,6 +64,7 @@ export function App() {
         expenses: { tab: 'petty_cash', key: 'expenses' },
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
+        attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff: { tab: 'staff', key: 'staff_payees_control' },
@@ -484,7 +485,10 @@ export function App() {
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
     // Dropdown section containers (don't land on a separate page view) are always allowed if logged in
     if (key === 'admin_control_group' || key === 'edit_items_group') return true;
-    const item = items.find((i) => (i.uniqueKey || i.tabKey) === key);
+    // Preserve old bookmarked Attendance & Salaries links while the navigation uses
+    // the canonical attendance calendar route.
+    const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
+    const item = items.find((i) => (i.uniqueKey || i.tabKey) === routeKey);
     if (!item) return false;
     if (!item.isVisible) return false;
     return item.roles.includes(role);
@@ -538,6 +542,7 @@ export function App() {
         cash_drawer: { tab: 'petty_cash', key: 'cash_drawer' },
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
+        attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },

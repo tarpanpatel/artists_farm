@@ -48,6 +48,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   onLogAudit,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
+  const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
   useEffect(() => {
     if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
@@ -303,21 +304,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <span>👥</span> Property Payroll & Payee Control Center
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Manage login staff credentials, core operational suppliers, and pass-through third parties.
+            {isAttendancePage
+              ? 'Track staff attendance and manage salary details.'
+              : 'Manage login staff credentials, core operational suppliers, and pass-through third parties.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
-          <button
-            onClick={() => setActiveSubTab('control_center')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all ${
-              activeSubTab === 'control_center'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Staff & Payees Control
-          </button>
+          {!isAttendancePage && (
+            <button
+              onClick={() => setActiveSubTab('control_center')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all ${
+                activeSubTab === 'control_center'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Staff & Payees Control
+            </button>
+          )}
           <button
             onClick={() => setActiveSubTab('calendar')}
             className={`px-3.5 py-1.5 rounded-lg transition-all ${

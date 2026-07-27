@@ -218,7 +218,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'staff',
-      uniqueKey: 'attendance_salaries',
+      uniqueKey: 'attendance_calendar',
       label: 'Attendance & Salaries',
       icon: UserCheck,
       roles: ['Super Admin', 'Admin', 'Manager', 'Staff'],

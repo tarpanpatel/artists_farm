@@ -9,7 +9,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
         case 'get_inventory':
             try {
                 // Try req_catalog first (full catalog with categories)
-                $sql = "SELECT r.id, r.item_name as name, r.category_id, COALESCE(c.name, 'General') as category, r.current_stock as quantity, r.unit_label as unit 
+                $sql = "SELECT r.id, r.item_name as name, r.category_id, COALESCE(c.name, 'General') as category, r.current_stock as quantity, r.unit_label as unit, COALESCE(r.image_path, '') as image_path 
                         FROM req_catalog r 
                         LEFT JOIN material_categories c ON r.category_id = c.id 
                         ORDER BY r.item_name ASC";
@@ -453,8 +453,12 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                         `item_name` VARCHAR(255) NOT NULL,
                         `category_id` INT DEFAULT 1,
                         `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                        `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg'
+                        `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg',
+                        `image_path` TEXT DEFAULT NULL
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // Add image_path column if missing
+                    try { $pdo->exec("ALTER TABLE `req_catalog` ADD COLUMN `image_path` TEXT DEFAULT NULL"); } catch (Exception $e) { /* already exists */ }
 
                     // Resolve category_id from material_categories
                     $catId = 1;
@@ -471,8 +475,9 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                         }
                     }
 
-                    $stmtIns = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label) VALUES (?, ?, ?, ?)");
-                    $stmtIns->execute([$name, $catId, 0, $unit]);
+                    $imagePath = trim($input['imagePath'] ?? '');
+                    $stmtIns = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label, image_path) VALUES (?, ?, ?, ?, ?)");
+                    $stmtIns->execute([$name, $catId, 0, $unit, $imagePath ?: null]);
 
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Catalog item registered']);
                 } catch (PDOException $e) {
@@ -525,8 +530,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                             $catId = $pdo->lastInsertId();
                         }
                     }
-                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET item_name = ?, category_id = ?, unit_label = ? WHERE id = ?");
-                    $stmtUp->execute([$name, $catId, $unit, $id]);
+                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET item_name = ?, category_id = ?, unit_label = ?, image_path = COALESCE(?, image_path) WHERE id = ?");
+                    $stmtUp->execute([$name, $catId, $unit, !empty($input['imagePath']) ? $input['imagePath'] : null, $id]);
                     echo json_encode(['status' => 'success', 'message' => 'Catalog item updated']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

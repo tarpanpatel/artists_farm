@@ -13,9 +13,11 @@ function handleMenuRequests($pdo, $request_method, $action) {
             `category` VARCHAR(100) NOT NULL DEFAULT 'Starters',
             `price` DECIMAL(10,2) NOT NULL,
             `available` TINYINT(1) NOT NULL DEFAULT 1,
-            `image_path` VARCHAR(255) DEFAULT '',
+            `image_path` TEXT DEFAULT '',
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        // Upgrade image_path from VARCHAR(255) to TEXT if needed
+        try { $pdo->exec("ALTER TABLE `menu_items` MODIFY COLUMN `image_path` TEXT DEFAULT ''"); } catch (Exception $e) {}
     } catch (PDOException $e) {}
 
     switch ($action) {

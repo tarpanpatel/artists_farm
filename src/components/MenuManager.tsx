@@ -47,6 +47,7 @@ import {
   Info
 } from 'lucide-react';
 import { MenuItem, NavMenuItem, StaffMember } from '../types';
+import { uploadImageDB } from '../services/api';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -259,9 +260,18 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     setIsAddFoodModalOpen(true);
   };
 
-  const handleSaveFoodItem = (e: React.FormEvent) => {
+  const handleSaveFoodItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!foodForm.name.trim()) return;
+
+    // Upload image if one is selected (base64 data URI)
+    let savedImagePath = foodForm.imagePath;
+    if (foodForm.imagePath && foodForm.imagePath.startsWith('data:image')) {
+      const uploadedUrl = await uploadImageDB(foodForm.imagePath, 'menu');
+      if (uploadedUrl) {
+        savedImagePath = uploadedUrl;
+      }
+    }
 
     if (editingFoodItem) {
       onUpdateFoodItem(editingFoodItem.id, {
@@ -269,7 +279,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         category: foodForm.category,
         price: Number(foodForm.price),
         available: foodForm.available,
-        imagePath: foodForm.imagePath,
+        imagePath: savedImagePath,
       });
     } else {
       const newId = `m-${Date.now().toString().slice(-4)}`;
@@ -279,7 +289,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         category: foodForm.category,
         price: Number(foodForm.price),
         available: foodForm.available,
-        imagePath: foodForm.imagePath,
+        imagePath: savedImagePath,
       });
     }
     setIsAddFoodModalOpen(false);
@@ -911,12 +921,14 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             const reader = new FileReader();
-                            reader.onloadend = () => {
-                              onUpdateFoodItem(item.id, { imagePath: reader.result as string });
+                            reader.onloadend = async () => {
+                              const dataUri = reader.result as string;
+                              const uploadedUrl = await uploadImageDB(dataUri, 'menu');
+                              onUpdateFoodItem(item.id, { imagePath: uploadedUrl || dataUri });
                             };
                             reader.readAsDataURL(file);
                           }
