@@ -1,5 +1,3 @@
-h
-
 <?php
 /**
  * Database & Environment Configuration
