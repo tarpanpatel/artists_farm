@@ -58,6 +58,14 @@ function handleMenuRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
+                    // Dedup: skip if item with same name already exists
+                    $nameCheck = $pdo->prepare("SELECT id FROM menu_items WHERE name = ? LIMIT 1");
+                    $nameCheck->execute([$input['name']]);
+                    if ($nameCheck->fetchColumn()) {
+                        echo json_encode(['status' => 'success', 'message' => 'Menu item already exists, skipped']);
+                        break;
+                    }
+
                     $catId = 1;
                     if (!empty($input['category'])) {
                         $catStmt = $pdo->prepare("SELECT id FROM menu_categories WHERE name = ? LIMIT 1");
@@ -243,6 +251,20 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     echo json_encode(['status' => 'success', 'message' => 'Navigation menu saved successfully']);
                 } catch (PDOException $e) {
                     if ($pdo->inTransaction()) $pdo->rollBack();
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'dedup_menu':
+            if ($request_method === 'POST') {
+                try {
+                    $pdo->exec("CREATE TEMPORARY TABLE IF NOT EXISTS tmp_dedup AS SELECT MIN(id) AS keep_id, name FROM menu_items GROUP BY name");
+                    $removed = $pdo->exec("DELETE FROM menu_items WHERE id NOT IN (SELECT keep_id FROM tmp_dedup)");
+                    $pdo->exec("DROP TEMPORARY TABLE IF EXISTS tmp_dedup");
+                    $count = $pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
+                    echo json_encode(['status' => 'success', 'removed' => $removed, 'remaining' => (int)$count]);
+                } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
             }

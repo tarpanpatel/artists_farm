@@ -741,6 +741,21 @@ export async function deleteMenuItemDB(id: number): Promise<boolean> {
   }
 }
 
+export async function dedupMenuDB(): Promise<{removed: number, remaining: number}> {
+  try {
+    const res = await fetch(`${API_BASE}?action=dedup_menu`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const json = await res.json();
+    return json.status === 'success' ? { removed: json.removed ?? 0, remaining: json.remaining ?? 0 } : { removed: 0, remaining: 0 };
+  } catch (err) {
+    console.error('Failed to dedup menu items:', err);
+    return { removed: 0, remaining: 0 };
+  }
+}
+
 export async function fetchNavMenuFromDB(): Promise<any[]> {
   try {
     const res = await fetch(`${API_BASE}?action=get_nav_menu`);

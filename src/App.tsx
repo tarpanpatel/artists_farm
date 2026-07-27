@@ -20,7 +20,7 @@ import { GlobalModal } from './components/GlobalModal';
 import { LoginModal } from './components/LoginModal';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB } from './services/api';
+import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB, dedupMenuDB } from './services/api';
 import { INITIAL_MENU } from './data/initialData';
 
 // Removed INITIAL_ imports to ensure we never use hardcoded lists
@@ -462,7 +462,13 @@ export function App() {
       if (data && data.length > 0) setGuests(data);
     });
     fetchMenuFromDB().then((data) => {
-      if (data && data.length > 0) {
+      if (data && data.length > 74) {
+        dedupMenuDB().then(() => {
+          fetchMenuFromDB().then((clean) => {
+            setMenu(clean && clean.length > 0 ? clean : INITIAL_MENU);
+          });
+        });
+      } else if (data && data.length > 0) {
         setMenu(data);
       } else {
         setMenu(INITIAL_MENU);
