@@ -71,14 +71,14 @@ export function App() {
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
-        sys_logs_health: { tab: 'audit_logs', key: 'sys_logs_health' },
+        errors: { tab: 'audit_logs', key: 'errors' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         staff_activity_trail: { tab: 'audit_logs', key: 'staff_activity_trail' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
-        misc_charges: { tab: 'misc_charges', key: 'misc_charges' },
+        misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         custom_css: { tab: 'custom_css', key: 'custom_css' },
         css_override: { tab: 'custom_css', key: 'custom_css' },
       };
@@ -162,7 +162,7 @@ export function App() {
         export: 'data_export_center',
         menu_manager: 'edit_food_menu',
         telegram: 'telegram',
-        errors: 'sys_logs_health',
+        errors: 'errors',
         misc_charges: 'misc_charges',
         custom_css: 'custom_css',
       };
@@ -337,7 +337,7 @@ export function App() {
     { id: 'nav-24', title: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges', category: 'System Controls', iconName: 'DollarSign', order: 26, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-25', title: 'Data Export Center', tabKey: 'export', uniqueKey: 'data_export_center', category: 'System Controls', iconName: 'FileSpreadsheet', order: 27, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-26', title: 'Telegram Notification Bot', tabKey: 'telegram', uniqueKey: 'telegram', category: 'System Controls', iconName: 'Send', order: 28, roles: ['Super Admin', 'Admin'], isVisible: true },
-    { id: 'nav-27', title: 'Sys Logs & Health', tabKey: 'audit_logs', uniqueKey: 'sys_logs_health', category: 'System Controls', iconName: 'Lock', order: 29, roles: ['Super Admin', 'Admin'], isVisible: true },
+    { id: 'nav-27', title: 'Error Logs', tabKey: 'audit_logs', uniqueKey: 'errors', category: 'System Controls', iconName: 'Lock', order: 29, roles: ['Super Admin', 'Admin'], isVisible: true },
     { id: 'nav-28', title: 'Beta Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder', category: 'System Controls', iconName: 'CookingPot', order: 30, roles: ['Super Admin', 'Admin', 'Staff Kitchen'], isVisible: true },
     { id: 'nav-30', title: 'Custom CSS Override', tabKey: 'custom_css', uniqueKey: 'custom_css', category: 'System Controls', iconName: 'Paintbrush', order: 31, roles: ['Super Admin', 'Admin'], isVisible: true },
 
@@ -554,7 +554,7 @@ export function App() {
         purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         audit_logs_main: { tab: 'audit_logs', key: 'audit_logs_main' },
         audit_logs: { tab: 'audit_logs', key: 'audit_logs_main' },
-        sys_logs_health: { tab: 'audit_logs', key: 'sys_logs_health' },
+        errors: { tab: 'audit_logs', key: 'errors' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         staff_activity_trail: { tab: 'audit_logs', key: 'staff_activity_trail' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
@@ -1251,7 +1251,7 @@ ${itemsStr}
             />
           )}
 
-          {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && (
+          {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
             <PettyCashManagement
               entries={pettyCash}
               staff={staff}
@@ -1317,7 +1317,7 @@ ${itemsStr}
             />
           )}
 
-          {activeTab === 'misc_charges' && (
+          {activeTab === 'petty_cash' && activeMenuItemKey === 'misc_charges' && (
             <MiscChargesManagement onLogAudit={logAudit} />
           )}
 
