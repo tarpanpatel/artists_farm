@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, ArrowDown, X } from 'lucide-react';
 
 const STORAGE_KEY = 'artists_farm_custom_css';
 const STYLE_ID = 'artists-farm-custom-css-override';
+const LUCIDE_STORAGE_KEY = 'artists_farm_lucide_settings';
+const LUCIDE_STYLE_ID = 'artists-farm-lucide-global';
+
+const DEFAULT_LUCIDE = { size: 24, strokeWidth: 2, color: '#334155' };
 
 function injectCSS(css: string) {
   let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
@@ -16,6 +20,23 @@ function injectCSS(css: string) {
 
 function removeCSS() {
   const el = document.getElementById(STYLE_ID);
+  if (el) el.remove();
+}
+
+function injectLucideGlobal(size: number, strokeWidth: number, color: string) {
+  let el = document.getElementById(LUCIDE_STYLE_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement('style');
+    el.id = LUCIDE_STYLE_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = `
+    .lucide { width: ${size}px; height: ${size}px; stroke-width: ${strokeWidth}; color: ${color}; }
+  `;
+}
+
+function removeLucideGlobal() {
+  const el = document.getElementById(LUCIDE_STYLE_ID);
   if (el) el.remove();
 }
 
@@ -37,6 +58,19 @@ const DEFAULT_CSS = `/* Artists Farm — Custom CSS Override
    }
 */`;
 
+const PRESET_COLORS = [
+  '#000000', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b', '#0ea5e9',
+  '#14b8a6', '#a855f7', '#f43f5e', '#84cc16',
+];
+
+const ICONS_PER_PAGE = 120;
+
+interface IconEntry {
+  name: string;
+  Component: React.ComponentType<any>;
+}
+
 export const CustomCSSOverride: React.FC = () => {
   const [css, setCss] = useState<string>('');
   const [savedCss, setSavedCss] = useState<string>('');
@@ -45,6 +79,22 @@ export const CustomCSSOverride: React.FC = () => {
   const [lastSaved, setLastSaved] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Icon browser state
+  const [showIconBrowser, setShowIconBrowser] = useState(false);
+  const [allIcons, setAllIcons] = useState<IconEntry[]>([]);
+  const [iconsLoaded, setIconsLoaded] = useState(false);
+  const [iconSearch, setIconSearch] = useState('');
+  const [iconSize, setIconSize] = useState(DEFAULT_LUCIDE.size);
+  const [iconStroke, setIconStroke] = useState(DEFAULT_LUCIDE.strokeWidth);
+  const [iconColor, setIconColor] = useState(DEFAULT_LUCIDE.color);
+  const [iconPage, setIconPage] = useState(1);
+  const [selectedIcon, setSelectedIcon] = useState<IconEntry | null>(null);
+  const [copiedIcon, setCopiedIcon] = useState<string | null>(null);
+  const [customColor, setCustomColor] = useState(DEFAULT_LUCIDE.color);
+  const [lucideSaved, setLucideSaved] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const iconBrowserRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) || DEFAULT_CSS;
@@ -56,6 +106,64 @@ export const CustomCSSOverride: React.FC = () => {
       setLastSaved(new Date().toLocaleTimeString());
     }
   }, []);
+
+  // Load saved Lucide icon settings on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LUCIDE_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        const s = saved.size ?? DEFAULT_LUCIDE.size;
+        const sw = saved.strokeWidth ?? DEFAULT_LUCIDE.strokeWidth;
+        const c = saved.color ?? DEFAULT_LUCIDE.color;
+        setIconSize(s);
+        setIconStroke(sw);
+        setIconColor(c);
+        setCustomColor(c);
+        setLucideSaved(true);
+        injectLucideGlobal(s, sw, c);
+      }
+    } catch { /* ignore corrupt data */ }
+  }, []);
+
+  // Dynamic import of all Lucide icons when browser is opened
+  useEffect(() => {
+    if (showIconBrowser && !iconsLoaded) {
+      import('lucide-react').then((mod) => {
+        const icons: IconEntry[] = [];
+        Object.keys(mod).forEach((k) => {
+          if (
+            k[0] === k[0].toUpperCase() &&
+            k.length > 1 &&
+            !k.endsWith('Icon') &&
+            !k.startsWith('create') &&
+            !k.startsWith('default') &&
+            typeof (mod as any)[k] === 'object' &&
+            (mod as any)[k]?.render
+          ) {
+            icons.push({ name: k, Component: (mod as any)[k] });
+          }
+        });
+        icons.sort((a, b) => a.name.localeCompare(b.name));
+        setAllIcons(icons);
+        setIconsLoaded(true);
+      });
+    }
+  }, [showIconBrowser, iconsLoaded]);
+
+  const filteredIcons = useMemo(() => {
+    if (!iconSearch.trim()) return allIcons;
+    const q = iconSearch.toLowerCase().trim();
+    return allIcons.filter((icon) => icon.name.toLowerCase().includes(q));
+  }, [allIcons, iconSearch]);
+
+  const totalPages = Math.ceil(filteredIcons.length / ICONS_PER_PAGE);
+  const visibleIcons = filteredIcons.slice(0, iconPage * ICONS_PER_PAGE);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setIconPage(1);
+  }, [iconSearch]);
 
   const handleApply = () => {
     injectCSS(css);
@@ -106,6 +214,41 @@ export const CustomCSSOverride: React.FC = () => {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const handleLucideSave = () => {
+    const data = { size: iconSize, strokeWidth: iconStroke, color: iconColor };
+    localStorage.setItem(LUCIDE_STORAGE_KEY, JSON.stringify(data));
+    injectLucideGlobal(iconSize, iconStroke, iconColor);
+    setLucideSaved(true);
+    setToast('Icon settings applied site-wide');
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleLucideReset = () => {
+    setIconSize(DEFAULT_LUCIDE.size);
+    setIconStroke(DEFAULT_LUCIDE.strokeWidth);
+    setIconColor(DEFAULT_LUCIDE.color);
+    setCustomColor(DEFAULT_LUCIDE.color);
+    localStorage.removeItem(LUCIDE_STORAGE_KEY);
+    removeLucideGlobal();
+    setLucideSaved(false);
+    setToast('Icon settings reset to defaults');
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleCopyIconImport = useCallback((name: string) => {
+    const text = `import { ${name} } from 'lucide-react';`;
+    navigator.clipboard.writeText(text);
+    setCopiedIcon(name);
+    setTimeout(() => setCopiedIcon(null), 2000);
+  }, []);
+
+  const handleCopyIconJSX = useCallback((name: string) => {
+    const text = `<${name} className="w-${Math.round(iconSize / 4)} h-${Math.round(iconSize / 4)}" />`;
+    navigator.clipboard.writeText(text);
+    setCopiedIcon(name);
+    setTimeout(() => setCopiedIcon(null), 2000);
+  }, [iconSize]);
 
   const hasChanges = css !== savedCss;
 
@@ -231,6 +374,296 @@ export const CustomCSSOverride: React.FC = () => {
         </div>
       </div>
 
+      {/* Lucide Icon Browser */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+        <button
+          onClick={() => setShowIconBrowser(!showIconBrowser)}
+          className="w-full flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <Palette className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Lucide Icon Browser</h3>
+              <p className="text-[11px] text-slate-500">
+                {iconsLoaded ? `${allIcons.length} icons available` : 'Browse, customize, and copy the complete Lucide icon library'}
+              </p>
+            </div>
+          </div>
+          {showIconBrowser ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </button>
+
+        {showIconBrowser && (
+          <div ref={iconBrowserRef} className="border-t border-slate-200 dark:border-slate-700">
+            {/* Customization Controls */}
+            <div className="px-5 py-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Size */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Size</span>
+                    <span className="font-mono text-blue-600 dark:text-blue-400">{iconSize}px</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIconSize(Math.max(8, iconSize - 2))}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <input
+                      type="range"
+                      min="8"
+                      max="64"
+                      value={iconSize}
+                      onChange={(e) => setIconSize(Number(e.target.value))}
+                      className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <button
+                      onClick={() => setIconSize(Math.min(64, iconSize + 2))}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stroke Width */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Stroke Width</span>
+                    <span className="font-mono text-blue-600 dark:text-blue-400">{iconStroke}px</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIconStroke(Math.max(0.5, +(iconStroke - 0.25).toFixed(2)))}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="4"
+                      step="0.25"
+                      value={iconStroke}
+                      onChange={(e) => setIconStroke(Number(e.target.value))}
+                      className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <button
+                      onClick={() => setIconStroke(Math.min(4, +(iconStroke + 0.25).toFixed(2)))}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Color */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Color
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {PRESET_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => { setIconColor(c); setCustomColor(c); }}
+                        className={`w-5 h-5 rounded-full border-2 cursor-pointer transition-transform hover:scale-110 ${
+                          iconColor === c ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' : 'border-slate-200 dark:border-slate-600'
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                    <div className="relative">
+                      <input
+                        type="color"
+                        value={customColor}
+                        onChange={(e) => { setCustomColor(e.target.value); setIconColor(e.target.value); }}
+                        className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-slate-600 cursor-pointer appearance-none bg-transparent"
+                        title="Custom color"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save / Reset Buttons */}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={handleLucideSave}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Save & Apply Site-Wide
+                </button>
+                <button
+                  onClick={handleLucideReset}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset to Defaults
+                </button>
+                {lucideSaved && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 ml-1">
+                    <Eye className="w-2.5 h-2.5" /> ACTIVE
+                  </span>
+                )}
+              </div>
+
+              {/* Search */}
+              <div className="mt-3 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={iconSearch}
+                  onChange={(e) => setIconSearch(e.target.value)}
+                  placeholder="Search icons by name... (e.g. arrow, home, user)"
+                  className="w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {iconSearch && (
+                  <button
+                    onClick={() => setIconSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Icon Grid */}
+            <div className="p-5">
+              {!iconsLoaded ? (
+                <div className="text-center py-16">
+                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-xs text-slate-400 font-medium">Loading complete Lucide library...</p>
+                </div>
+              ) : filteredIcons.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-sm text-slate-400 font-semibold">No icons match "{iconSearch}"</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-[10px] text-slate-400 mb-3 font-mono">
+                    Showing {visibleIcons.length} of {filteredIcons.length} icons
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1">
+                    {visibleIcons.map((icon) => {
+                      const isSelected = selectedIcon?.name === icon.name;
+                      return (
+                        <button
+                          key={icon.name}
+                          onClick={() => setSelectedIcon(isSelected ? null : icon)}
+                          className={`group relative flex flex-col items-center justify-center p-2 rounded-xl cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-blue-50 dark:bg-blue-950 border-2 border-blue-400 dark:border-blue-600 shadow-md'
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-700 border-2 border-transparent'
+                          }`}
+                          title={icon.name}
+                        >
+                          <icon.Component
+                            size={iconSize > 32 ? 32 : iconSize}
+                            strokeWidth={iconStroke}
+                            color={iconColor}
+                          />
+                          <span className="text-[8px] mt-1 text-slate-400 dark:text-slate-500 font-medium truncate w-full text-center leading-tight">
+                            {icon.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {iconPage < totalPages && (
+                    <div className="text-center mt-4">
+                      <button
+                        onClick={() => setIconPage((p) => p + 1)}
+                        className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer transition-colors"
+                      >
+                        Load More ({filteredIcons.length - visibleIcons.length} remaining)
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Selected Icon Detail Panel */}
+            {selectedIcon && (
+              <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-5 py-4">
+                <div className="flex items-start gap-5">
+                  {/* Preview */}
+                  <div className="flex-shrink-0 w-28 h-28 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                    <selectedIcon.Component
+                      size={iconSize}
+                      strokeWidth={iconStroke}
+                      color={iconColor}
+                    />
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
+                    <div className="space-y-1.5 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 w-16">Import:</span>
+                        <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 truncate">
+                          {`import { ${selectedIcon.name} } from 'lucide-react'`}
+                        </code>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 w-16">JSX:</span>
+                        <code className="bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px] text-blue-600 dark:text-blue-400 truncate">
+                          {`<${selectedIcon.name} size={${iconSize}} strokeWidth={${iconStroke}} color="${iconColor}" />`}
+                        </code>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 w-16">Size:</span>
+                        <span className="font-mono text-slate-600 dark:text-slate-300">{iconSize}px</span>
+                        <span className="text-slate-300 dark:text-slate-600">|</span>
+                        <span className="text-slate-400">Stroke:</span>
+                        <span className="font-mono text-slate-600 dark:text-slate-300">{iconStroke}</span>
+                      </div>
+                    </div>
+
+                    {/* Copy buttons */}
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={() => handleCopyIconImport(selectedIcon.name)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+                      >
+                        {copiedIcon === selectedIcon.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {copiedIcon === selectedIcon.name ? 'Copied!' : 'Copy Import'}
+                      </button>
+                      <button
+                        onClick={() => handleCopyIconJSX(selectedIcon.name)}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+                      >
+                        {copiedIcon === selectedIcon.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {copiedIcon === selectedIcon.name ? 'Copied!' : 'Copy JSX'}
+                      </button>
+                      <button
+                        onClick={() => setSelectedIcon(null)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Quick Reference */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
         <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -256,6 +689,13 @@ export const CustomCSSOverride: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg animate-toast-in">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };

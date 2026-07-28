@@ -254,7 +254,7 @@ export async function deleteExpenseItemFromDB(name: string): Promise<boolean> {
   }
 }
 
-export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string }[]> {
+export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string; is_ingredient: number }[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_material_categories`);
     const json = await res.json();
@@ -265,6 +265,21 @@ export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; nam
     console.error('Failed to fetch material categories:', err);
   }
   return [];
+}
+
+export async function toggleIngredientCategoryInDB(id: number, is_ingredient: boolean): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=toggle_ingredient_category`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_ingredient }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to toggle ingredient category:', err);
+    return false;
+  }
 }
 
 export async function updateMaterialCategoryInDB(id: number, name: string): Promise<boolean> {
@@ -695,6 +710,11 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
         paymentMethod: r.payment_method || 'Cash',
         status: r.status || 'Paid',
         paidAt: r.paid_at || r.timestamp || '',
+        gstEnabled: r.gst_enabled == 1,
+        gstRate: Number(r.gst_rate || 0),
+        gstAmount: Number(r.gst_amount || 0),
+        gstCgst: Number(r.gst_cgst || 0),
+        gstSgst: Number(r.gst_sgst || 0),
       }));
     }
   } catch (err) {
@@ -1050,5 +1070,40 @@ export async function fetchDrawerEntriesFromDB(): Promise<any[]> {
     console.error('Failed to fetch drawer entries:', err);
   }
   return [];
+}
+
+export async function fetchServedLogsFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_served_logs`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch served logs:', err);
+  }
+  return [];
+}
+
+export async function addServedLogToDB(log: {
+  order_id: string;
+  item_name: string;
+  quantity: number;
+  served_by: string;
+  guest_name: string;
+  room_number: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_served_log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(log),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to add served log:', err);
+    return false;
+  }
 }
 

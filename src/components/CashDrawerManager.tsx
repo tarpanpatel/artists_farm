@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, X, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary, StaffMember } from '../types';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, fetchStaffUsersFromDB, resolveTelegramTemplate } from '../services/api';
+import DataTable from 'react-data-table-component';
 
 interface CashDrawerManagerProps {
   staff: StaffMember[];
@@ -26,6 +27,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [searchHistory, setSearchHistory] = useState('');
 
   const isAdmin = activeRole === 'Super Admin' || activeRole === 'Admin';
 
@@ -99,6 +101,16 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const totalCashInSystem = summaries.reduce((sum, s) => sum + s.netBalance, 0);
   const totalCollected = summaries.reduce((sum, s) => sum + s.cashCollected, 0);
   const totalHandedOver = summaries.reduce((sum, s) => sum + s.drawerHandovers, 0);
+
+  const filteredEntries = useMemo(() => {
+    if (!searchHistory.trim()) return drawerEntries;
+    const q = searchHistory.toLowerCase().trim();
+    return drawerEntries.filter(entry =>
+      (entry.staff_name || '').toLowerCase().includes(q) ||
+      (entry.type || '').toLowerCase().includes(q) ||
+      (entry.notes || '').toLowerCase().includes(q)
+    );
+  }, [drawerEntries, searchHistory]);
 
   return (
     <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
@@ -383,44 +395,91 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
         {showHistory && (
           <div className="border-t border-slate-100 dark:border-slate-700 p-4">
-            {drawerEntries.length === 0 ? (
-              <div className="text-center p-6 text-slate-400 font-semibold">No drawer entries recorded yet.</div>
-            ) : (
-              <div className="overflow-x-auto text-xs">
-                 <table className="datatable w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Date & Time</th>
-                      <th className="p-3">Staff</th>
-                      <th className="p-3">Type</th>
-                      <th className="p-3">Amount</th>
-                      <th className="p-3">Handed To</th>
-                      <th className="p-3">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {drawerEntries.slice(0, 20).map(entry => (
-                      <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="p-3 font-mono text-slate-500">{entry.created_at}</td>
-                        <td className="p-3 font-semibold">{entry.staff_name}</td>
-                        <td className="p-3">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                            entry.type === 'market_expense' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                            'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                          }`}>
-                            {entry.type === 'handover' ? '🤝 Handover' : entry.type === 'market_expense' ? '🛒 Market' : '⚙️ Adjustment'}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono font-bold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</td>
-                        <td className="p-3 text-slate-500">{entry.handed_to || '-'}</td>
-                        <td className="p-3 text-slate-500 text-[10px] max-w-[200px] truncate">{entry.notes || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <DataTable
+              columns={[
+                {
+                  name: 'Date & Time',
+                  selector: (entry: CashDrawerEntry) => entry.created_at,
+                  sortable: true,
+                  width: '160px',
+                  cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{entry.created_at}</span>,
+                },
+                {
+                  name: 'Staff',
+                  selector: (entry: CashDrawerEntry) => entry.staff_name,
+                  sortable: true,
+                  width: '140px',
+                  cell: (entry: CashDrawerEntry) => <span className="font-semibold">{entry.staff_name}</span>,
+                },
+                {
+                  name: 'Type',
+                  selector: (entry: CashDrawerEntry) => entry.type,
+                  sortable: true,
+                  width: '120px',
+                  cell: (entry: CashDrawerEntry) => (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                      entry.type === 'market_expense' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                      'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                    }`}>
+                      {entry.type === 'handover' ? '🤝 Handover' : entry.type === 'market_expense' ? '🛒 Market' : '⚙️ Adjustment'}
+                    </span>
+                  ),
+                },
+                {
+                  name: 'Amount',
+                  selector: (entry: CashDrawerEntry) => entry.amount,
+                  sortable: true,
+                  width: '120px',
+                  right: true,
+                  cell: (entry: CashDrawerEntry) => <span className="font-mono font-bold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
+                },
+                {
+                  name: 'Handed To',
+                  selector: (entry: CashDrawerEntry) => entry.handed_to || '-',
+                  sortable: true,
+                  width: '140px',
+                  cell: (entry: CashDrawerEntry) => <span className="text-slate-500">{entry.handed_to || '-'}</span>,
+                },
+                {
+                  name: 'Notes',
+                  selector: (entry: CashDrawerEntry) => entry.notes || '-',
+                  sortable: true,
+                  grow: 2,
+                  cell: (entry: CashDrawerEntry) => <span className="text-slate-500 text-[10px] max-w-[200px] truncate block">{entry.notes || '-'}</span>,
+                },
+              ]}
+              data={filteredEntries}
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 25, 50]}
+              highlightOnHover
+              subHeader={
+                <div className="w-full flex items-center justify-between">
+                  <span className="font-mono text-slate-400 font-bold text-xs">{drawerEntries.length} entries</span>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchHistory}
+                      onChange={e => setSearchHistory(e.target.value)}
+                      placeholder="Search staff, type, notes..."
+                      className="pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-56"
+                    />
+                  </div>
+                </div>
+              }
+              customStyles={{
+                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+                headRow: { style: { backgroundColor: '#f8fafc' } },
+                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                rows: { style: { minHeight: '52px' } },
+              }}
+              noDataComponent={
+                <div className="text-center p-6 text-slate-400 font-semibold">No drawer entries recorded yet.</div>
+              }
+            />
           </div>
         )}
       </div>

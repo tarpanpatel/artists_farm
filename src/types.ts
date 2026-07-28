@@ -32,6 +32,11 @@ export interface BillingReceipt {
   kitchenTotal: number;
   miscTotal: number;
   taxes?: number;
+  gstEnabled?: boolean;
+  gstRate?: number;
+  gstAmount?: number;
+  gstCgst?: number;
+  gstSgst?: number;
   discount: number;
   grandTotal: number;
   status: 'Paid' | 'Pending';

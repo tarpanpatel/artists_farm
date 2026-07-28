@@ -270,6 +270,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     localStorage.removeItem(getRemovedKey(guestId));
   };
 
+  // GST optional toggle
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstRate, setGstRate] = useState(18);
+
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -325,7 +329,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   const incidentalsSubtotal = foodTotal;
   const lodgingPendingDue = Math.max(0, baseLodging - advancePaid);
-  const grandTargetDue = Math.max(0, lodgingPendingDue + foodTotal + netAdjustments);
+  const preGstTotal = Math.max(0, lodgingPendingDue + foodTotal + netAdjustments);
+  const gstAmount = gstEnabled ? Math.round(preGstTotal * gstRate) / 100 : 0;
+  const gstCgst = gstAmount / 2;
+  const gstSgst = gstAmount / 2;
+  const grandTargetDue = preGstTotal + gstAmount;
 
   // Auto Balance Split Payment Rows
   const totalSplitSum = splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
@@ -500,6 +508,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           miscTotal: extraCharges,
           discount: discounts,
           grandTotal: grandTargetDue,
+          gstEnabled,
+          gstRate,
+          gstAmount,
+          gstCgst,
+          gstSgst,
           status: 'Paid',
           paidAt: `${checkoutDateStr} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
           paymentMethod: primaryMode,
@@ -629,11 +642,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1">Check-In Date *</label>
-                <input type="date" value={checkinDate} onChange={e => setCheckinDate(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                <input type="date" value={checkinDate} onChange={e => { setCheckinDate(e.target.value); if (expectedCheckout && e.target.value > expectedCheckout) setExpectedCheckout(e.target.value); }} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
               <div>
                 <label className="block mb-1">Check-Out Date *</label>
-                <input type="date" value={expectedCheckout} onChange={e => setExpectedCheckout(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
+                <input type="date" value={expectedCheckout} min={checkinDate} onChange={e => setExpectedCheckout(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
             </div>
 
@@ -1154,6 +1167,46 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <span>-₹{discounts.toFixed(2)}</span>
                       </div>
                     )}
+                    {/* GST Toggle & Rate */}
+                    <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-1.5">
+                      <div className="flex items-center gap-2">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={gstEnabled}
+                            onChange={(e) => setGstEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-8 h-4 bg-slate-300 peer-checked:bg-blue-600 rounded-full peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+                        </label>
+                        <span className="font-bold text-slate-600 text-[11px]">Apply GST</span>
+                      </div>
+                      {gstEnabled && (
+                        <select
+                          value={gstRate}
+                          onChange={(e) => setGstRate(Number(e.target.value))}
+                          className="text-xs font-bold border border-slate-300 rounded-md px-2 py-0.5 bg-white"
+                        >
+                          <option value={0}>0%</option>
+                          <option value={5}>5%</option>
+                          <option value={12}>12%</option>
+                          <option value={18}>18%</option>
+                          <option value={28}>28%</option>
+                        </select>
+                      )}
+                    </div>
+                    {gstEnabled && gstAmount > 0 && (
+                      <>
+                        <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
+                          <span>CGST @ {gstRate / 2}%:</span>
+                          <span>₹{gstCgst.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
+                          <span>SGST @ {gstRate / 2}%:</span>
+                          <span>₹{gstSgst.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between items-center font-extrabold text-slate-900 border-t border-slate-200 pt-1.5">
                       <span>Grand Target Due:</span>
                       <span className="text-emerald-700 text-base">₹{grandTargetDue.toFixed(2)}</span>
@@ -1381,7 +1434,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <input
                     type="date"
                     value={checkinDate}
-                    onChange={(e) => setCheckinDate(e.target.value)}
+                    onChange={(e) => { setCheckinDate(e.target.value); if (expectedCheckout && e.target.value > expectedCheckout) setExpectedCheckout(e.target.value); }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -1391,6 +1444,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <input
                     type="date"
                     value={expectedCheckout}
+                    min={checkinDate}
                     onChange={(e) => setExpectedCheckout(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
@@ -1567,6 +1621,23 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         </span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* GST Breakdown */}
+              {gstEnabled && gstAmount > 0 && (
+                <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
+                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                    Tax Breakdown (GST)
+                  </div>
+                  <div className="flex justify-between text-black text-[11px]">
+                    <span>CGST @ {gstRate / 2}%:</span>
+                    <span>₹{gstCgst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-black text-[11px]">
+                    <span>SGST @ {gstRate / 2}%:</span>
+                    <span>₹{gstSgst.toFixed(2)}</span>
                   </div>
                 </div>
               )}

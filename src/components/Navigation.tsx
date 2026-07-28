@@ -15,7 +15,6 @@ export type TabType =
   | 'menu_manager'
   | 'export'
   | 'telegram'
-  | 'errors'
   | 'misc_charges'
   | 'custom_css';
 

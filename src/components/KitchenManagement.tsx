@@ -14,11 +14,18 @@ import {
   RefreshCw,
   Search,
   ShoppingCart,
-  ArrowUp
+  ArrowUp,
+  Save,
+  Bookmark,
+  Trash2,
+  Pencil,
+  Minus,
+  Copy,
+  Scale
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB } from '../services/api';
 import DataTable from 'react-data-table-component';
 
 interface KitchenManagementProps {
@@ -71,6 +78,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   useEffect(() => {
     fetchServedLogsFromDB().then((logs) => {
       if (logs.length > 0) setServedLogs(logs);
+    });
+  }, []);
+
+  const [ingredientCategoryNames, setIngredientCategoryNames] = useState<string[]>([]);
+  useEffect(() => {
+    fetchMaterialCategoriesFromDB().then((cats) => {
+      setIngredientCategoryNames(cats.filter(c => c.is_ingredient).map(c => c.name));
     });
   }, []);
 
@@ -328,24 +342,105 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setActiveTab('kds');
   };
 
-  // Beta Recipe Builder State
+  // ─── Beta Recipe Builder State ───
+  const RECIPE_STORAGE_KEY = 'artists_farm_dish_recipes';
+  const PRESET_STORAGE_KEY = 'artists_farm_recipe_presets';
+
+  interface RecipeIngredient {
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    costPerUnit: number;
+  }
+  interface DishRecipe {
+    recipeName: string;
+    yieldFactor: number;
+    servings: number;
+    ingredients: RecipeIngredient[];
+  }
+  interface RecipePreset {
+    id: string;
+    name: string;
+    ingredients: RecipeIngredient[];
+    yieldFactor: number;
+  }
+
+  const defaultRecipe: DishRecipe = { recipeName: '', yieldFactor: 1, servings: 1, ingredients: [] };
+
   const [selectedRecipeMenuItemId, setSelectedRecipeMenuItemId] = useState<number>(menu[0]?.id || 0);
   const selectedRecipeMenuItem = menu.find((m) => m.id === selectedRecipeMenuItemId) || menu[0];
 
-  const [recipeIngredients, setRecipeIngredients] = useState<
-    { id: string; name: string; quantity: number; unit: string; costPerUnit: number }[]
-  >([
-    { id: '1', name: 'Fresh Cottage Cheese (Paneer)', quantity: 0.2, unit: 'kg', costPerUnit: 380 },
-    { id: '2', name: 'Butter (Amul)', quantity: 0.05, unit: 'kg', costPerUnit: 520 },
-    { id: '3', name: 'Fresh Cream', quantity: 0.04, unit: 'liters', costPerUnit: 220 },
-    { id: '4', name: 'Tomato Gravy Puree', quantity: 0.15, unit: 'kg', costPerUnit: 60 },
-  ]);
+  const loadAllRecipes = (): Record<number, DishRecipe> => {
+    try { return JSON.parse(localStorage.getItem(RECIPE_STORAGE_KEY) || '{}'); } catch { return {}; }
+  };
+  const saveAllRecipes = (all: Record<number, DishRecipe>) => {
+    localStorage.setItem(RECIPE_STORAGE_KEY, JSON.stringify(all));
+  };
+
+  const [allRecipes, setAllRecipes] = useState<Record<number, DishRecipe>>(() => loadAllRecipes());
+  const currentRecipe: DishRecipe = allRecipes[selectedRecipeMenuItemId] || { ...defaultRecipe, recipeName: selectedRecipeMenuItem?.name || '' };
+
+  const [recipeName, setRecipeName] = useState(currentRecipe.recipeName);
+  const [yieldFactor, setYieldFactor] = useState(currentRecipe.yieldFactor || 1);
+  const [servings, setServings] = useState(currentRecipe.servings || 1);
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>(currentRecipe.ingredients);
+  const [editingRecipeName, setEditingRecipeName] = useState(false);
+  const [tempRecipeName, setTempRecipeName] = useState('');
+
+  const [presets, setPresets] = useState<RecipePreset[]>(() => {
+    try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY) || '[]'); } catch { return []; }
+  });
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [presetNameInput, setPresetNameInput] = useState('');
 
   const [newIngName, setNewIngName] = useState('');
   const [newIngQty, setNewIngQty] = useState(0.1);
   const [newIngUnit, setNewIngUnit] = useState('kg');
   const [newIngCost, setNewIngCost] = useState(100);
   const [selectedStockItemId, setSelectedStockItemId] = useState('');
+  const [recipeSearch, setRecipeSearch] = useState('');
+
+  // Persist recipe on every change
+  useEffect(() => {
+    if (!selectedRecipeMenuItemId) return;
+    setAllRecipes((prev) => ({
+      ...prev,
+      [selectedRecipeMenuItemId]: {
+        recipeName: recipeName || selectedRecipeMenuItem?.name || '',
+        yieldFactor,
+        servings,
+        ingredients: recipeIngredients,
+      },
+    }));
+  }, [recipeName, yieldFactor, servings, recipeIngredients, selectedRecipeMenuItemId]);
+
+  // Save to localStorage whenever allRecipes changes
+  useEffect(() => {
+    saveAllRecipes(allRecipes);
+  }, [allRecipes]);
+
+  // Load recipe when switching dishes
+  useEffect(() => {
+    const r = allRecipes[selectedRecipeMenuItemId];
+    if (r) {
+      setRecipeName(r.recipeName);
+      setYieldFactor(r.yieldFactor || 1);
+      setServings(r.servings || 1);
+      setRecipeIngredients(r.ingredients);
+    } else {
+      setRecipeName(selectedRecipeMenuItem?.name || '');
+      setYieldFactor(1);
+      setServings(1);
+      setRecipeIngredients([]);
+    }
+    setEditingRecipeName(false);
+  }, [selectedRecipeMenuItemId]);
+
+  // Save presets to localStorage
+  useEffect(() => {
+    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+  }, [presets]);
 
   const handleStockItemSelect = (itemId: string) => {
     setSelectedStockItemId(itemId);
@@ -360,15 +455,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }
   };
 
-  const totalRecipeCost = recipeIngredients.reduce((sum, ing) => sum + ing.quantity * ing.costPerUnit, 0);
+  const costPerPortion = recipeIngredients.reduce((sum, ing) => sum + ing.quantity * ing.costPerUnit, 0);
+  const totalBatchCost = costPerPortion * servings;
   const dishSellingPrice = selectedRecipeMenuItem?.price || 350;
-  const foodCostPercentage = dishSellingPrice > 0 ? (totalRecipeCost / dishSellingPrice) * 100 : 0;
-  const grossProfitMargin = dishSellingPrice > 0 ? ((dishSellingPrice - totalRecipeCost) / dishSellingPrice) * 100 : 0;
+  const scaledSellingPrice = dishSellingPrice * servings;
+  const foodCostPercentage = dishSellingPrice > 0 ? (costPerPortion / dishSellingPrice) * 100 : 0;
+  const grossProfitMargin = dishSellingPrice > 0 ? ((dishSellingPrice - costPerPortion) / dishSellingPrice) * 100 : 0;
+  const profitPerPortion = dishSellingPrice - costPerPortion;
+  const totalProfit = profitPerPortion * servings;
 
   const handleAddIngredient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newIngName) return;
-    setRecipeIngredients([
+    const newIngredients = [
       ...recipeIngredients,
       {
         id: Date.now().toString(),
@@ -377,10 +476,37 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         unit: newIngUnit,
         costPerUnit: Number(newIngCost),
       },
-    ]);
+    ];
+    setRecipeIngredients(newIngredients);
     setSelectedStockItemId('');
     setNewIngName('');
   };
+
+  const handleSavePreset = () => {
+    if (!presetNameInput.trim()) return;
+    const newPreset: RecipePreset = {
+      id: Date.now().toString(),
+      name: presetNameInput.trim(),
+      ingredients: [...recipeIngredients],
+      yieldFactor,
+    };
+    setPresets([...presets, newPreset]);
+    setPresetNameInput('');
+    setShowPresetModal(false);
+  };
+
+  const handleLoadPreset = (preset: RecipePreset) => {
+    setRecipeIngredients([...preset.ingredients]);
+    setYieldFactor(preset.yieldFactor);
+  };
+
+  const handleDeletePreset = (id: string) => {
+    setPresets(presets.filter((p) => p.id !== id));
+  };
+
+  const filteredRecipeIngredients = recipeSearch
+    ? recipeIngredients.filter((ing) => ing.name.toLowerCase().includes(recipeSearch.toLowerCase()))
+    : recipeIngredients;
   const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
 
   // New Order Form State
@@ -419,6 +545,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [reqItemName, setReqItemName] = useState('');
   const [reqQty, setReqQty] = useState(10);
   const [reqUnit, setReqUnit] = useState('kg');
+  const [reqSearch, setReqSearch] = useState('');
 
   // Add Item to Order Cart
   const handleAddToCart = (item: MenuItem) => {
@@ -510,6 +637,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   };
 
   const filteredOrders = orders.filter((o) => kdsFilter === 'All' || o.status === kdsFilter);
+
+  const filteredRequisitions = requisitions.filter((req) =>
+    !reqSearch ||
+    req.itemName.toLowerCase().includes(reqSearch.toLowerCase()) ||
+    req.requestedBy.toLowerCase().includes(reqSearch.toLowerCase()) ||
+    req.id.toLowerCase().includes(reqSearch.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -1130,79 +1264,150 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </button>
           </div>
 
-          <div className="overflow-x-auto text-xs">
-              <table className="datatable w-full text-left text-slate-700 dark:text-slate-300">
-               <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
-                <tr>
-                  <th className="py-2.5 px-3">Req ID</th>
-                  <th className="py-2.5 px-3">Material Name</th>
-                  <th className="py-2.5 px-3">Requested Qty</th>
-                  <th className="py-2.5 px-3">Requested At</th>
-                  <th className="py-2.5 px-3">Requested By</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {requisitions.map((req) => (
-                  <tr key={req.id}>
-                    <td className="py-2.5 px-3 font-bold">{req.id}</td>
-                    <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{req.itemName}</td>
-                    <td className="py-2.5 px-3">
-                      {req.requestedQty} {req.unit}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-500">{req.requestedAt}</td>
-                    <td className="py-2.5 px-3">{req.requestedBy}</td>
-                    <td className="py-2.5 px-3">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        req.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : 'bg-amber-100 text-amber-800 border-amber-300'
-                      }`}>
-                        {req.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      {req.status === 'Pending' ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            req.status = 'Approved';
-                            if (onDispatchTelegram) {
-                              (async () => {
-                                const reqApprVars: Record<string, string> = {
-                                  req_id: req.id,
-                                  item_name: req.itemName,
-                                  qty: String(req.requestedQty),
-                                  unit: req.unit,
-                                  requested_by: req.requestedBy,
-                                };
-                                const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
-                                const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
-                                onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen');
-                              })();
-                            }
-                            recordTelescopeLog({
-                              portal: 'requests',
-                              severity: 'INFO',
-                              msg: `PATCH /api/kitchen/requisitions/${req.id} - Approved`,
-                              origin: '/src/components/KitchenManagement.tsx -> ApproveRequisition',
-                              details: req,
-                            });
-                          }}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition cursor-pointer"
-                        >
-                          Approve & Release
-                        </button>
-                      ) : (
-                        <span className="text-emerald-600 font-bold text-[11px]">✓ Fulfilled</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              {
+                name: 'Req ID',
+                selector: (row: Requisition) => row.id,
+                sortable: true,
+                width: '120px',
+                cell: (row: Requisition) => <span className="font-bold">{row.id}</span>,
+              },
+              {
+                name: 'Material Name',
+                selector: (row: Requisition) => row.itemName,
+                sortable: true,
+                grow: 2,
+                cell: (row: Requisition) => <span className="font-semibold text-slate-900 dark:text-white">{row.itemName}</span>,
+              },
+              {
+                name: 'Requested Qty',
+                selector: (row: Requisition) => `${row.requestedQty} ${row.unit}`,
+                sortable: true,
+                width: '130px',
+              },
+              {
+                name: 'Requested At',
+                selector: (row: Requisition) => row.requestedAt,
+                sortable: true,
+                width: '160px',
+                cell: (row: Requisition) => <span className="text-slate-500">{row.requestedAt}</span>,
+              },
+              {
+                name: 'Requested By',
+                selector: (row: Requisition) => row.requestedBy,
+                sortable: true,
+                width: '150px',
+              },
+              {
+                name: 'Status',
+                selector: (row: Requisition) => row.status,
+                sortable: true,
+                width: '110px',
+                cell: (row: Requisition) => (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    row.status === 'Approved'
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }`}>
+                    {row.status}
+                  </span>
+                ),
+              },
+              {
+                name: 'Action',
+                width: '150px',
+                center: true,
+                cell: (row: Requisition) => (
+                  row.status === 'Pending' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const req = row;
+                        req.status = 'Approved';
+                        if (onDispatchTelegram) {
+                          (async () => {
+                            const reqApprVars: Record<string, string> = {
+                              req_id: req.id,
+                              item_name: req.itemName,
+                              qty: String(req.requestedQty),
+                              unit: req.unit,
+                              requested_by: req.requestedBy,
+                            };
+                            const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
+                            const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
+                            onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen');
+                          })();
+                        }
+                        recordTelescopeLog({
+                          portal: 'requests',
+                          severity: 'INFO',
+                          msg: `PATCH /api/kitchen/requisitions/${req.id} - Approved`,
+                          origin: '/src/components/KitchenManagement.tsx -> ApproveRequisition',
+                          details: req,
+                        });
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition cursor-pointer"
+                    >
+                      Approve & Release
+                    </button>
+                  ) : (
+                    <span className="text-emerald-600 font-bold text-[11px]">✓ Fulfilled</span>
+                  )
+                ),
+              },
+            ]}
+            data={filteredRequisitions}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
+            highlightOnHover
+            responsive
+            subHeader={
+              <input
+                type="text"
+                value={reqSearch}
+                onChange={(e) => setReqSearch(e.target.value)}
+                placeholder="Search by item name, requester, or ID..."
+                className="w-full max-w-xs px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:border-cyan-500 bg-white dark:bg-slate-900 dark:text-slate-200"
+              />
+            }
+            customStyles={{
+              subHeader: {
+                style: {
+                  padding: '0 0 12px 0',
+                  minHeight: 0,
+                  backgroundColor: 'transparent',
+                },
+              },
+              headCells: {
+                style: {
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  padding: '12px',
+                  paddingLeft: '12px',
+                },
+              },
+              cells: {
+                style: {
+                  fontSize: '13px',
+                  color: '#334155',
+                  padding: '12px',
+                },
+              },
+              headRow: {
+                style: {
+                  backgroundColor: '#f8fafc',
+                },
+              },
+            }}
+            noDataComponent={
+              <div className="py-10 text-center text-slate-400 font-semibold text-xs">
+                No material requisitions found
+              </div>
+            }
+          />
         </div>
       )}
 
@@ -1318,56 +1523,64 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col h-full">
             <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
               <div className="flex items-center gap-2">
-                <span>📋</span> MONTHLY TRACKING LOG (JUL 2026)
+                <Clock className="w-4 h-4 text-cyan-500" /> MONTHLY TRACKING LOG
               </div>
-              <div className="flex items-center gap-2 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">July, 2026</span>
-                <span className="text-[10px]">📅</span>
-              </div>
+              <span className="font-mono text-slate-400 font-bold text-[10px]">{smLogs.length} entries</span>
             </h3>
             
             <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
-              <table className="datatable w-full text-left">
-                <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/4">Date & Time</th>
-                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/2">Staff Members</th>
-                    <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/4">Total Food Consumed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {smLogs.slice(0, smVisibleCount).map((log, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="py-4 pr-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400 align-top">
-                        {log.date.replace(', ', '\n').split('\n').map((l, idx) => <div key={idx}>{l}</div>)}
-                      </td>
-                      <td className="py-4 pr-3 text-[10px] font-bold text-slate-700 align-top leading-relaxed">
-                        {log.staff}
-                      </td>
-                      <td className="py-4 pr-3 text-[10px] font-semibold text-slate-600 align-top relative">
-                        {log.food}
-                        {log.hasTag && (
-                          <div className="absolute right-0 top-4 w-3 h-3 bg-amber-200 rounded-sm flex items-center justify-center text-[7px] text-amber-700 font-bold border border-amber-300">
-                            G
-                          </div>
+              <DataTable
+                columns={[
+                  {
+                    name: 'Date & Time',
+                    selector: (row: any) => row.date,
+                    sortable: true,
+                    grow: 1,
+                    cell: (row: any) => (
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {row.date.split('\n').map((l: string, idx: number) => <div key={idx}>{l}</div>)}
+                      </span>
+                    ),
+                  },
+                  {
+                    name: 'Staff Members',
+                    selector: (row: any) => row.staff,
+                    sortable: true,
+                    grow: 2,
+                    cell: (row: any) => (
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 leading-relaxed">{row.staff}</span>
+                    ),
+                  },
+                  {
+                    name: 'Total Food Consumed',
+                    selector: (row: any) => row.food,
+                    grow: 2,
+                    cell: (row: any) => (
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 relative">
+                        {row.food}
+                        {row.hasTag && (
+                          <span className="ml-1.5 w-3 h-3 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[7px] text-amber-700 font-bold border border-amber-300">G</span>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                    ),
+                  },
+                ]}
+                data={smLogs}
+                pagination
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 25, 50]}
+                highlightOnHover
+                noHeader
+                customStyles={{
+                  headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', backgroundColor: '#f8fafc', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '12px', paddingLeft: '12px' } },
+                  rows: { style: { minHeight: '44px' } },
+                }}
+                noDataComponent={
+                  <div className="py-8 text-center text-slate-400 font-semibold text-xs">No meal logs this month</div>
+                }
+              />
             </div>
-
-            {smLogs.length > smVisibleCount && (
-              <div className="pt-4 mt-4 text-center border-t border-slate-100">
-                <button 
-                  onClick={() => setSmVisibleCount((prev: number) => prev + 10)}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[10px] px-6 py-2 rounded-full shadow-2xs transition-colors cursor-pointer"
-                >
-                  Load More Entries ({smLogs.length - smVisibleCount} remaining)
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1424,154 +1637,322 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB: BETA RECIPE BUILDER */}
       {activeTab === 'beta_recipe_builder' && (
-        <div className="beta-recipe-builder-container bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 dark:border-slate-700 pb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>🧪</span> Beta Recipe Costing & Food Margin Builder
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Calculate precise raw material ingredient costs, portion yield, and food profit margins for menu items.
-              </p>
+        <div className="space-y-6">
+          {/* Recipe Preset Save Modal */}
+          {showPresetModal && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Bookmark className="w-4 h-4 text-indigo-500" /> Save Recipe as Preset
+                  </h3>
+                  <button onClick={() => setShowPresetModal(false)} className="cursor-pointer">
+                    <X className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500">Save the current ingredient list and yield as a reusable preset. You can load it into any dish later.</p>
+                <input
+                  type="text"
+                  value={presetNameInput}
+                  onChange={(e) => setPresetNameInput(e.target.value)}
+                  placeholder="e.g. Butter Chicken Base, Paneer Tikka Mix..."
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); }}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowPresetModal(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer">Cancel</button>
+                  <button onClick={handleSavePreset} className="px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg cursor-pointer flex items-center gap-1.5">
+                    <Save className="w-3 h-3" /> Save Preset
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
 
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Target Dish:</span>
-              <select
-                value={selectedRecipeMenuItemId}
-                onChange={(e) => setSelectedRecipeMenuItemId(Number(e.target.value))}
-                className="recipe-dish-selector p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900"
-              >
-                {menu.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} (Selling: ₹{m.price})
-                  </option>
-                ))}
-              </select>
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-indigo-600" /> Recipe Costing & Food Margin Builder
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Each dish has its own recipe. Ingredients are per single portion. Scale up with servings.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Dish:</span>
+                <select
+                  value={selectedRecipeMenuItemId}
+                  onChange={(e) => setSelectedRecipeMenuItemId(Number(e.target.value))}
+                  className="p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-700 cursor-pointer"
+                >
+                  {menu.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} — ₹{m.price}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Metrics Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-            <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
-              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Dish Selling Price</p>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500">Current Guest Billing Price</span>
-            </div>
-
-            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-              <p className="text-amber-800 font-bold uppercase text-[10px]">Total Raw Ingredient Cost</p>
-              <p className="text-xl font-extrabold text-amber-900 mt-1">₹{totalRecipeCost.toFixed(2)}</p>
-              <span className="text-[10px] text-amber-700">Cost Per Portion (CPP)</span>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-              <p className="text-blue-800 font-bold uppercase text-[10px]">Food Cost Ratio</p>
-              <p className="text-xl font-extrabold text-blue-900 mt-1">{foodCostPercentage.toFixed(1)}%</p>
-              <span className="text-[10px] text-blue-700">Target Benchmark: &lt;30%</span>
-            </div>
-
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-              <p className="text-emerald-800 font-bold uppercase text-[10px]">Gross Profit Margin</p>
-              <p className="text-xl font-extrabold text-emerald-900 mt-1">{grossProfitMargin.toFixed(1)}%</p>
-              <span className="text-[10px] text-emerald-700">Profit: ₹{(dishSellingPrice - totalRecipeCost).toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Recipe Ingredients Breakdown Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-indigo-600 pl-2.5">
-                  Raw Ingredients Breakdown for {selectedRecipeMenuItem?.name}
-                </h4>
-                <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px]">{recipeIngredients.length} Ingredients</span>
+          {/* Recipe Name + Yield + Servings Row */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Recipe Name */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Recipe Name</label>
+                {editingRecipeName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tempRecipeName}
+                      onChange={(e) => setTempRecipeName(e.target.value)}
+                      onBlur={() => { setRecipeName(tempRecipeName); setEditingRecipeName(false); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { setRecipeName(tempRecipeName); setEditingRecipeName(false); } if (e.key === 'Escape') setEditingRecipeName(false); }}
+                      className="flex-1 p-2 rounded-lg border border-indigo-300 text-xs font-bold bg-white dark:bg-slate-900 dark:text-white"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setTempRecipeName(recipeName); setEditingRecipeName(true); }}
+                    className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/60 w-full text-left hover:border-indigo-300 cursor-pointer transition-colors"
+                  >
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex-1 truncate">{recipeName || selectedRecipeMenuItem?.name || 'Untitled Recipe'}</span>
+                    <Pencil className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                  </button>
+                )}
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-600 rounded-xl">
-                 <table className="datatable recipe-ingredients-table w-full text-left text-xs">
-                   <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">
-                    <tr>
-                      <th className="p-3">Ingredient</th>
-                      <th className="p-3 text-center">Quantity per Portion</th>
-                      <th className="p-3 text-right">Cost / Unit</th>
-                      <th className="p-3 text-right">Total Ingredient Cost</th>
-                      <th className="p-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-600">
-                    {recipeIngredients.map((ing) => (
-                      <tr key={ing.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{ing.name}</td>
-                        <td className="p-3 text-center font-mono">
-                          {ing.quantity} {ing.unit}
-                        </td>
-                        <td className="p-3 text-right font-mono text-slate-600">₹{ing.costPerUnit}/{ing.unit}</td>
-                        <td className="p-3 text-right font-bold text-emerald-700">
-                          ₹{(ing.quantity * ing.costPerUnit).toFixed(2)}
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => setRecipeIngredients(recipeIngredients.filter((i) => i.id !== ing.id))}
-                            className="btn-remove-ingredient text-red-500 hover:text-red-700 font-bold cursor-pointer"
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Yield Factor */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Yield (Batch Makes)</span>
+                  <span className="font-mono text-indigo-600 dark:text-indigo-400">{yieldFactor} portion{yieldFactor !== 1 ? 's' : ''}</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setYieldFactor(Math.max(1, yieldFactor - 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Minus className="w-3 h-3" /></button>
+                  <input type="range" min="1" max="50" value={yieldFactor} onChange={(e) => setYieldFactor(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                  <button onClick={() => setYieldFactor(Math.min(50, yieldFactor + 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Plus className="w-3 h-3" /></button>
+                </div>
+              </div>
+
+              {/* Servings */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Servings to Cook</span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400">{servings} portion{servings !== 1 ? 's' : ''}</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setServings(Math.max(1, servings - 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Minus className="w-3 h-3" /></button>
+                  <input type="range" min="1" max="100" value={servings} onChange={(e) => setServings(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                  <button onClick={() => setServings(Math.min(100, servings + 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Plus className="w-3 h-3" /></button>
+                </div>
+              </div>
+            </div>
+
+            {/* Preset Row */}
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Presets:</span>
+              {presets.length === 0 ? (
+                <span className="text-[10px] text-slate-400 italic">No saved presets yet</span>
+              ) : (
+                presets.map((p) => (
+                  <div key={p.id} className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded-lg px-2 py-1">
+                    <button onClick={() => handleLoadPreset(p)} className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 cursor-pointer" title={`Load "${p.name}"`}>
+                      <Copy className="w-3 h-3 inline mr-1" />{p.name}
+                    </button>
+                    <button onClick={() => handleDeletePreset(p.id)} className="text-slate-400 hover:text-red-500 cursor-pointer"><Trash2 className="w-3 h-3" /></button>
+                  </div>
+                ))
+              )}
+              <button
+                onClick={() => setShowPresetModal(true)}
+                className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-indigo-600 bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900 rounded-lg cursor-pointer transition-colors"
+              >
+                <Bookmark className="w-3 h-3" /> Save Current as Preset
+              </button>
+            </div>
+          </div>
+
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Cost / Portion</p>
+              <p className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">₹{costPerPortion.toFixed(2)}</p>
+              <span className="text-[10px] text-slate-400">Single serving cost</span>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Batch Cost ({servings}x)</p>
+              <p className="text-lg font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalBatchCost.toFixed(2)}</p>
+              <span className="text-[10px] text-slate-400">{servings} portions total</span>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Selling Price</p>
+              <p className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
+              <span className="text-[10px] text-slate-400">Batch total: ₹{scaledSellingPrice.toLocaleString()}</span>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Food Cost %</p>
+              <p className={`text-lg font-extrabold mt-1 ${foodCostPercentage > 30 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{foodCostPercentage.toFixed(1)}%</p>
+              <span className={`text-[10px] ${foodCostPercentage > 30 ? 'text-red-500' : 'text-blue-500'}`}>{foodCostPercentage > 30 ? 'Above 30% target' : 'Within target <30%'}</span>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Profit / Portion</p>
+              <p className={`text-lg font-extrabold mt-1 ${profitPerPortion >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{profitPerPortion.toFixed(2)}</p>
+              <span className="text-[10px] text-slate-400">Margin: {grossProfitMargin.toFixed(1)}%</span>
+            </div>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">Total Profit ({servings}x)</p>
+              <p className={`text-lg font-extrabold mt-1 ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{totalProfit.toFixed(2)}</p>
+              <span className="text-[10px] text-slate-400">Yield: {yieldFactor} portion{yieldFactor !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+            {/* Ingredients Table */}
+            <div className="lg:col-span-2">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-indigo-500" /> Ingredients
+                    <span className="text-[10px] font-mono text-slate-400">({recipeIngredients.length})</span>
+                  </h4>
+                  <input
+                    type="text"
+                    value={recipeSearch}
+                    onChange={(e) => setRecipeSearch(e.target.value)}
+                    placeholder="Search..."
+                    className="w-44 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-[11px] text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+                <DataTable
+                  columns={[
+                    {
+                      name: 'Ingredient',
+                      selector: (row: RecipeIngredient) => row.name,
+                      sortable: true,
+                      grow: 2,
+                      cell: (row: RecipeIngredient) => <span className="font-bold text-slate-900 dark:text-white">{row.name}</span>,
+                    },
+                    {
+                      name: 'Qty / Portion',
+                      selector: (row: RecipeIngredient) => row.quantity,
+                      sortable: true,
+                      width: '110px',
+                      center: true,
+                      cell: (row: RecipeIngredient) => (
+                        <span className="font-mono text-slate-700 dark:text-slate-300">{row.quantity} {row.unit}</span>
+                      ),
+                    },
+                    {
+                      name: 'Scaled Qty',
+                      selector: (row: RecipeIngredient) => row.quantity * servings,
+                      sortable: true,
+                      width: '110px',
+                      center: true,
+                      cell: (row: RecipeIngredient) => (
+                        <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">{(row.quantity * servings).toFixed(3)} {row.unit}</span>
+                      ),
+                    },
+                    {
+                      name: 'Cost / Unit',
+                      selector: (row: RecipeIngredient) => row.costPerUnit,
+                      sortable: true,
+                      width: '100px',
+                      right: true,
+                      cell: (row: RecipeIngredient) => <span className="font-mono text-slate-600">₹{row.costPerUnit}</span>,
+                    },
+                    {
+                      name: 'Total',
+                      selector: (row: RecipeIngredient) => row.quantity * servings * row.costPerUnit,
+                      sortable: true,
+                      width: '100px',
+                      right: true,
+                      cell: (row: RecipeIngredient) => <span className="font-bold text-emerald-700 dark:text-emerald-400">₹{(row.quantity * servings * row.costPerUnit).toFixed(2)}</span>,
+                    },
+                    {
+                      name: '',
+                      width: '60px',
+                      center: true,
+                      cell: (row: RecipeIngredient) => (
+                        <button
+                          onClick={() => setRecipeIngredients(recipeIngredients.filter((i) => i.id !== row.id))}
+                          className="text-red-400 hover:text-red-600 cursor-pointer"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      ),
+                    },
+                  ]}
+                  data={filteredRecipeIngredients}
+                  pagination={recipeIngredients.length > 10}
+                  paginationPerPage={10}
+                  paginationRowsPerPageOptions={[10, 25, 50]}
+                  noHeader
+                  highlightOnHover
+                  responsive
+                  customStyles={{
+                    headCells: { style: { fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', backgroundColor: '#f8fafc', padding: '10px 12px', paddingLeft: '12px' } },
+                    cells: { style: { fontSize: '12px', color: '#334155', padding: '10px 12px' } },
+                    rows: { style: { minHeight: '42px' } },
+                  }}
+                  noDataComponent={
+                    <div className="py-12 text-center">
+                      <Boxes className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400 font-semibold">No ingredients yet</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Add raw ingredients from kitchen stock below</p>
+                    </div>
+                  }
+                />
               </div>
             </div>
 
             {/* Add Ingredient Form */}
-            <div className="add-ingredient-form-card bg-slate-50 dark:bg-slate-700/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-600 space-y-3">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm">➕ Add Raw Ingredient to Recipe</h4>
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3 h-fit">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
               <form onSubmit={handleAddIngredient} className="space-y-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Select Ingredient from Kitchen Stock</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">From Kitchen Stock</label>
                   {inventory && inventory.length > 0 ? (
                     <select
                       required
                       value={selectedStockItemId}
                       onChange={(e) => handleStockItemSelect(e.target.value)}
-                      className="select-kitchen-stock-dropdown w-full p-2.5 rounded-xl border border-indigo-300 bg-white font-medium text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 shadow-xs"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="">-- Choose Stock Ingredient --</option>
-                      {inventory.map((item) => (
+                      <option value="">-- Choose Ingredient --</option>
+                      {inventory.filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category)).map((item) => (
                         <option key={item.id} value={item.id}>
-                          {item.name} ({item.category}) — Stock: {item.currentStock} {item.unit}
+                          {item.name} ({item.category}) — {item.currentStock} {item.unit}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs">
-                      ⚠️ No items found in Kitchen Stock. Please add raw materials in <strong>Edit Kitchen Stock</strong> first.
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[11px]">
+                      No stock items. Add raw materials in <strong>Edit Kitchen Stock</strong> first.
                     </div>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Quantity</label>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Qty / Portion</label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       required
                       value={newIngQty}
                       onChange={(e) => setNewIngQty(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Unit</label>
-                    <select
-                      value={newIngUnit}
-                      onChange={(e) => setNewIngUnit(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-bold"
-                    >
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Unit</label>
+                    <select value={newIngUnit} onChange={(e) => setNewIngUnit(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold text-xs text-slate-900 dark:text-white">
                       <option value="kg">kg</option>
                       <option value="liters">liters</option>
                       <option value="pcs">pcs</option>
@@ -1582,21 +1963,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Unit Raw Cost (₹)</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Cost per Unit (₹)</label>
                   <input
                     type="number"
                     required
                     value={newIngCost}
                     onChange={(e) => setNewIngCost(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="btn-save-ingredient w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
                 >
-                  Save Ingredient to Recipe
+                  <Plus className="w-3.5 h-3.5" /> Add to Recipe
                 </button>
               </form>
             </div>
@@ -1852,8 +2233,8 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
                 backgroundColor: 'transparent',
               },
             },
-            headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
-            cells: { style: { paddingTop: '10px', paddingBottom: '10px' } },
+            headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+            cells: { style: { paddingTop: '10px', paddingBottom: '10px', paddingLeft: '12px' } },
           }}
         />
       </div>

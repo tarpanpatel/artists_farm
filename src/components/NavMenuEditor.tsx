@@ -38,7 +38,6 @@ const PAGE_OPTIONS = [
   { label: 'Staff Directory', tabKey: 'staff', uniqueKey: 'staff_directory_salaries' },
   { label: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
   { label: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics' },
-  { label: 'Audit Logs', tabKey: 'audit_logs', uniqueKey: 'audit_logs_main' },
   { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
   { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
   { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
@@ -49,27 +48,14 @@ const PAGE_OPTIONS = [
   { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
   { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
   { label: 'Custom CSS', tabKey: 'custom_css', uniqueKey: 'custom_css' },
-  { label: 'Error Logs', tabKey: 'audit_logs', uniqueKey: 'errors' },
   { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
   { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
 ];
 
-const ICON_SEARCH_LIST = [
-  'LayoutDashboard','Users','CreditCard','ShoppingCart','UtensilsCrossed','Utensils',
-  'ClipboardList','Truck','CookingPot','Boxes','Wallet','UserCheck','Receipt',
-  'TrendingDown','Package','ShoppingBag','BarChart3','ScrollText','Grid3x3','Bot',
-  'Settings','Navigation','Link','Paintbrush','DollarSign','ShieldCheck','Layers',
-  'List','Calendar','BookOpen','ShieldAlert','Lock','FileSpreadsheet','Sliders',
-  'Activity','Send','LogOut','Home','Bell','Phone','MapPin','Star','Heart',
-  'Eye','Clock','Tag','Image','Folder','File','Archive','Download','Upload',
-  'Printer','RefreshCw','RotateCw','Power','Wifi','Globe','Search','Key',
-  'Award','Briefcase','Building','Camera','Car','Cloud','Code','Coffee',
-  'Database','Disc','Film','Hash','Headphones','HelpCircle','Info','Mail',
-  'Megaphone','Mic','Monitor','MousePointer','Music','PieChart','Puzzle',
-  'QrCode','Save','Server','Share2','ShoppingBasket','Speaker','Tablet',
-  'Target','Terminal','ThumbsUp','Tool','TrafficCone','Tv','Type','Video',
-  'Voicemail','Watch','Wrench','Zap'
-].filter((v, i, a) => a.indexOf(v) === i);
+// Dynamic icon list extracted from lucide-react (all icons)
+const ALL_LUCIDE_ICON_NAMES: string[] = Object.keys(LucideIcons).filter(
+  (k) => k[0] === k[0].toUpperCase() && k.length > 1 && !k.endsWith('Icon') && !k.startsWith('create') && !k.startsWith('default') && typeof (LucideIcons as any)[k] === 'object' && (LucideIcons as any)[k]?.render
+).sort();
 
 const getIconComponent = (name: string): React.ComponentType<any> => {
   return (LucideIcons as any)[name] || NavIcon;
@@ -357,7 +343,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const collapseAll = () => setExpandedIds(new Set());
 
   // ========== FILTERED LISTS ==========
-  const filteredIcons = ICON_SEARCH_LIST.filter(name =>
+  const filteredIcons = ALL_LUCIDE_ICON_NAMES.filter(name =>
     name.toLowerCase().includes(iconSearch.toLowerCase())
   );
   const filteredTabs = PAGE_OPTIONS.filter(p =>
@@ -480,14 +466,15 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
         {/* Icon Picker Dropdown */}
         {showIconPickerFor === item.id && (
-          <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[320px]">
+          <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[380px]">
             <div className="relative mb-2">
               <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1.5" />
-              <input type="text" autoFocus value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} placeholder="Search icons..."
+              <input type="text" autoFocus value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
                 className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
             </div>
-            <div className="grid grid-cols-8 gap-1 max-h-[200px] overflow-y-auto">
-              {filteredIcons.map(name => {
+            <div className="text-[9px] text-slate-400 mb-1 font-mono">{filteredIcons.length} icons</div>
+            <div className="grid grid-cols-8 gap-1 max-h-[240px] overflow-y-auto">
+              {filteredIcons.slice(0, 120).map(name => {
                 const Ic = getIconComponent(name);
                 return (
                   <button key={name} onClick={() => handleIconChange(item.id, name)}
@@ -498,6 +485,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 );
               })}
             </div>
+            {filteredIcons.length > 120 && (
+              <div className="text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
+            )}
             <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
           </div>
         )}

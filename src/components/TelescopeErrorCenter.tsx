@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from 'react-data-table-component';
 import {
   Radio,
   Bug,
@@ -126,18 +127,6 @@ export const TelescopeErrorCenter: React.FC = () => {
       return logPortal === activePortal.toLowerCase();
     });
 
-    // Filter by search term
-    if (search.trim()) {
-      const term = search.toLowerCase();
-      filtered = filtered.filter(
-        (log) =>
-          (log.msg || '').toLowerCase().includes(term) ||
-          (log.origin || '').toLowerCase().includes(term) ||
-          (log.severity || '').toLowerCase().includes(term) ||
-          JSON.stringify(log.details || {}).toLowerCase().includes(term)
-      );
-    }
-
     // Filter by timeframe
     if (timeframe !== 'all') {
       const now = new Date().getTime();
@@ -175,11 +164,6 @@ export const TelescopeErrorCenter: React.FC = () => {
     }, 4000);
     return () => clearInterval(timer);
   }, [isLivePolling, activePortal, timeframe, search]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchLogs();
-  };
 
   const getPortalIcon = (p: string) => {
     switch (p) {
@@ -228,6 +212,133 @@ export const TelescopeErrorCenter: React.FC = () => {
     { key: '404', label: '404 Sentinel', icon: <Unlink className="w-4 h-4 text-pink-400" /> },
     { key: 'login', label: 'Login Portal', icon: <Lock className="w-4 h-4 text-orange-400" /> },
   ];
+
+  const filteredLogs = useMemo(() => {
+    if (!search.trim()) return logs;
+    const term = search.toLowerCase();
+    return logs.filter(
+      (log) =>
+        (log.msg || '').toLowerCase().includes(term) ||
+        (log.origin || '').toLowerCase().includes(term) ||
+        (log.severity || '').toLowerCase().includes(term) ||
+        JSON.stringify(log.details || {}).toLowerCase().includes(term)
+    );
+  }, [logs, search]);
+
+  const columns = [
+    {
+      name: 'Timestamp',
+      selector: (row: LogEntry) => row.timestamp,
+      sortable: true,
+      width: '160px',
+      cell: (row: LogEntry) => <span className="text-slate-400">{row.timestamp}</span>,
+    },
+    {
+      name: 'Severity',
+      selector: (row: LogEntry) => row.severity,
+      sortable: true,
+      width: '128px',
+      cell: (row: LogEntry) => (
+        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getSeverityBadgeClass(row.severity)}`}>
+          {row.severity || 'LOG'}
+        </span>
+      ),
+    },
+    {
+      name: 'Log Message',
+      selector: (row: LogEntry) => row.msg,
+      sortable: true,
+      grow: 1,
+      cell: (row: LogEntry) => <span className="text-slate-200 font-mono truncate">{row.msg}</span>,
+    },
+    {
+      name: 'Origin Location',
+      selector: (row: LogEntry) => row.origin,
+      sortable: true,
+      width: '256px',
+      cell: (row: LogEntry) => <span className="text-slate-400 font-sans truncate">{row.origin}</span>,
+    },
+  ];
+
+  const customStyles = {
+    table: {
+      style: {
+        backgroundColor: 'transparent',
+      },
+    },
+    headRow: {
+      style: {
+        backgroundColor: 'rgba(30, 41, 59, 0.8)',
+        borderBottom: '1px solid rgba(51, 65, 85, 1)',
+        minHeight: '44px',
+      },
+    },
+    headCells: {
+      style: {
+        color: '#94a3b8',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+      },
+    },
+    cells: {
+      style: {
+        color: '#cbd5e1',
+        fontSize: '12px',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+      },
+    },
+    rows: {
+      style: {
+        backgroundColor: 'transparent',
+        borderBottom: '1px solid rgba(51, 65, 85, 0.6)',
+        cursor: 'pointer',
+        '&:hover': {
+          backgroundColor: 'rgba(51, 65, 85, 0.5)',
+        },
+      },
+    },
+    pagination: {
+      style: {
+        backgroundColor: 'transparent',
+        color: '#94a3b8',
+        fontSize: '12px',
+        borderTop: '1px solid rgba(51, 65, 85, 1)',
+        minHeight: '44px',
+      },
+    },
+    subHeader: {
+      style: {
+        backgroundColor: 'transparent',
+        padding: '0 0 16px 0',
+      },
+    },
+    noData: {
+      style: {
+        color: '#64748b',
+        fontStyle: 'italic',
+        fontFamily: 'sans-serif',
+        padding: '48px 16px',
+      },
+    },
+  };
+
+  const subHeaderComponent = (
+    <div className="relative flex-1">
+      <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search system logs by route, severity, keywords, exception stack or IP..."
+        className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:border-cyan-500 transition font-sans"
+      />
+    </div>
+  );
 
   return (
     <div className="bg-[#0b0f19] text-slate-100 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden font-mono min-h-[600px] flex flex-col">
@@ -340,65 +451,27 @@ export const TelescopeErrorCenter: React.FC = () => {
             </div>
           )}
 
-          {/* Search bar */}
-          <form onSubmit={handleSearchSubmit} className="mb-4 flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search system logs by route, severity, keywords, exception stack or IP..."
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:border-cyan-500 transition font-sans"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-sans text-xs font-semibold rounded-xl border border-slate-700 transition"
-            >
-              Filter
-            </button>
-          </form>
-
-          {/* Logs Table */}
-          <div className="flex-1 bg-slate-900/60 border border-slate-800 rounded-xl overflow-y-auto">
-            <table className="datatable w-full text-xs text-left">
-              <thead className="bg-slate-800/80 text-slate-400 font-sans border-b border-slate-800 sticky top-0 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-4 py-3 w-40">Timestamp</th>
-                  <th className="px-4 py-3 w-32">Severity</th>
-                  <th className="px-4 py-3">Log Message</th>
-                  <th className="px-4 py-3 w-64">Origin Location</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-slate-500 italic font-sans">
-                      No events recorded in this category portal.
-                    </td>
-                  </tr>
-                ) : (
-                  logs.map((log) => (
-                    <tr
-                      key={log.id}
-                      onClick={() => setSelectedLog(log)}
-                      className="hover:bg-slate-800/50 transition cursor-pointer"
-                    >
-                      <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{log.timestamp}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getSeverityBadgeClass(log.severity)}`}>
-                          {log.severity || 'LOG'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200 font-mono truncate max-w-md">{log.msg}</td>
-                      <td className="px-4 py-3 text-slate-400 font-sans truncate">{log.origin}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={filteredLogs}
+            customStyles={customStyles}
+            onRowClicked={(row) => setSelectedLog(row)}
+            pagination
+            paginationPerPage={25}
+            paginationComponentOptions={{
+              rowsPerPageText: 'Rows per page:',
+              rangeSeparatorText: 'of',
+            }}
+            noDataComponent={
+              <div className="px-4 py-12 text-center text-slate-500 italic font-sans">
+                No events recorded in this category portal.
+              </div>
+            }
+            subHeader={subHeaderComponent}
+            responsive
+            pointerOnHover
+            highlightOnHover
+          />
         </main>
       </div>
 

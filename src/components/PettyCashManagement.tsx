@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon } from 'lucide-react';
+import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
 import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, deleteExpenseFromDB, fetchStaffUsersFromDB } from '../services/api';
 
@@ -516,147 +517,114 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
       </div>
 
-      {/* Cost Logs Table */}
-      <div className="cost-logs-container bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden p-5 space-y-4">
-        <div className="border-b border-slate-100 dark:border-slate-700 pb-3 flex items-center justify-between">
-          <h3 className="font-extrabold text-slate-800 dark:text-white text-sm">
-            Cost Logs for {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <span className="font-mono text-slate-400 font-bold">{filteredEntries.length} entries found</span>
-        </div>
-
-        <div className="overflow-x-auto text-xs">
-           <table className="datatable cost-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-              <tr>
-                <th className="p-3">Date</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Description</th>
-                <th className="p-3">Total</th>
-                <th className="p-3">Mode</th>
-                {(activeRole === 'Admin' || activeRole === 'Super Admin') && (
-                  <th className="p-3 text-right">Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {paginatedEntries.map((entry) => {
+      {/* Cost Logs DataTable */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+        <DataTable
+          columns={[
+            {
+              name: 'Date',
+              selector: (entry: any) => entry.date,
+              sortable: true,
+              width: '110px',
+              cell: (entry: any) => {
                 const isEditingDate = editingCell?.id === entry.id && editingCell.field === 'date';
-                const isEditingAmount = editingCell?.id === entry.id && editingCell.field === 'amount';
-
-                return (
-                  <tr key={entry.id} className="cost-log-row hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    {/* Date Cell */}
-                    <td className="p-3 text-slate-500 font-mono">
-                      {isEditingDate ? (
-                        <input
-                          type="date"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => handleCellSave(entry.id)}
-                          onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)}
-                          autoFocus
-                          className="p-1 border border-blue-500 rounded text-slate-900"
-                        />
-                      ) : (
-                        <span
-                          onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)}
-                          className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-semibold"
-                          title="Double click to edit Date"
-                        >
-                          {entry.date}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      <span className="bg-slate-100 dark:bg-slate-900 px-2 py-0.5 border border-slate-200 dark:border-slate-700 rounded font-bold text-[10px]">
-                        {entry.category || entry.costCategory}
-                      </span>
-                    </td>
-
-                    <td className="p-3">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">{entry.description}</div>
-                      {entry.moreInfoNotes && (
-                        <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>
-                      )}
-                      <p className="text-[10px] text-slate-500 mt-0.5">Paid by: <strong>{entry.paidBy || entry.vendor}</strong></p>
-                    </td>
-
-                    {/* Amount Cell */}
-                    <td className="p-3 font-mono font-bold text-slate-950 dark:text-white text-sm">
-                      {isEditingAmount ? (
-                        <input
-                          type="number"
-                          value={editValue}
-                          onChange={e => setEditValue(e.target.value)}
-                          onBlur={() => handleCellSave(entry.id)}
-                          onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)}
-                          autoFocus
-                          className="p-1 border border-blue-500 rounded w-24 text-slate-900"
-                        />
-                      ) : (
-                        <span
-                          onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount)}
-                          className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all border-b border-dashed border-slate-400"
-                          title="Double click to edit Amount"
-                        >
-                          ₹{entry.amount.toFixed(2)}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        entry.paymentMode === 'Cash' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {entry.paymentMode || 'Online'}
-                      </span>
-                    </td>
-
-                    {(activeRole === 'Admin' || activeRole === 'Super Admin') && (
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setEditingEntry(entry)}
-                            className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteExpense(entry.id, entry.description)}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <span>Delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
+                return isEditingDate ? (
+                  <input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded text-slate-900 text-[11px]" />
+                ) : (
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title="Double click to edit">{entry.date}</span>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Load More Pagination - Appears ONLY when entries are more than 10 */}
-        {filteredEntries.length > visibleCount && (
-          <div className="pt-4 mt-4 text-center border-t border-slate-100 dark:border-slate-700">
-            <button
-              onClick={() => setVisibleCount((prev: number) => prev + 10)}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-[10px] px-6 py-2 rounded-full shadow-2xs transition-colors cursor-pointer"
-            >
-              Load More Entries ({filteredEntries.length - visibleCount} remaining)
-            </button>
-          </div>
-        )}
-
-        {filteredEntries.length === 0 && (
-          <div className="text-center p-8 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold">
-            No expenses recorded for this month matching criteria.
-          </div>
-        )}
+              },
+            },
+            {
+              name: 'Category',
+              selector: (entry: any) => entry.category || entry.costCategory,
+              sortable: true,
+              width: '120px',
+              cell: (entry: any) => (
+                <span className="bg-slate-100 dark:bg-slate-900 px-2 py-0.5 border border-slate-200 dark:border-slate-700 rounded font-bold text-[10px]">{entry.category || entry.costCategory}</span>
+              ),
+            },
+            {
+              name: 'Description',
+              selector: (entry: any) => entry.description,
+              sortable: true,
+              grow: 2,
+              cell: (entry: any) => (
+                <div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{entry.description}</div>
+                  {entry.moreInfoNotes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>}
+                  <p className="text-[10px] text-slate-500 mt-0.5">Paid by: <strong>{entry.paidBy || entry.vendor}</strong></p>
+                </div>
+              ),
+            },
+            {
+              name: 'Total',
+              selector: (entry: any) => entry.amount,
+              sortable: true,
+              width: '110px',
+              right: true,
+              cell: (entry: any) => {
+                const isEditingAmount = editingCell?.id === entry.id && editingCell.field === 'amount';
+                return isEditingAmount ? (
+                  <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded w-24 text-slate-900 text-[11px]" />
+                ) : (
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-bold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title="Double click to edit">₹{entry.amount.toFixed(2)}</span>
+                );
+              },
+            },
+            {
+              name: 'Mode',
+              selector: (entry: any) => entry.paymentMode || 'Online',
+              sortable: true,
+              width: '80px',
+              center: true,
+              cell: (entry: any) => (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${entry.paymentMode === 'Cash' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                  {entry.paymentMode || 'Online'}
+                </span>
+              ),
+            },
+            ...((activeRole === 'Admin' || activeRole === 'Super Admin') ? [{
+              name: 'Actions',
+              width: '120px',
+              center: true as const,
+              cell: (entry: any) => (
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => setEditingEntry(entry)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors">
+                    <Edit2 className="w-3 h-3" /> Edit
+                  </button>
+                  <button onClick={() => handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors">
+                    Delete
+                  </button>
+                </div>
+              ),
+            }] : []),
+          ]}
+          data={filteredEntries}
+          pagination
+          paginationPerPage={15}
+          paginationRowsPerPageOptions={[10, 15, 25, 50]}
+          highlightOnHover
+          subHeader={
+            <div className="w-full flex items-center justify-between py-2">
+              <h3 className="font-extrabold text-slate-800 dark:text-white text-sm">
+                Cost Logs for {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <span className="font-mono text-slate-400 font-bold text-xs">{filteredEntries.length} entries</span>
+            </div>
+          }
+          customStyles={{
+            subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+            headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+            cells: { style: { fontSize: '12px', color: '#334155', paddingLeft: '12px' } },
+            rows: { style: { minHeight: '52px' } },
+          }}
+          noDataComponent={
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold text-xs">
+              No expenses recorded for this month.
+            </div>
+          }
+        />
       </div>
 
       {/* Edit Entry Modal for Admin & Super Admin */}

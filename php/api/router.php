@@ -57,6 +57,8 @@ switch ($action) {
     case 'get_orders':
     case 'create_order':
     case 'update_order_status':
+    case 'get_served_logs':
+    case 'add_served_log':
         handleKitchenRequests($pdo, $request_method, $action);
         break;
 
@@ -86,6 +88,7 @@ switch ($action) {
     case 'update_material_category':
     case 'delete_material_category':
     case 'add_material_category':
+    case 'toggle_ingredient_category':
     case 'add_catalog_item':
     case 'update_catalog_item':
     case 'delete_catalog_item':

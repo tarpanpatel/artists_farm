@@ -340,11 +340,14 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
                     `name` VARCHAR(100) NOT NULL,
+                    `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0,
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 // Ensure UNIQUE constraint exists (add if missing from old schema)
                 try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
+                // Add is_ingredient column if missing (upgrade old schema)
+                try { $pdo->exec("ALTER TABLE `material_categories` ADD COLUMN `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0"); } catch (PDOException $e) {}
 
                 // Clean up any existing duplicates (keep lowest ID)
                 $pdo->exec("DELETE t1 FROM material_categories t1 INNER JOIN material_categories t2 WHERE t1.name = t2.name AND t1.id > t2.id");
@@ -365,7 +368,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     }
                 }
 
-                $stmt = $pdo->query("SELECT id, name FROM material_categories ORDER BY name ASC");
+                $stmt = $pdo->query("SELECT id, name, is_ingredient FROM material_categories ORDER BY name ASC");
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -431,6 +434,25 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     } else {
                         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                     }
+                }
+            }
+            break;
+
+        case 'toggle_ingredient_category':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $id = $input['id'] ?? null;
+                $isIngredient = !empty($input['is_ingredient']) ? 1 : 0;
+                if (empty($id)) {
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("UPDATE material_categories SET is_ingredient = ? WHERE id = ?");
+                    $stmt->execute([$isIngredient, $id]);
+                    echo json_encode(['status' => 'success', 'message' => 'Category updated']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
             }
             break;

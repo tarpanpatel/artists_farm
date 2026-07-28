@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DataTable from 'react-data-table-component';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -106,6 +107,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   useEffect(() => { localStorage.setItem('staff_advances', JSON.stringify(advances)); }, [advances]);
 
+  const [searchUsers, setSearchUsers] = useState('');
+  const [searchPayees, setSearchPayees] = useState('');
+  const [searchPayout, setSearchPayout] = useState('');
+  const [searchStaff, setSearchStaff] = useState('');
+
   const handleGiveAdvance = () => {
     if (!advanceStaff || advanceAmount <= 0) return;
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -207,6 +213,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const pendingPayout = Math.round((totalEarned - staffAdvances) * 100) / 100;
     return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, pendingPayout };
   });
+
+  const filteredUsers = users.filter(u => !searchUsers || u.username.toLowerCase().includes(searchUsers.toLowerCase()) || u.role.toLowerCase().includes(searchUsers.toLowerCase()));
+  const filteredPayees = payees.filter(p => !searchPayees || p.name.toLowerCase().includes(searchPayees.toLowerCase()) || p.type.toLowerCase().includes(searchPayees.toLowerCase()));
+  const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
+  const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
 
   // Handlers for Control Center
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -449,66 +460,75 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <span className="text-xs text-slate-400 font-mono">{users.length} Registered</span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="datatable w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                    <tr>
-                      <th className="p-3">Username</th>
-                      <th className="p-3">Role Group</th>
-                      <th className="p-3 text-center">Dropdown Status</th>
-                      <th className="p-3 text-center">UPI QR Code</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{u.username}</td>
-                        <td className="p-3">
-                          <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-bold text-[10px]">
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          {u.isFinancialHandler ? (
-                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
-                              💳 Cash Handler
-                            </span>
-                          ) : (
-                            <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                              No Finances
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          {u.qrCodeUrl ? (
-                            <button
-                              onClick={() => setLightboxUrl(u.qrCodeUrl!)}
-                              className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer"
-                            >
-                              📸 View QR
-                            </button>
-                          ) : (
-                            <span className="text-slate-400 italic text-[11px]">None</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          {u.username === 'Tarpan' ? (
-                            <span className="text-slate-400 italic text-[11px]">Active Session</span>
-                          ) : (
-                            <button
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={[
+                  {
+                    name: 'Username',
+                    selector: (row: any) => row.username,
+                    sortable: true,
+                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.username}</span>,
+                  },
+                  {
+                    name: 'Role Group',
+                    selector: (row: any) => row.role,
+                    sortable: true,
+                    width: '150px',
+                    cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-bold text-[10px]">{row.role}</span>,
+                  },
+                  {
+                    name: 'Dropdown Status',
+                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
+                    sortable: true,
+                    center: true,
+                    width: '150px',
+                    cell: (row: any) => row.isFinancialHandler ? (
+                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold">💳 Cash Handler</span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">No Finances</span>
+                    ),
+                  },
+                  {
+                    name: 'UPI QR Code',
+                    center: true,
+                    width: '130px',
+                    cell: (row: any) => row.qrCodeUrl ? (
+                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">📸 View QR</button>
+                    ) : (
+                      <span className="text-slate-400 italic text-[11px]">None</span>
+                    ),
+                  },
+                  {
+                    name: 'Actions',
+                    right: true,
+                    width: '120px',
+                    cell: (row: any) => row.username === 'Tarpan' ? (
+                      <span className="text-slate-400 italic text-[11px]">Active Session</span>
+                    ) : (
+                      <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">Delete</button>
+                    ),
+                  },
+                ]}
+                data={filteredUsers}
+                pagination
+                paginationPerPage={15}
+                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                highlightOnHover
+                subHeader={
+                  <div className="w-full flex items-center py-2">
+                    <input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by username or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                  </div>
+                }
+                customStyles={{
+                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                  headRow: { style: { backgroundColor: '#f8fafc' } },
+                  rows: { style: { minHeight: '52px' } },
+                }}
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No system users registered.</div>
+                }
+              />
             </div>
 
             {/* Table 2: Registered Payees (Vendors & Third Parties) */}
@@ -520,64 +540,68 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <span className="text-xs text-slate-400 font-mono">{payees.length} Vendors</span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="datatable w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                    <tr>
-                      <th className="p-3">Payee Entity Title</th>
-                      <th className="p-3">Classification</th>
-                      <th className="p-3 text-center">UPI QR Code</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {payees.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{p.name}</td>
-                        <td className="p-3">
-                          {p.type === 'Vendor' ? (
-                            <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2 py-0.5 rounded font-bold text-[10px]">
-                              Vendor
-                            </span>
-                          ) : (
-                            <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-bold text-[10px]">
-                              Third Party
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          {p.qrCodeUrl ? (
-                            <button
-                              onClick={() => setLightboxUrl(p.qrCodeUrl!)}
-                              className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer"
-                            >
-                              📸 View QR
-                            </button>
-                          ) : (
-                            <span className="text-slate-400 italic text-[11px]">None</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setEditingPayee(p)}
-                              className="text-sky-600 hover:text-sky-700 font-bold text-[11px] cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeletePayee(p.id)}
-                              className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={[
+                  {
+                    name: 'Payee Entity Title',
+                    selector: (row: any) => row.name,
+                    sortable: true,
+                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.name}</span>,
+                  },
+                  {
+                    name: 'Classification',
+                    selector: (row: any) => row.type,
+                    sortable: true,
+                    width: '150px',
+                    cell: (row: any) => row.type === 'Vendor' ? (
+                      <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2 py-0.5 rounded font-bold text-[10px]">Vendor</span>
+                    ) : (
+                      <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-bold text-[10px]">Third Party</span>
+                    ),
+                  },
+                  {
+                    name: 'UPI QR Code',
+                    center: true,
+                    width: '130px',
+                    cell: (row: any) => row.qrCodeUrl ? (
+                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">📸 View QR</button>
+                    ) : (
+                      <span className="text-slate-400 italic text-[11px]">None</span>
+                    ),
+                  },
+                  {
+                    name: 'Actions',
+                    right: true,
+                    width: '130px',
+                    cell: (row: any) => (
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => setEditingPayee(row)} className="text-sky-600 hover:text-sky-700 font-bold text-[11px] cursor-pointer">Edit</button>
+                        <button onClick={() => handleDeletePayee(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">Delete</button>
+                      </div>
+                    ),
+                  },
+                ]}
+                data={filteredPayees}
+                pagination
+                paginationPerPage={15}
+                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                highlightOnHover
+                subHeader={
+                  <div className="w-full flex items-center py-2">
+                    <input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                  </div>
+                }
+                customStyles={{
+                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                  headRow: { style: { backgroundColor: '#f8fafc' } },
+                  rows: { style: { minHeight: '52px' } },
+                }}
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No payees registered.</div>
+                }
+              />
             </div>
           </div>
 
@@ -1058,65 +1082,94 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="datatable w-full text-left text-xs">
-                <thead className="bg-amber-50/80 dark:bg-amber-950/20 font-bold uppercase text-[10px] text-amber-700 dark:text-amber-400 border-b border-amber-200 dark:border-amber-800/40">
-                  <tr>
-                    <th className="py-2.5 px-3">Staff Name</th>
-                    <th className="py-2.5 px-3 text-right">Daily Wage (₹)</th>
-                    <th className="py-2.5 px-3 text-center">Present Days</th>
-                    <th className="py-2.5 px-3 text-right">Total Earned (₹)</th>
-                    <th className="py-2.5 px-3 text-right">Money Owed (₹)</th>
-                    <th className="py-2.5 px-3 text-right">Advances (₹)</th>
-                    <th className="py-2.5 px-3 text-right">Pending Payout (₹)</th>
-                    <th className="py-2.5 px-3 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30">
-                  {payoutData.map((row) => (
-                    <tr key={row.staff.id} className="hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors">
-                      <td className="py-3 px-3 font-bold text-gray-900 dark:text-white text-sm">{row.staff.name}</td>
-                      <td className="py-3 px-3 text-right font-mono text-gray-600 dark:text-gray-300">₹{row.dailyWage.toFixed(2)}</td>
-                      <td className="py-3 px-3 text-center">
-                        <span className="font-extrabold text-gray-800 dark:text-gray-200">{row.presentDays}</span>
-                        <span className="text-gray-400 dark:text-gray-500"> days</span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-3 px-3 text-right font-bold text-orange-600 dark:text-orange-400">
-                        {row.moneyOwed > 0 ? `+ ₹${row.moneyOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-red-600 dark:text-red-400">
-                        {row.advances > 0 ? `- ₹${row.advances.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}
-                      </td>
-                      <td className="py-3 px-3 text-right font-extrabold text-blue-700 dark:text-blue-400">
-                        ₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          onClick={() => {
-                            setAdvanceStaff(row.staff);
-                            setAdvanceAmount(0);
-                            setAdvanceReason('');
-                            setIsAdvanceModalOpen(true);
-                          }}
-                          className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1 mx-auto"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Give Advance
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {payoutData.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-400 dark:text-gray-500 font-semibold text-xs">
-                        No active staff members found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={[
+                {
+                  name: 'Staff Name',
+                  selector: (row: any) => row.staff.name,
+                  sortable: true,
+                  cell: (row: any) => <span className="font-bold text-gray-900 dark:text-white text-sm">{row.staff.name}</span>,
+                },
+                {
+                  name: 'Daily Wage (₹)',
+                  selector: (row: any) => row.dailyWage,
+                  sortable: true,
+                  right: true,
+                  width: '120px',
+                  cell: (row: any) => <span className="font-mono text-gray-600 dark:text-gray-300">₹{row.dailyWage.toFixed(2)}</span>,
+                },
+                {
+                  name: 'Present Days',
+                  selector: (row: any) => row.presentDays,
+                  sortable: true,
+                  center: true,
+                  width: '110px',
+                  cell: (row: any) => <><span className="font-extrabold text-gray-800 dark:text-gray-200">{row.presentDays}</span><span className="text-gray-400 dark:text-gray-500"> days</span></>,
+                },
+                {
+                  name: 'Total Earned (₹)',
+                  selector: (row: any) => row.totalEarned,
+                  sortable: true,
+                  right: true,
+                  width: '130px',
+                  cell: (row: any) => <span className="font-bold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                },
+                {
+                  name: 'Money Owed (₹)',
+                  selector: (row: any) => row.moneyOwed,
+                  sortable: true,
+                  right: true,
+                  width: '130px',
+                  cell: (row: any) => <span className="font-bold text-orange-600 dark:text-orange-400">{row.moneyOwed > 0 ? `+ ₹${row.moneyOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}</span>,
+                },
+                {
+                  name: 'Advances (₹)',
+                  selector: (row: any) => row.advances,
+                  sortable: true,
+                  right: true,
+                  width: '120px',
+                  cell: (row: any) => <span className="font-bold text-red-600 dark:text-red-400">{row.advances > 0 ? `- ₹${row.advances.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}</span>,
+                },
+                {
+                  name: 'Pending Payout (₹)',
+                  selector: (row: any) => row.pendingPayout,
+                  sortable: true,
+                  right: true,
+                  width: '140px',
+                  cell: (row: any) => <span className="font-extrabold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                },
+                {
+                  name: 'Actions',
+                  center: true,
+                  width: '130px',
+                  cell: (row: any) => (
+                    <button onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }} className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1 mx-auto">
+                      <Plus className="w-3 h-3" /> Give Advance
+                    </button>
+                  ),
+                },
+              ]}
+              data={filteredPayout}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[10, 15, 25, 50]}
+              highlightOnHover
+              subHeader={
+                <div className="w-full flex items-center py-2">
+                  <input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs p-2 border border-amber-300 dark:border-amber-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                </div>
+              }
+              customStyles={{
+                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #fde68a' } },
+                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#b45309', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', paddingLeft: '12px' } },
+                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                headRow: { style: { backgroundColor: '#fffbeb' } },
+                rows: { style: { minHeight: '52px' } },
+              }}
+              noDataComponent={
+                <div className="p-8 text-center text-gray-400 font-semibold text-xs">No active staff members found</div>
+              }
+            />
 
             {/* Advances History for this month */}
             {monthAdvances.length > 0 && (
@@ -1155,97 +1208,107 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="datatable w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-slate-700">
-                <tr>
-                  <th className="py-2.5 px-3">Staff ID</th>
-                  <th className="py-2.5 px-3">Full Name</th>
-                  <th className="py-2.5 px-3">Role</th>
-                  <th className="py-2.5 px-3">Phone</th>
-                  <th className="py-2.5 px-3">Monthly Base</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  {(onUpdateStaff) && <th className="py-2.5 px-3 text-right">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                {staff.map((m) => {
-                  const isEditing = editingStaffId === m.id;
-                  return (
-                    <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                      <td className="py-3 px-3 font-mono font-bold text-gray-500 dark:text-gray-400">{m.id}</td>
-                      <td className="py-3 px-3 font-bold text-gray-900 dark:text-white text-sm">{m.name}</td>
-                      <td className="py-3 px-3">
-                        {isEditing ? (
-                          <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value)}
-                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
-                            {roleOptions.map((roleName) => (
-                              <option key={roleName} value={roleName}>{roleName}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="font-medium text-gray-600 dark:text-gray-300">{m.role}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        {isEditing ? (
-                          <input type="tel" value={editStaffPhone} onChange={e => setEditStaffPhone(e.target.value)}
-                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-mono bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
-                        ) : (
-                          <span className="font-mono text-gray-600 dark:text-gray-300">{m.phone}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        {isEditing ? (
-                          <input type="number" value={editStaffSalary} onChange={e => setEditStaffSalary(Number(e.target.value))}
-                            className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
-                        ) : (
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{m.monthlySalary.toLocaleString('en-IN')}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        {isEditing ? (
-                          <select value={editStaffStatus} onChange={e => setEditStaffStatus(e.target.value)}
-                            className="w-full p-1.5 border border-blue-300 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                          </select>
-                        ) : (
-                          <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                            {m.status}
-                          </span>
-                        )}
-                      </td>
-                      {onUpdateStaff && (
-                        <td className="py-3 px-3 text-right">
-                          {isEditing ? (
-                            <div className="flex items-center justify-end gap-1">
-                              <button onClick={() => {
-                                onUpdateStaff(m.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus });
-                                setEditingStaffId(null);
-                                if (onLogAudit) onLogAudit(`Updated staff ${m.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`);
-                              }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
-                              <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Cancel</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => {
-                              setEditingStaffId(m.id);
-                              setEditStaffRole(m.role);
-                              setEditStaffPhone(m.phone);
-                              setEditStaffSalary(m.monthlySalary);
-                              setEditStaffStatus(m.status);
-                            }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">
-                              Edit
-                            </button>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              {
+                name: 'Staff ID',
+                selector: (row: any) => row.id,
+                sortable: true,
+                width: '100px',
+                cell: (row: any) => <span className="font-mono font-bold text-gray-500 dark:text-gray-400">{row.id}</span>,
+              },
+              {
+                name: 'Full Name',
+                selector: (row: any) => row.name,
+                sortable: true,
+                cell: (row: any) => <span className="font-bold text-gray-900 dark:text-white text-sm">{row.name}</span>,
+              },
+              {
+                name: 'Role',
+                selector: (row: any) => row.role,
+                sortable: true,
+                width: '150px',
+                cell: (row: any) => editingStaffId === row.id ? (
+                  <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
+                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
+                  </select>
+                ) : (
+                  <span className="font-medium text-gray-600 dark:text-gray-300">{row.role}</span>
+                ),
+              },
+              {
+                name: 'Phone',
+                selector: (row: any) => row.phone,
+                sortable: true,
+                width: '140px',
+                cell: (row: any) => editingStaffId === row.id ? (
+                  <input type="tel" value={editStaffPhone} onChange={e => setEditStaffPhone(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-mono bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                ) : (
+                  <span className="font-mono text-gray-600 dark:text-gray-300">{row.phone}</span>
+                ),
+              },
+              {
+                name: 'Monthly Base',
+                selector: (row: any) => row.monthlySalary,
+                sortable: true,
+                right: true,
+                width: '130px',
+                cell: (row: any) => editingStaffId === row.id ? (
+                  <input type="number" value={editStaffSalary} onChange={e => setEditStaffSalary(Number(e.target.value))} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                ) : (
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{row.monthlySalary.toLocaleString('en-IN')}</span>
+                ),
+              },
+              {
+                name: 'Status',
+                selector: (row: any) => row.status,
+                sortable: true,
+                width: '110px',
+                center: true,
+                cell: (row: any) => editingStaffId === row.id ? (
+                  <select value={editStaffStatus} onChange={e => setEditStaffStatus(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                ) : (
+                  <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{row.status}</span>
+                ),
+              },
+              ...(onUpdateStaff ? [{
+                name: 'Actions',
+                right: true,
+                width: '130px',
+                cell: (row: any) => editingStaffId === row.id ? (
+                  <div className="flex items-center justify-end gap-1">
+                    <button onClick={() => { onUpdateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
+                    <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Edit</button>
+                ),
+              }] : []),
+            ]}
+            data={filteredStaff}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[10, 15, 25, 50]}
+            highlightOnHover
+            subHeader={
+              <div className="w-full flex items-center py-2">
+                <input type="text" value={searchStaff} onChange={e => setSearchStaff(e.target.value)} placeholder="Search by name or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+              </div>
+            }
+            customStyles={{
+              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                  headRow: { style: { backgroundColor: '#f8fafc' } },
+                  rows: { style: { minHeight: '52px' } },
+                }}
+            noDataComponent={
+              <div className="p-8 text-center text-gray-400 font-semibold text-xs">No staff members found.</div>
+            }
+          />
         </div>
       )}
 

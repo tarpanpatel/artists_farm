@@ -3,7 +3,7 @@ import DataTable from 'react-data-table-component';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
 
 
 interface InventoryManagementProps {
@@ -116,7 +116,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   }, []);
 
   // Material categories from database (for CRUD operations)
-  const [dbCategories, setDbCategories] = useState<{ id: number; name: string }[]>([]);
+  const [dbCategories, setDbCategories] = useState<{ id: number; name: string; is_ingredient: number }[]>([]);
 
   useEffect(() => {
     fetchMaterialCategoriesFromDB().then((cats) => {
@@ -656,6 +656,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       setActiveTab('stock_log');
     }
   }, [activeMenuItemKey]);
+  const [stockLogSearch, setStockLogSearch] = useState('');
+
+  const filteredInventory = useMemo(() => {
+    if (!stockLogSearch.trim()) return inventory;
+    const q = stockLogSearch.toLowerCase().trim();
+    return inventory.filter(item =>
+      item.name.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q)
+    );
+  }, [inventory, stockLogSearch]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Groceries');
@@ -692,6 +703,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [selectedVendorToPay, setSelectedVendorToPay] = useState('');
   const [selectedPaidByStaff, setSelectedPaidByStaff] = useState('');
   const [settlementMethod, setSettlementMethod] = useState('Paid using Farm Cash (No Salary Impact)');
+  const [purSearch, setPurSearch] = useState('');
 
   useEffect(() => {
     fetchWastageLogsFromDB().then((logs) => {
@@ -706,6 +718,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
     });
   }, []);
+
+  const filteredKitchenPurchases = useMemo(() => {
+    if (!purSearch.trim()) return kitchenPurchases;
+    const q = purSearch.toLowerCase().trim();
+    return kitchenPurchases.filter(p =>
+      p.itemName.toLowerCase().includes(q) ||
+      (p.vendorName || '').toLowerCase().includes(q)
+    );
+  }, [kitchenPurchases, purSearch]);
 
   const handleRecordWastage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -890,52 +911,75 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </form>
         </div>
 
-        {/* Wastage Logs Table */}
-        <div className="wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5 space-y-4">
-          <div className="border-b border-slate-100 dark:border-slate-700 pb-3 flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-sm">
-              Wastage & Spillage Audit History
-            </h3>
-            <span className="font-mono text-slate-400 font-bold">{wastageLogs.length} incidents logged</span>
-          </div>
-
-          <div className="overflow-x-auto text-xs">
-            <table className="datatable wastage-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
-                <tr>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Item Name</th>
-                  <th className="p-3">Wasted Quantity</th>
-                  <th className="p-3">Reason</th>
-                  <th className="p-3">Reported By</th>
-                  <th className="p-3">Incident Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {wastageLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="p-3 font-mono text-slate-500">{log.date}</td>
-                    <td className="p-3 font-bold text-slate-900 dark:text-white">{log.itemName}</td>
-                    <td className="p-3 font-bold text-red-600">{log.wastedQty} {log.unit}</td>
-                    <td className="p-3">
-                      <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                        {log.reason}
-                      </span>
-                    </td>
-                    <td className="p-3 font-semibold">{log.reportedBy}</td>
-                    <td className="p-3 text-slate-500 italic">{log.notes || '—'}</td>
-                  </tr>
-                ))}
-                {wastageLogs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center p-6 text-slate-400 font-semibold">
-                      No wastage or spillage incidents recorded.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* Wastage Logs DataTable */}
+        <div className="wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+          <DataTable
+            columns={[
+              {
+                name: 'Date',
+                selector: (log: any) => log.date,
+                sortable: true,
+                width: '110px',
+                cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{log.date}</span>,
+              },
+              {
+                name: 'Item Name',
+                selector: (log: any) => log.itemName,
+                sortable: true,
+                grow: 2,
+                cell: (log: any) => <span className="font-bold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
+              },
+              {
+                name: 'Wasted Qty',
+                selector: (log: any) => log.wastedQty,
+                sortable: true,
+                width: '100px',
+                cell: (log: any) => <span className="font-bold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
+              },
+              {
+                name: 'Reason',
+                selector: (log: any) => log.reason,
+                sortable: true,
+                width: '140px',
+                cell: (log: any) => (
+                  <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
+                ),
+              },
+              {
+                name: 'Reported By',
+                selector: (log: any) => log.reportedBy,
+                sortable: true,
+                width: '120px',
+                cell: (log: any) => <span className="font-semibold text-xs">{log.reportedBy}</span>,
+              },
+              {
+                name: 'Incident Notes',
+                selector: (log: any) => log.notes || '',
+                grow: 2,
+                cell: (log: any) => <span className="text-slate-500 italic text-xs">{log.notes || '—'}</span>,
+              },
+            ]}
+            data={wastageLogs}
+            pagination
+            paginationPerPage={10}
+            paginationRowsPerPageOptions={[10, 25, 50]}
+            highlightOnHover
+            subHeader={
+              <div className="w-full flex items-center justify-between py-2">
+                <h3 className="font-extrabold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
+                <span className="font-mono text-slate-400 font-bold text-xs">{wastageLogs.length} incidents</span>
+              </div>
+            }
+            customStyles={{
+              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+              headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+              cells: { style: { fontSize: '12px', color: '#334155', paddingLeft: '12px' } },
+              rows: { style: { minHeight: '48px' } },
+            }}
+            noDataComponent={
+              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No wastage or spillage incidents recorded.</div>
+            }
+          />
         </div>
       </div>
     );
@@ -1277,84 +1321,171 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="datatable w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
-                <tr>
-                  <th className="p-3 w-10 text-center">
-                    <input
-                      type="checkbox"
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setSelectedPurIds(kitchenPurchases.map(p => p.id));
-                        } else {
-                          setSelectedPurIds([]);
-                        }
-                      }}
-                      checked={selectedPurIds.length > 0 && selectedPurIds.length === kitchenPurchases.length}
-                    />
-                  </th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Item Description</th>
-                  <th className="p-3 font-semibold">Qty</th>
-                  <th className="p-3 font-semibold">Total Cost</th>
-                  <th className="p-3 font-semibold text-center">Settlement</th>
-                  <th className="p-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {kitchenPurchases.map(pur => (
-                  <tr key={pur.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedPurIds.includes(pur.id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setSelectedPurIds([...selectedPurIds, pur.id]);
-                          } else {
-                            setSelectedPurIds(selectedPurIds.filter(id => id !== pur.id));
-                          }
-                        }}
-                      />
-                    </td>
-                    <td className="p-3 font-mono text-slate-500">{pur.purchaseDate}</td>
-                    <td className="p-3">
-                      <p className="font-bold text-slate-900 dark:text-white">{pur.itemName}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">{pur.vendorName || 'Account: Unassigned'}</p>
-                    </td>
-                    <td className="p-3 font-semibold text-slate-700">{pur.quantity} {pur.unit}</td>
-                    <td className="p-3 font-extrabold text-slate-900 dark:text-white">₹{Number(pur.totalPrice).toFixed(2)}</td>
-                    <td className="p-3 text-center">
-                      <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${
-                        pur.settlementStatus === 'Paid'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-amber-100 text-amber-800 border border-amber-300'
-                      }`}>
-                        {pur.settlementStatus || 'Unpaid'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => handleDeletePurchase(pur.id, pur.itemName)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {kitchenPurchases.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center p-6 text-slate-400 font-semibold">
-                      No kitchen purchases recorded yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              {
+                name: (
+                  <input
+                    type="checkbox"
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedPurIds(filteredKitchenPurchases.map(p => p.id));
+                      } else {
+                        setSelectedPurIds([]);
+                      }
+                    }}
+                    checked={selectedPurIds.length > 0 && selectedPurIds.length === filteredKitchenPurchases.length}
+                  />
+                ),
+                width: '48px',
+                cell: (row: any) => (
+                  <input
+                    type="checkbox"
+                    checked={selectedPurIds.includes(row.id)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedPurIds([...selectedPurIds, row.id]);
+                      } else {
+                        setSelectedPurIds(selectedPurIds.filter((id: string) => id !== row.id));
+                      }
+                    }}
+                  />
+                ),
+              },
+              {
+                name: 'Date',
+                selector: (row: any) => row.purchaseDate,
+                sortable: true,
+                width: '110px',
+                cell: (row: any) => <span className="font-mono text-slate-500">{row.purchaseDate}</span>,
+              },
+              {
+                name: 'Item Description',
+                selector: (row: any) => row.itemName,
+                sortable: true,
+                grow: 2,
+                cell: (row: any) => (
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">{row.itemName}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{row.vendorName || 'Account: Unassigned'}</p>
+                  </div>
+                ),
+              },
+              {
+                name: 'Qty',
+                selector: (row: any) => row.quantity,
+                sortable: true,
+                width: '80px',
+                cell: (row: any) => <span className="font-semibold text-slate-700">{row.quantity} {row.unit}</span>,
+              },
+              {
+                name: 'Total Cost',
+                selector: (row: any) => row.totalPrice,
+                sortable: true,
+                width: '110px',
+                right: true,
+                cell: (row: any) => <span className="font-extrabold text-slate-900 dark:text-white">₹{Number(row.totalPrice).toFixed(2)}</span>,
+              },
+              {
+                name: 'Settlement',
+                selector: (row: any) => row.settlementStatus,
+                sortable: true,
+                width: '110px',
+                center: true,
+                cell: (row: any) => (
+                  <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${
+                    row.settlementStatus === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    {row.settlementStatus || 'Unpaid'}
+                  </span>
+                ),
+              },
+              {
+                name: 'Action',
+                width: '100px',
+                right: true,
+                cell: (row: any) => (
+                  <button
+                    onClick={() => handleDeletePurchase(row.id, row.itemName)}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
+                  >
+                    Delete
+                  </button>
+                ),
+                ignoreRowClick: true,
+                allowOverflow: true,
+              },
+            ]}
+            data={filteredKitchenPurchases}
+            subHeader={
+              <div className="w-full flex items-center gap-2 py-2 px-1">
+                <input
+                  type="text"
+                  placeholder="Search by item or vendor..."
+                  value={purSearch}
+                  onChange={e => setPurSearch(e.target.value)}
+                  className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                />
+              </div>
+            }
+            pagination
+            paginationPerPage={25}
+            paginationRowsPerPageOptions={[10, 25, 50, 100]}
+            highlightOnHover
+            noDataComponent={
+              <div className="p-6 text-center text-slate-400 font-semibold">No kitchen purchases recorded yet.</div>
+            }
+            customStyles={{
+              subHeader: {
+                style: {
+                  padding: 0,
+                  minHeight: 0,
+                  backgroundColor: 'transparent',
+                },
+              },
+              headCells: {
+                style: {
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingLeft: '12px',
+                  paddingRight: '12px',
+                },
+              },
+              cells: {
+                style: {
+                  fontSize: '13px',
+                  color: '#334155',
+                  paddingTop: '12px',
+                  paddingBottom: '12px',
+                  paddingLeft: '12px',
+                  paddingRight: '12px',
+                },
+              },
+              headRow: {
+                style: {
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                },
+              },
+              rows: {
+                style: {
+                  minHeight: '56px',
+                  borderBottom: '1px solid #f1f5f9',
+                },
+              },
+              pagination: {
+                style: {
+                  borderTop: '1px solid #e2e8f0',
+                  fontSize: '12px',
+                },
+              },
+            }}
+          />
         </div>
       </div>
     );
@@ -1454,6 +1585,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   ) : (
                     <>
                       <span className="flex-1 text-xs font-semibold text-slate-700 truncate">{cat}</span>
+                      <button
+                        onClick={async () => {
+                          if (!dbCat) return;
+                          const newVal = !dbCat.is_ingredient;
+                          const ok = await toggleIngredientCategoryInDB(dbCat.id, newVal);
+                          if (ok) {
+                            setDbCategories((prev: any[]) => prev.map(c => c.id === dbCat.id ? { ...c, is_ingredient: newVal ? 1 : 0 } : c));
+                          }
+                        }}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${dbCat?.is_ingredient ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
+                        title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
+                      >
+                        {dbCat?.is_ingredient ? '🍽️ Ingredient' : '🚫 Not Food'}
+                      </button>
                       <button
                         onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
                         className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
@@ -1794,11 +1939,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
            <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">FROM</span>
-              <input type="date" ref={fulfillFromRef} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-18" />
+              <input type="date" ref={fulfillFromRef} onChange={(e) => { if (fulfillToRef.current && e.target.value > fulfillToRef.current.value) fulfillToRef.current.value = e.target.value; }} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-18" />
             </div>
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">TO</span>
-              <input type="date" ref={fulfillToRef} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-25" />
+              <input type="date" ref={fulfillToRef} min={fulfillFromRef.current?.value || '2026-07-18'} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-25" />
             </div>
             <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
               Enter
@@ -1910,12 +2055,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       color: '#94a3b8',
                       backgroundColor: '#f8fafc',
                       borderBottom: '1px solid #e2e8f0',
+                      paddingLeft: '12px',
                     },
                   },
                   cells: {
                     style: {
                       paddingTop: '12px',
                       paddingBottom: '12px',
+                      paddingLeft: '12px',
                     },
                   },
                   rows: {
@@ -2343,96 +2490,147 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     );
   }
 
+  const stockLogColumns = [
+    {
+      name: 'Image',
+      width: '70px',
+      cell: (item: InventoryItem) => (
+        <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+          {item.imagePath ? (
+            <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-4 h-4 text-slate-400" />
+          )}
+        </div>
+      ),
+    },
+    {
+      name: 'Item Name',
+      selector: (item: InventoryItem) => item.name,
+      sortable: true,
+      grow: 1,
+      cell: (item: InventoryItem) => (
+        <span className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</span>
+      ),
+    },
+    {
+      name: 'Category',
+      selector: (item: InventoryItem) => item.category,
+      sortable: true,
+      cell: (item: InventoryItem) => (
+        <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded font-medium text-xs">
+          {item.category}
+        </span>
+      ),
+    },
+    {
+      name: 'Current Stock',
+      selector: (item: InventoryItem) => item.currentStock,
+      sortable: true,
+      width: '130px',
+      cell: (item: InventoryItem) => (
+        <span className="font-bold text-slate-800 dark:text-slate-200">{item.currentStock} {item.unit}</span>
+      ),
+    },
+    {
+      name: 'Min Threshold',
+      selector: (item: InventoryItem) => item.minThreshold,
+      sortable: true,
+      width: '130px',
+      cell: (item: InventoryItem) => (
+        <span className="text-slate-500">{item.minThreshold} {item.unit}</span>
+      ),
+    },
+    {
+      name: 'Status',
+      width: '160px',
+      cell: (item: InventoryItem) => {
+        const isLow = item.currentStock <= item.minThreshold;
+        return isLow ? (
+          <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+            <AlertTriangle className="w-3 h-3 text-red-600" />
+            LOW STOCK
+          </span>
+        ) : (
+          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            Adequate
+          </span>
+        );
+      },
+    },
+    {
+      name: 'Tracking',
+      width: '180px',
+      cell: () => (
+        <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-bold px-2.5 py-1 rounded-full inline-block">
+          System Tracked
+        </span>
+      ),
+    },
+  ];
+
+  const stockLogSubHeader = (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="relative flex-1 max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          type="text"
+          value={stockLogSearch}
+          onChange={(e) => setStockLogSearch(e.target.value)}
+          placeholder="Search inventory..."
+          className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <button
+        onClick={() => setIsAddModalOpen(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" /> Add Item
+      </button>
+    </div>
+  );
+
   return (
     <div className="stock-inventory-container space-y-6">
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs">
-        <div>
-          <h2 className="text-gray-900 tracking-tight flex items-center gap-2">
-            Inventory Catalog & Stock Alert Boundaries
-          </h2>
-          <p className="text-[11px] text-gray-500 mt-0.5">
-            Monitor stock metrics, receive boundary threshold alerts, and adjust store inventory levels
-          </p>
-        </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="btn-add-stock-item flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add Item
-        </button>
+      {/* Header */}
+      <div>
+        <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          Inventory Catalog & Stock Alert Boundaries
+        </h2>
+        <p className="text-[11px] text-gray-500 mt-0.5">
+          Monitor stock metrics, receive boundary threshold alerts, and adjust store inventory levels
+        </p>
       </div>
 
-      {/* Inventory Table & Mobile Cards */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto text-xs">
-           <table className="datatable inventory-master-table w-full text-left text-slate-700">
-             <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Image</th>
-                <th className="py-3 px-4">Item Name</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Current Stock Level</th>
-                <th className="py-3 px-4">Min Alert Threshold</th>
-                <th className="py-3 px-4">Stock Status</th>
-                <th className="py-3 px-4 text-right">Inventory Tracking</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {inventory.map((item) => {
-                const isLow = item.currentStock <= item.minThreshold;
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="relative w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-                        {item.imagePath ? (
-                          <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-slate-900 text-sm">{item.name}</td>
-                    <td className="py-3 px-4">
-                      <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded font-medium">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-slate-800">
-                      {item.currentStock} {item.unit}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500">
-                      {item.minThreshold} {item.unit}
-                    </td>
-                    <td className="py-3 px-4">
-                      {isLow ? (
-                        <span className="bg-red-100 text-red-800 border border-red-300 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
-                          <AlertTriangle className="w-3 h-3 text-red-600" />
-                          <span>LOW STOCK ALERT</span>
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>Adequate</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-1 rounded-full inline-block">
-                        🔒 System Tracked (Requisitions & Wastage)
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {/* Desktop DataTable */}
+      <div className="hidden md:block">
+        <DataTable
+          columns={stockLogColumns}
+          data={filteredInventory}
+          pagination
+          paginationPerPage={15}
+          paginationRowsPerPageOptions={[15, 30, 50, 100]}
+          subHeader={stockLogSubHeader}
+          customStyles={{
+            subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+            headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+            headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+            cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+            rows: { style: { minHeight: '52px' } },
+          }}
+          noDataComponent={
+            <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+              {inventory.length === 0 ? 'No inventory items found.' : 'No items match your search.'}
+            </div>
+          }
+        />
+      </div>
 
-        {/* Mobile Cards */}
-        <div className="md:hidden divide-y divide-slate-100 p-3 space-y-3">
-          {inventory.map((item) => {
+      {/* Mobile Cards */}
+      <div className="md:hidden bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="divide-y divide-slate-100 p-3 space-y-3">
+          {filteredInventory.map((item) => {
             const isLow = item.currentStock <= item.minThreshold;
             return (
               <div key={item.id} className="pt-3 first:pt-0 space-y-2">
@@ -2453,7 +2651,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </span>
                   )}
                 </div>
-
                 <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Stock</span>
@@ -2467,6 +2664,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
             );
           })}
+          {filteredInventory.length === 0 && (
+            <div className="text-center p-6 text-slate-400 font-semibold text-xs">No inventory items found.</div>
+          )}
         </div>
       </div>
 

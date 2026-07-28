@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import DataTable, { TableProps } from 'react-data-table-component';
 import {
   ScrollText,
   Clock,
@@ -40,11 +41,30 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
   // Edit Receipt Modal State
   const [editingReceipt, setEditingReceipt] = useState<BillingReceipt | null>(null);
+  const [receiptsSearch, setReceiptsSearch] = useState('');
+
+  const filteredReceipts = useMemo(() => {
+    if (!receiptsSearch.trim()) return receipts;
+    const q = receiptsSearch.toLowerCase().trim();
+    return receipts.filter(rec =>
+      rec.id.toLowerCase().includes(q) ||
+      rec.guestName.toLowerCase().includes(q) ||
+      rec.roomNumber.toLowerCase().includes(q) ||
+      (rec.paymentMethod || '').toLowerCase().includes(q)
+    );
+  }, [receipts, receiptsSearch]);
 
   // Activity Trail Filters
   const [activitySearch, setActivitySearch] = useState('');
   const [activityUser, setActivityUser] = useState('All');
   const [activityDate, setActivityDate] = useState('');
+  const [activitySubSearch, setActivitySubSearch] = useState('');
+
+  // Login trace search
+  const [loginSearch, setLoginSearch] = useState('');
+
+  // Audit trail search
+  const [auditSearch, setAuditSearch] = useState('');
 
   // Food items & Adjustments state for edit receipt modal
   const [foodItemList, setFoodItemList] = useState<{ name: string; quantity: number; unitPrice: number; total: number }[]>([]);
@@ -155,7 +175,40 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   const calculatedGrandTotal = calculatedStayRent + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
 
   // Login trace logs — derived from DB audit logs filtered by module === 'login'
-  const loginTraceLogs = logs.filter(log => log.module === 'login');
+  const loginTraceLogs = useMemo(() => logs.filter(log => log.module === 'login'), [logs]);
+
+  // Filtered activity logs
+  const filteredActivityLogs = useMemo(() => {
+    return logs
+      .filter(log => log.module !== 'login')
+      .filter(log => activitySearch ? log.action.toLowerCase().includes(activitySearch.toLowerCase()) : true)
+      .filter(log => activityUser !== 'All' ? log.user === activityUser : true)
+      .filter(log => activityDate ? log.timestamp.startsWith(activityDate) : true)
+      .filter(log => activitySubSearch ? (
+        log.action.toLowerCase().includes(activitySubSearch.toLowerCase()) ||
+        log.user.toLowerCase().includes(activitySubSearch.toLowerCase())
+      ) : true);
+  }, [logs, activitySearch, activityUser, activityDate, activitySubSearch]);
+
+  // Filtered login logs
+  const filteredLoginLogs = useMemo(() => {
+    return loginTraceLogs.filter(log =>
+      loginSearch ? (
+        (log.user || '').toLowerCase().includes(loginSearch.toLowerCase()) ||
+        (log.action || '').toLowerCase().includes(loginSearch.toLowerCase())
+      ) : true
+    );
+  }, [loginTraceLogs, loginSearch]);
+
+  // Filtered audit logs
+  const filteredAuditLogs = useMemo(() => {
+    return logs
+      .filter(log => log.module !== 'login')
+      .filter(log => auditSearch ? (
+        (log.action || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+        (log.module || '').toLowerCase().includes(auditSearch.toLowerCase())
+      ) : true);
+  }, [logs, auditSearch]);
 
   const handleSaveReceiptEdit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +234,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   };
 
   const isStandalonePage = activeMenuItemKey === 'past_receipts_log' || activeMenuItemKey === 'staff_activity_trail' || activeMenuItemKey === 'sys_logs_health';
+
+  const customStyles = {
+    subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+    headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+    headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+    cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+    rows: { style: { minHeight: '52px' } },
+  };
 
   return (
     <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
@@ -236,66 +297,139 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: PAST RECEIPTS LOG */}
       {activeTab === 'receipts' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-blue-600" />
-              <span>Past Billing Receipts & Settlement Log</span>
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-3">Receipt ID</th>
-                  <th className="p-3">Resident / Group</th>
-                  <th className="p-3">Room / Cottage</th>
-                  <th className="p-3">Checkout Date</th>
-                  <th className="p-3 font-mono">Room Rent</th>
-                  <th className="p-3 font-mono">Food Bill</th>
-                  <th className="p-3 font-mono">Grand Total</th>
-                  <th className="p-3">Payment Method</th>
-                  <th className="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
-                {receipts.length > 0 ? (
-                  receipts.map((rec) => (
-                    <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">{rec.id}</td>
-                      <td className="p-3 font-bold">{rec.guestName}</td>
-                      <td className="p-3">{rec.roomNumber}</td>
-                      <td className="p-3 text-slate-500">{rec.checkoutDate}</td>
-                      <td className="p-3 font-mono">₹{rec.roomRent || rec.roomTotal}</td>
-                      <td className="p-3 font-mono">₹{rec.foodTotal || rec.kitchenTotal || 0}</td>
-                      <td className="p-3 font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</td>
-                      <td className="p-3">
-                        <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
-                          {rec.paymentMethod || 'Cash'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => handleOpenEditModal(rec)}
-                          className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-bold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 ml-auto text-[11px]"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Edit Receipt</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-400">
-                      No billing receipts found in database.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <DataTable
+            columns={[
+              {
+                name: 'Receipt ID',
+                selector: (rec: BillingReceipt) => rec.id,
+                width: '100px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">{rec.id}</span>
+                ),
+              },
+              {
+                name: 'Resident / Group',
+                selector: (rec: BillingReceipt) => rec.guestName,
+                sortable: true,
+                grow: 1,
+                cell: (rec: BillingReceipt) => (
+                  <span className="font-bold">{rec.guestName}</span>
+                ),
+              },
+              {
+                name: 'Room / Cottage',
+                selector: (rec: BillingReceipt) => rec.roomNumber,
+                sortable: true,
+                width: '120px',
+              },
+              {
+                name: 'Checkout Date',
+                selector: (rec: BillingReceipt) => rec.checkoutDate || '',
+                sortable: true,
+                width: '130px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="text-slate-500">{rec.checkoutDate || '—'}</span>
+                ),
+              },
+              {
+                name: 'Room Rent',
+                selector: (rec: BillingReceipt) => rec.roomRent || rec.roomTotal || 0,
+                sortable: true,
+                width: '110px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="font-mono">₹{rec.roomRent || rec.roomTotal || 0}</span>
+                ),
+              },
+              {
+                name: 'Food Bill',
+                selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
+                sortable: true,
+                width: '100px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="font-mono">₹{rec.foodTotal || rec.kitchenTotal || 0}</span>
+                ),
+              },
+              {
+                name: 'GST',
+                selector: (rec: BillingReceipt) => rec.gstRate || 0,
+                sortable: true,
+                width: '90px',
+                cell: (rec: BillingReceipt) => (
+                  rec.gstEnabled
+                    ? <span className="font-mono text-blue-600">₹{rec.gstAmount} @{rec.gstRate}%</span>
+                    : <span className="text-slate-400 text-[11px]">—</span>
+                ),
+              },
+              {
+                name: 'Grand Total',
+                selector: (rec: BillingReceipt) => rec.grandTotal || 0,
+                sortable: true,
+                width: '120px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</span>
+                ),
+              },
+              {
+                name: 'Payment',
+                selector: (rec: BillingReceipt) => rec.paymentMethod || 'Cash',
+                width: '120px',
+                cell: (rec: BillingReceipt) => (
+                  <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                    {rec.paymentMethod || 'Cash'}
+                  </span>
+                ),
+              },
+              {
+                name: 'Actions',
+                width: '120px',
+                cell: (rec: BillingReceipt) => (
+                  <button
+                    onClick={() => handleOpenEditModal(rec)}
+                    className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-bold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    Edit
+                  </button>
+                ),
+              },
+            ]}
+            data={filteredReceipts}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[15, 30, 50, 100]}
+            subHeader={
+              <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-blue-600" />
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">Past Billing Receipts & Settlement Log</span>
+                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono text-slate-500">{receipts.length} receipts</span>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={receiptsSearch}
+                    onChange={(e) => setReceiptsSearch(e.target.value)}
+                    placeholder="Search receipts..."
+                    className="pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            }
+            customStyles={{
+              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+              headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+              headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+              cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+              rows: { style: { minHeight: '52px' } },
+            }}
+            noDataComponent={
+              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                No billing receipts found in database.
+              </div>
+            }
+          />
         </div>
       )}
 
@@ -319,7 +453,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-48 transition-all"
                 />
               </div>
-              
+
               <input
                 type="date"
                 value={activityDate}
@@ -340,45 +474,60 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-4">Timestamp (Date & Time)</th>
-                  <th className="p-4">User</th>
-                  <th className="p-4">Activity Logged (What, For Whom)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-300">
-                {logs
-                  .filter(log => log.module !== 'login')
-                  .filter(log => activitySearch ? log.action.toLowerCase().includes(activitySearch.toLowerCase()) : true)
-                  .filter(log => activityUser !== 'All' ? log.user === activityUser : true)
-                  .filter(log => activityDate ? log.timestamp.startsWith(activityDate) : true)
-                  .length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-500 font-medium">No activity records match your filters.</td>
-                    </tr>
-                  ) : logs
-                  .filter(log => log.module !== 'login')
-                  .filter(log => activitySearch ? log.action.toLowerCase().includes(activitySearch.toLowerCase()) : true)
-                  .filter(log => activityUser !== 'All' ? log.user === activityUser : true)
-                  .filter(log => activityDate ? log.timestamp.startsWith(activityDate) : true)
-                  .map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="p-4 font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <DataTable
+              columns={[
+                {
+                  name: 'Timestamp (Date & Time)',
+                  selector: (log: AuditLog) => log.timestamp,
+                  sortable: true,
+                  grow: 1,
+                  cell: (log: AuditLog) => (
+                    <span className="font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {log.timestamp.split('T').join(' ')}
-                    </td>
-                    <td className="p-4 font-bold text-slate-900 dark:text-white">
-                      {log.user}
-                    </td>
-                    <td className="p-4">
-                      {log.action}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  ),
+                },
+                {
+                  name: 'User',
+                  selector: (log: AuditLog) => log.user,
+                  sortable: true,
+                  width: '160px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-bold text-slate-900 dark:text-white">{log.user}</span>
+                  ),
+                },
+                {
+                  name: 'Activity Logged (What, For Whom)',
+                  selector: (log: AuditLog) => log.action,
+                  sortable: true,
+                  grow: 2,
+                  cell: (log: AuditLog) => (
+                    <span>{log.action}</span>
+                  ),
+                },
+              ]}
+              data={filteredActivityLogs}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[15, 30, 50, 100]}
+              subHeader={
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={activitySubSearch}
+                    onChange={(e) => setActivitySubSearch(e.target.value)}
+                    placeholder="Search by action or user..."
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              }
+              customStyles={customStyles}
+              noDataComponent={
+                <div className="text-center p-8 text-slate-500 font-medium">No activity records match your filters.</div>
+              }
+            />
           </div>
         </div>
       )}
@@ -393,55 +542,109 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             </h3>
             <span className="font-mono text-slate-400 font-bold text-xs">{loginTraceLogs.length} Login Events</span>
           </div>
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-3">Timestamp</th>
-                  <th className="p-3">User</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Browser</th>
-                  <th className="p-3">OS</th>
-                  <th className="p-3">Device</th>
-                  <th className="p-3">IP Address</th>
-                  <th className="p-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
-                {loginTraceLogs.length > 0 ? (
-                  loginTraceLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="p-3 font-mono text-slate-500">{log.timestamp}</td>
-                      <td className="p-3 font-bold text-slate-900 dark:text-white">{log.user}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          log.status === 'Success'
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300'
-                            : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300'
-                        }`}>
-                          {log.status || 'Unknown'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-600 dark:text-slate-400">{log.browser || '—'}</td>
-                      <td className="p-3 text-slate-600 dark:text-slate-400">{log.os || '—'}</td>
-                      <td className="p-3">
-                        <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                          {log.device_type || '—'}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono text-slate-400 text-[10px]">{log.ip_address || '—'}</td>
-                      <td className="p-3 font-medium text-slate-700 dark:text-slate-300">{log.action}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
-                      No login events recorded yet. Login attempts will appear here.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <DataTable
+              columns={[
+                {
+                  name: 'Timestamp',
+                  selector: (log: AuditLog) => log.timestamp,
+                  sortable: true,
+                  width: '170px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-mono text-slate-500">{log.timestamp}</span>
+                  ),
+                },
+                {
+                  name: 'User',
+                  selector: (log: AuditLog) => log.user,
+                  sortable: true,
+                  width: '140px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-bold text-slate-900 dark:text-white">{log.user}</span>
+                  ),
+                },
+                {
+                  name: 'Status',
+                  selector: (log: AuditLog) => log.status || 'Unknown',
+                  sortable: true,
+                  width: '110px',
+                  cell: (log: AuditLog) => (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      log.status === 'Success'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300'
+                        : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300'
+                    }`}>
+                      {log.status || 'Unknown'}
+                    </span>
+                  ),
+                },
+                {
+                  name: 'Browser',
+                  selector: (log: AuditLog) => log.browser || '—',
+                  sortable: true,
+                  width: '120px',
+                  cell: (log: AuditLog) => (
+                    <span className="text-slate-600 dark:text-slate-400">{log.browser || '—'}</span>
+                  ),
+                },
+                {
+                  name: 'OS',
+                  selector: (log: AuditLog) => log.os || '—',
+                  sortable: true,
+                  width: '100px',
+                  cell: (log: AuditLog) => (
+                    <span className="text-slate-600 dark:text-slate-400">{log.os || '—'}</span>
+                  ),
+                },
+                {
+                  name: 'Device',
+                  selector: (log: AuditLog) => log.device_type || '—',
+                  width: '110px',
+                  cell: (log: AuditLog) => (
+                    <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                      {log.device_type || '—'}
+                    </span>
+                  ),
+                },
+                {
+                  name: 'IP Address',
+                  selector: (log: AuditLog) => log.ip_address || '—',
+                  width: '130px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-mono text-slate-400 text-[10px]">{log.ip_address || '—'}</span>
+                  ),
+                },
+                {
+                  name: 'Action',
+                  selector: (log: AuditLog) => log.action,
+                  sortable: true,
+                  grow: 1,
+                  cell: (log: AuditLog) => (
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{log.action}</span>
+                  ),
+                },
+              ]}
+              data={filteredLoginLogs}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[15, 30, 50, 100]}
+              subHeader={
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={loginSearch}
+                    onChange={(e) => setLoginSearch(e.target.value)}
+                    placeholder="Search by user or action..."
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              }
+              customStyles={customStyles}
+              noDataComponent={
+                <div className="text-center p-8 text-slate-400">No login events recorded yet. Login attempts will appear here.</div>
+              }
+            />
           </div>
         </div>
       )}
@@ -456,39 +659,90 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             </h3>
             <span className="font-mono text-slate-400 font-bold text-xs">{logs.length} Activity Log Entries</span>
           </div>
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="p-3">Log ID</th>
-                  <th className="p-3">Timestamp</th>
-                  <th className="p-3">User</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Module</th>
-                  <th className="p-3">Action Description</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
-                {logs.filter(log => log.module !== 'login').map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                    <td className="p-3 font-mono text-slate-500">{log.id}</td>
-                    <td className="p-3 text-slate-500 font-mono">{log.timestamp}</td>
-                    <td className="p-3 font-bold text-slate-900 dark:text-white">{log.user}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        log.status === 'Failed'
-                          ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300'
-                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300'
-                      }`}>
-                        {log.status || 'Success'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-slate-500">{log.module || '—'}</td>
-                    <td className="p-3 font-medium text-slate-700 dark:text-slate-300">{log.action}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+            <DataTable
+              columns={[
+                {
+                  name: 'Log ID',
+                  selector: (log: AuditLog) => log.id,
+                  width: '100px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-mono text-slate-500">{log.id}</span>
+                  ),
+                },
+                {
+                  name: 'Timestamp',
+                  selector: (log: AuditLog) => log.timestamp,
+                  sortable: true,
+                  width: '170px',
+                  cell: (log: AuditLog) => (
+                    <span className="text-slate-500 font-mono">{log.timestamp}</span>
+                  ),
+                },
+                {
+                  name: 'User',
+                  selector: (log: AuditLog) => log.user,
+                  sortable: true,
+                  width: '140px',
+                  cell: (log: AuditLog) => (
+                    <span className="font-bold text-slate-900 dark:text-white">{log.user}</span>
+                  ),
+                },
+                {
+                  name: 'Status',
+                  selector: (log: AuditLog) => log.status || 'Success',
+                  sortable: true,
+                  width: '110px',
+                  cell: (log: AuditLog) => (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      log.status === 'Failed'
+                        ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border-red-300'
+                        : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border-emerald-300'
+                    }`}>
+                      {log.status || 'Success'}
+                    </span>
+                  ),
+                },
+                {
+                  name: 'Module',
+                  selector: (log: AuditLog) => log.module || '—',
+                  sortable: true,
+                  width: '120px',
+                  cell: (log: AuditLog) => (
+                    <span className="text-slate-500">{log.module || '—'}</span>
+                  ),
+                },
+                {
+                  name: 'Action Description',
+                  selector: (log: AuditLog) => log.action,
+                  sortable: true,
+                  grow: 1,
+                  cell: (log: AuditLog) => (
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{log.action}</span>
+                  ),
+                },
+              ]}
+              data={filteredAuditLogs}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[15, 30, 50, 100]}
+              subHeader={
+                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Search by action or module..."
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              }
+              customStyles={customStyles}
+              noDataComponent={
+                <div className="text-center p-8 text-slate-400">No audit trail records found.</div>
+              }
+            />
           </div>
         </div>
       )}
@@ -497,7 +751,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       {editingReceipt && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-6 max-h-[92vh] flex flex-col">
-            
+
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
               <div>

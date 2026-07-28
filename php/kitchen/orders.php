@@ -128,6 +128,47 @@ function handleKitchenRequests($pdo, $request_method, $action) {
             }
             break;
 
+        case 'get_served_logs':
+            try {
+                $stmt = $pdo->query("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at FROM served_logs ORDER BY id DESC LIMIT 200");
+                $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['status' => 'success', 'data' => $logs]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
+        case 'add_served_log':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    // Ensure table exists
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS served_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        order_id VARCHAR(50),
+                        item_name VARCHAR(255),
+                        quantity INT DEFAULT 1,
+                        served_by VARCHAR(100),
+                        guest_name VARCHAR(255),
+                        room_number VARCHAR(50),
+                        served_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )");
+                    $stmt = $pdo->prepare("INSERT INTO served_logs (order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                    $stmt->execute([
+                        $input['order_id'] ?? '',
+                        $input['item_name'] ?? '',
+                        $input['quantity'] ?? 1,
+                        $input['served_by'] ?? '',
+                        $input['guest_name'] ?? '',
+                        $input['room_number'] ?? '',
+                    ]);
+                    echo json_encode(['status' => 'success']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid kitchen action']);
