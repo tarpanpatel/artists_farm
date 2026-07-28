@@ -166,6 +166,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     isVisible: boolean;
     customUrl: string;
     openInNewTab: boolean;
+    parentId: string | null;
   }>({
     title: '',
     tabKey: 'dashboard',
@@ -176,6 +177,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     isVisible: true,
     customUrl: '',
     openInNewTab: false,
+    parentId: null,
   });
 
   // Drag and Drop state for Navigation items
@@ -417,6 +419,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       isVisible: true,
       customUrl: '',
       openInNewTab: false,
+      parentId: null,
     });
     setIsNavModalOpen(true);
   };
@@ -433,6 +436,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       isVisible: item.isVisible,
       customUrl: (item as any).customUrl || '',
       openInNewTab: (item as any).openInNewTab || false,
+      parentId: item.parentId || null,
     });
     setIsNavModalOpen(true);
   };
@@ -455,6 +459,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               isVisible: navForm.isVisible,
               customUrl: navForm.customUrl,
               openInNewTab: navForm.openInNewTab,
+              parentId: navForm.parentId,
             }
           : item
       );
@@ -472,6 +477,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         isVisible: navForm.isVisible,
         customUrl: navForm.customUrl,
         openInNewTab: navForm.openInNewTab,
+        parentId: navForm.parentId,
       };
       onUpdateNavItems([...navItems, newItem]);
     }
@@ -807,6 +813,23 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Parent Menu Item (Hierarchy)</label>
+                <select
+                  value={navForm.parentId || ''}
+                  onChange={(e) => setNavForm({ ...navForm, parentId: e.target.value || null })}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-semibold focus:outline-hidden"
+                >
+                  <option value="">Root Level (no parent)</option>
+                  {navItems.filter((i) => i.id !== editingNavItem?.id).map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.parentId ? `\u00A0\u00A0\u21B3 ${item.title}` : item.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">Nest this item under another menu item to create a hierarchy group.</p>
               </div>
 
               <div>

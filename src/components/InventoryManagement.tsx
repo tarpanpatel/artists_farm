@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
+import { DataTableWrapper } from './DataTable';
 
 interface InventoryManagementProps {
   inventory: InventoryItem[];
@@ -482,7 +483,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const now = new Date();
     const formattedTime = `${now.getDate()} ${now.toLocaleString('en-US', {month: 'short'})} ${now.getFullYear()} - ${now.toLocaleTimeString('en-US', {hour12: false})}`;
 
-    const staffName = currentUser?.username || 'Admin';
+    const staffName = currentUser?.name || 'Admin';
     const statusTitle = calculatedStatus === 'Fulfilled' ? 'PROCURED & ARCHIVED' : 'REQUISITION UPDATED';
 
     const templateVars: Record<string, string> = {
@@ -545,26 +546,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     alert(`✅ Requisition Sheet #${targetSheetId} marked as FULFILLED and saved to database!`);
   };
 
-  const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([
-    {
-      id: '1166',
-      status: 'PENDING',
-      date: '21 Jul 2026 - 10:21 PM',
-      items: ['Green Pea (x1 Kg)', 'Hari Mirchi (x1 Kg)'],
-    },
-    {
-      id: '1165',
-      status: 'PENDING',
-      date: '21 Jul 2026 - 09:05 PM',
-      items: ['Black Pepper (x1 Pcs)', 'Basmati Rice (x1 Pc)'],
-    },
-    {
-      id: '1164',
-      status: 'PENDING',
-      date: '21 Jul 2026 - 08:53 PM',
-      items: ['Ajino Moto (x1 Gm)'],
-    },
-  ]);
+  const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([]);
 
   const fulfillFromRef = React.useRef<HTMLInputElement>(null);
   const fulfillToRef = React.useRef<HTMLInputElement>(null);
@@ -587,10 +569,33 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       })
     : recentSheets;
 
+  const fulfillTableKey = useMemo(() => JSON.stringify(recentSheets), [recentSheets]);
+
   useEffect(() => {
     fetchStockRequestsFromDB().then((data) => {
       if (data && data.length > 0) {
         setRecentSheets(data);
+      } else {
+        setRecentSheets([
+          {
+            id: '1166',
+            status: 'PENDING',
+            date: '21 Jul 2026 - 10:21 PM',
+            items: ['Green Pea (x1 Kg)', 'Hari Mirchi (x1 Kg)'],
+          },
+          {
+            id: '1165',
+            status: 'PENDING',
+            date: '21 Jul 2026 - 09:05 PM',
+            items: ['Black Pepper (x1 Pcs)', 'Basmati Rice (x1 Pc)'],
+          },
+          {
+            id: '1164',
+            status: 'PENDING',
+            date: '21 Jul 2026 - 08:53 PM',
+            items: ['Ajino Moto (x1 Gm)'],
+          },
+        ]);
       }
     });
   }, []);
@@ -922,7 +927,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
 
           <div className="overflow-x-auto text-xs">
-            <table className="wastage-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
+            <table className="datatable wastage-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
                 <tr>
                   <th className="p-3">Date</th>
@@ -1301,7 +1306,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="datatable w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-bold text-slate-700 text-[11px]">
                 <tr>
                   <th className="p-3 w-10 text-center">
@@ -1602,7 +1607,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   </label>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="datatable w-full text-left text-xs">
                     <thead className="bg-white border-b border-slate-100 text-[10px] uppercase text-slate-400">
                       <tr>
                         <th className="p-3 font-semibold w-10">Select</th>
@@ -1658,10 +1663,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             )}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+               ))}
+             </tbody>
+             </table>
+          </div>
               </div>
             );
           })}
@@ -1753,16 +1758,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             Stock Request Log
           </div>
           
-          <div className="flex-1 max-w-md relative">
-            <input
-              type="text"
-              placeholder="Quick search contents..."
-              className="w-full pl-8 pr-4 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-hidden focus:border-cyan-500 shadow-2xs"
-            />
-            <span className="absolute left-2.5 top-1.5 text-slate-400 text-xs">🔍</span>
-          </div>
-
-          <div className="flex items-center gap-2">
+           <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">FROM</span>
               <input type="date" ref={fulfillFromRef} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-18" />
@@ -1777,30 +1773,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-          <table className="stock-requisitions-table w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/4">Requested At</th>
-                <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/2">Material Selections Summary</th>
-                <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Status</th>
-                <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFulfillSheets.map((sheet, index) => (
-                <tr key={sheet.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${index === filteredFulfillSheets.length - 1 ? 'border-none' : ''}`}>
-                  <td className="py-4 px-4 text-xs font-semibold text-slate-500">
-                    {sheet.date.replace(' - ', ' - ')}
-                  </td>
-                  <td className="py-4 px-4 text-xs font-semibold text-slate-700">
-                    {Array.isArray(sheet.items) && sheet.items.filter(i => Boolean(i && i.trim())).length > 0
-                      ? sheet.items.filter(i => Boolean(i && i.trim())).join(', ')
-                      : <span className="italic text-slate-400 font-normal">Requisition Items Processed & Archived</span>
-                    }
-                  </td>
-                  <td className="py-4 px-4 text-center">
+         {/* Table */}
+         <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+             <DataTableWrapper key={fulfillTableKey} className="stock-requisitions-table w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/4">Requested At</th>
+                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/2">Material Selections Summary</th>
+                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Status</th>
+                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFulfillSheets.map((sheet, index) => (
+                  <tr key={sheet.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${index === filteredFulfillSheets.length - 1 ? 'border-none' : ''}`}>
+                    <td className="py-4 px-4 text-xs font-semibold text-slate-500">
+                      {sheet.date.replace(' - ', ' - ')}
+                    </td>
+                    <td className="py-4 px-4 text-xs font-semibold text-slate-700">
+                      {Array.isArray(sheet.items) && sheet.items.filter(i => Boolean(i && i.trim())).length > 0
+                        ? sheet.items.filter(i => Boolean(i && i.trim())).join(', ')
+                        : sheet.status === 'FULFILLED' || sheet.status === 'PARTIALLY FULFILLED'
+                          ? <span className="italic text-slate-400 font-normal">Fulfilled — no item details recorded</span>
+                          : <span className="italic text-slate-400 font-normal">No items</span>
+                      }
+                    </td>
+                    <td className="py-4 px-4 text-center">
                     <span className={`font-extrabold text-[10px] px-2 py-1 rounded-md ${
                       sheet.status === 'PENDING' 
                         ? 'bg-amber-100 text-amber-700'
@@ -1824,8 +1822,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+            </DataTableWrapper>
+          </div>
 
         {/* Fulfill Edit Modal */}
         {selectedFulfillSheet && (
@@ -2264,7 +2262,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto text-xs">
-          <table className="inventory-master-table w-full text-left text-slate-700">
+           <table className="datatable inventory-master-table w-full text-left text-slate-700">
             <thead className="bg-slate-50 font-bold border-b border-slate-200 uppercase text-[11px]">
               <tr>
                 <th className="py-3 px-4">Image</th>

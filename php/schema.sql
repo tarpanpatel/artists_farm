@@ -44,6 +44,18 @@ CREATE TABLE IF NOT EXISTS `menu_items` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 3a. Order Items Table
+CREATE TABLE IF NOT EXISTS `order_items` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_id` VARCHAR(50) NOT NULL,
+    `menu_item_id` INT NOT NULL,
+    `quantity` INT NOT NULL,
+    `item_status` ENUM('Pending', 'Served') DEFAULT 'Pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_id`) REFERENCES `kitchen_orders`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`menu_item_id`) REFERENCES `menu_items`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 4. Inventory Items Table
 CREATE TABLE IF NOT EXISTS `inventory_items` (
     `id` VARCHAR(50) PRIMARY KEY,

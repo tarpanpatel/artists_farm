@@ -142,7 +142,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+           <table className="datatable w-full text-left text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 font-bold uppercase text-[10px] border-b border-gray-200 dark:border-slate-700">
               <tr>
                 <th className="px-4 py-3">Service ID</th>

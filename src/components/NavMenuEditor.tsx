@@ -93,15 +93,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const [showTabPickerFor, setShowTabPickerFor] = useState<string | null>(null);
   const [tabSearch, setTabSearch] = useState('');
   const [customUrlInput, setCustomUrlInput] = useState<Record<string, string>>({});
+  const [showParentPickerFor, setShowParentPickerFor] = useState<string | null>(null);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({
     title: '', tabKey: 'dashboard', uniqueKey: 'dashboard',
-    iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'] as string[]
+    iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'] as string[],
+    parentId: null as string | null
   });
 
   const sortableInstances = useRef<Sortable[]>([]);
   const sortableContainerRef = useRef<HTMLDivElement>(null);
+  const [containerKey, setContainerKey] = useState(0);
 
   useEffect(() => {
     setItems(navItems);
@@ -178,7 +181,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         const item = items.find(i => i.id === id);
         if (!item) return;
         result.push({ ...item, parentId, order: idx + 1 });
-        const childUl = li.querySelector(':scope > ul') as HTMLUListElement | null;
+        const childUl = li.querySelector(':scope > ul[data-sortable]') as HTMLUListElement | null;
         if (childUl) processList(childUl, id);
       });
     };
@@ -204,6 +207,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         onEnd: () => {
           const newItems = extractFromDOM();
           setItems(newItems);
+          setContainerKey(k => k + 1);
           markDirty();
         },
       });
@@ -213,14 +217,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
   useEffect(() => {
     const timer = setTimeout(initSortable, 50);
-    return () => clearTimeout(timer);
-  }, [tree, expandedIds, initSortable]);
+    return () => {
+      clearTimeout(timer);
+      sortableInstances.current.forEach(s => s.destroy());
+      sortableInstances.current = [];
+    };
+  }, [containerKey, expandedIds, initSortable]);
 
   // ========== SAVE ==========
   const handleSave = async () => {
     setIsSaving(true);
     const treeNodes = buildTree(items);
-    const flatList = flattenAll(treeNodes);
+    const flatList = flattenAll(treeNodes).map(({ children, ...rest }: any) => rest);
     const success = await saveNavMenuDB(flatList);
     if (success) {
       onUpdateNavItems(flatList);
@@ -243,11 +251,11 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       order: items.length + 1,
       roles: [...newItem.roles],
       isVisible: true,
-      parentId: null,
+      parentId: newItem.parentId,
       customUrl: newItem.customUrl || undefined,
     };
     setItems(prev => [...prev, item]);
-    setNewItem({ title: '', tabKey: 'dashboard', uniqueKey: 'dashboard', iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'] });
+    setNewItem({ title: '', tabKey: 'dashboard', uniqueKey: 'dashboard', iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'], parentId: null });
     setShowAddForm(false);
     markDirty();
   };
@@ -306,6 +314,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     const url = customUrlInput[id] || '';
     setItems(prev => prev.map(i => i.id === id ? { ...i, customUrl: url, tabKey: 'custom', uniqueKey: `custom_${id}` } : i));
     setCustomUrlInput(prev => { const n = { ...prev }; delete n[id]; return n; });
+    markDirty();
+  };
+
+  const handleParentChange = (id: string, parentId: string | null) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, parentId } : i));
+    setShowParentPickerFor(null);
     markDirty();
   };
 
@@ -439,8 +453,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             {item.roles.length}r
           </button>
 
-          {/* Indent/Outdent - ALWAYS VISIBLE */}
+          {/* Parent Picker + Indent/Outdent */}
           <div className="flex items-center gap-0.5 shrink-0">
+            <button onClick={() => setShowParentPickerFor(showParentPickerFor === item.id ? null : item.id)}
+              className={`p-0.5 rounded transition-colors cursor-pointer ${item.parentId ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
+              title={item.parentId ? `Parent: ${items.find(i => i.id === item.parentId)?.title || 'Unknown'}` : 'Set parent (root level)'}>
+              <Layers className="w-3.5 h-3.5" />
+            </button>
             <button onClick={() => handleOutdent(item.id)} disabled={!item.parentId}
               className="p-0.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
               title="Outdent (move left)">
@@ -542,6 +561,29 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
         )}
 
+        {/* Parent Picker Dropdown */}
+        {showParentPickerFor === item.id && (
+          <div className="ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 max-w-[280px]">
+            <p className="text-[10px] font-bold text-blue-700 mb-1">Set Parent Menu Item</p>
+            <div className="space-y-0.5 max-h-[160px] overflow-y-auto">
+              <button onClick={() => handleParentChange(item.id, null)}
+                className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${!item.parentId ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                Root Level (no parent)
+              </button>
+              {items.filter(i => i.id !== item.id).map(i => {
+                const parentLabel = i.parentId ? `\u00A0\u00A0\u21B3 ${i.title}` : i.title;
+                return (
+                  <button key={i.id} onClick={() => handleParentChange(item.id, i.id)}
+                    className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${item.parentId === i.id ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                    {parentLabel}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setShowParentPickerFor(null)} className="mt-1 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
+          </div>
+        )}
+
         {/* Children */}
         {isExpanded && hasChildren && (
           <ul data-sortable className="ml-2 pl-3 border-l-2 border-slate-200 my-1">
@@ -601,6 +643,14 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             }} className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
               {PAGE_OPTIONS.map(p => (
                 <option key={`${p.tabKey}-${p.uniqueKey}`} value={`${p.tabKey}|${p.uniqueKey}`}>{p.label}</option>
+              ))}
+            </select>
+            {/* Parent dropdown */}
+            <select value={newItem.parentId || ''} onChange={(e) => setNewItem(p => ({ ...p, parentId: e.target.value || null }))}
+              className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <option value="">Root Level (no parent)</option>
+              {items.filter(i => i.id !== newItem.parentId).map(i => (
+                <option key={i.id} value={i.id}>{'  '.repeat(0)}{i.title}</option>
               ))}
             </select>
             {/* Custom URL (if custom selected) */}

@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Search,
-  ShoppingCart
+  ShoppingCart,
+  ArrowUp
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
@@ -379,6 +380,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+
+  useEffect(() => {
+    const container = document.querySelector('.take-food-order-container');
+    if (!container) return;
+    const onScroll = () => setShowScrollTop(container.scrollTop > 300);
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [activeTab]);
 
   useEffect(() => { localStorage.setItem('kitchen_cart_items', JSON.stringify(cartItems)); }, [cartItems]);
 
@@ -787,7 +797,67 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                     <p className="text-slate-600 dark:text-slate-400 font-bold text-xs">No food items found matching "{posSearch}"</p>
                   </div>
+                ) : selectedPosCategory === 'all' ? (
+                  /* Grouped by category when "All Menu" is selected */
+                  <div className="space-y-5">
+                    {Object.entries(
+                      filteredPosMenuItems.reduce<Record<string, typeof filteredPosMenuItems>>((groups, item) => {
+                        const cat = item.category || 'Uncategorized';
+                        if (!groups[cat]) groups[cat] = [];
+                        groups[cat].push(item);
+                        return groups;
+                      }, {})
+                    ).map(([category, items]) => (
+                      <div key={category}>
+                        <h4 className="text-[11px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block"></span>
+                          {category}
+                          <span className="text-slate-400 dark:text-slate-500 font-bold normal-case tracking-normal">({items.length})</span>
+                        </h4>
+                        <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                          {items.map((item) => {
+                            const isRecentlyAdded = recentlyAddedId === item.id;
+                            return (
+                                <div
+                                  key={item.id}
+                                  className={`pos-food-card bg-white dark:bg-slate-800 rounded-lg border p-1.5 flex flex-col gap-1.5 transition-all ${
+                                    isRecentlyAdded
+                                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-xs'
+                                      : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
+                                  }`}
+                                >
+                                  <div className="w-full h-14 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[8px]">
+                                    {item.imagePath ? (
+                                      <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                    ) : (
+                                      <UtensilsCrossed className="w-4 h-4 text-slate-300" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-start justify-between gap-1">
+                                    <div className="min-w-0 flex-1">
+                                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">{item.name}</h4>
+                                      <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleAddToCartWithFeedback(item)}
+                                      className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-extrabold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
+                                        isRecentlyAdded
+                                          ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
+                                          : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
+                                      }`}
+                                    >
+                                      {isRecentlyAdded ? <span className="text-[9px]">✓</span> : <span>+</span>}
+                                    </button>
+                                  </div>
+                                </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
+                  /* Flat grid when a specific category is selected */
                   <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {filteredPosMenuItems.map((item) => {
                       const isRecentlyAdded = recentlyAddedId === item.id;
@@ -800,30 +870,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
                             }`}
                           >
-                            {/* Dish Image Thumbnail - Compact */}
                             <div className="w-full h-14 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[8px]">
                               {item.imagePath ? (
-                                <img
-                                  src={item.imagePath}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                  }}
-                                />
+                                <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                               ) : (
                                 <UtensilsCrossed className="w-4 h-4 text-slate-300" />
                               )}
                             </div>
-
                             <div className="flex items-start justify-between gap-1">
                               <div className="min-w-0 flex-1">
-                                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">
-                                  {item.name}
-                                </h4>
+                                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">{item.name}</h4>
                                 <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
                               </div>
-
                               <button
                                 onClick={() => handleAddToCartWithFeedback(item)}
                                 className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-extrabold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
@@ -832,11 +890,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                     : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
                                 }`}
                               >
-                                {isRecentlyAdded ? (
-                                  <span className="text-[9px]">✓</span>
-                                ) : (
-                                  <span>+</span>
-                                )}
+                                {isRecentlyAdded ? <span className="text-[9px]">✓</span> : <span>+</span>}
                               </button>
                             </div>
                           </div>
@@ -1022,6 +1076,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Mobile Scroll-to-Top Button */}
+            {showScrollTop && (
+              <button
+                onClick={() => {
+                  const c = document.querySelector('.take-food-order-container');
+                  if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="fixed bottom-24 right-4 z-50 lg:hidden w-10 h-10 bg-slate-800/90 dark:bg-white/90 text-white dark:text-slate-800 rounded-lg shadow-lg flex items-center justify-center cursor-pointer transition-all active:scale-90 border border-slate-600 dark:border-slate-300"
+              >
+                <ArrowUp className="w-5 h-5" />
+              </button>
+            )}
           </div>
         );
       })()}
@@ -1067,7 +1134,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           <div className="overflow-x-auto text-xs">
-            <table className="w-full text-left text-slate-700 dark:text-slate-300">
+             <table className="datatable w-full text-left text-slate-700 dark:text-slate-300">
               <thead className="bg-slate-50 dark:bg-slate-700 font-bold border-b border-slate-200 dark:border-slate-600 uppercase text-[11px]">
                 <tr>
                   <th className="py-2.5 px-3">Req ID</th>
@@ -1263,7 +1330,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </h3>
             
             <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
-              <table className="w-full text-left">
+              <table className="datatable w-full text-left">
                 <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
                   <tr className="border-b border-slate-100 dark:border-slate-700">
                     <th className="pb-3 text-[10px] font-bold text-slate-400 w-1/4">Date & Time</th>
@@ -1425,7 +1492,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-600 rounded-xl">
-                <table className="recipe-ingredients-table w-full text-left text-xs">
+                 <table className="datatable recipe-ingredients-table w-full text-left text-xs">
                   <thead className="bg-slate-50 dark:bg-slate-700 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-600">
                     <tr>
                       <th className="p-3">Ingredient</th>

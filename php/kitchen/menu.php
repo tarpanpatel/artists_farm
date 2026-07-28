@@ -238,13 +238,13 @@ function handleMenuRequests($pdo, $request_method, $action) {
 
                     foreach ($items as $idx => $item) {
                         $stmt->execute([
-                            $item['id'] ?? ('nav-' . ($idx + 1)),
+                            $item['id'] ?? ('nav-' . ((int)$idx + 1)),
                             $item['title'] ?? 'Menu Item',
                             $item['tabKey'] ?? 'dashboard',
                             $item['uniqueKey'] ?? '',
                             $item['category'] ?? 'Main Sections',
                             $item['iconName'] ?? 'Grid',
-                            $item['order'] ?? ($idx + 1),
+                            $item['order'] ?? ((int)$idx + 1),
                             json_encode($item['roles'] ?? []),
                             isset($item['isVisible']) ? ($item['isVisible'] ? 1 : 0) : 1,
                             $item['customUrl'] ?? null,
@@ -252,6 +252,19 @@ function handleMenuRequests($pdo, $request_method, $action) {
                             $item['parentId'] ?? null
                         ]);
                     }
+
+                    if (count($items) > 0) {
+                        $keepIds = array_map(function($item) use ($pdo) {
+                            return $item['id'] ?? '';
+                        }, $items);
+                        $keepIds = array_filter($keepIds);
+                        if (count($keepIds) > 0) {
+                            $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
+                            $delStmt = $pdo->prepare("DELETE FROM nav_menu_items WHERE id NOT IN ($placeholders)");
+                            $delStmt->execute(array_values($keepIds));
+                        }
+                    }
+
                     $pdo->commit();
                     echo json_encode(['status' => 'success', 'message' => 'Navigation menu saved successfully']);
                 } catch (PDOException $e) {

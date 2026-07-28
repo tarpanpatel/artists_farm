@@ -5,6 +5,9 @@
  */
 
 if (!class_exists('TelescopeLogger')) {
+    // Set timezone to Asia/Kolkata for correct Indian timestamps
+    date_default_timezone_set('Asia/Kolkata');
+
     class TelescopeLogger {
         private static $logFile = __DIR__ . '/logs.json';
 

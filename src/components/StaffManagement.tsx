@@ -419,40 +419,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
-          {!isAttendancePage && (
+        {isAttendancePage && (
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
             <button
-              onClick={() => setActiveSubTab('control_center')}
+              onClick={() => setActiveSubTab('calendar')}
               className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                activeSubTab === 'control_center'
+                activeSubTab === 'calendar'
                   ? 'bg-blue-600 text-white shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              Staff & Payees Control
+              Attendance Calendar
             </button>
-          )}
-          <button
-            onClick={() => setActiveSubTab('calendar')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all ${
-              activeSubTab === 'calendar'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Attendance Calendar
-          </button>
-          <button
-            onClick={() => setActiveSubTab('roster')}
-            className={`px-3.5 py-1.5 rounded-lg transition-all ${
-              activeSubTab === 'roster'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            Staff Directory & Salaries
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
@@ -470,7 +450,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="datatable w-full text-left text-xs">
                   <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3">Username</th>
@@ -541,7 +521,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="datatable w-full text-left text-xs">
                   <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3">Payee Entity Title</th>
@@ -976,7 +956,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
             <div className="overflow-x-auto relative">
-              <table className="w-full text-center border-collapse text-xs">
+              <table className="datatable w-full text-center border-collapse text-xs">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-slate-900/80 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-slate-700 font-bold">
                     <th className="sticky left-0 bg-gray-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white">
@@ -1079,7 +1059,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="datatable w-full text-left text-xs">
                 <thead className="bg-amber-50/80 dark:bg-amber-950/20 font-bold uppercase text-[10px] text-amber-700 dark:text-amber-400 border-b border-amber-200 dark:border-amber-800/40">
                   <tr>
                     <th className="py-2.5 px-3">Staff Name</th>
@@ -1176,7 +1156,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="datatable w-full text-left text-xs">
               <thead className="bg-gray-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-slate-700">
                 <tr>
                   <th className="py-2.5 px-3">Staff ID</th>

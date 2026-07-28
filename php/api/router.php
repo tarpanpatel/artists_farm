@@ -22,6 +22,9 @@ $api_key = getenv('API_KEY') ?: 'artists-farm-secure-key-2026';
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 $public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu'];
 
+$request_method = $_SERVER['REQUEST_METHOD'];
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+
 // Require API key for write/delete actions
 $is_write_action = in_array($request_method, ['POST', 'PUT', 'DELETE']);
 if ($is_write_action && $provided_key !== $api_key) {
@@ -29,9 +32,6 @@ if ($is_write_action && $provided_key !== $api_key) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key required for write operations.']);
     exit;
 }
-
-$request_method = $_SERVER['REQUEST_METHOD'];
-$action = isset($_GET['action']) ? $_GET['action'] : '';
 
 switch ($action) {
     // --- GUESTS ---

@@ -1,22 +1,5 @@
-# Apache configuration for Artists Farm Resort & Kitchen Management System
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    # Route asset requests to dist/assets/ if requested as assets/...
-    RewriteRule ^assets/(.*)$ dist/assets/$1 [L,NC]
-
-    # Allow direct access to existing files and directories (e.g. dist/, php/ API endpoints)
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-
-    # Route all SPA requests to root index.php
-    RewriteRule ^ index.php [L]
-</IfModule>
-
-# Enable CORS for local API and cross-origin access
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    RewriteBase /artists_farm/
+    RewriteRule ^food_menu/?$ food_menu.php [L]
 </IfModule>

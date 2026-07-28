@@ -155,8 +155,8 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Sandbox / Testing Mode Toggle Button */}
-          {onToggleTestingMode && (
+          {/* Sandbox / Testing Mode Toggle Button — Admin / Super Admin only */}
+          {onToggleTestingMode && (activeRole === 'Super Admin' || activeRole === 'Admin') && (
             <button
               onClick={onToggleTestingMode}
               title={isTestingMode ? 'Exit Testing Sandbox Mode (Return to Live Database)' : 'Enter Testing Sandbox Mode (Safely test without affecting Live DB)'}

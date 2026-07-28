@@ -9,7 +9,7 @@ require_once __DIR__ . '/logger.php';
 // Handle API requests
 $action = $_GET['action'] ?? $_POST['action'] ?? null;
 
-if ($action === 'fetch_logs' || isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');

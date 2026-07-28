@@ -462,23 +462,27 @@ export function App() {
     fetchNavMenuFromDB().then((data) => {
       if (data && data.length > 0) {
         setNavItems((prev) => {
-          // Map DB items by uniqueKey for fast lookup of roles and visibility
-          const dbMap = new Map(data.map((d: any) => [d.uniqueKey, d]));
-          // Maintain exact initial sidebar hierarchy, taking updated roles/visibility from DB
-          return prev.map((initialItem, idx) => {
-            const dbItem = dbMap.get(initialItem.uniqueKey);
-            if (dbItem) {
-              return {
-                ...initialItem,
-                title: dbItem.title || initialItem.title,
-                category: initialItem.category,
-                roles: dbItem.roles || initialItem.roles,
-                isVisible: dbItem.isVisible !== undefined ? dbItem.isVisible : initialItem.isVisible,
-                order: idx + 1,
-              };
-            }
-            return { ...initialItem, order: idx + 1 };
+          // Build a map of initial items by uniqueKey for ordering
+          const initialMap = new Map(prev.map((item) => [item.uniqueKey, item]));
+          // Merge: use DB as source of truth, keep initial order for known items
+          const merged = data.map((dbItem: any, idx: number) => {
+            const initial = initialMap.get(dbItem.uniqueKey);
+            return {
+              id: dbItem.id,
+              title: dbItem.title,
+              tabKey: dbItem.tabKey,
+              uniqueKey: dbItem.uniqueKey,
+              category: dbItem.category,
+              iconName: dbItem.iconName,
+              order: initial ? prev.indexOf(initial) + 1 : idx + 1,
+              roles: dbItem.roles || ['Super Admin'],
+              isVisible: dbItem.isVisible,
+              parentId: dbItem.parentId ?? null,
+              customUrl: dbItem.customUrl || undefined,
+              openInNewTab: dbItem.openInNewTab || false,
+            };
           });
+          return merged;
         });
       }
     });
@@ -917,7 +921,8 @@ ${itemsStr}
     }
 
     const msg = `${statusEmoji} <b>KITCHEN ORDER ${status.toUpperCase()} #${orderId}</b>\n• Resident: <b>${guestInfo}</b>\n• Items Included:\n${itemsList}\n• Ticket Total: <b>₹${targetOrder?.totalAmount || 0}</b>\n• Placed At: <b>${targetOrder?.orderTime || 'Just now'}</b>\n• Current Status: <b>${statusDetailText}</b>`;
-    logAudit(`Updated kitchen ticket ${orderId} status to ${status}`);
+    const oldStatus = targetOrder?.status || 'Unknown';
+    logAudit(`${currentUser?.name || activeRole} changed order #${orderId} status from ${oldStatus} → ${status}`);
 
     const statusOrderVars: Record<string, string> = {
       status_emoji: statusEmoji,
@@ -970,6 +975,9 @@ ${itemsStr}
       if (updated.available !== undefined && updated.available !== oldItem.available) {
         changes.push(`availability of '${oldItem.name}' to '${updated.available ? 'Available' : 'Unavailable'}'`);
       }
+      if (updated.imagePath !== undefined && updated.imagePath !== oldItem.imagePath) {
+        changes.push(`image for '${oldItem.name}' (updated)`);
+      }
     }
     const currentUserName = currentUser?.name || activeRole;
     const logMsg = changes.length > 0 
@@ -988,8 +996,39 @@ ${itemsStr}
   };
 
   const handleUpdateNavItems = (items: NavMenuItem[]) => {
+    const oldMap = new Map(navItems.map(i => [i.uniqueKey, i]));
+    const newMap = new Map(items.map(i => [i.uniqueKey, i]));
+    const changes: string[] = [];
+    const currentUserName = currentUser?.name || activeRole;
+
+    items.forEach(item => {
+      if (item.uniqueKey && !oldMap.has(item.uniqueKey)) {
+        changes.push(`Added "${item.title}"`);
+      }
+    });
+    navItems.forEach(item => {
+      if (item.uniqueKey && !newMap.has(item.uniqueKey)) {
+        changes.push(`Removed "${item.title}"`);
+      }
+    });
+    items.forEach(item => {
+      const old = item.uniqueKey ? oldMap.get(item.uniqueKey) : undefined;
+      if (!old) return;
+      if (item.parentId !== old.parentId) {
+        const newParent = item.parentId ? (newMap.get(item.parentId)?.title || item.parentId) : 'Root';
+        const oldParent = old.parentId ? (oldMap.get(old.parentId)?.title || old.parentId) : 'Root';
+        changes.push(`Moved "${item.title}" from ${oldParent} → ${newParent}`);
+      }
+      if (item.title !== old.title) changes.push(`Renamed "${old.title}" → "${item.title}"`);
+      if (JSON.stringify(item.roles) !== JSON.stringify(old.roles)) {
+        changes.push(`Updated roles for "${item.title}" from [${old.roles?.join(', ')}] to [${item.roles?.join(', ')}]`);
+      }
+      if (item.isVisible !== old.isVisible) changes.push(`Set "${item.title}" to ${item.isVisible ? 'visible' : 'hidden'}`);
+    });
+
+    const detail = changes.length > 0 ? ': ' + changes.join('; ') : ' (no changes detected)';
+    logAudit(`${currentUserName} updated navigation menu${detail}`, { module: 'navigation' });
     setNavItems(items);
-    logAudit(`Updated system navigation menu configuration & RBAC rules`);
   };
 
   const handleRequestMaterial = async (req: Requisition) => {
@@ -1091,13 +1130,26 @@ ${itemsStr}
   };
 
   const handleUpdatePettyCash = (updated: PettyCashEntry) => {
+    const oldEntry = pettyCash.find(e => e.id === updated.id);
+    const changes: string[] = [];
+    if (oldEntry) {
+      if (updated.amount !== undefined && updated.amount !== oldEntry.amount) changes.push(`amount from ₹${oldEntry.amount} to ₹${updated.amount}`);
+      if (updated.description !== undefined && updated.description !== oldEntry.description) changes.push(`description from "${oldEntry.description}" to "${updated.description}"`);
+      if (updated.vendor !== undefined && updated.vendor !== oldEntry.vendor) changes.push(`vendor from "${oldEntry.vendor || ''}" to "${updated.vendor || ''}"`);
+      if (updated.category !== undefined && updated.category !== oldEntry.category) changes.push(`category from "${oldEntry.category || ''}" to "${updated.category || ''}"`);
+    }
+    const detail = changes.length > 0 ? changes.join(', ') : `petty cash entry #${updated.id}`;
+    const currentUserName = currentUser?.name || activeRole;
     setPettyCash((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-    logAudit(`Updated petty cash entry #${updated.id}: ₹${updated.amount} - ${updated.description}`);
+    logAudit(`${currentUserName} updated ${detail}`);
   };
 
   const handleDeletePettyCash = (id: string) => {
+    const oldEntry = pettyCash.find(e => e.id === id);
+    const detail = oldEntry ? ` #${id}: ₹${oldEntry.amount} - "${oldEntry.description}"` : ` #${id}`;
+    const currentUserName = currentUser?.name || activeRole;
     setPettyCash((prev) => prev.filter((e) => e.id !== id));
-    logAudit(`Deleted petty cash entry #${id}`);
+    logAudit(`${currentUserName} deleted petty cash entry${detail}`);
   };
 
   const handleSendTestNotification = () => {
@@ -1121,9 +1173,20 @@ ${itemsStr}
   };
 
   const handleUpdateStaff = (id: string, updated: Partial<StaffMember>) => {
+    const oldMember = staff.find(m => m.id === id);
+    const currentUserName = currentUser?.name || activeRole;
+    const changes: string[] = [];
+    if (oldMember) {
+      if (updated.name !== undefined && updated.name !== oldMember.name) changes.push(`name of "${oldMember.name}" to "${updated.name}"`);
+      if (updated.role !== undefined && updated.role !== oldMember.role) changes.push(`role of "${oldMember.name}" from ${oldMember.role} to ${updated.role}`);
+      if (updated.phone !== undefined && updated.phone !== oldMember.phone) changes.push(`phone of "${oldMember.name}" from ${oldMember.phone} to ${updated.phone}`);
+      if (updated.monthlySalary !== undefined && updated.monthlySalary !== oldMember.monthlySalary) changes.push(`salary of "${oldMember.name}" from ₹${oldMember.monthlySalary} to ₹${updated.monthlySalary}`);
+      if (updated.status !== undefined && updated.status !== oldMember.status) changes.push(`status of "${oldMember.name}" from ${oldMember.status} to ${updated.status}`);
+    }
+    const detail = changes.length > 0 ? changes.join(', ') : `staff member #${id}`;
     setStaff((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
     updateStaffUserDB(id, updated);
-    logAudit(`Updated staff member #${id}: ${JSON.stringify(updated)}`);
+    logAudit(`${currentUserName} updated ${detail}`);
   };
 
   const handleRecordAttendance = (record: AttendanceRecord) => {
@@ -1334,6 +1397,7 @@ ${itemsStr}
               receipts={receipts}
               orders={orders}
               expenses={pettyCash}
+              guests={guests}
               activeMenuItemKey={activeMenuItemKey}
             />
           )}

@@ -526,7 +526,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
 
         <div className="overflow-x-auto text-xs">
-          <table className="cost-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
+           <table className="datatable cost-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
               <tr>
                 <th className="p-3">Date</th>

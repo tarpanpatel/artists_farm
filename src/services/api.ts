@@ -3,7 +3,10 @@
  */
 
 // Dynamically resolve the API base to handle subfolder deployment (e.g. /artists_farm/)
-const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
+// On Vite dev server (port 3000), the proxy handles /php routing, so _base must be empty.
+// On production (XAMPP, cPanel), derive _base from the URL path.
+const _isDev = window.location.port === '3000';
+const _base = _isDev ? '' : window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 const API_KEY = 'artists-farm-secure-key-2026';
@@ -66,7 +69,7 @@ export interface StockRequestSheet {
 
 export async function fetchStockRequestsFromDB(): Promise<StockRequestSheet[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_stock_requests`);
+    const res = await apiFetch(`${API_BASE}?action=get_stock_requests`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -79,7 +82,7 @@ export async function fetchStockRequestsFromDB(): Promise<StockRequestSheet[]> {
 
 export async function createStockRequestInDB(sheet: StockRequestSheet): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=create_stock_request`, {
+    const res = await apiFetch(`${API_BASE}?action=create_stock_request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sheet),
@@ -94,7 +97,7 @@ export async function createStockRequestInDB(sheet: StockRequestSheet): Promise<
 
 export async function updateStockRequestStatusInDB(id: string, status: string, items: string[]): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_stock_request_status`, {
+    const res = await apiFetch(`${API_BASE}?action=update_stock_request_status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status, items }),
@@ -109,7 +112,7 @@ export async function updateStockRequestStatusInDB(id: string, status: string, i
 
 export async function fetchExpensesFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_petty_cash`);
+    const res = await apiFetch(`${API_BASE}?action=get_petty_cash`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map(item => ({
@@ -133,7 +136,7 @@ export async function fetchExpensesFromDB(): Promise<any[]> {
 
 export async function addExpenseToDB(entry: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_petty_cash`, {
+    const res = await apiFetch(`${API_BASE}?action=add_petty_cash`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry),
@@ -148,7 +151,7 @@ export async function addExpenseToDB(entry: any): Promise<boolean> {
 
 export async function updateExpenseInDB(entry: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_petty_cash`, {
+    const res = await apiFetch(`${API_BASE}?action=update_petty_cash`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry),
@@ -163,7 +166,7 @@ export async function updateExpenseInDB(entry: any): Promise<boolean> {
 
 export async function deleteExpenseFromDB(id: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_petty_cash`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_petty_cash`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -178,7 +181,7 @@ export async function deleteExpenseFromDB(id: string): Promise<boolean> {
 
 export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'catalog' | 'misc' = 'misc'): Promise<string | null> {
   try {
-    const res = await fetch(UPLOAD_BASE, {
+    const res = await apiFetch(UPLOAD_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64DataUri, folder }),
@@ -197,7 +200,7 @@ export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'cat
 
 export async function fetchExpenseItemPricesFromDB(): Promise<Record<string, number>> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_expense_item_prices`);
+    const res = await apiFetch(`${API_BASE}?action=get_expense_item_prices`);
     const json = await res.json();
     if (json.status === 'success' && json.data) {
       return json.data;
@@ -210,7 +213,7 @@ export async function fetchExpenseItemPricesFromDB(): Promise<Record<string, num
 
 export async function fetchExpenseItemsFromDB(): Promise<string[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_expense_items`);
+    const res = await apiFetch(`${API_BASE}?action=get_expense_items`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((row: any) => row.item_name);
@@ -223,7 +226,7 @@ export async function fetchExpenseItemsFromDB(): Promise<string[]> {
 
 export async function addExpenseItemToDB(name: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_expense_item`, {
+    const res = await apiFetch(`${API_BASE}?action=add_expense_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_name: name }),
@@ -238,7 +241,7 @@ export async function addExpenseItemToDB(name: string): Promise<boolean> {
 
 export async function deleteExpenseItemFromDB(name: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_expense_item`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_expense_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_name: name }),
@@ -253,7 +256,7 @@ export async function deleteExpenseItemFromDB(name: string): Promise<boolean> {
 
 export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string }[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_material_categories`);
+    const res = await apiFetch(`${API_BASE}?action=get_material_categories`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -266,7 +269,7 @@ export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; nam
 
 export async function updateMaterialCategoryInDB(id: number, name: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_material_category`, {
+    const res = await apiFetch(`${API_BASE}?action=update_material_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, name }),
@@ -281,7 +284,7 @@ export async function updateMaterialCategoryInDB(id: number, name: string): Prom
 
 export async function deleteMaterialCategoryFromDB(id: number): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_material_category`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_material_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -296,7 +299,7 @@ export async function deleteMaterialCategoryFromDB(id: number): Promise<boolean>
 
 export async function addMaterialCategoryToDB(name: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_material_category`, {
+    const res = await apiFetch(`${API_BASE}?action=add_material_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -311,7 +314,7 @@ export async function addMaterialCategoryToDB(name: string): Promise<boolean> {
 
 export async function fetchMiscCatalogFromDB(): Promise<{ id: string | number; label: string; default_amount: number; category: string; description?: string }[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_misc_catalog`);
+    const res = await apiFetch(`${API_BASE}?action=get_misc_catalog`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -324,7 +327,7 @@ export async function fetchMiscCatalogFromDB(): Promise<{ id: string | number; l
 
 export async function fetchWastageLogsFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_wastage_logs`);
+    const res = await apiFetch(`${API_BASE}?action=get_wastage_logs`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -337,7 +340,7 @@ export async function fetchWastageLogsFromDB(): Promise<any[]> {
 
 export async function createWastageLogDB(log: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=create_wastage_log`, {
+    const res = await apiFetch(`${API_BASE}?action=create_wastage_log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(log),
@@ -352,7 +355,7 @@ export async function createWastageLogDB(log: any): Promise<boolean> {
 
 export async function fetchKitchenPurchasesFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_kitchen_purchases`);
+    const res = await apiFetch(`${API_BASE}?action=get_kitchen_purchases`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -365,7 +368,7 @@ export async function fetchKitchenPurchasesFromDB(): Promise<any[]> {
 
 export async function createKitchenPurchaseDB(purchase: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=create_kitchen_purchase`, {
+    const res = await apiFetch(`${API_BASE}?action=create_kitchen_purchase`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(purchase),
@@ -380,7 +383,7 @@ export async function createKitchenPurchaseDB(purchase: any): Promise<boolean> {
 
 export async function bulkUpdateKitchenPurchasesDB(payload: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=bulk_update_kitchen_purchases`, {
+    const res = await apiFetch(`${API_BASE}?action=bulk_update_kitchen_purchases`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -395,7 +398,7 @@ export async function bulkUpdateKitchenPurchasesDB(payload: any): Promise<boolea
 
 export async function deleteKitchenPurchaseDB(payload: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_kitchen_purchase`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_kitchen_purchase`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -410,7 +413,7 @@ export async function deleteKitchenPurchaseDB(payload: any): Promise<boolean> {
 
 export async function addCatalogItemDB(payload: { name: string; category: string; price?: number; packSize?: number; unit?: string; imagePath?: string }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_catalog_item`, {
+    const res = await apiFetch(`${API_BASE}?action=add_catalog_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -425,7 +428,7 @@ export async function addCatalogItemDB(payload: { name: string; category: string
 
 export async function updateCatalogItemDB(payload: { id: number; name: string; category: string; price?: number; unit?: string; imagePath?: string }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_catalog_item`, {
+    const res = await apiFetch(`${API_BASE}?action=update_catalog_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -440,7 +443,7 @@ export async function updateCatalogItemDB(payload: { id: number; name: string; c
 
 export async function deleteCatalogItemDB(id: number): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_catalog_item`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_catalog_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -455,7 +458,7 @@ export async function deleteCatalogItemDB(id: number): Promise<boolean> {
 
 export async function bulkUpdateCatalogCategoryDB(payload: { ids: number[]; category: string }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=bulk_update_catalog_category`, {
+    const res = await apiFetch(`${API_BASE}?action=bulk_update_catalog_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -470,7 +473,7 @@ export async function bulkUpdateCatalogCategoryDB(payload: { ids: number[]; cate
 
 export async function fetchGuestsFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_guests`);
+    const res = await apiFetch(`${API_BASE}?action=get_guests`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((g: any) => ({
@@ -516,7 +519,7 @@ export async function addGuestToDB(guest: {
   pending_amount?: number;
 }): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_guest`, {
+    const res = await apiFetch(`${API_BASE}?action=add_guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(guest),
@@ -533,7 +536,7 @@ export async function addGuestToDB(guest: {
 
 export async function checkoutGuestInDB(guestId: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=checkout_guest`, {
+    const res = await apiFetch(`${API_BASE}?action=checkout_guest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: guestId }),
@@ -548,7 +551,7 @@ export async function checkoutGuestInDB(guestId: string): Promise<boolean> {
 
 export async function fetchOrdersFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_orders`);
+    const res = await apiFetch(`${API_BASE}?action=get_orders`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((o: any) => ({
@@ -575,7 +578,7 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
 
 export async function fetchInventoryFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_inventory`);
+    const res = await apiFetch(`${API_BASE}?action=get_inventory`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((i: any) => ({
@@ -597,9 +600,24 @@ export async function fetchInventoryFromDB(): Promise<any[]> {
   return [];
 }
 
+export async function updateInventoryStockInDB(id: string, quantity: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: Number(id), quantity }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to update inventory stock in DB:', err);
+    return false;
+  }
+}
+
 export async function seedCatalogDB(): Promise<any> {
   try {
-    const res = await fetch(`${API_BASE}?action=seed_catalog`);
+    const res = await apiFetch(`${API_BASE}?action=seed_catalog`);
     const json = await res.json();
     return json;
   } catch (err) {
@@ -610,7 +628,7 @@ export async function seedCatalogDB(): Promise<any> {
 
 export async function fetchAttendanceFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_attendance`);
+    const res = await apiFetch(`${API_BASE}?action=get_attendance`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((a: any) => ({
@@ -629,7 +647,7 @@ export async function fetchAttendanceFromDB(): Promise<any[]> {
 
 export async function fetchAuditLogsFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_audit_logs`);
+    const res = await apiFetch(`${API_BASE}?action=get_audit_logs`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((l: any) => ({
@@ -654,7 +672,7 @@ export async function fetchAuditLogsFromDB(): Promise<any[]> {
 
 export async function fetchReceiptsFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_receipts`);
+    const res = await apiFetch(`${API_BASE}?action=get_receipts`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((r: any) => ({
@@ -687,7 +705,7 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
 
 export async function fetchMenuFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_menu`);
+    const res = await apiFetch(`${API_BASE}?action=get_menu`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -700,7 +718,7 @@ export async function fetchMenuFromDB(): Promise<any[]> {
 
 export async function addMenuItemDB(item: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_menu_item`, {
+    const res = await apiFetch(`${API_BASE}?action=add_menu_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -715,7 +733,7 @@ export async function addMenuItemDB(item: any): Promise<boolean> {
 
 export async function updateMenuItemDB(id: number, updated: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_menu_item`, {
+    const res = await apiFetch(`${API_BASE}?action=update_menu_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...updated }),
@@ -730,7 +748,7 @@ export async function updateMenuItemDB(id: number, updated: any): Promise<boolea
 
 export async function deleteMenuItemDB(id: number): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_menu_item`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_menu_item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -745,7 +763,7 @@ export async function deleteMenuItemDB(id: number): Promise<boolean> {
 
 export async function dedupMenuDB(): Promise<{removed: number, remaining: number}> {
   try {
-    const res = await fetch(`${API_BASE}?action=dedup_menu`, {
+    const res = await apiFetch(`${API_BASE}?action=dedup_menu`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -760,7 +778,7 @@ export async function dedupMenuDB(): Promise<{removed: number, remaining: number
 
 export async function fetchNavMenuFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_nav_menu`);
+    const res = await apiFetch(`${API_BASE}?action=get_nav_menu`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -773,7 +791,7 @@ export async function fetchNavMenuFromDB(): Promise<any[]> {
 
 export async function saveNavMenuDB(items: any[]): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=save_nav_menu`, {
+    const res = await apiFetch(`${API_BASE}?action=save_nav_menu`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(items),
@@ -788,7 +806,7 @@ export async function saveNavMenuDB(items: any[]): Promise<boolean> {
 
 export async function fetchStaffUsersFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_users`);
+    const res = await apiFetch(`${API_BASE}?action=get_users`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -801,7 +819,7 @@ export async function fetchStaffUsersFromDB(): Promise<any[]> {
 
 export async function addStaffUserDB(user: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_user`, {
+    const res = await apiFetch(`${API_BASE}?action=add_user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(user),
@@ -816,7 +834,7 @@ export async function addStaffUserDB(user: any): Promise<boolean> {
 
 export async function updateStaffUserDB(id: string, updated: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=update_user`, {
+    const res = await apiFetch(`${API_BASE}?action=update_user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...updated }),
@@ -831,7 +849,7 @@ export async function updateStaffUserDB(id: string, updated: any): Promise<boole
 
 export async function deleteStaffUserDB(id: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_user`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -846,7 +864,7 @@ export async function deleteStaffUserDB(id: string): Promise<boolean> {
 
 export async function fetchPayeesFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_payees`);
+    const res = await apiFetch(`${API_BASE}?action=get_payees`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -859,7 +877,7 @@ export async function fetchPayeesFromDB(): Promise<any[]> {
 
 export async function addPayeeDB(payee: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_payee`, {
+    const res = await apiFetch(`${API_BASE}?action=add_payee`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payee),
@@ -874,7 +892,7 @@ export async function addPayeeDB(payee: any): Promise<boolean> {
 
 export async function deletePayeeDB(id: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=delete_payee`, {
+    const res = await apiFetch(`${API_BASE}?action=delete_payee`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -889,7 +907,7 @@ export async function deletePayeeDB(id: string): Promise<boolean> {
 
 export async function saveReceiptToDB(receipt: any): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=save_receipt`, {
+    const res = await apiFetch(`${API_BASE}?action=save_receipt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(receipt),
@@ -909,7 +927,7 @@ export async function sendTelegramAlertDB(payload: {
   replyMarkup?: any;
 }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=send_telegram_alert`, {
+    const res = await apiFetch(`${API_BASE}?action=send_telegram_alert`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -936,7 +954,7 @@ export async function addAuditLogDB(log: {
   module?: string;
 }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_audit_log`, {
+    const res = await apiFetch(`${API_BASE}?action=add_audit_log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(log),
@@ -956,7 +974,7 @@ export async function resolveTelegramTemplate(dbKey: string, variables: Record<s
   try {
     if (!_templateCache) {
       const base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
-      const res = await fetch(`${base}/php/telegram/manager.php?action=get_templates`);
+      const res = await apiFetch(`${base}/php/telegram/manager.php?action=get_templates`);
       const json = await res.json();
       if (json.success && json.templates) {
         _templateCache = {};
@@ -988,7 +1006,7 @@ export function invalidateTemplateCache() {
 
 export async function fetchCashDrawerSummaryFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_cash_drawer_summary`);
+    const res = await apiFetch(`${API_BASE}?action=get_cash_drawer_summary`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
@@ -1008,7 +1026,7 @@ export async function addDrawerEntryToDB(entry: {
   notes?: string;
 }): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}?action=add_drawer_entry`, {
+    const res = await apiFetch(`${API_BASE}?action=add_drawer_entry`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry),
@@ -1023,7 +1041,7 @@ export async function addDrawerEntryToDB(entry: {
 
 export async function fetchDrawerEntriesFromDB(): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}?action=get_drawer_entries`);
+    const res = await apiFetch(`${API_BASE}?action=get_drawer_entries`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data;

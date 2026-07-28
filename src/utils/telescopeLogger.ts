@@ -62,7 +62,7 @@ export function recordTelescopeLog(
     const base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
     fetch(`${base}/php/errors/index.php?action=log_event`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         portal: newLog.portal,
         severity: newLog.severity,
@@ -71,8 +71,20 @@ export function recordTelescopeLog(
         extra: newLog.details || {},
       }),
       keepalive: true,
-    }).catch(() => {});
-  } catch (_) {}
+    }).then((resp) => {
+      if (!resp.ok) {
+        resp.text().then((text) => {
+          console.warn('Telescope log_event failed:', resp.status, text);
+        }).catch(() => {
+          console.warn('Telescope log_event failed:', resp.status);
+        });
+      }
+    }).catch((err) => {
+      console.warn('Telescope log_event network error:', err);
+    });
+  } catch (err) {
+    console.warn('Telescope log_event setup error:', err);
+  }
 
   return newLog;
 }

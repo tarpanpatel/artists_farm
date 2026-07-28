@@ -387,7 +387,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               <div className="text-center p-6 text-slate-400 font-semibold">No drawer entries recorded yet.</div>
             ) : (
               <div className="overflow-x-auto text-xs">
-                <table className="w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
+                 <table className="datatable w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
                     <tr>
                       <th className="p-3">Date & Time</th>

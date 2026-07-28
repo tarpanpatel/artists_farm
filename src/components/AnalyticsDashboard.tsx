@@ -16,28 +16,34 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt, Order, PettyCashEntry } from '../types';
-import { fetchExpenseItemPricesFromDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB } from '../services/api';
 
 interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
   orders: Order[];
   expenses: PettyCashEntry[];
+  guests?: any[];
   activeMenuItemKey?: string;
 }
+
+type DateFilter = 'all' | 'day' | 'week' | 'month' | 'year';
 
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   receipts = [],
   orders = [],
   expenses = [],
+  guests = [],
   activeMenuItemKey,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'purchases'>(() => {
-    return activeMenuItemKey === 'purchase_analytics' ? 'purchases' : 'overview';
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses'>(() => {
+    return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
   const [priceSearch, setPriceSearch] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All Categories');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
 
   useEffect(() => {
     fetchExpenseItemPricesFromDB().then((prices) => {
@@ -45,32 +51,73 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         setItemPrices(prices);
       }
     });
+    fetchKitchenPurchasesFromDB().then((data) => {
+      if (Array.isArray(data)) {
+        setKitchenPurchases(data);
+      }
+    });
   }, []);
 
   useEffect(() => {
-    if (activeMenuItemKey === 'purchase_analytics') setActiveTab('purchases');
+    if (activeMenuItemKey === 'purchase_analytics') setActiveTab('expenses');
     else if (activeMenuItemKey === 'dashboard_analytics') setActiveTab('overview');
   }, [activeMenuItemKey]);
 
-  // Revenue calculations
-  const roomRevenue = receipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
-  const kitchenRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const totalOutflowExpenses = expenses
+  const now = new Date();
+  const getDateBounds = () => {
+    const end = new Date(now);
+    let start = new Date(now);
+    if (dateFilter === 'day') {
+      start.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'week') {
+      const day = start.getDay();
+      start.setDate(start.getDate() - day);
+      start.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'month') {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'year') {
+      start = new Date(now.getFullYear(), 0, 1);
+    } else {
+      return null;
+    }
+    return { start, end };
+  };
+
+  const filterByDate = <T extends { date?: string; checkinDate?: string; orderTime?: string }>(items: T[], field: 'date' | 'checkinDate' | 'orderTime' = 'date'): T[] => {
+    const bounds = getDateBounds();
+    if (!bounds) return items;
+    return items.filter((item) => {
+      const raw = item[field];
+      if (!raw) return false;
+      const d = new Date(raw);
+      return d >= bounds.start && d <= bounds.end;
+    });
+  };
+
+  const filteredReceipts = filterByDate(receipts, 'checkinDate');
+  const filteredOrders = filterByDate(orders, 'orderTime');
+  const filteredExpenses = filterByDate(expenses, 'date');
+  const filteredKitchenPurchases = filterByDate(kitchenPurchases, 'date');
+
+  const roomRevenue = filteredReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
+  const kitchenRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const totalOutflowExpenses = filteredExpenses
     .filter((e) => e.type === 'Expense')
     .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalKitchenPurchaseCost = filteredKitchenPurchases.reduce((sum, p: any) => sum + (p.totalCost || p.amount || 0), 0);
 
   const totalGrossRevenue = roomRevenue + kitchenRevenue;
   const netOperatingMargin = totalGrossRevenue - totalOutflowExpenses;
+  const kitchenNetProfit = kitchenRevenue - totalKitchenPurchaseCost;
 
-  // Booking analytics
-  const bookingSources = receipts.reduce((acc, r) => {
+  const bookingSources = filteredReceipts.reduce((acc, r) => {
     const source = r.guestName?.toLowerCase().includes('airbnb') ? 'Airbnb' : 'Direct / Offline';
     acc[source] = (acc[source] || 0) + (r.roomTotal || 0);
     return acc;
   }, {} as Record<string, number>);
 
-  // Food POS analytics
-  const menuItemSales = orders.reduce((acc, order) => {
+  const menuItemSales = filteredOrders.reduce((acc, order) => {
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach(item => {
         const name = item.name || 'Item';
@@ -87,12 +134,139 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const sortedMenuItems = Object.entries(menuItemSales)
     .sort((a, b) => b[1].revenue - a[1].revenue);
 
-  // Category breakdown for expenses
-  const expenseCategories = expenses.reduce((acc, exp) => {
+  const expenseCategories = filteredExpenses.reduce((acc, exp) => {
     const cat = exp.category || 'Other';
     acc[cat] = (acc[cat] || 0) + exp.amount;
     return acc;
   }, {} as Record<string, number>);
+
+  const bookingsByMonth = filteredReceipts.reduce((acc, r) => {
+    const date = new Date(r.checkinDate);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    if (!acc[key]) {
+      acc[key] = { bookings: 0, revenue: 0, guests: 0 };
+    }
+    acc[key].bookings += 1;
+    acc[key].revenue += r.roomTotal || 0;
+    const guest = guests.find((g: any) => g.id === r.guestId);
+    acc[key].guests += guest?.numberOfGuests || 1;
+    return acc;
+  }, {} as Record<string, { bookings: number; revenue: number; guests: number }>);
+
+  const sortedBookingsByMonth = Object.entries(bookingsByMonth).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const purchaseItems = filteredKitchenPurchases.reduce((acc, p: any) => {
+    const name = p.itemName || 'Unknown';
+    if (!acc[name]) {
+      acc[name] = { count: 0, totalCost: 0 };
+    }
+    acc[name].count += p.quantity || 1;
+    acc[name].totalCost += p.totalCost || p.amount || 0;
+    return acc;
+  }, {} as Record<string, { count: number; totalCost: number }>);
+
+  const sortedPurchaseItems = Object.entries(purchaseItems)
+    .sort((a, b) => (b[1] as { count: number; totalCost: number }).totalCost - (a[1] as { count: number; totalCost: number }).totalCost);
+
+  const brandColor = '#2563eb';
+  const brandSecondary = '#0ea5e9';
+  const successColor = '#10b981';
+  const dangerColor = '#ef4444';
+  const warningColor = '#f59e0b';
+
+  const overviewPieOptions: any = {
+    chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: ['Room Revenue', 'Kitchen Revenue', 'Expenses'],
+    colors: [brandColor, brandSecondary, dangerColor],
+    plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total' } } } } },
+    dataLabels: { enabled: false },
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+  };
+
+  const overviewPieSeries = [
+    roomRevenue || 0,
+    kitchenRevenue || 0,
+    totalOutflowExpenses || 0,
+  ];
+
+  const bookingsBarOptions: any = {
+    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
+    colors: [brandColor, successColor],
+    xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const bookingsBarSeries = [
+    { name: 'Revenue', data: sortedBookingsByMonth.map(([, data]) => data.revenue) }
+  ];
+
+  const bookingsGuestOptions: any = {
+    chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    stroke: { width: 3, curve: 'smooth' },
+    colors: [warningColor],
+    xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const bookingsGuestSeries = [
+    { name: 'Guests', data: sortedBookingsByMonth.map(([, data]) => data.guests) }
+  ];
+
+  const foodBarOptions: any = {
+    chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
+    colors: [brandSecondary],
+    xaxis: { categories: sortedMenuItems.slice(0, 10).map(([name]) => name) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const foodBarSeries = [
+    { name: 'Revenue', data: sortedMenuItems.slice(0, 10).map(([, data]) => data.revenue) }
+  ];
+
+  const kitchenBarOptions: any = {
+    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
+    colors: [successColor, warningColor],
+    xaxis: { categories: ['Kitchen Sales', 'Kitchen Purchases'] },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const kitchenBarSeries = [
+    { name: 'Amount', data: [kitchenRevenue || 0, totalKitchenPurchaseCost || 0] }
+  ];
+
+  const expensesBarOptions: any = {
+    chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
+    colors: [dangerColor],
+    xaxis: { categories: sortedPurchaseItems.slice(0, 15).map(([name]) => name) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const expensesBarSeries = [
+    { name: 'Total Cost', data: sortedPurchaseItems.slice(0, 15).map(([, data]) => (data as { count: number; totalCost: number }).totalCost) }
+  ];
+
+  const dateFilterOptions: { label: string; value: DateFilter }[] = [
+    { label: 'All Time', value: 'all' },
+    { label: 'Today', value: 'day' },
+    { label: 'This Week', value: 'week' },
+    { label: 'This Month', value: 'month' },
+    { label: 'This Year', value: 'year' },
+  ];
 
   return (
     <div className="analytics-dashboard-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
@@ -107,58 +281,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           </p>
         </div>
 
-        {/* Dynamic Navigation Tabs */}
-        <div className="analytics-tab-bar flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl gap-1">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-              activeTab === 'overview'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-500" />
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            className="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5"
           >
-            📈 Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('bookings')}
-            className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-              activeTab === 'bookings'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            🏨 Bookings
-          </button>
-          <button
-            onClick={() => setActiveTab('food')}
-            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-              activeTab === 'food'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            🍽️ Food POS
-          </button>
-          <button
-            onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-              activeTab === 'kitchen'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            🍳 Kitchen
-          </button>
-          <button
-            onClick={() => setActiveTab('purchases')}
-            className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-              activeTab === 'purchases'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            🛒 Purchase Analytics
-          </button>
+            {dateFilterOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -179,7 +312,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             <IndianRupee className="w-4 h-4 text-blue-600" />
             {roomRevenue.toLocaleString('en-IN')}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">{receipts.length} Settled Billing Receipts</p>
+          <p className="text-[10px] text-slate-500 mt-1">{filteredReceipts.length} Settled Billing Receipts</p>
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -188,7 +321,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             <IndianRupee className="w-4 h-4 text-cyan-600" />
             {kitchenRevenue.toLocaleString('en-IN')}
           </p>
-          <p className="text-[10px] text-cyan-600 font-semibold mt-1">{orders.length} Kitchen Orders</p>
+          <p className="text-[10px] text-cyan-600 font-semibold mt-1">{filteredOrders.length} Kitchen Orders</p>
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -201,6 +334,60 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
       </div>
 
+      {/* Dynamic Navigation Tabs */}
+      <div className="analytics-tab-bar flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl gap-1 flex-wrap">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          📈 Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('bookings')}
+          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'bookings'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          🏨 Bookings
+        </button>
+        <button
+          onClick={() => setActiveTab('food')}
+          className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'food'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          🍽️ Food POS
+        </button>
+        <button
+          onClick={() => setActiveTab('kitchen')}
+          className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'kitchen'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          🍳 Kitchen
+        </button>
+        <button
+          onClick={() => setActiveTab('expenses')}
+          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'expenses'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          🛒 Expenses
+        </button>
+      </div>
+
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
@@ -209,43 +396,49 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <PieChart className="w-4 h-4 text-blue-600" /> Operational Financial Breakdown & Margin Analysis
             </h3>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  <span>Room Lodging Revenue</span>
-                  <span className="font-extrabold">₹{roomRevenue.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                    style={{ width: `${totalGrossRevenue > 0 ? (roomRevenue / totalGrossRevenue) * 100 : 50}%` }}
-                  />
-                </div>
+                <ReactApexChart options={overviewPieOptions} series={overviewPieSeries} type="donut" height={320} />
               </div>
 
-              <div>
-                <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  <span>Kitchen & Dining POS Revenue</span>
-                  <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <span>Room Lodging Revenue</span>
+                    <span className="font-extrabold">₹{roomRevenue.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                      style={{ width: `${totalGrossRevenue > 0 ? (roomRevenue / totalGrossRevenue) * 100 : 50}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-cyan-500 rounded-full transition-all duration-500"
-                    style={{ width: `${totalGrossRevenue > 0 ? (kitchenRevenue / totalGrossRevenue) * 100 : 50}%` }}
-                  />
-                </div>
-              </div>
 
-              <div>
-                <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  <span>Operational Outflow Expenses (Salaries, Bills, Other)</span>
-                  <span className="font-extrabold text-red-600">₹{totalOutflowExpenses.toLocaleString('en-IN')}</span>
+                <div>
+                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <span>Kitchen & Dining POS Revenue</span>
+                    <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-cyan-500 rounded-full transition-all duration-500"
+                      style={{ width: `${totalGrossRevenue > 0 ? (kitchenRevenue / totalGrossRevenue) * 100 : 50}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-red-500 rounded-full transition-all duration-500"
-                    style={{ width: `${totalGrossRevenue > 0 ? Math.min(100, (totalOutflowExpenses / totalGrossRevenue) * 100) : 30}%` }}
-                  />
+
+                <div>
+                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <span>Operational Outflow Expenses (Salaries, Bills, Other)</span>
+                    <span className="font-extrabold text-red-600">₹{totalOutflowExpenses.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-red-500 rounded-full transition-all duration-500"
+                      style={{ width: `${totalGrossRevenue > 0 ? Math.min(100, (totalOutflowExpenses / totalGrossRevenue) * 100) : 30}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -258,29 +451,49 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
-              🏨 Resident Guest Booking & Revenue Sources
+              🏨 Monthly Bookings, Revenue & Guest Count
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                <p className="font-bold text-slate-600">Channel Distribution</p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex justify-between font-semibold">
-                    <span>Airbnb / OTA Channels:</span>
-                    <span className="font-extrabold text-blue-600">₹{(bookingSources['Airbnb'] || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold">
-                    <span>Direct / Offline Walk-ins:</span>
-                    <span className="font-extrabold text-emerald-600">₹{(bookingSources['Direct / Offline'] || roomRevenue).toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <p className="font-bold text-slate-700 mb-2">Monthly Revenue</p>
+                <ReactApexChart options={bookingsBarOptions} series={bookingsBarSeries} type="bar" height={320} />
               </div>
 
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
-                <p className="text-xs text-slate-500">Total Resident Receipts Logged</p>
-                <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{receipts.length}</p>
-                <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ Complete Guest Billing Records</p>
+              <div>
+                <p className="font-bold text-slate-700 mb-2">Monthly Guest Count</p>
+                <ReactApexChart options={bookingsGuestOptions} series={bookingsGuestSeries} type="line" height={320} />
               </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="datatable w-full text-left border-collapse">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
+                  <tr>
+                    <th className="p-3">Month</th>
+                    <th className="p-3 text-center">Bookings</th>
+                    <th className="p-3 text-right">Revenue (₹)</th>
+                    <th className="p-3 text-center">Guests</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {sortedBookingsByMonth.map(([month, data]) => (
+                    <tr key={month} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-3 font-bold text-slate-900 dark:text-white">{month}</td>
+                      <td className="p-3 text-center font-semibold text-blue-600">{data.bookings}</td>
+                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                      <td className="p-3 text-center font-semibold text-amber-600">{data.guests}</td>
+                    </tr>
+                  ))}
+                  {sortedBookingsByMonth.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="text-center p-6 text-slate-400">
+                        No bookings recorded for the selected period.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -294,34 +507,40 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               🍽️ Food Menu Performance & Most Popular Dish Analytics
             </h3>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3">Rank</th>
-                    <th className="p-3">Menu Item Name</th>
-                    <th className="p-3 text-center">Total Quantity Sold</th>
-                    <th className="p-3 text-right">Total Generated Revenue</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
-                    <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="p-3 font-bold text-slate-400">#{index + 1}</td>
-                      <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
-                      <td className="p-3 text-center font-semibold text-blue-600">{data.count} orders</td>
-                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
-                    </tr>
-                  ))}
-                  {sortedMenuItems.length === 0 && (
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <ReactApexChart options={foodBarOptions} series={foodBarSeries} type="bar" height={360} />
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="datatable w-full text-left border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
                     <tr>
-                      <td colSpan={4} className="text-center p-6 text-slate-400">
-                        No food orders recorded yet.
-                      </td>
+                      <th className="p-3">Rank</th>
+                      <th className="p-3">Menu Item Name</th>
+                      <th className="p-3 text-center">Total Quantity Sold</th>
+                      <th className="p-3 text-right">Total Generated Revenue</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
+                      <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                        <td className="p-3 font-bold text-slate-400">#{index + 1}</td>
+                        <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
+                        <td className="p-3 text-center font-semibold text-blue-600">{data.count} orders</td>
+                        <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                    {sortedMenuItems.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center p-6 text-slate-400">
+                          No food orders recorded yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -332,89 +551,113 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-amber-500 pl-2.5">
-              🍳 Kitchen Spend Efficiency vs Food Sales
+              🍳 Kitchen Sales, Purchases & Net Profit
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                <p className="text-xs text-emerald-800 dark:text-emerald-300 font-bold uppercase">Kitchen POS Sales Income</p>
-                <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-emerald-600 mt-1">From guest dining orders</p>
-              </div>
-
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">
-                <p className="text-xs text-amber-800 dark:text-amber-300 font-bold uppercase">Kitchen Utility & Supply Outflows</p>
-                <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{(expenseCategories['Bills'] || totalOutflowExpenses * 0.35).toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-amber-600 mt-1">Groceries, gas, and supplies spend</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: PURCHASE ANALYTICS */}
-      {activeTab === 'purchases' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
-                  🛒 Master Procurement & Expense Item Price Tracker
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Live benchmark prices stored in MySQL database for automatically autofilling petty cash descriptions.
-                </p>
+                <ReactApexChart options={kitchenBarOptions} series={kitchenBarSeries} type="bar" height={320} />
               </div>
 
-              <div className="flex items-center gap-2 max-w-xs w-full">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    placeholder="Search price tracker..."
-                    value={priceSearch}
-                    onChange={(e) => setPriceSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-semibold"
-                  />
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+              <div className="space-y-4">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 font-bold uppercase">Kitchen POS Sales Income</p>
+                  <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-emerald-600 mt-1">From guest dining orders</p>
+                </div>
+
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-800 dark:text-amber-300 font-bold uppercase">Kitchen Purchase Outflows</p>
+                  <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-amber-600 mt-1">Groceries, gas, and supplies spend</p>
+                </div>
+
+                <div className={`p-4 rounded-xl border ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+                  <p className={`text-xs font-bold uppercase ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>Kitchen Net Profit</p>
+                  <p className={`text-2xl font-extrabold mt-1 ${kitchenNetProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>
+                    ₹{kitchenNetProfit.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">Kitchen Sales - Kitchen Purchases</p>
                 </div>
               </div>
             </div>
 
-            {/* Price Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="datatable w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
                   <tr>
-                    <th className="p-3">#</th>
-                    <th className="p-3">Item Description</th>
-                    <th className="p-3 text-right">Last Recorded Price (₹)</th>
-                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3">Dish Name</th>
+                    <th className="p-3 text-center">Times Ordered</th>
+                    <th className="p-3 text-right">Total Revenue (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {Object.entries(itemPrices)
-                    .filter(([name]) => name.toLowerCase().includes(priceSearch.toLowerCase()))
-                    .map(([name, price], idx) => (
-                      <tr key={name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{name}</td>
-                        <td className="p-3 text-right font-extrabold text-blue-600">₹{Number(price).toLocaleString('en-IN')}</td>
-                        <td className="p-3 text-center">
-                          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-300">
-                            ✓ Verified DB Rate
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  {Object.keys(itemPrices).length === 0 && (
+                  {sortedMenuItems.slice(0, 10).map(([itemName, data]) => (
+                    <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
+                      <td className="p-3 text-center font-semibold text-blue-600">{data.count}</td>
+                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                  {sortedMenuItems.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center p-6 text-slate-400 font-semibold">
-                        Loading database price matrix...
+                      <td colSpan={3} className="text-center p-6 text-slate-400">
+                        No kitchen orders recorded yet.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: EXPENSES */}
+      {activeTab === 'expenses' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-red-500 pl-2.5">
+              🛒 Expense Items - Total Cost Breakdown
+            </h3>
+
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <ReactApexChart options={expensesBarOptions} series={expensesBarSeries} type="bar" height={360} />
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="datatable w-full text-left border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Item Description</th>
+                      <th className="p-3 text-center">Qty</th>
+                      <th className="p-3 text-right">Total Cost (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {sortedPurchaseItems.map(([name, data], idx) => {
+                      const itemData = data as { count: number; totalCost: number };
+                      return (
+                        <tr key={name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                          <td className="p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
+                          <td className="p-3 font-bold text-slate-900 dark:text-white">{name}</td>
+                          <td className="p-3 text-center font-semibold text-blue-600">{itemData.count}</td>
+                          <td className="p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN')}</td>
+                        </tr>
+                      );
+                    })}
+                    {sortedPurchaseItems.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center p-6 text-slate-400">
+                          No expenses recorded for the selected period.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

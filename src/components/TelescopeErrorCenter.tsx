@@ -362,7 +362,7 @@ export const TelescopeErrorCenter: React.FC = () => {
 
           {/* Logs Table */}
           <div className="flex-1 bg-slate-900/60 border border-slate-800 rounded-xl overflow-y-auto">
-            <table className="w-full text-xs text-left">
+            <table className="datatable w-full text-xs text-left">
               <thead className="bg-slate-800/80 text-slate-400 font-sans border-b border-slate-800 sticky top-0 uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3 w-40">Timestamp</th>

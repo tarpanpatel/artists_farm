@@ -958,7 +958,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {/* FOOD LOG TABLE */}
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-left text-xs text-slate-800">
+                  <table className="datatable w-full text-left text-xs text-slate-800">
                     <thead className="bg-slate-100 font-bold border-b border-slate-200 text-slate-600 uppercase text-[10px]">
                       <tr>
                         <th className="py-2.5 px-3">Description Item</th>
