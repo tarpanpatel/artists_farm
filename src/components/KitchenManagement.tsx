@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB } from '../services/api';
+import DataTable from 'react-data-table-component';
 
 interface KitchenManagementProps {
   guests: Guest[];
@@ -64,11 +65,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     '29_2': '01:15 AM',
   });
 
-  const [servedLogs, setServedLogs] = useState<Array<{ id: string; ticketId: string; itemSummary: string; servedBy: string; servedAt: string }>>([
-    { id: '1', ticketId: '102', itemSummary: '1x French Fries Regular', servedBy: 'Cosmic', servedAt: '12:33 AM' },
-    { id: '2', ticketId: '87', itemSummary: '1x French Fries Peri-Peri', servedBy: 'Cosmic', servedAt: '12:18 AM' },
-    { id: '3', ticketId: '97', itemSummary: '1x Aloo Pakoda (6-8pcs)', servedBy: 'Cosmic', servedAt: '12:16 AM' },
-  ]);
+  const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string }>>([]);
+
+  // Load served logs from DB on mount
+  useEffect(() => {
+    fetchServedLogsFromDB().then((logs) => {
+      if (logs.length > 0) setServedLogs(logs);
+    });
+  }, []);
 
   // Smart Polling / Auto-Refresh state (15s interval matching kitchen.php)
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
@@ -154,15 +158,26 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setServedItemKeys((prev) => ({ ...prev, [key]: true }));
 
-    // Add to Today's Served Logs
+    // Add to Current Guest Served Dishes
     const newLog = {
       id: Date.now().toString(),
-      ticketId: cleanTicketId,
-      itemSummary: `${item.quantity}x ${item.name}`,
+      orderId: cleanTicketId,
+      itemName: item.name,
+      quantity: item.quantity,
       servedBy: 'Cosmic',
-      servedAt: nowTime,
+      guestName: ord.guestName,
+      roomNumber: ord.roomNumber,
+      servedAt: `${new Date().toLocaleDateString()} ${nowTime}`,
     };
     setServedLogs((prev) => [newLog, ...prev]);
+    addServedLogToDB({
+      order_id: cleanTicketId,
+      item_name: item.name,
+      quantity: item.quantity,
+      served_by: 'Cosmic',
+      guest_name: ord.guestName,
+      room_number: ord.roomNumber,
+    });
 
     if (onDispatchTelegram) {
       const servedVars: Record<string, string> = {
@@ -502,7 +517,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       {activeTab !== 'new_order' && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xs">
           <div>
-            <h2 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
               Kitchen Ticketing & Requisition POS
             </h2>
             <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
@@ -514,7 +529,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {activeTab !== 'staff_meals' && (
               <button
                 onClick={() => setActiveTab('new_order')}
-                className="text-white bg-blue-700 hover:bg-blue-800 font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                className="text-white bg-cyan-600 hover:bg-cyan-700 font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Resident Order</span>
@@ -679,26 +694,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             ))}
           </div>
 
-          {/* Today's Served Logs section matching original site bottom section */}
-          <div className="mt-8 space-y-3">
-            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-sm">
-              <span className="text-emerald-600">✅</span>
-              <span>Today's Served Logs</span>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden">
-              {servedLogs.map((log) => (
-                <div key={log.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <span className="font-extrabold text-slate-900 dark:text-white w-24">Ticket #{log.ticketId}</span>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{log.itemSummary}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Served by <span className="font-bold text-slate-700 dark:text-slate-300">{log.servedBy}</span> for at <span className="font-bold text-slate-800 dark:text-slate-200">{log.servedAt}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Current Guest Served Dishes - DataTable */}
+          <CurrentGuestServedDishes servedLogs={servedLogs} />
         </div>
       )}
 
@@ -1039,7 +1036,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-minus w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           -
                         </button>
@@ -1048,7 +1045,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           +
                         </button>
@@ -1134,8 +1131,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           <div className="overflow-x-auto text-xs">
-             <table className="datatable w-full text-left text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-700 font-bold border-b border-slate-200 dark:border-slate-600 uppercase text-[11px]">
+              <table className="datatable w-full text-left text-slate-700 dark:text-slate-300">
+               <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3">Req ID</th>
                   <th className="py-2.5 px-3">Material Name</th>
@@ -1365,7 +1362,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="pt-4 mt-4 text-center border-t border-slate-100">
                 <button 
                   onClick={() => setSmVisibleCount((prev: number) => prev + 10)}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-[10px] px-6 py-2 rounded-full shadow-2xs transition-colors cursor-pointer"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[10px] px-6 py-2 rounded-full shadow-2xs transition-colors cursor-pointer"
                 >
                   Load More Entries ({smLogs.length - smVisibleCount} remaining)
                 </button>
@@ -1416,7 +1413,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </button>
                 <button 
                   onClick={handleSaveCustomMeal}
-                  className="px-5 py-2 text-[11px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  className="px-5 py-2 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   Save to Database
                 </button>
@@ -1493,7 +1490,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-600 rounded-xl">
                  <table className="datatable recipe-ingredients-table w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-700 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-600">
+                   <thead className="bg-slate-50 dark:bg-slate-900 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3">Ingredient</th>
                       <th className="p-3 text-center">Quantity per Portion</th>
@@ -1721,7 +1718,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   Save Item
                 </button>
@@ -1791,7 +1788,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   Submit Requisition
                 </button>
@@ -1800,6 +1797,66 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+interface ServedLogEntry {
+  id: string;
+  orderId: string;
+  itemName: string;
+  quantity: number;
+  servedBy: string;
+  guestName: string;
+  roomNumber: string;
+  servedAt: string;
+}
+
+const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ servedLogs }) => {
+  if (servedLogs.length === 0) return null;
+
+  return (
+    <div className="mt-8 space-y-3">
+      <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-sm">
+        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <span>Current Guest Served Dishes</span>
+        <span className="text-xs font-mono text-slate-400 ml-1">({servedLogs.length} total)</span>
+      </div>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+        <DataTable
+          columns={[
+            { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
+            { name: 'Ticket', selector: (row: ServedLogEntry) => row.orderId, sortable: true, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-bold text-slate-900 dark:text-white">#{row.orderId}</span> },
+            { name: 'Dish', selector: (row: ServedLogEntry) => row.itemName, sortable: true, grow: 2, cell: (row: ServedLogEntry) => <span className="font-bold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
+            { name: 'Qty', selector: (row: ServedLogEntry) => row.quantity, sortable: true, width: '60px', center: true },
+            { name: 'Guest', selector: (row: ServedLogEntry) => row.guestName, sortable: true, cell: (row: ServedLogEntry) => <span className="font-bold text-slate-800 dark:text-slate-200">{row.guestName}</span> },
+            { name: 'Room', selector: (row: ServedLogEntry) => row.roomNumber, sortable: true, width: '70px' },
+            { name: 'Served By', selector: (row: ServedLogEntry) => row.servedBy, sortable: true, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
+            { name: 'Date & Time', selector: (row: ServedLogEntry) => row.servedAt, sortable: true, width: '150px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.servedAt}</span> },
+          ]}
+          data={servedLogs}
+          subHeader={
+            <input type="text" placeholder="Search served dishes..." className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white" />
+          }
+          pagination
+          paginationPerPage={15}
+          paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
+          highlightOnHover
+          defaultSortFieldId={3}
+          defaultSortAsc={false}
+          customStyles={{
+            subHeader: {
+              style: {
+                padding: 0,
+                minHeight: 0,
+                backgroundColor: 'transparent',
+              },
+            },
+            headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+            cells: { style: { paddingTop: '10px', paddingBottom: '10px' } },
+          }}
+        />
+      </div>
     </div>
   );
 };

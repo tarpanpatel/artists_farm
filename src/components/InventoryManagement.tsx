@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from 'react-data-table-component';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
-import { DataTableWrapper } from './DataTable';
+
 
 interface InventoryManagementProps {
   inventory: InventoryItem[];
@@ -92,6 +93,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   }, [inventory]);
 
   const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogTableKey, setCatalogTableKey] = useState(0);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null);
   const [catItemName, setCatItemName] = useState('');
@@ -199,25 +201,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
   };
 
-  const handleToggleSelectItem = (id: number) => {
-    setSelectedCatalogItemIds((prev: number[]) =>
-      prev.includes(id) ? prev.filter((x: number) => x !== id) : [...prev, id]
-    );
-  };
-
-  const isAllInCategorySelected = (items: CatalogItem[]) => {
-    if (items.length === 0) return false;
-    return items.every((item: CatalogItem) => selectedCatalogItemIds.includes(item.id));
-  };
-
-  const handleSelectAllInCategory = (items: CatalogItem[], checked: boolean) => {
-    const itemIds = items.map((item: CatalogItem) => item.id);
-    if (checked) {
-      setSelectedCatalogItemIds((prev: number[]) => Array.from(new Set([...prev, ...itemIds])));
-    } else {
-      setSelectedCatalogItemIds((prev: number[]) => prev.filter((id: number) => !itemIds.includes(id)));
-    }
-  };
 
   const handleBulkAssignCategory = async (targetCategory: string) => {
     if (selectedCatalogItemIds.length === 0 || !targetCategory) return;
@@ -232,23 +215,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
 
       setSelectedCatalogItemIds([]);
+      setCatalogTableKey(k => k + 1);
       setBulkTargetCategory('');
       alert(`✅ Successfully assigned selected items to category "${targetCategory}"!`);
     } else {
       alert('⚠️ Failed to assign category. Please try again.');
     }
   };
-
-  const filteredCatalogForDisplay = catalogItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(catalogSearch.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-  const groupedCatalog = filteredCatalogForDisplay.reduce((acc, item) => {
-    acc[item.category] = acc[item.category] || [];
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, CatalogItem[]>);
 
   const handleEditCatalogItem = (item: CatalogItem) => {
     setEditingCatalogItem(item);
@@ -547,6 +520,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   };
 
   const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([]);
+  const [fulfillSearch, setFulfillSearch] = useState('');
 
   const fulfillFromRef = React.useRef<HTMLInputElement>(null);
   const fulfillToRef = React.useRef<HTMLInputElement>(null);
@@ -569,7 +543,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       })
     : recentSheets;
 
-  const fulfillTableKey = useMemo(() => JSON.stringify(recentSheets), [recentSheets]);
 
   useEffect(() => {
     fetchStockRequestsFromDB().then((data) => {
@@ -806,7 +779,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <div className="kitchen-wastage-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
         {/* Title */}
         <div>
-          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             ⚠️ Kitchen Wastage & Spillage Log
           </h2>
           <p className="text-xs text-gray-500 mt-1">
@@ -928,7 +901,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
           <div className="overflow-x-auto text-xs">
             <table className="datatable wastage-logs-table w-full text-left text-slate-700 dark:text-slate-300 border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
+              <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
                 <tr>
                   <th className="p-3">Date</th>
                   <th className="p-3">Item Name</th>
@@ -1297,7 +1270,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <button
                 onClick={handleMarkSelectedPaid}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
               >
                 Mark Selected Paid
               </button>
@@ -1307,7 +1280,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="datatable w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-bold text-slate-700 text-[11px]">
+              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-bold uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
                 <tr>
                   <th className="p-3 w-10 text-center">
                     <input
@@ -1365,7 +1338,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <td className="p-3 text-right">
                       <button
                         onClick={() => handleDeletePurchase(pur.id, pur.itemName)}
-                        className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
                       >
                         Delete
                       </button>
@@ -1396,64 +1369,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <span>📦</span> Master Materials Catalog
           </div>
           
-          <div className="flex-1 max-w-md relative">
-            <input
-              type="text"
-              placeholder="Live filter catalog items..."
-              value={catalogSearch}
-              onChange={(e) => setCatalogSearch(e.target.value)}
-              className="w-full pl-8 pr-4 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-hidden focus:border-cyan-500 shadow-2xs"
-            />
-            <span className="absolute left-2.5 top-1.5 text-slate-400 text-xs">🔍</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCategoryManager(!showCategoryManager)}
+              className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-500" />
+              <span>{showCategoryManager ? 'Hide Categories' : 'Manage Categories'}</span>
+            </button>
+            <button
+              onClick={handleCreateNewCatalogItem}
+              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>+</span> Register New Item
+            </button>
           </div>
-
-          <button
-            onClick={handleCreateNewCatalogItem}
-            className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            <span>+</span> Register New Item
-          </button>
-        </div>
-
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setSelectedCategory('All')}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-              selectedCategory === 'All'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All ({catalogItems.length})
-          </button>
-          {catalogCategories.map(cat => {
-            const count = catalogItems.filter(i => i.category === cat).length;
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Category Manager Toggle */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCategoryManager(!showCategoryManager)}
-            className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-          >
-            <Settings className="w-3.5 h-3.5 text-slate-500" />
-            <span>{showCategoryManager ? 'Hide Categories Manager' : 'Manage Categories'}</span>
-          </button>
         </div>
 
         {/* Category Manager Panel */}
@@ -1586,95 +1516,198 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         )}
 
-        {/* Categories Grouping */}
-        <div className="space-y-6">
-          {Object.entries(groupedCatalog).map(([categoryName, rawItems]) => {
-            const items = rawItems as CatalogItem[];
-            return (
-              <div key={categoryName} className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-                <div className="bg-slate-50 border-b border-slate-200 p-3 font-bold text-slate-700 text-sm flex items-center justify-between">
-                  <span>
-                    {categoryName} <span className="text-slate-400 font-mono text-xs ml-2">({items.length} items)</span>
-                  </span>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-500 font-bold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isAllInCategorySelected(items)}
-                      onChange={(e) => handleSelectAllInCategory(items, e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span>Select All Category</span>
-                  </label>
+        {/* Catalog DataTable */}
+        <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <DataTable
+            key={catalogTableKey}
+            columns={[
+              {
+                name: 'Image',
+                width: '170px',
+                cell: (row: CatalogItem) => (
+                  row.imagePath ? (
+                    <img src={row.imagePath} alt={row.name} className="w-[150px] h-[50px] object-cover rounded border border-slate-200" />
+                  ) : (
+                    <div className="w-[150px] h-[50px] bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-slate-400 text-[10px] italic">No Image</div>
+                  )
+                ),
+                sortable: false,
+              },
+              {
+                name: 'Item Name',
+                selector: (row: CatalogItem) => row.name,
+                sortable: true,
+                grow: 2,
+                cell: (row: CatalogItem) => <span className="font-bold text-slate-800">{row.name}</span>,
+              },
+              {
+                name: 'Category',
+                selector: (row: CatalogItem) => row.category,
+                sortable: true,
+                width: '140px',
+                cell: (row: CatalogItem) => (
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">{row.category}</span>
+                ),
+              },
+              {
+                name: 'Pack',
+                selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
+                sortable: true,
+                width: '120px',
+                cell: (row: CatalogItem) => <span className="text-slate-600">{row.packSize} {row.packUnit}</span>,
+              },
+              {
+                name: 'Cost',
+                selector: (row: CatalogItem) => row.price,
+                sortable: true,
+                width: '90px',
+                right: true,
+                cell: (row: CatalogItem) => <span className="text-slate-600">₹{row.price.toFixed(2)}</span>,
+              },
+              {
+                name: 'Status',
+                selector: (row: CatalogItem) => row.is_verified ? 1 : 0,
+                sortable: true,
+                width: '100px',
+                cell: (row: CatalogItem) => (
+                  row.is_verified ? (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Review</span>
+                  )
+                ),
+              },
+              {
+                name: 'Actions',
+                width: '180px',
+                cell: (row: CatalogItem) => (
+                  <div className="flex items-center gap-2">
+                    {!row.is_verified && (
+                      <button onClick={() => handleApproveItem(row.id)} className="text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
+                        Approve
+                      </button>
+                    )}
+                    <button onClick={() => handleEditCatalogItem(row)} className="text-blue-600 hover:text-blue-700 font-medium text-xs cursor-pointer">
+                      Edit
+                    </button>
+                    {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+                      <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ),
+                ignoreRowClick: true,
+                allowOverflow: true,
+              },
+            ]}
+            data={catalogItems.filter(item => {
+              const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
+              const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+              return matchesSearch && matchesCategory;
+            })}
+            subHeader={
+              <div className="w-full flex flex-col gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-500 font-medium shrink-0 text-xs">Filter</span>
+                  {catalogCategories.map(cat => {
+                    const count = catalogItems.filter(i => i.category === cat).length;
+                    const isActive = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {cat} ({count})
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="datatable w-full text-left text-xs">
-                    <thead className="bg-white border-b border-slate-100 text-[10px] uppercase text-slate-400">
-                      <tr>
-                        <th className="p-3 font-semibold w-10">Select</th>
-                        <th className="p-3 font-semibold">Image</th>
-                        <th className="p-3 font-semibold">Item Name</th>
-                        <th className="p-3 font-semibold">Standard Pack</th>
-                        <th className="p-3 font-semibold">Base Cost</th>
-                        <th className="p-3 font-semibold text-center">Status</th>
-                        <th className="p-3 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {items.map((item: CatalogItem) => (
-                        <tr key={item.id} className={`hover:bg-slate-50 transition-colors ${selectedCatalogItemIds.includes(item.id) ? 'bg-blue-50/30' : ''}`}>
-                          <td className="p-3 w-10">
-                            <input
-                              type="checkbox"
-                              checked={selectedCatalogItemIds.includes(item.id)}
-                              onChange={() => handleToggleSelectItem(item.id)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-3">
-                            {item.imagePath ? (
-                              <img src={item.imagePath} alt={item.name} className="w-[150px] h-[50px] object-cover rounded border border-slate-200 shadow-xs" />
-                            ) : (
-                              <div className="w-[150px] h-[50px] bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-slate-400 text-[10px] italic">No Image</div>
-                            )}
-                          </td>
-                          <td className="p-3 font-bold text-slate-800">{item.name}</td>
-                          <td className="p-3 text-slate-600 font-mono">{item.packSize} {item.packUnit}</td>
-                          <td className="p-3 text-slate-600 font-mono">₹{item.price.toFixed(2)}</td>
-                          <td className="p-3 text-center">
-                            {item.is_verified ? (
-                              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-extrabold text-[10px]">✅ Active</span>
-                            ) : (
-                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-extrabold text-[10px]">⚠️ Review</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right space-x-2">
-                            {!item.is_verified && (
-                              <button onClick={() => handleApproveItem(item.id)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] cursor-pointer">
-                                Approve
-                              </button>
-                            )}
-                            <button onClick={() => handleEditCatalogItem(item)} className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer">
-                              Edit
-                            </button>
-                            {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
-                              <button onClick={() => handleDeleteCatalogItem(item.id, item.name)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">
-                                Delete
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-               ))}
-             </tbody>
-             </table>
-          </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Search by name or category..."
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+                  />
+                </div>
               </div>
-            );
-          })}
-          {Object.keys(groupedCatalog).length === 0 && (
-             <div className="text-center p-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-semibold text-sm">
-                No catalog items found matching your search.
-             </div>
-          )}
+            }
+            pagination
+            paginationPerPage={25}
+            paginationRowsPerPageOptions={[10, 25, 50, 100]}
+            highlightOnHover
+            pointerOnHover
+            selectableRows
+            selectableRowsHighlight
+            onSelectedRowsChange={({ selectedRows }) => {
+              setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
+            }}
+            noDataComponent={
+              <div className="p-8 text-center text-slate-400 text-sm">No catalog items found matching your search.</div>
+            }
+            defaultSortFieldId={3}
+            defaultSortAsc={true}
+            customStyles={{
+              subHeader: {
+                style: {
+                  padding: 0,
+                  minHeight: 0,
+                  backgroundColor: 'transparent',
+                },
+              },
+              headCells: {
+                style: {
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                },
+              },
+              cells: {
+                style: {
+                  fontSize: '13px',
+                  color: '#334155',
+                  paddingTop: '12px',
+                  paddingBottom: '12px',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                },
+              },
+              rows: {
+                style: {
+                  minHeight: '56px',
+                  borderBottom: '1px solid #f1f5f9',
+                },
+                highlightOnHoverStyle: {
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #f1f5f9',
+                  cursor: 'pointer',
+                },
+              },
+              headRow: {
+                style: {
+                  backgroundColor: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                },
+              },
+              pagination: {
+                style: {
+                  borderTop: '1px solid #e2e8f0',
+                  fontSize: '12px',
+                },
+              },
+            }}
+          />
         </div>
 
         {/* Add/Edit Modal */}
@@ -1767,7 +1800,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">TO</span>
               <input type="date" ref={fulfillToRef} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-25" />
             </div>
-            <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
+            <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
               Enter
             </button>
           </div>
@@ -1775,55 +1808,127 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
          {/* Table */}
          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-             <DataTableWrapper key={fulfillTableKey} className="stock-requisitions-table w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/4">Requested At</th>
-                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-1/2">Material Selections Summary</th>
-                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Status</th>
-                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFulfillSheets.map((sheet, index) => (
-                  <tr key={sheet.id} className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${index === filteredFulfillSheets.length - 1 ? 'border-none' : ''}`}>
-                    <td className="py-4 px-4 text-xs font-semibold text-slate-500">
-                      {sheet.date.replace(' - ', ' - ')}
-                    </td>
-                    <td className="py-4 px-4 text-xs font-semibold text-slate-700">
-                      {Array.isArray(sheet.items) && sheet.items.filter(i => Boolean(i && i.trim())).length > 0
-                        ? sheet.items.filter(i => Boolean(i && i.trim())).join(', ')
-                        : sheet.status === 'FULFILLED' || sheet.status === 'PARTIALLY FULFILLED'
-                          ? <span className="italic text-slate-400 font-normal">Fulfilled — no item details recorded</span>
-                          : <span className="italic text-slate-400 font-normal">No items</span>
-                      }
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                    <span className={`font-extrabold text-[10px] px-2 py-1 rounded-md ${
-                      sheet.status === 'PENDING' 
-                        ? 'bg-amber-100 text-amber-700'
-                        : sheet.status === 'FULFILLED'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-slate-100 text-slate-700'
-                    }`}>
-                      {sheet.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 flex items-center justify-center gap-1.5">
-                    <button onClick={() => handleEditFulfill(sheet)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-2xs cursor-pointer flex items-center gap-1">
-                      <span className="font-mono opacity-80">-</span> Edit
-                    </button>
-                    {sheet.status === 'PENDING' && (
-                      <button onClick={() => handleQuickComplete(sheet)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-2xs cursor-pointer flex items-center gap-1">
-                        <span className="font-mono opacity-80">✓</span> Complete
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            </DataTableWrapper>
-          </div>
+             <DataTable
+               columns={[
+                 {
+                   name: 'Requested At',
+                   selector: (row: any) => row.date,
+                   sortable: true,
+                   grow: 1,
+                   cell: (row: any) => <span className="text-xs font-semibold text-slate-500">{row.date}</span>,
+                 },
+                 {
+                   name: 'Material Selections Summary',
+                   selector: (row: any) => Array.isArray(row.items) ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ') : '',
+                   sortable: true,
+                   grow: 2,
+                   cell: (row: any) => (
+                     <span className="text-xs font-semibold text-slate-700">
+                       {Array.isArray(row.items) && row.items.filter((i: string) => Boolean(i && i.trim())).length > 0
+                         ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ')
+                         : row.status === 'FULFILLED' || row.status === 'PARTIALLY FULFILLED'
+                           ? <span className="italic text-slate-400 font-normal">Fulfilled — no item details recorded</span>
+                           : <span className="italic text-slate-400 font-normal">No items</span>
+                       }
+                     </span>
+                   ),
+                 },
+                 {
+                   name: 'Status',
+                   selector: (row: any) => row.status,
+                   sortable: true,
+                   center: true,
+                   cell: (row: any) => (
+                     <span className={`font-extrabold text-[10px] px-2 py-1 rounded-md ${
+                       row.status === 'PENDING'
+                         ? 'bg-amber-100 text-amber-700'
+                         : row.status === 'FULFILLED'
+                           ? 'bg-emerald-100 text-emerald-700'
+                           : 'bg-slate-100 text-slate-700'
+                     }`}>
+                       {row.status}
+                     </span>
+                   ),
+                 },
+                 {
+                   name: 'Actions',
+                   center: true,
+                   cell: (row: any) => (
+                     <div className="flex items-center justify-center gap-1.5">
+                       <button onClick={() => handleEditFulfill(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
+                         <span className="font-mono opacity-80">-</span> Edit
+                       </button>
+                       {row.status === 'PENDING' && (
+                         <button onClick={() => handleQuickComplete(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
+                           <span className="font-mono opacity-80">✓</span> Complete
+                         </button>
+                       )}
+                     </div>
+                   ),
+                 },
+               ]}
+               data={filteredFulfillSheets.filter((row) => {
+                 if (!fulfillSearch.trim()) return true;
+                 const term = fulfillSearch.toLowerCase();
+                 const itemsStr = Array.isArray(row.items) ? row.items.join(' ').toLowerCase() : '';
+                 return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
+               })}
+                subHeader={
+                  <div className="w-full flex items-center gap-2 py-2">
+                    <input
+                      type="text"
+                      placeholder="Search by date, status, or material..."
+                     value={fulfillSearch}
+                     onChange={(e) => setFulfillSearch(e.target.value)}
+                     className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                   />
+                 </div>
+               }
+               pagination
+               paginationPerPage={10}
+               paginationRowsPerPageOptions={[10, 15, 25, 50]}
+               highlightOnHover
+               pointerOnHover
+               dense
+               noDataComponent={
+                 <div className="p-8 text-center text-slate-400 text-sm">No stock request sheets found</div>
+               }
+                customStyles={{
+                  subHeader: {
+                    style: {
+                      padding: 0,
+                      minHeight: 0,
+                      backgroundColor: 'transparent',
+                    },
+                  },
+                  headCells: {
+                    style: {
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#94a3b8',
+                      backgroundColor: '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0',
+                    },
+                  },
+                  cells: {
+                    style: {
+                      paddingTop: '12px',
+                      paddingBottom: '12px',
+                    },
+                  },
+                  rows: {
+                    style: {
+                      minHeight: '48px',
+                      borderBottomStyle: 'solid',
+                      borderBottomWidth: '1px',
+                      borderBottomColor: '#f1f5f9',
+                    },
+                  },
+                }}
+             />
+           </div>
 
         {/* Fulfill Edit Modal */}
         {selectedFulfillSheet && (
@@ -2080,31 +2185,31 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           {b.name} <span className="text-slate-500 font-normal">({b.unit})</span>
                         </h4>
                       </div>
-                      <div className="flex items-center border border-slate-300 rounded-lg bg-white shrink-0 overflow-hidden">
-                        <button
-                          onClick={() =>
-                            setReqBasket((prev) =>
-                              prev
-                                .map((item) => (item.id === b.id ? { ...item, qty: item.qty - 1 } : item))
-                                .filter((item) => item.qty > 0)
-                            )
-                          }
-                          className="w-7 h-7 hover:bg-slate-100 font-black text-slate-600 flex items-center justify-center cursor-pointer active:scale-90"
-                        >
-                          -
-                        </button>
-                        <span className="w-6 text-center font-extrabold text-slate-900 text-xs">{b.qty}</span>
-                        <button
-                          onClick={() =>
-                            setReqBasket((prev) =>
-                              prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
-                            )
-                          }
-                          className="w-7 h-7 hover:bg-slate-100 font-black text-slate-600 flex items-center justify-center cursor-pointer active:scale-90"
-                        >
-                          +
-                        </button>
-                      </div>
+                       <div className="flex items-center border border-slate-300 rounded-lg bg-white shrink-0 overflow-hidden">
+                         <button
+                           onClick={() =>
+                             setReqBasket((prev) =>
+                               prev
+                                 .map((item) => (item.id === b.id ? { ...item, qty: item.qty - 1 } : item))
+                                 .filter((item) => item.qty > 0)
+                             )
+                           }
+                           className="w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
+                         >
+                           -
+                         </button>
+                         <span className="w-6 text-center font-extrabold text-slate-900 text-xs">{b.qty}</span>
+                         <button
+                           onClick={() =>
+                             setReqBasket((prev) =>
+                               prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
+                             )
+                           }
+                           className="w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
+                         >
+                           +
+                         </button>
+                       </div>
                     </div>
                   ))}
                 </div>
@@ -2243,7 +2348,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs">
         <div>
-          <h2 className="text-sm sm:text-base font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-gray-900 tracking-tight flex items-center gap-2">
             Inventory Catalog & Stock Alert Boundaries
           </h2>
           <p className="text-[11px] text-gray-500 mt-0.5">
@@ -2263,7 +2368,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto text-xs">
            <table className="datatable inventory-master-table w-full text-left text-slate-700">
-            <thead className="bg-slate-50 font-bold border-b border-slate-200 uppercase text-[11px]">
+             <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] text-slate-500 dark:text-slate-400 tracking-wider">
               <tr>
                 <th className="py-3 px-4">Image</th>
                 <th className="py-3 px-4">Item Name</th>

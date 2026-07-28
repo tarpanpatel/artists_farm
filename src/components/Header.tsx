@@ -18,6 +18,7 @@ interface HeaderProps {
   isAuthenticated?: boolean;
   isTestingMode?: boolean;
   onToggleTestingMode?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
