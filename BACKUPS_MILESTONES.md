@@ -19,7 +19,7 @@ git tag --list
 
 ```bash
 # Go back to latest (if you want to return)
-git checkout main
+git checkout db-purity
 ```
 
 ## Saved Milestones
