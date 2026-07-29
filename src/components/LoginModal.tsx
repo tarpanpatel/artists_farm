@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Lock, User, KeyRound, ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { StaffMember } from '../types';
+import { useStaff } from '../contexts/StaffContext';
 
 interface LoginModalProps {
-  staffList: StaffMember[];
   onLoginSuccess: (user: StaffMember) => void;
-  onLoginFailed?: (username: string) => void;
+  onLoginFailed: (username: string) => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ staffList, onLoginSuccess, onLoginFailed }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginFailed }) => {
+  const { staff: staffList } = useStaff();
   const [selectedUsername, setSelectedUsername] = useState<string>('');
   const [passcode, setPasscode] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

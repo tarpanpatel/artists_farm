@@ -12,23 +12,23 @@ import {
   IndianRupee,
   Plus
 } from 'lucide-react';
-import { Guest, Order, InventoryItem } from '../types';
+import { Guest, Order } from '../types';
+import { useInventoryContext } from '../contexts/InventoryContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 interface OperationalDashboardProps {
   guests: Guest[];
-  orders: Order[];
-  inventory: InventoryItem[];
   onNavigate: (tab: any) => void;
   onOpenCheckin: () => void;
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   guests,
-  orders,
-  inventory,
   onNavigate,
   onOpenCheckin,
 }) => {
+  const { orders } = useKitchenContext();
+  const { inventory } = useInventoryContext();
   // Low stock alerts where currentStock <= minThreshold
   const stockAlerts = inventory.filter((item) => item.currentStock <= item.minThreshold);
 

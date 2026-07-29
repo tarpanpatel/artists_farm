@@ -23,6 +23,7 @@ import {
   Search
 } from 'lucide-react';
 import { AuditLog, BillingReceipt } from '../types';
+import { useToast } from './ToastContext';
 
 interface AuditLogsViewProps {
   logs: AuditLog[];
@@ -37,6 +38,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   activeMenuItemKey,
   onUpdateReceipt,
 }) => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'audit' | 'receipts' | 'activity' | 'login' | 'health'>('audit');
 
   // Edit Receipt Modal State
@@ -229,7 +231,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     if (onUpdateReceipt) {
       onUpdateReceipt(updated);
     }
-    alert(`✅ Receipt #${editingReceipt.id} (${editingReceipt.guestName}) modified & audit saved successfully!`);
+    showToast(`Receipt #${editingReceipt.id} (${editingReceipt.guestName}) modified & audit saved successfully!`, { type: 'success' });
     setEditingReceipt(null);
   };
 

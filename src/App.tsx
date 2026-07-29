@@ -19,30 +19,32 @@ import { CustomCSSOverride } from './components/CustomCSSOverride';
 import { GlobalModal } from './components/GlobalModal';
 import { ToastProvider } from './components/ToastContext';
 import { LoginModal } from './components/LoginModal';
+import { StaffProvider, useStaff } from './contexts/StaffContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FinanceProvider, useFinance } from './contexts/FinanceContext';
+import { InventoryProvider, useInventoryContext } from './contexts/InventoryContext';
+import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { fetchExpensesFromDB, fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchStaffUsersFromDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchOrdersFromDB, fetchInventoryFromDB, fetchAttendanceFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, addStaffUserDB, updateStaffUserDB, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, seedCatalogDB, dedupMenuDB, fetchReceiptsFromDB } from './services/api';
-import { INITIAL_MENU } from './data/initialData';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB } from './services/api';
 
-// Removed INITIAL_ imports to ensure we never use hardcoded lists
+
 
 import {
   Guest,
   BillingReceipt,
   MenuItem,
-  Order,
   InventoryItem,
   Requisition,
   PettyCashEntry,
   StaffMember,
-  AttendanceRecord,
   AuditLog,
   TelegramConfig,
   TelegramDispatchLog,
   NavMenuItem,
 } from './types';
 
-export function App() {
+function AppBody() {
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').trim();
@@ -168,43 +170,11 @@ export function App() {
     }
   };
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('artists_farm_authenticated') === 'true';
-    }
-    return false;
-  });
-  const [currentUser, setCurrentUser] = useState<StaffMember | null>(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
-      if (savedUser) {
-        try {
-          return JSON.parse(savedUser);
-        } catch (e) {}
-      }
-    }
-    return null;
-  });
-  const [activeRole, setActiveRole] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.role) return parsed.role;
-        } catch (e) {}
-      }
-    }
-    return 'Super Admin';
-  });
+  const { currentUser, activeRole, isAuthenticated, setActiveRole, login, logout } = useAuth();
 
-  const handleLoginSuccess = (staff: StaffMember) => {
-    setIsAuthenticated(true);
-    setCurrentUser(staff);
-    setActiveRole(staff.role || 'Staff');
-    localStorage.setItem('artists_farm_authenticated', 'true');
-    localStorage.setItem('artists_farm_user', JSON.stringify(staff));
-    logAudit(`Staff User ${staff.name} logged into POS portal`, { status: 'Success', module: 'login', user: staff.name });
+  const handleLoginSuccess = (staffMember: StaffMember) => {
+    login(staffMember);
+    logAudit(`Staff User ${staffMember.name} logged into POS portal`, { status: 'Success', module: 'login', user: staffMember.name });
   };
 
   useEffect(() => {
@@ -246,10 +216,8 @@ export function App() {
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    localStorage.removeItem('artists_farm_authenticated');
-    localStorage.removeItem('artists_farm_user');
+    logout();
+    logAudit(`${currentUser?.name || activeRole} logged out`);
   };
 
   // Telegram Notifications State
@@ -367,13 +335,11 @@ export function App() {
 
   const [guests, setGuests] = useState<Guest[]>([]);
   const [receipts, setReceipts] = useState<BillingReceipt[]>([]);
-  const [menu, setMenu] = useState<MenuItem[]>(INITIAL_MENU);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
-  const [pettyCash, setPettyCash] = useState<PettyCashEntry[]>([]);
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const { refreshStaff, refreshAttendance } = useStaff();
+  const { refreshPettyCash, pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
+  const { refreshInventory, inventory, requisitions, lowStockCount, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
+  const { orders, addOrder, updateOrderStatus } = useKitchenContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Sandbox / Testing Mode State & Handlers
@@ -391,21 +357,10 @@ export function App() {
       if (data && data.length > 0) setGuests(data); else setGuests([]);
     });
     fetchMenuFromDB().then((data) => {
-      if (data && data.length > 0) setMenu(data); else setMenu(INITIAL_MENU);
+      if (data && data.length > 0) setMenu(data); else setMenu([]);
     });
-    fetchOrdersFromDB().then((data) => {
-      if (data && data.length > 0) setOrders(data); else setOrders([]);
-    });
-    fetchInventoryFromDB().then((data) => {
-      if (data && data.length > 0) setInventory(data); else setInventory([]);
-    });
-    fetchExpensesFromDB().then((data) => {
-      if (data && data.length > 0) setPettyCash(data); else setPettyCash([]);
-    });
-    reloadStaffFromDB();
-    fetchAttendanceFromDB().then((data) => {
-      if (data && data.length > 0) setAttendance(data); else setAttendance([]);
-    });
+    refreshStaff();
+    refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
       if (data && data.length > 0) setAuditLogs(data); else setAuditLogs([]);
     });
@@ -426,36 +381,9 @@ export function App() {
     }
   };
 
-  // Hydrate live expenses from MySQL DB on app startup
+  // Hydrate nav menu from DB on startup
   useEffect(() => {
-    fetchExpensesFromDB().then((data) => {
-      if (data && data.length > 0) {
-        setPettyCash(data);
-      }
-    });
-  }, []);
-
-  // Hydrate staff from DB — single source of truth for Staff Directory & Permissions
-  const reloadStaffFromDB = () => {
-    fetchStaffUsersFromDB().then((data) => {
-      if (data && data.length > 0) {
-        setStaff(data.map((u: any) => ({
-          id: u.id,
-          name: u.fullName || u.name || u.username,
-          role: u.role || 'Staff',
-          phone: u.phone || '',
-          monthlySalary: u.monthlySalary || 0,
-          status: u.status || 'Active',
-          passcode: u.passcode,
-          qrCodeUrl: u.qrCodeUrl,
-          isFinancialHandler: u.isFinancialHandler,
-        })));
-      }
-    });
-  };
-
-  useEffect(() => {
-    reloadStaffFromDB();
+    refreshStaff();
     fetchNavMenuFromDB().then((data) => {
       if (data && data.length > 0) {
         // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
@@ -498,27 +426,14 @@ export function App() {
       if (data && data.length > 75) {
         dedupMenuDB().then(() => {
           fetchMenuFromDB().then((clean) => {
-            setMenu(clean && clean.length > 0 ? clean : INITIAL_MENU);
+            if (clean && clean.length > 0) setMenu(clean);
           });
         });
       } else if (data && data.length > 0) {
         setMenu(data);
-      } else {
-        setMenu(INITIAL_MENU);
-        INITIAL_MENU.forEach((item) => addMenuItemDB(item));
       }
     });
-    fetchOrdersFromDB().then((data) => {
-      if (data && data.length > 0) setOrders(data);
-    });
-    seedCatalogDB().then(() => {
-      fetchInventoryFromDB().then((data) => {
-        if (data && data.length > 0) setInventory(data);
-      });
-    });
-    fetchAttendanceFromDB().then((data) => {
-      if (data && data.length > 0) setAttendance(data);
-    });
+    refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
       if (data && data.length > 0) setAuditLogs(data);
     });
@@ -844,108 +759,6 @@ ${itemsStr}
     }
   };
 
-  const handleAddOrder = async (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
-    const itemsList = newOrder.items.map((i) => `• <b>${i.quantity}x ${i.name}</b>`).join('\n');
-    
-    let msg = `🛎️ <b>NEW KITCHEN TICKET ${newOrder.id}</b>\n• Resident: <b>${newOrder.guestName}</b> (${newOrder.roomNumber})\n• Items Ordered:\n${itemsList}\n• Total Ticket Amount: <b>₹${newOrder.totalAmount}</b>`;
-    if (newOrder.guestId === 'staff-duty') {
-      msg = `🍛 <b>STAFF DUTY MEAL DISPATCHED #${newOrder.id}</b>\n• Beneficiary: <b>${newOrder.guestName}</b>\n• Details: <b>${newOrder.items[0]?.name || 'Staff Meal'}</b>\n• Location: <b>Staff Pantry</b>`;
-    }
-
-    logAudit(`Created kitchen ticket ${newOrder.id} for resident ${newOrder.guestName} (₹${newOrder.totalAmount})`);
-    
-    if (telegramConfig.enabledEvents.kotOrders) {
-      if (newOrder.guestId === 'staff-duty') {
-        const staffMealVars: Record<string, string> = {
-          order_id: newOrder.id,
-          beneficiary: newOrder.guestName,
-          meal_details: newOrder.items[0]?.name || 'Staff Meal',
-        };
-        const resolved = await resolveTelegramTemplate('kitchen_staff_meal', staffMealVars);
-        dispatchTelegramAlert('KOT Order', resolved || msg, 'kitchen');
-      } else {
-        const orderVars: Record<string, string> = {
-          order_id: newOrder.id,
-          guest_name: newOrder.guestName,
-          table_no: newOrder.roomNumber,
-          waiter_name: '',
-          order_time: newOrder.orderTime,
-          order_items: itemsList,
-        };
-        const resolved = await resolveTelegramTemplate('kitchen_new_order', orderVars);
-        dispatchTelegramAlert('KOT Order', resolved || msg, 'kitchen');
-      }
-    }
-
-    recordTelescopeLog({
-      portal: 'requests',
-      severity: 'INFO',
-      msg: `POST /api/kitchen/orders - Created Ticket #${newOrder.id} for ${newOrder.guestName}`,
-      origin: '/src/App.tsx -> handleAddOrder',
-      details: newOrder,
-    });
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
-    );
-    const targetOrder = orders.find((o) => o.id === orderId);
-    const guestInfo = targetOrder ? `${targetOrder.guestName} (${targetOrder.roomNumber})` : 'Resident';
-    const itemsList = targetOrder?.items
-      ? targetOrder.items.map((i) => `• <b>${i.quantity}x ${i.name}</b> (₹${i.quantity * i.unitPrice})`).join('\n')
-      : '• Order Items';
-
-    let statusEmoji = '🔥';
-    let statusDetailText = '';
-    let replyMarkup: any = undefined;
-
-    if (status === 'Preparing') {
-      statusEmoji = '🍳';
-      statusDetailText = 'Preparing in Kitchen by Chef';
-    } else if (status === 'Fulfilled') {
-      statusEmoji = '✅';
-      statusDetailText = 'Order Prepared & Ready to Serve';
-      replyMarkup = {
-        inline_keyboard: [
-          [{ text: '🍽️ Tap when Served', callback_data: `serve_order_${orderId}` }]
-        ]
-      };
-    } else if (status === 'Cancelled') {
-      statusEmoji = '❌';
-      statusDetailText = 'Ticket Cancelled';
-    }
-
-    const msg = `${statusEmoji} <b>KITCHEN ORDER ${status.toUpperCase()} #${orderId}</b>\n• Resident: <b>${guestInfo}</b>\n• Items Included:\n${itemsList}\n• Ticket Total: <b>₹${targetOrder?.totalAmount || 0}</b>\n• Placed At: <b>${targetOrder?.orderTime || 'Just now'}</b>\n• Current Status: <b>${statusDetailText}</b>`;
-    const oldStatus = targetOrder?.status || 'Unknown';
-    logAudit(`${currentUser?.name || activeRole} changed order #${orderId} status from ${oldStatus} → ${status}`);
-
-    const statusOrderVars: Record<string, string> = {
-      status_emoji: statusEmoji,
-      status: status.toUpperCase(),
-      order_id: orderId,
-      guest_info: guestInfo,
-      items_list: itemsList,
-      ticket_total: String(targetOrder?.totalAmount || 0),
-      placed_at: targetOrder?.orderTime || 'Just now',
-      status_detail: statusDetailText,
-    };
-
-    if (telegramConfig.enabledEvents.kotOrders) {
-      const resolved = await resolveTelegramTemplate('kitchen_order_status', statusOrderVars);
-      dispatchTelegramAlert('KOT Status', resolved || msg, 'kitchen', replyMarkup);
-    }
-
-    recordTelescopeLog({
-      portal: 'requests',
-      severity: 'INFO',
-      msg: `PATCH /api/kitchen/orders/${orderId} - Status set to ${status}`,
-      origin: '/src/App.tsx -> handleUpdateOrderStatus',
-      details: { orderId, status, guestInfo, items: targetOrder?.items },
-    });
-  };
-
   const handleAddMenuItem = (item: MenuItem) => {
     setMenu((prev) => [...prev, item]);
     addMenuItemDB(item);
@@ -1029,7 +842,7 @@ ${itemsStr}
   };
 
   const handleRequestMaterial = async (req: Requisition) => {
-    setRequisitions((prev) => [req, ...prev]);
+    addRequisition(req);
     logAudit(`Created material requisition ${req.id} for ${req.requestedQty} ${req.unit} of ${req.itemName}`);
     
     if (telegramConfig.enabledEvents.materialRequisitions) {
@@ -1058,9 +871,7 @@ ${itemsStr}
   const handleUpdateStock = async (itemId: string, newStock: number) => {
     const item = inventory.find((i) => i.id === itemId);
     const oldStock = item ? item.currentStock : 0;
-    setInventory((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, currentStock: newStock } : i))
-    );
+    updateStock(itemId, newStock);
     const currentUserName = currentUser?.name || activeRole;
     logAudit(`${currentUserName} updated stock of ${item?.name || itemId} from ${oldStock} ${item?.unit || ''} to ${newStock} ${item?.unit || ''}`);
 
@@ -1086,22 +897,20 @@ ${itemsStr}
   };
 
   const handleAddInventoryItem = (item: InventoryItem) => {
-    setInventory((prev) => [...prev, item]);
+    addInventoryItem(item);
     const currentUserName = currentUser?.name || activeRole;
     logAudit(`${currentUserName} added new inventory catalog item: ${item.name}`);
   };
 
   const handleUpdateInventoryItemImage = (itemId: string, imagePath: string) => {
-    setInventory((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, imagePath } : i))
-    );
+    updateInventoryItemImage(itemId, imagePath);
     const item = inventory.find((i) => i.id === itemId);
     const currentUserName = currentUser?.name || activeRole;
     logAudit(`${currentUserName} updated image for inventory item ${item?.name || itemId}`);
   };
 
   const handleAddPettyCash = async (entry: PettyCashEntry) => {
-    setPettyCash((prev) => [entry, ...prev]);
+    addPettyCash(entry);
     logAudit(`Recorded petty cash ${entry.type}: ₹${entry.amount} - ${entry.description}`);
     
     if (telegramConfig.enabledEvents.pettyCashExpenses) {
@@ -1127,6 +936,7 @@ ${itemsStr}
   };
 
   const handleUpdatePettyCash = (updated: PettyCashEntry) => {
+    updatePettyCash(updated);
     const oldEntry = pettyCash.find(e => e.id === updated.id);
     const changes: string[] = [];
     if (oldEntry) {
@@ -1137,15 +947,14 @@ ${itemsStr}
     }
     const detail = changes.length > 0 ? changes.join(', ') : `petty cash entry #${updated.id}`;
     const currentUserName = currentUser?.name || activeRole;
-    setPettyCash((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
     logAudit(`${currentUserName} updated ${detail}`);
   };
 
   const handleDeletePettyCash = (id: string) => {
+    deletePettyCash(id);
     const oldEntry = pettyCash.find(e => e.id === id);
     const detail = oldEntry ? ` #${id}: ₹${oldEntry.amount} - "${oldEntry.description}"` : ` #${id}`;
     const currentUserName = currentUser?.name || activeRole;
-    setPettyCash((prev) => prev.filter((e) => e.id !== id));
     logAudit(`${currentUserName} deleted petty cash entry${detail}`);
   };
 
@@ -1155,54 +964,8 @@ ${itemsStr}
     dispatchTelegramAlert('Test Dispatch', testMsg, 'all');
   };
 
-  const handleAddStaff = (member: StaffMember) => {
-    setStaff((prev) => [...prev, member]);
-    addStaffUserDB({
-      id: member.id,
-      username: member.name,
-      fullName: member.name,
-      role: member.role,
-      phone: member.phone,
-      monthlySalary: member.monthlySalary,
-      status: member.status,
-    });
-    logAudit(`Added new staff member: ${member.name} (${member.role})`);
-  };
-
-  const handleUpdateStaff = (id: string, updated: Partial<StaffMember>) => {
-    const oldMember = staff.find(m => m.id === id);
-    const currentUserName = currentUser?.name || activeRole;
-    const changes: string[] = [];
-    if (oldMember) {
-      if (updated.name !== undefined && updated.name !== oldMember.name) changes.push(`name of "${oldMember.name}" to "${updated.name}"`);
-      if (updated.role !== undefined && updated.role !== oldMember.role) changes.push(`role of "${oldMember.name}" from ${oldMember.role} to ${updated.role}`);
-      if (updated.phone !== undefined && updated.phone !== oldMember.phone) changes.push(`phone of "${oldMember.name}" from ${oldMember.phone} to ${updated.phone}`);
-      if (updated.monthlySalary !== undefined && updated.monthlySalary !== oldMember.monthlySalary) changes.push(`salary of "${oldMember.name}" from ₹${oldMember.monthlySalary} to ₹${updated.monthlySalary}`);
-      if (updated.status !== undefined && updated.status !== oldMember.status) changes.push(`status of "${oldMember.name}" from ${oldMember.status} to ${updated.status}`);
-    }
-    const detail = changes.length > 0 ? changes.join(', ') : `staff member #${id}`;
-    setStaff((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
-    updateStaffUserDB(id, updated);
-    logAudit(`${currentUserName} updated ${detail}`);
-  };
-
-  const handleRecordAttendance = (record: AttendanceRecord) => {
-    setAttendance((prev) => {
-      const filtered = prev.filter(
-        (a) => !(a.staffId === record.staffId && a.date === record.date)
-      );
-      if ((record.status as string) === 'Clear' || !record.status) {
-        return filtered;
-      }
-      return [record, ...filtered];
-    });
-    const currentUserName = currentUser?.name || activeRole;
-    logAudit(`${currentUserName} marked ${record.staffName} ${record.status.toLowerCase()} on attendance calendar`);
-  };
-
   // Badge counts
-  const lowStockCount = inventory.filter((i) => i.currentStock <= i.minThreshold).length;
-  const pendingOrdersCount = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing').length;
+  const { pendingOrdersCount } = useKitchenContext();
   const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
 
   return (
@@ -1210,7 +973,6 @@ ${itemsStr}
       <ToastProvider>
       {!isAuthenticated && (
         <LoginModal
-          staffList={staff}
           onLoginSuccess={handleLoginSuccess}
           onLoginFailed={handleLoginFailed}
         />
@@ -1218,12 +980,7 @@ ${itemsStr}
 
       {isAuthenticated && (
       <Header
-        activeRole={activeRole}
-        setActiveRole={setActiveRole}
-        currentUser={currentUser}
         onLogout={handleLogout}
-        stockAlertsCount={lowStockCount}
-        pendingOrdersCount={pendingOrdersCount}
         onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -1231,7 +988,6 @@ ${itemsStr}
         onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-        isAuthenticated={isAuthenticated}
         isTestingMode={isTestingMode}
         onToggleTestingMode={handleToggleTestingMode}
       />
@@ -1270,18 +1026,13 @@ ${itemsStr}
         setActiveTab={(tab) => handleNavigateTab(tab)}
         activeMenuItemKey={activeMenuItemKey}
         setActiveMenuItemKey={setActiveMenuItemKey}
-        pendingOrdersCount={pendingOrdersCount}
-        lowStockCount={lowStockCount}
-        pendingReqCount={pendingReqCount}
         guests={guests}
         isSidebarOpen={isSidebarOpen}
         onCloseSidebar={() => setIsSidebarOpen(false)}
         onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
         isIconOnly={isIconOnly}
         onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
-        activeRole={activeRole}
         navItems={navItems}
-        onLogout={handleLogout}
       />
       )}
 
@@ -1302,8 +1053,6 @@ ${itemsStr}
           {activeTab === 'dashboard' && (
             <OperationalDashboard
               guests={guests}
-              orders={orders}
-              inventory={inventory}
               onNavigate={(tab) => handleNavigateTab(tab)}
               onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
             />
@@ -1313,25 +1062,18 @@ ${itemsStr}
             <GuestManagement
               guests={guests}
               receipts={receipts}
-              orders={orders}
-              staff={staff}
               onAddGuest={handleAddGuest}
               onCheckoutGuest={handleCheckoutGuest}
               activeMenuItemKey={activeMenuItemKey}
               onDispatchTelegram={dispatchTelegramAlert}
-              menu={menu} // Pass menu prop
+              menu={menu}
             />
           )}
 
           {activeTab === 'kitchen' && (
             <KitchenManagement
               guests={guests}
-              orders={orders}
               menu={menu}
-              inventory={inventory}
-              requisitions={requisitions}
-              onAddOrder={handleAddOrder}
-              onUpdateOrderStatus={handleUpdateOrderStatus}
               onAddMenuItem={handleAddMenuItem}
               onRequestMaterial={handleRequestMaterial}
               onDispatchTelegram={dispatchTelegramAlert}
@@ -1342,9 +1084,6 @@ ${itemsStr}
 
           {activeTab === 'inventory' && (
             <InventoryManagement
-              inventory={inventory}
-              staff={staff}
-              currentUser={currentUser}
               onUpdateStock={handleUpdateStock}
               onAddInventoryItem={handleAddInventoryItem}
               onUpdateItemImage={handleUpdateInventoryItemImage}
@@ -1360,8 +1099,6 @@ ${itemsStr}
 
           {activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
             <CashDrawerManager
-              staff={staff}
-              activeRole={activeRole}
               onLogAudit={logAudit}
               onDispatchTelegram={dispatchTelegramAlert}
             />
@@ -1369,11 +1106,6 @@ ${itemsStr}
 
           {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
             <PettyCashManagement
-              entries={pettyCash}
-              staff={staff}
-              onAddEntry={handleAddPettyCash}
-              onUpdateEntry={handleUpdatePettyCash}
-              onDeleteEntry={handleDeletePettyCash}
               onDispatchTelegram={dispatchTelegramAlert}
             />
           )}
@@ -1381,13 +1113,6 @@ ${itemsStr}
           {activeTab === 'staff' && (
             <StaffManagement
               activeMenuItemKey={activeMenuItemKey}
-              staff={staff}
-              attendance={attendance}
-              onAddStaff={handleAddStaff}
-              onUpdateStaff={handleUpdateStaff}
-              onRecordAttendance={handleRecordAttendance}
-              onReloadStaff={reloadStaffFromDB}
-              expenses={pettyCash}
               auditLogs={auditLogs}
               onLogAudit={logAudit}
               onDispatchTelegram={dispatchTelegramAlert}
@@ -1397,30 +1122,20 @@ ${itemsStr}
           {activeTab === 'analytics' && (
             <AnalyticsDashboard
               receipts={receipts}
-              orders={orders}
-              expenses={pettyCash}
               guests={guests}
               activeMenuItemKey={activeMenuItemKey}
             />
           )}
 
           {activeTab === 'audit_logs' && (
-            <>
-              <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
-              <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} menu={menu} />
-            </>
+            <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
           )}
 
           {activeTab === 'export' && (
             <DataExportCenter
               guests={guests}
               receipts={receipts}
-              orders={orders}
               menu={menu}
-              inventory={inventory}
-              expenses={pettyCash}
-              staff={staff}
-              attendance={attendance}
               auditLogs={auditLogs}
             />
           )}
@@ -1433,9 +1148,7 @@ ${itemsStr}
               onDeleteFoodItem={handleDeleteMenuItem}
               navItems={navItems}
               onUpdateNavItems={handleUpdateNavItems}
-              activeRole={activeRole}
               activeMenuItemKey={activeMenuItemKey}
-              staff={staff}
             />
           )}
 
@@ -1471,5 +1184,21 @@ ${itemsStr}
       <GlobalModal />
       </ToastProvider>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <StaffProvider>
+      <AuthProvider>
+        <FinanceProvider>
+          <InventoryProvider>
+            <KitchenProvider>
+              <AppBody />
+            </KitchenProvider>
+          </InventoryProvider>
+        </FinanceProvider>
+      </AuthProvider>
+    </StaffProvider>
   );
 }

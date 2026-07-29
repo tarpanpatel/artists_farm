@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, RefreshCw, Check, X, Loader2, AlertTriangle } from 'lucide-react';
 import { fetchExpenseItemsFromDB, addExpenseItemToDB, deleteExpenseItemFromDB } from '../services/api';
+import { useToast } from './ToastContext';
 
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
@@ -24,7 +25,7 @@ export const ExpenseItemsManagement: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const similarItems = useMemo(() => {
     const trimmed = newItemName.trim().toLowerCase();
@@ -36,11 +37,6 @@ export const ExpenseItemsManagement: React.FC = () => {
       .slice(0, 3)
       .map(({ item }) => item);
   }, [newItemName, items]);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2500);
-  };
 
   const loadItems = async () => {
     setLoading(true);
@@ -57,7 +53,7 @@ export const ExpenseItemsManagement: React.FC = () => {
     const trimmed = newItemName.trim();
     if (!trimmed) return;
     if (items.some(item => item.toLowerCase() === trimmed.toLowerCase())) {
-      alert('This item already exists in the registry.');
+      showToast('This item already exists in the registry.', { type: 'warning' });
       return;
     }
     setAdding(true);
@@ -66,9 +62,9 @@ export const ExpenseItemsManagement: React.FC = () => {
       setItems(prev => [...prev, trimmed].sort((a, b) => a.localeCompare(b)));
       setNewItemName('');
       setShowAddForm(false);
-      showToast(`"${trimmed}" added to registry`);
+      showToast(`"${trimmed}" added to registry`, { type: 'success' });
     } else {
-      alert('Failed to add item. It may already exist.');
+      showToast('Failed to add item. It may already exist.', { type: 'error' });
     }
     setAdding(false);
   };
@@ -94,7 +90,7 @@ export const ExpenseItemsManagement: React.FC = () => {
       return;
     }
     if (items.some(i => i.toLowerCase() === trimmed.toLowerCase())) {
-      alert('An item with this name already exists.');
+      showToast('An item with this name already exists.', { type: 'warning' });
       return;
     }
     const deleted = await deleteExpenseItemFromDB(oldName);
@@ -265,15 +261,6 @@ export const ExpenseItemsManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-bold flex items-center gap-2 animate-toast-in">
-            <Check className="w-4 h-4" />
-            {toast}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -23,35 +23,27 @@ import {
   Store
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, SalaryEntry } from '../types';
+import { useToast } from './ToastContext';
+import { useStaff } from '../contexts/StaffContext';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB } from '../services/api';
 
 interface StaffManagementProps {
-  staff: StaffMember[];
-  attendance: AttendanceRecord[];
-  onAddStaff: (member: StaffMember) => void;
-  onUpdateStaff?: (id: string, updated: Partial<StaffMember>) => void;
-  onRecordAttendance: (record: AttendanceRecord) => void;
   activeMenuItemKey?: string;
-  onReloadStaff?: () => void;
-  expenses?: any[];
   auditLogs?: any[];
   onLogAudit?: (actionText: string) => void;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+  onAddDrawerEntry?: (entry: any) => Promise<boolean>;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
-  staff,
-  attendance,
-  onAddStaff,
-  onUpdateStaff,
-  onRecordAttendance,
   activeMenuItemKey,
-  onReloadStaff,
-  expenses,
   auditLogs,
   onLogAudit,
   onDispatchTelegram,
+  onAddDrawerEntry,
 }) => {
+  const { showToast } = useToast();
+  const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
@@ -143,13 +135,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setIsAdvanceModalOpen(false);
 
     // Record cash leaving the drawer + post to financial_ledger
-    addDrawerEntryToDB({
+    const drawerEntry: any = {
       staff_id: advanceStaff.id,
       staff_name: advanceStaff.name,
       type: 'handover',
       amount: advanceAmount,
       notes: `Staff advance: ${newAdvance.reason}`,
-    });
+    };
+    if (onAddDrawerEntry) {
+      onAddDrawerEntry(drawerEntry);
+    } else {
+      addDrawerEntryToDB(drawerEntry);
+    }
 
     if (onLogAudit) {
       onLogAudit(`Admin gave advance of ₹${advanceAmount} to ${advanceStaff.name} (${newAdvance.reason})`);
@@ -281,10 +278,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       status: newUser.status,
     });
     if (!saved) {
-      alert('Unable to save the staff member to the database.');
+      showToast('Unable to save the staff member to the database.', { type: 'error' });
       return;
     }
-    onReloadStaff?.();
+    refreshStaff?.();
     setNewUsername('');
     setNewPasscode('');
     setNewQrCodeUrl('');
@@ -293,8 +290,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const handleDeleteUser = async (id: string) => {
     if (confirm('Delete user profile permanently?')) {
-      if (await deleteStaffUserDB(id)) onReloadStaff?.();
-      else alert('Unable to delete the staff member from the database.');
+      if (await deleteStaffUserDB(id)) refreshStaff?.();
+      else showToast('Unable to delete the staff member from the database.', { type: 'error' });
     }
   };
 
@@ -308,7 +305,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       qrCodeUrl: newPayeeQrCode || undefined,
     };
     if (!await addPayeeDB(newPayee)) {
-      alert('Unable to save the payee to the database.');
+      showToast('Unable to save the payee to the database.', { type: 'error' });
       return;
     }
     setPayees((previous) => [...previous, newPayee]);
@@ -319,7 +316,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleDeletePayee = async (id: string) => {
     if (confirm('Purge payee archive records permanently?')) {
       if (await deletePayeeDB(id)) setPayees((previous) => previous.filter((payee) => payee.id !== id));
-      else alert('Unable to delete the payee from the database.');
+      else showToast('Unable to delete the payee from the database.', { type: 'error' });
     }
   };
 
@@ -335,15 +332,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       qrCodeUrl: updateQrCodeUrl || currentUser.qrCodeUrl,
     });
     if (!saved) {
-      alert('Unable to update the user in the database.');
+      showToast('Unable to update the user in the database.', { type: 'error' });
       return;
     }
-    onReloadStaff?.();
+    refreshStaff?.();
     setSelectedUpdateUserId('');
     setUpdatePasscode('');
     setUpdateRole('');
     setUpdateQrCodeUrl('');
-    alert('User account updated successfully!');
+    showToast('User account updated successfully!', { type: 'success' });
   };
 
   const handleUpdatePayeeSave = (e: React.FormEvent) => {
@@ -383,7 +380,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     }
 
     if (newStatus) {
-      onRecordAttendance({
+      recordAttendance({
         id: `att-${Date.now().toString().slice(-4)}`,
         date: dateStr,
         staffId: staffMember.id,
@@ -398,7 +395,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       const [staffId, dateStr] = key.split('_');
       const member = staff.find((s) => s.id === staffId);
       if (member) {
-        onRecordAttendance({
+        recordAttendance({
           id: `att-${Date.now().toString().slice(-4)}`,
           date: dateStr,
           staffId: member.id,
@@ -445,7 +442,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       status: 'Active',
     };
 
-    onAddStaff(newStaff);
+    addStaff(newStaff);
     setIsModalOpen(false);
     setName('');
     setPhone('');
@@ -1384,13 +1381,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{row.status}</span>
                 ),
               },
-              ...(onUpdateStaff ? [{
+              ...(updateStaff ? [{
                 name: 'Actions',
                 right: true,
                 width: '130px',
                 cell: (row: any) => editingStaffId === row.id ? (
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { onUpdateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
+                    <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
                     <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Cancel</button>
                   </div>
                 ) : (

@@ -2,6 +2,9 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { getIconComponent } from '../utils/iconResolver';
 import { ChevronDown, ChevronRight, LogOut, Link as LinkIcon } from 'lucide-react';
 import { NavMenuItem } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { useInventoryContext } from '../contexts/InventoryContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 export type TabType =
   | 'dashboard'
@@ -23,16 +26,11 @@ interface NavigationProps {
   setActiveTab: (tab: TabType) => void;
   activeMenuItemKey: string;
   setActiveMenuItemKey: (key: string) => void;
-  pendingOrdersCount: number;
-  lowStockCount: number;
-  pendingReqCount: number;
   isSidebarOpen: boolean;
   onCloseSidebar: () => void;
   onOpenTelegramModal: () => void;
   isIconOnly: boolean;
   onToggleIconOnly: () => void;
-  activeRole?: string;
-  onLogout?: () => void;
   navItems?: NavMenuItem[];
   guests?: import('../types').Guest[];
 }
@@ -57,18 +55,17 @@ export const Navigation: React.FC<NavigationProps> = ({
   setActiveTab,
   activeMenuItemKey,
   setActiveMenuItemKey,
-  pendingOrdersCount,
-  lowStockCount,
-  pendingReqCount,
   isSidebarOpen,
   onCloseSidebar,
   onOpenTelegramModal,
   isIconOnly,
   onToggleIconOnly,
-  activeRole = 'Super Admin',
-  onLogout,
-  navItems = [],
+  navItems,
+  guests,
 }) => {
+  const { activeRole, logout } = useAuth();
+  const { lowStockCount, requisitions } = useInventoryContext();
+  const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
@@ -112,6 +109,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (activeRole === 'Super Admin') return true;
     return allowedRoles.includes(activeRole);
   }, [activeRole]);
+
+  const { pendingOrdersCount } = useKitchenContext();
 
   const getBadge = useCallback((uniqueKey: string): { text: string; className: string } | null => {
     if (uniqueKey === 'kitchen_orders' && pendingOrdersCount > 0)
@@ -168,14 +167,14 @@ export const Navigation: React.FC<NavigationProps> = ({
   }, [setActiveTab, setActiveMenuItemKey, onCloseSidebar]);
 
   const handleLogoutClick = useCallback(() => {
-    if (onLogout) {
-      onLogout();
+    if (logout) {
+      logout();
     } else {
       if (confirm('Sign out of Artists Farm Jaipur Terminal?')) {
         window.location.reload();
       }
     }
-  }, [onLogout]);
+  }, [logout]);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedParents(prev => {

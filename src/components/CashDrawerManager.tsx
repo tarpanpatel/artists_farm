@@ -3,20 +3,22 @@ import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, 
 import { CashDrawerEntry, CashDrawerSummary, StaffMember } from '../types';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, fetchStaffUsersFromDB, resolveTelegramTemplate } from '../services/api';
 import DataTable from 'react-data-table-component';
+import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CashDrawerManagerProps {
-  staff: StaffMember[];
-  activeRole?: string;
   onLogAudit?: (action: string, extra?: any) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: string) => void;
+  onAddDrawerEntry?: (entry: any) => Promise<boolean>;
 }
 
 export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
-  staff,
-  activeRole = 'Super Admin',
   onLogAudit,
   onDispatchTelegram,
+  onAddDrawerEntry,
 }) => {
+  const { staff } = useStaff();
+  const { activeRole } = useAuth();
   const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
   const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +70,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       notes: notes || undefined,
     };
 
-    const ok = await addDrawerEntryToDB(entry);
+    const ok = onAddDrawerEntry ? await onAddDrawerEntry(entry) : await addDrawerEntryToDB(entry);
     if (ok) {
       const typeLabel = activeForm === 'handover' ? 'Cash Handover' : 'Manual Adjustment';
       onLogAudit?.(`Recorded ${typeLabel}: ₹${amount} for ${staffMember.staffName}${activeForm === 'handover' ? ` (handed to ${handedTo})` : ''}`);

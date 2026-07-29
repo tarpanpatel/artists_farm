@@ -51,6 +51,9 @@ import { MenuItem, NavMenuItem, StaffMember } from '../types';
 import { uploadImageDB } from '../services/api';
 import { CustomCSSOverride } from './CustomCSSOverride';
 import { NavMenuEditor } from './NavMenuEditor';
+import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
+import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -59,9 +62,7 @@ interface MenuManagerProps {
   onDeleteFoodItem: (id: number) => void;
   navItems: NavMenuItem[];
   onUpdateNavItems: (items: NavMenuItem[]) => void;
-  activeRole: string;
   activeMenuItemKey?: string;
-  staff: StaffMember[];
 }
 
 const AVAILABLE_ICONS = [
@@ -89,21 +90,6 @@ const AVAILABLE_ICONS = [
   { name: 'NavIcon', icon: NavIcon },
 ];
 
-const DEFAULT_SYSTEM_ROLES = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
-
-const NAV_CATEGORIES = [
-  'All Categories',
-  'Main Sections',
-  'Residents & Billing',
-  'Kitchen & Food',
-  'Stock & Inventory',
-  'Financials',
-  'Staff & HR',
-  'Analytics',
-  'Audit & Logs',
-  'System Controls',
-];
-
 export const MenuManager: React.FC<MenuManagerProps> = ({
   foodMenu,
   onAddFoodItem,
@@ -111,10 +97,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   onDeleteFoodItem,
   navItems,
   onUpdateNavItems,
-  activeRole,
   activeMenuItemKey,
-  staff,
 }) => {
+  const { staff } = useStaff();
+  const { activeRole } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu' | 'custom_css'>('food_menu');
 
   useEffect(() => {
@@ -859,7 +845,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Permitted Roles (RBAC)</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {DEFAULT_SYSTEM_ROLES.map((role) => {
+                  {SYSTEM_ROLES.map((role) => {
                     const isChecked = navForm.roles.includes(role);
                     return (
                       <button

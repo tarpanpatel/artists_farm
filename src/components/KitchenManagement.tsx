@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   UtensilsCrossed,
   Plus,
@@ -28,16 +28,15 @@ import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '.
 import { recordTelescopeLog } from '../utils/telescopeLogger';
 import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish } from '../services/api';
 import { SearchableSelect } from './SearchableSelect';
+import { useToast } from './ToastContext';
 import DataTable from 'react-data-table-component';
+
+import { useKitchenContext } from '../contexts/KitchenContext';
+import { useInventoryContext } from '../contexts/InventoryContext';
 
 interface KitchenManagementProps {
   guests: Guest[];
-  orders: Order[];
   menu: MenuItem[];
-  inventory?: InventoryItem[];
-  requisitions: Requisition[];
-  onAddOrder: (order: Order) => void;
-  onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   onAddMenuItem: (item: MenuItem) => void;
   onRequestMaterial: (req: Requisition) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any) => void;
@@ -47,32 +46,19 @@ interface KitchenManagementProps {
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
-  orders,
   menu,
-  inventory = [],
-  requisitions,
-  onAddOrder,
-  onUpdateOrderStatus,
   onAddMenuItem,
   onRequestMaterial,
   onDispatchTelegram,
-  activeMenuItemKey,
+  activeMenuItemKey = 'kitchen_orders',
   isTestingMode = false,
 }) => {
+  const { orders, addOrder } = useKitchenContext();
+  const { inventory, requisitions } = useInventoryContext();
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
-  const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({
-    '32_0': true,
-    '29_0': true,
-    '29_1': true,
-    '29_2': true,
-  });
+  const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({});
   const [servedItemKeys, setServedItemKeys] = useState<Record<string, boolean>>({});
-  const [itemReadyTimes, setItemReadyTimes] = useState<Record<string, string>>({
-    '32_0': '01:16 AM',
-    '29_0': '01:09 AM',
-    '29_1': '01:11 AM',
-    '29_2': '01:15 AM',
-  });
+  const [itemReadyTimes, setItemReadyTimes] = useState<Record<string, string>>({});
 
   const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string }>>([]);
 
@@ -249,6 +235,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [isCustomMealModalOpen, setIsCustomMealModalOpen] = useState(false);
   const [newMealName, setNewMealName] = useState('');
   const [newMealCost, setNewMealCost] = useState('');
+  // TODO: Fetch smMealOptions from DB instead of hardcoding
   const [smMealOptions, setSmMealOptions] = useState([
     { name: 'Rice, daal and sabzi', cost: 50 },
     { name: 'Chapati & Chicken Curry', cost: 80 }
@@ -263,10 +250,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   ]);
   const [smVisibleCount, setSmVisibleCount] = useState(10);
 
-  const smStaffList = [
-    'ABHIJEET', 'ASHISH MANDAL', 'KAMLESH', 'KINKAR SARKAR', 'PRANAY',
-    'RAMESH', 'SAHA DAS', 'SAMAR SIL', 'SUBRATA', 'BIKAS'
-  ];
+  const smStaffList = useMemo(() => guests.filter(g => g.status === 'Active').map(g => g.guestName), [guests]);
 
 
   const handleSaveCustomMeal = () => {
@@ -280,6 +264,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setNewMealCost('');
   };
   const [smError, setSmError] = useState('');
+  const { showToast } = useToast();
 
   const handleLogStaffMeal = () => {
     if (smSelectedStaff.length === 0) {
@@ -342,8 +327,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       ],
       totalAmount: 0,
     };
-    onAddOrder(staffOrder);
-    alert(`Staff meal ticket ${staffOrder.id} dispatched to Kitchen KDS Queue!`);
+    addOrder(staffOrder);
+    showToast(`Staff meal ticket ${staffOrder.id} dispatched to Kitchen KDS Queue!`, { type: 'success' });
     
     // Reset Form
     setSmSelectedStaff([]);
@@ -613,7 +598,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       totalAmount,
     };
 
-    onAddOrder(newOrder);
+    addOrder(newOrder);
     setCartItems([]);
   };
 
@@ -1856,9 +1841,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     if (!qty || isNaN(Number(qty))) return;
                     const res = await depleteStockForDish(selectedRecipeMenuItemId, Number(qty));
                     if (res.status === 'success') {
-                      alert(`✅ Stock depleted: ${res.deductions?.length || 0} ingredients deducted.`);
+                      showToast(`Stock depleted: ${res.deductions?.length || 0} ingredients deducted.`, { type: 'success' });
                     } else {
-                      alert(`⚠️ ${res.message || 'No recipe found for this dish.'}`);
+                      showToast(`${res.message || 'No recipe found for this dish.'}`, { type: 'warning' });
                     }
                   }}
                   className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 rounded-lg cursor-pointer transition-colors"

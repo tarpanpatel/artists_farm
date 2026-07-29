@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2, LogOut, FlaskConical } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useInventoryContext } from '../contexts/InventoryContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 interface HeaderProps {
-  activeRole: string;
-  setActiveRole: (role: string) => void;
-  currentUser?: any;
   onLogout?: () => void;
-  stockAlertsCount: number;
-  pendingOrdersCount: number;
   onOpenTelegramModal: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
@@ -15,18 +13,12 @@ interface HeaderProps {
   onToggleIconOnly: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
-  isAuthenticated?: boolean;
   isTestingMode?: boolean;
   onToggleTestingMode?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeRole,
-  setActiveRole,
-  currentUser,
   onLogout,
-  stockAlertsCount,
-  pendingOrdersCount,
   onOpenTelegramModal,
   isSidebarOpen,
   onToggleSidebar,
@@ -34,10 +26,12 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleIconOnly,
   isDarkMode,
   onToggleDarkMode,
-  isAuthenticated = false,
   isTestingMode = false,
   onToggleTestingMode,
 }) => {
+  const { activeRole, setActiveRole, currentUser, isAuthenticated } = useAuth();
+  const { lowStockCount } = useInventoryContext();
+  const { pendingOrdersCount } = useKitchenContext();
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
 
   const currentTime = new Date().toLocaleDateString('en-IN', {
@@ -97,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="btn-notification-bell relative p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
-              {(stockAlertsCount > 0 || pendingOrdersCount > 0) && (
+              {(lowStockCount > 0 || pendingOrdersCount > 0) && (
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-800 animate-pulse"></span>
               )}
             </button>
@@ -110,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
                     Notifications
                   </span>
                   <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
-                    {stockAlertsCount + pendingOrdersCount} new
+                    {lowStockCount + pendingOrdersCount} new
                   </span>
                 </div>
                 <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-700">
@@ -129,14 +123,14 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
                   )}
-                  {stockAlertsCount > 0 && (
+                  {lowStockCount > 0 && (
                     <div className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
                       <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mt-0.5">
                         <AlertTriangle className="w-4 h-4" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-gray-900 dark:text-white">
-                          {stockAlertsCount} Low Inventory Items
+                          {lowStockCount} Low Inventory Items
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
                           Items reached minimum threshold limit
@@ -144,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
                   )}
-                  {stockAlertsCount === 0 && pendingOrdersCount === 0 && (
+                  {lowStockCount === 0 && pendingOrdersCount === 0 && (
                     <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center gap-1">
                       <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                       <span>All systems operating normally</span>
@@ -209,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={onLogout}
                   title="Lock & Logout POS"
                   aria-label="Logout POS"
-                  className="btn-logout-pos ml-1 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                  className="btn-onlogout-pos ml-1 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>

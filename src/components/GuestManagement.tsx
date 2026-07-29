@@ -22,96 +22,22 @@ import {
   Sparkles
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
-import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate } from '../types';
+import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate, MenuItem } from '../types';
+import { useToast } from './ToastContext';
+import { useStaff } from '../contexts/StaffContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 interface GuestManagementProps {
   guests: Guest[];
   receipts: BillingReceipt[];
-  orders: Order[];
-  staff: StaffMember[];
+  menu: MenuItem[];
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
 }
 
-// Full menu dish catalog matching the PHP script dropdown
-const DEFAULT_MENU_DISHES = [
-  { id: 4, name: 'Aloo Pakoda (6-8pcs)', price: 149.0 },
-  { id: 51, name: 'Aloo Paratha', price: 149.0 },
-  { id: 55, name: 'Boiled Eggs', price: 149.0 },
-  { id: 62, name: 'Boondi Raita', price: 95.0 },
-  { id: 58, name: 'Bread Pakoda', price: 98.0 },
-  { id: 53, name: 'Bread Toast Butter (2)', price: 50.0 },
-  { id: 54, name: 'Bread Toast Jam (2)', price: 60.0 },
-  { id: 61, name: 'Breakfast Buffet (Per Person)', price: 300.0 },
-  { id: 65, name: 'Chaach', price: 68.0 },
-  { id: 49, name: 'Chapati With Butter', price: 38.0 },
-  { id: 28, name: 'Cheese Corn Pizza', price: 298.0 },
-  { id: 30, name: 'Cheese Grilled Sandwich', price: 198.0 },
-  { id: 31, name: 'Cheesy Garlic Bread (6pcs)', price: 149.0 },
-  { id: 35, name: 'Chicken Curry (4pcs)', price: 389.0 },
-  { id: 13, name: 'Chicken Seekh Kebab', price: 289.0 },
-  { id: 12, name: 'Chicken Tikka', price: 359.0 },
-  { id: 20, name: 'Chilly Paneer (8-10pcs)', price: 249.0 },
-  { id: 21, name: 'Chilly Potatoes (8-10pcs)', price: 198.0 },
-  { id: 25, name: 'Chinese Pakoda (6-8pcs)', price: 169.0 },
-  { id: 18, name: 'Chow mein', price: 149.0 },
-  { id: 69, name: 'Coffee', price: 80.0 },
-  { id: 70, name: 'Cold Coffee', price: 148.0 },
-  { id: 41, name: 'Daal Fry', price: 149.0 },
-  { id: 40, name: 'Daal Tadka', price: 198.0 },
-  { id: 44, name: 'Dinner Buffet (Per Person)', price: 600.0 },
-  { id: 56, name: 'Egg Bhurji', price: 149.0 },
-  { id: 11, name: 'French Fries Peri-Peri', price: 179.0 },
-  { id: 10, name: 'French Fries Regular', price: 149.0 },
-  { id: 59, name: 'French Toast', price: 149.0 },
-  { id: 16, name: 'Fried Papad', price: 40.0 },
-  { id: 39, name: 'Gatta Masala', price: 198.0 },
-  { id: 66, name: 'Green Salad', price: 119.0 },
-  { id: 73, name: 'Hot Chocolate', price: 249.0 },
-  { id: 38, name: 'Jeera Aloo', price: 249.0 },
-  { id: 46, name: 'Jeera Rice', price: 248.0 },
-  { id: 7, name: 'Kaala Chana Chaat', price: 149.0 },
-  { id: 6, name: 'Kabuli Chana Chaat', price: 149.0 },
-  { id: 33, name: 'Kadhai Paneer', price: 285.0 },
-  { id: 42, name: 'Kadhi Pakoda', price: 198.0 },
-  { id: 74, name: 'Laal Maans', price: 800.0 },
-  { id: 23, name: 'Maggie Regular', price: 98.0 },
-  { id: 24, name: 'Masala Maggie', price: 149.0 },
-  { id: 17, name: 'Masala Papad', price: 49.0 },
-  { id: 68, name: 'Masala Tea', price: 58.0 },
-  { id: 5, name: 'Mix-Veg Pakoda (12pcs)', price: 198.0 },
-  { id: 36, name: 'Mutton Curry (4pcs)', price: 489.0 },
-  { id: 14, name: 'Mutton Seekh Kebab', price: 389.0 },
-  { id: 71, name: 'Nimbu Pani', price: 49.0 },
-  { id: 72, name: 'Nimbu Soda', price: 59.0 },
-  { id: 60, name: 'Omelette', price: 98.0 },
-  { id: 26, name: 'OTC Pizza', price: 198.0 },
-  { id: 37, name: 'Paneer Bhurji', price: 298.0 },
-  { id: 34, name: 'Paneer Butter Masala', price: 285.0 },
-  { id: 2, name: 'Paneer Pakoda (10pcs)', price: 195.0 },
-  { id: 27, name: 'Paneer Pizza', price: 298.0 },
-  { id: 1, name: 'Paneer Tikka (8-10pcs)', price: 249.0 },
-  { id: 9, name: 'Pani Puri (8)', price: 49.0 },
-  { id: 50, name: 'Paratha Plain', price: 59.0 },
-  { id: 8, name: 'Peanut Masala', price: 125.0 },
-  { id: 48, name: 'Plain Chapati', price: 29.0 },
-  { id: 64, name: 'Plain Curd', price: 58.0 },
-  { id: 45, name: 'Plain Rice', price: 198.0 },
-  { id: 57, name: 'Poha', price: 98.0 },
-  { id: 3, name: 'Pyaz Pakoda (10pcs)', price: 149.0 },
-  { id: 52, name: 'Pyaz Paratha', price: 149.0 },
-  { id: 67, name: 'Regular Tea', price: 48.0 },
-  { id: 15, name: 'Roasted Papad', price: 30.0 },
-  { id: 43, name: 'Sev Tamatar', price: 249.0 },
-  { id: 32, name: 'Shahi Paneer', price: 285.0 },
-  { id: 22, name: 'Sweet Corn Chaat', price: 198.0 },
-  { id: 29, name: 'Veg Grilled Sandwich', price: 149.0 },
-  { id: 47, name: 'Veg Pulao', price: 298.0 },
-  { id: 63, name: 'Veg Raita', price: 149.0 },
-  { id: 19, name: 'Veg Spring roll (6-8pcs)', price: 149.0 },
-];
+
 
 export interface IncidentalsItem {
   id: string;
@@ -137,13 +63,15 @@ export interface PaymentSplitRow {
 export const GuestManagement: React.FC<GuestManagementProps> = ({
   guests,
   receipts,
-  orders,
-  staff,
+  menu,
   onAddGuest,
   onCheckoutGuest,
   activeMenuItemKey,
   onDispatchTelegram,
 }) => {
+  const { orders } = useKitchenContext();
+  const { showToast } = useToast();
+  const { staff } = useStaff();
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -167,6 +95,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
 
+  // TODO: miscChargesList should be fetched centrally (not here) and passed as a prop
   useEffect(() => {
     const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
     const API_BASE = `${_base}/php/api/router.php`;
@@ -211,16 +140,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [pendingSettledBy, setPendingSettledBy] = useState('');
 
   // Incidentals Log Items
-  const [incidentals, setIncidentals] = useState<IncidentalsItem[]>([
-    { id: '1', name: 'French Fries Regular', price: 149.0, quantity: 1 },
-    { id: '2', name: 'Laal Maans', price: 800.0, quantity: 1 },
-    { id: '3', name: 'French Fries Peri-Peri', price: 179.0, quantity: 1 },
-    { id: '4', name: 'Paneer Pakoda (10pcs)', price: 195.0, quantity: 1 },
-    { id: '5', name: 'Mix-Veg Pakoda (12pcs)', price: 198.0, quantity: 1 },
-    { id: '6', name: 'Pyaz Pakoda (10pcs)', price: 149.0, quantity: 1 },
-    { id: '7', name: 'Peanut Masala', price: 125.0, quantity: 1 },
-    { id: '8', name: 'Aloo Pakoda (6-8pcs)', price: 149.0, quantity: 1 },
-  ]);
+  const [incidentals, setIncidentals] = useState<IncidentalsItem[]>([]);
 
   // Insert Food Form
   const [selectedDishId, setSelectedDishId] = useState<string>('');
@@ -240,7 +160,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [adjAmount, setAdjAmount] = useState<number | ''>('');
 
   // Desk Cashier Handling
-  const [deskCashier] = useState('Tarpan');
+  const [deskCashier] = useState(staff.length > 0 ? staff[0].name : '');
 
   // Split Payment Matrix Rows
   const [splitRows, setSplitRows] = useState<PaymentSplitRow[]>([
@@ -393,7 +313,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       dishName = customDishName.trim();
       dishPrice = Number(customDishPrice);
     } else {
-      const dish = DEFAULT_MENU_DISHES.find((d) => d.id === Number(selectedDishId));
+      const dish = menu.find((d) => d.id === Number(selectedDishId));
       if (!dish) return;
       dishName = dish.name;
       dishPrice = dish.price;
@@ -544,7 +464,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           onDispatchTelegram('Guest Checkout Settlement', msg, 'finance');
         }
 
-        window.alert(`✅ Settlement completed for ${currentGuest.guestName}! Receipt generated.`);
+        showToast(`Settlement completed for ${currentGuest.guestName}! Receipt generated.`, { type: 'success' });
         window.location.hash = '#dashboard';
       }
     }
@@ -572,7 +492,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         link.click();
       }
     } catch (err) {
-      alert('Failed to generate image print: ' + (err instanceof Error ? err.message : String(err)));
+      showToast('Failed to generate image print: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
       console.error(err);
     } finally {
       if (actionsBar) actionsBar.style.display = 'flex';
@@ -640,7 +560,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               expectedCheckout,
               status: 'Booked'
             });
-            alert('Guest booked successfully!');
+            showToast('Guest booked successfully!', { type: 'success' });
           }}>
             <div>
               <label className="block mb-1">Contact Phone Number *</label>
@@ -784,7 +704,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </div>
           
           <div className="grid grid-cols-7 gap-3 auto-rows-[100px]">
-            {Array.from({ length: 31 }).map((_, i) => (
+            {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }).map((_, i) => (
               <div key={i} className="border border-slate-200 rounded-xl p-2 relative">
                 <span className={`text-xs font-bold ${i === new Date().getDate() - 1 ? 'text-blue-600' : 'text-slate-500'}`}>{i + 1}</span>
                 {/* Mock overlays based on guests */}
@@ -922,7 +842,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           <option value="custom" className="font-bold text-cyan-600">
                             -- CUSTOM --
                           </option>
-                          {DEFAULT_MENU_DISHES.map((dish) => (
+                          {menu.map((dish) => (
                             <option key={dish.id} value={dish.id}>
                               {dish.name} (₹{dish.price.toFixed(2)})
                             </option>

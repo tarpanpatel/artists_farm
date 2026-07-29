@@ -17,13 +17,13 @@ import {
   AlertCircle
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
-import { BillingReceipt, Order, PettyCashEntry } from '../types';
+import { BillingReceipt, Order } from '../types';
 import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
+import { useFinance } from '../contexts/FinanceContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
-  orders: Order[];
-  expenses: PettyCashEntry[];
   guests?: any[];
   activeMenuItemKey?: string;
 }
@@ -32,11 +32,11 @@ type DateFilter = 'all' | 'day' | 'week' | 'month' | 'year';
 
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   receipts = [],
-  orders = [],
-  expenses = [],
   guests = [],
   activeMenuItemKey,
 }) => {
+  const { orders } = useKitchenContext();
+  const { pettyCash } = useFinance();
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
@@ -108,7 +108,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   const filteredReceipts = filterByDate(receipts, 'checkinDate');
   const filteredOrders = filterByDate(orders, 'orderTime');
-  const filteredExpenses = filterByDate(expenses, 'date');
+  const filteredExpenses = filterByDate(pettyCash, 'date');
   const filteredKitchenPurchases = filterByDate(kitchenPurchases, 'date');
 
   const roomRevenue = filteredReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);

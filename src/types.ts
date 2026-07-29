@@ -166,6 +166,7 @@ export interface StaffMember {
   passcodePin?: string;
   isFinancialHandler?: boolean;
   qrCodeUrl?: string;
+  avatarUrl?: string;
 }
 
 export interface AttendanceRecord {

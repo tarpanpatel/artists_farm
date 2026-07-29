@@ -3,14 +3,15 @@ import DataTable from 'react-data-table-component';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
 import { SearchableSelect } from './SearchableSelect';
-import { initialCatalogItems, CatalogItem } from '../data/initialData';
+import { CatalogItem } from '../data/initialData';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { useToast } from './ToastContext';
+import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useInventoryContext } from '../contexts/InventoryContext';
 
 
 interface InventoryManagementProps {
-  inventory: InventoryItem[];
-  staff: StaffMember[];
-  currentUser?: StaffMember | null;
   onUpdateStock: (itemId: string, newStock: number) => void;
   onAddInventoryItem: (item: InventoryItem) => void;
   onUpdateItemImage?: (itemId: string, imagePath: string) => void;
@@ -20,9 +21,6 @@ interface InventoryManagementProps {
 }
 
 export const InventoryManagement: React.FC<InventoryManagementProps> = ({
-  inventory,
-  staff,
-  currentUser,
   onUpdateStock,
   onAddInventoryItem,
   onUpdateItemImage,
@@ -30,22 +28,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   onDispatchTelegram,
   onLogAudit,
 }) => {
+  const { staff } = useStaff();
+  const { currentUser } = useAuth();
+  const { inventory } = useInventoryContext();
   const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'purchases' | 'fulfill' | 'catalog'>('stock_log');
-  const [catalogItems, setCatalogItems] = useState(initialCatalogItems);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [selectedCatalogItemIds, setSelectedCatalogItemIds] = useState<number[]>([]);
   const [bulkTargetCategory, setBulkTargetCategory] = useState<string>('');
 
-  // Sync catalogItems with live inventory data from database while retaining all 177 master catalog items
+  // Sync catalogItems from live DB inventory data
   useEffect(() => {
     if (inventory && inventory.length > 0) {
       const catalogMap = new Map<number, CatalogItem>();
       
-      // 1. Seed map with all initialCatalogItems (177 items) keyed by numeric ID
-      initialCatalogItems.forEach((item: CatalogItem) => {
-        catalogMap.set(item.id, { ...item });
-      });
-
-      // 2. Overlay / Merge live DB inventory items by numeric ID or matching name
+      // Build catalog exclusively from DB inventory items by numeric ID or matching name
       inventory.forEach((item: InventoryItem) => {
         const numericId = Number(item.id);
         let matched = numericId ? catalogMap.get(numericId) : undefined;
@@ -117,6 +113,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   }, []);
 
   // Material categories from database (for CRUD operations)
+  // TODO: dbCategories should be passed as props from a central context instead of being fetched locally
   const [dbCategories, setDbCategories] = useState<{ id: number; name: string; is_ingredient: number }[]>([]);
 
   useEffect(() => {
@@ -132,6 +129,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const cats = Array.from(new Set(catalogItems.map((item) => item.category).filter(Boolean)));
     return ['All', ...cats];
   }, [catalogItems]);
+  const { showToast } = useToast();
 
   // Sync recorded-by with logged-in user
   useEffect(() => {
@@ -141,6 +139,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   }, [currentUser]);
 
   // Vendors from database (payee_entities)
+  // TODO: dbVendors should be passed as props from a central context instead of being fetched locally
   const [dbVendors, setDbVendors] = useState<{ id: string; name: string; type: string }[]>([]);
 
   useEffect(() => {
@@ -218,9 +217,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       setSelectedCatalogItemIds([]);
       setCatalogTableKey(k => k + 1);
       setBulkTargetCategory('');
-      alert(`✅ Successfully assigned selected items to category "${targetCategory}"!`);
+      showToast(`Successfully assigned selected items to category "${targetCategory}"!`, { type: 'success' });
     } else {
-      alert('⚠️ Failed to assign category. Please try again.');
+      showToast('Failed to assign category. Please try again.', { type: 'error' });
     }
   };
 
@@ -410,8 +409,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       return;
     }
 
-    // Mock Transaction
-    console.log("Saving delivery manifest:", fulfillData);
     
     let allDeliveredEqOrdered = true;
     let allDeliveredZero = true;
@@ -505,7 +502,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     }
     
     setSelectedFulfillSheet(null);
-    alert('✅ Transaction Complete:\n\n1. Variance Analyzed\n2. Shortfalls Logged\n3. Req Items Updated\n4. Master Catalog Synced\n5. Audit Log Written\n6. Telegram Alert Dispatched!');
+    showToast('Transaction Complete: Variance Analyzed, Shortfalls Logged, Req Items Updated, Master Catalog Synced, Audit Log Written, Telegram Alert Dispatched!', { type: 'success' });
   };
 
   const handleQuickComplete = (sheet: any) => {
@@ -517,7 +514,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       const currentUserName = currentUser?.name || 'Admin';
       onLogAudit(`${currentUserName} completed stock request sheet #${targetSheetId} (status: FULFILLED)`);
     }
-    alert(`✅ Requisition Sheet #${targetSheetId} marked as FULFILLED and saved to database!`);
+    showToast(`Requisition Sheet #${targetSheetId} marked as FULFILLED and saved to database!`, { type: 'success' });
   };
 
   const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([]);
@@ -574,7 +571,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
   }, []);
 
-  const stockCatalog = initialCatalogItems.map(item => ({
+  const stockCatalog = catalogItems.map(item => ({
     id: item.id.toString(),
     name: item.name,
     unit: `${item.packSize} ${item.packUnit}`,
@@ -639,7 +636,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     setReqBasket([]);
     setSpecialRequestText('');
-    alert(`✅ Requisition Sheet #${newSheetId} dispatched successfully!`);
+    showToast(`Requisition Sheet #${newSheetId} dispatched successfully!`, { type: 'success' });
   };
 
   React.useEffect(() => {
@@ -761,7 +758,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       onUpdateStock(matchedInv.id, Math.max(0, matchedInv.currentStock - Number(wastedQty)));
     }
 
-    alert(`⚠️ Recorded wastage incident: ${wastedQty} ${wastedUnit} of ${wastedItem}. Saved to database.`);
+    showToast(`Recorded wastage incident: ${wastedQty} ${wastedUnit} of ${wastedItem}. Saved to database.`, { type: 'info' });
     setWastedItem('');
     setWastedQty('');
     setWastedNotes('');
@@ -1038,7 +1035,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         setCatalogItems(prev => prev.map(i => i.id === matchedCat.id ? { ...i, price: unitCost, packUnit: purUnit } : i));
       }
 
-      alert(`✅ Saved purchase of ${purItemName} (₹${totalPrice}) & synced with Master Catalog!`);
+      showToast(`Saved purchase of ${purItemName} (₹${totalPrice}) & synced with Master Catalog!`, { type: 'success' });
       setPurItemName('');
       setPurQty('');
       setPurTotalPrice('');
@@ -1061,7 +1058,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} assigned vendor '${selectedVendorToPay}' to kitchen purchases: ${selectedPurIds.join(', ')}`);
       }
-      alert(`✅ Assigned vendor "${selectedVendorToPay}" to ${selectedPurIds.length} selected items.`);
+      showToast(`Assigned vendor "${selectedVendorToPay}" to ${selectedPurIds.length} selected items.`, { type: 'success' });
     };
 
     const handleMarkSelectedPaid = (e: React.MouseEvent) => {
@@ -1139,7 +1136,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         onDispatchTelegram('Kitchen Purchase Payment', msg, 'finance');
       }
 
-      alert(`✅ Marked ${selectedPurIds.length} purchases as Paid. ₹${farmCash} from Farm Cash, ₹${outOfPocket} Out of Pocket.`);
+      showToast(`Marked ${selectedPurIds.length} purchases as Paid. ₹${farmCash} from Farm Cash, ₹${outOfPocket} Out of Pocket.`, { type: 'success' });
       setSelectedPurIds([]);
       setSettlementFarmCash('');
       setSettlementOutOfPocket('');

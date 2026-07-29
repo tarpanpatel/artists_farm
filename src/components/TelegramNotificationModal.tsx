@@ -54,7 +54,8 @@ interface TelegramNotificationModalProps {
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
 }
 
-const CATALOG_TEMPLATES: TelegramTemplateExtended[] = [
+// Fallback templates used only when DB fetch returns empty
+const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
   {
     id: 'tpl-1',
     dbKey: 'finance_drawer_adjustment',
@@ -338,8 +339,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     }
     return 'Admin';
   };
-  const [templatesList, setTemplatesList] = useState<TelegramTemplateExtended[]>(CATALOG_TEMPLATES);
-  const [activeTemplateId, setActiveTemplateId] = useState<string>(CATALOG_TEMPLATES[0].id);
+  const [templatesList, setTemplatesList] = useState<TelegramTemplateExtended[]>(FALLBACK_TEMPLATES);
+  const [activeTemplateId, setActiveTemplateId] = useState<string>(FALLBACK_TEMPLATES[0].id);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [testSent, setTestSent] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
@@ -363,6 +364,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       editableRef.current.innerHTML = telegramHtmlToVisualHtml(currentTpl.template);
     }
   }, [activeTemplateId]);
+
+  // TODO: Fetch templates from DB — fetchTemplatesFromDB() not yet implemented in api.ts
 
   // Push new template string to history stack
   const updateTemplateWithHistory = (newTemplate: string) => {

@@ -2,14 +2,11 @@ import React, { useState, useEffect, useReducer } from 'react';
 import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
-import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, deleteExpenseFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { useStaff } from '../contexts/StaffContext';
+import { useFinance } from '../contexts/FinanceContext';
+import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 
 interface PettyCashManagementProps {
-  entries: PettyCashEntry[];
-  staff: StaffMember[];
-  onAddEntry: (entry: PettyCashEntry) => void;
-  onUpdateEntry?: (entry: PettyCashEntry) => void;
-  onDeleteEntry?: (id: string) => void;
   activeRole?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
 }
@@ -55,14 +52,11 @@ function formReducer(state: FormState, action: FormAction): FormState {
 }
 
 export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
-  entries,
-  staff,
-  onAddEntry,
-  onUpdateEntry,
-  onDeleteEntry,
   activeRole,
   onDispatchTelegram,
 }) => {
+  const { staff } = useStaff();
+  const { pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
     category: 'Other',
@@ -132,17 +126,17 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   }, []);
 
   // Derive list of unique months in entries for dropdown
-  const uniqueMonths = Array.from(new Set(entries.map(e => e.date.substring(0, 7)))).sort().reverse();
+  const uniqueMonths = Array.from(new Set(pettyCash.map(e => e.date.substring(0, 7)))).sort().reverse();
   if (uniqueMonths.length === 0 && !uniqueMonths.includes('2026-07')) {
     uniqueMonths.push('2026-07');
   }
 
   // Float balance logic
-  const totalReplenishments = entries
+  const totalReplenishments = pettyCash
     .filter((e) => e.type === 'Replenishment')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalExpenses = entries
+  const totalExpenses = pettyCash
     .filter((e) => e.type === 'Expense' || !e.type)
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -217,8 +211,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       type: 'Expense'
     };
 
-    onAddEntry(entry);
-    addExpenseToDB(entry);
+    addPettyCash(entry);
 
     const handler = financialHandlers.find((h: any) => h.username === formState.paidBy);
     if (formState.drawerAmount && Number(formState.drawerAmount) > 0) {
@@ -263,9 +256,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   };
 
   const handleCellSave = (entryId: string) => {
-    if (!editingCell || !onUpdateEntry) return;
+    if (!editingCell) return;
 
-    const original = entries.find(e => e.id === entryId);
+    const original = pettyCash.find(e => e.id === entryId);
     if (!original) return;
 
     const updated: PettyCashEntry = {
@@ -273,8 +266,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       [editingCell.field]: editingCell.field === 'amount' ? Number(editValue) : editValue
     };
 
-    onUpdateEntry(updated);
-    updateExpenseInDB(updated);
+    updatePettyCash(updated);
 
     if (updated.description && updated.amount) {
       setItemPrices(prev => ({ ...prev, [updated.description.trim()]: Number(updated.amount) }));
@@ -286,9 +278,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Save Modal Edit
   const handleSaveModalEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingEntry || !onUpdateEntry) return;
-    onUpdateEntry(editingEntry);
-    updateExpenseInDB(editingEntry);
+    if (!editingEntry) return;
+    updatePettyCash(editingEntry);
     if (editingEntry.description && editingEntry.amount) {
       setItemPrices(prev => ({ ...prev, [editingEntry.description.trim()]: Number(editingEntry.amount) }));
     }
@@ -298,15 +289,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Delete Expense
   const handleDeleteExpense = (id: string, description: string) => {
     (window as any).showConfirm(`Delete expense "${description}"? This cannot be undone.`, async () => {
-      const ok = await deleteExpenseFromDB(id);
-      if (ok && onDeleteEntry) {
-        onDeleteEntry(id);
-      }
+      deletePettyCash(id);
     });
   };
 
   // Filter entries
-  const filteredEntries = entries.filter(e => {
+  const filteredEntries = pettyCash.filter(e => {
     const matchesMonth = e.date.startsWith(selectedMonth);
     const text = (e.description + ' ' + (e.category || e.costCategory || '') + ' ' + (e.paidBy || '') + ' ' + e.amount).toLowerCase();
     const matchesSearch = text.includes(searchQuery.toLowerCase());

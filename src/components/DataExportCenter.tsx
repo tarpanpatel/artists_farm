@@ -16,31 +16,29 @@ import {
   ScrollText,
   Menu
 } from 'lucide-react';
-import { Guest, BillingReceipt, Order, InventoryItem, PettyCashEntry, StaffMember, AttendanceRecord, AuditLog, MenuItem } from '../types';
+import { Guest, BillingReceipt, Order, StaffMember, AttendanceRecord, AuditLog, MenuItem } from '../types';
+import { useStaff } from '../contexts/StaffContext';
+import { useFinance } from '../contexts/FinanceContext';
+import { useInventoryContext } from '../contexts/InventoryContext';
+import { useKitchenContext } from '../contexts/KitchenContext';
 
 interface DataExportCenterProps {
   guests: Guest[];
   receipts: BillingReceipt[];
-  orders: Order[];
   menu: MenuItem[];
-  inventory: InventoryItem[];
-  expenses: PettyCashEntry[];
-  staff: StaffMember[];
-  attendance: AttendanceRecord[];
   auditLogs: AuditLog[];
 }
 
 export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   guests,
   receipts,
-  orders,
   menu,
-  inventory,
-  expenses,
-  staff,
-  attendance,
   auditLogs,
 }) => {
+  const { orders } = useKitchenContext();
+  const { staff, attendance } = useStaff();
+  const { pettyCash: expenses } = useFinance();
+  const { inventory } = useInventoryContext();
   const currentMonthNum = new Date().getMonth() + 1;
   const currentYearNum = new Date().getFullYear();
 
@@ -374,7 +372,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
     const timestamp = Date.now();
     const backupUrl = `${_base}/php/api/backup.php?t=${timestamp}`;
-    
+
     const link = document.createElement('a');
     link.href = backupUrl;
     link.setAttribute('download', `Backup_Artists_Farm_Jaipur_${new Date().toISOString().slice(0, 10)}.sql`);
