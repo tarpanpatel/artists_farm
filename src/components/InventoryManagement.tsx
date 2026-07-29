@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings } from 'lucide-react';
+import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins } from 'lucide-react';
 import { InventoryItem, StaffMember } from '../types';
+import { SearchableSelect } from './SearchableSelect';
 import { initialCatalogItems, CatalogItem } from '../data/initialData';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 
 
 interface InventoryManagementProps {
@@ -701,9 +702,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   // Bulk Finance Interceptor state
   const [selectedPurIds, setSelectedPurIds] = useState<string[]>([]);
   const [selectedVendorToPay, setSelectedVendorToPay] = useState('');
-  const [selectedPaidByStaff, setSelectedPaidByStaff] = useState('');
-  const [settlementMethod, setSettlementMethod] = useState('Paid using Farm Cash (No Salary Impact)');
+  const [selectedPaidByStaff, setSelectedPaidByStaff] = useState(currentUser?.name || currentUser?.username || '');
+  const [settlementFarmCash, setSettlementFarmCash] = useState<number | ''>('');
+  const [settlementOutOfPocket, setSettlementOutOfPocket] = useState<number | ''>('');
   const [purSearch, setPurSearch] = useState('');
+
+  useEffect(() => {
+    const total = kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0);
+    if (total > 0 && settlementFarmCash === '' && settlementOutOfPocket === '') {
+      setSettlementFarmCash(total);
+    }
+  }, [selectedPurIds]);
 
   useEffect(() => {
     fetchWastageLogsFromDB().then((logs) => {
@@ -1017,6 +1026,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
       setKitchenPurchases(prev => [newPur, ...prev]);
       createKitchenPurchaseDB(newPur);
+
       if (onLogAudit) {
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} recorded kitchen purchase of ${qty} ${purUnit} of '${purItemName}' for ₹${totalPrice}`);
@@ -1060,10 +1070,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         alert('Please select at least one purchase item using checkboxes in the log table below!');
         return;
       }
-
-      const isOutOfPocket = settlementMethod.includes('Out of Pocket');
-      if (isOutOfPocket && !selectedPaidByStaff) {
-        alert('Please select the Cash Handler staff member who paid out of pocket for reimbursement credit!');
+      if (!selectedPaidByStaff) {
+        alert('Please select who paid (Step 2: Paid By)!');
         return;
       }
 
@@ -1071,33 +1079,70 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         .filter(p => selectedPurIds.includes(p.id))
         .reduce((sum, p) => sum + (Number(p.totalPrice) || 0), 0);
 
+      const farmCash = Number(settlementFarmCash || 0);
+      const outOfPocket = Number(settlementOutOfPocket || 0);
+      const totalSplit = farmCash + outOfPocket;
+
+      if (totalSplit !== totalCostSelected) {
+        alert(`Split amounts (₹${farmCash} + ₹${outOfPocket} = ₹${totalSplit}) must equal total selected ₹${totalCostSelected}.`);
+        return;
+      }
+
+      const settlementMethod = outOfPocket > 0 ? (farmCash > 0 ? 'Split' : 'Paid Out of Pocket') : 'Farm Cash';
+
       setKitchenPurchases(prev => prev.map(p => selectedPurIds.includes(p.id) ? {
         ...p,
         settlementStatus: 'Paid',
-        settlementMethod: isOutOfPocket ? 'Paid Out of Pocket' : 'Farm Cash',
-        paidByStaff: isOutOfPocket ? selectedPaidByStaff : ''
+        settlementMethod: settlementMethod,
+        paidByStaff: selectedPaidByStaff
       } : p));
 
       bulkUpdateKitchenPurchasesDB({
         ids: selectedPurIds,
         markPaid: true,
-        settlementMethod: isOutOfPocket ? 'Paid Out of Pocket' : 'Farm Cash',
+        settlementMethod: settlementMethod,
         paidByStaff: selectedPaidByStaff,
         totalAmount: totalCostSelected
       });
 
-      if (onLogAudit) {
-        const currentUserName = currentUser?.name || 'Admin';
-        const method = isOutOfPocket ? `Paid Out of Pocket by ${selectedPaidByStaff}` : 'Farm Cash';
-        onLogAudit(`${currentUserName} marked kitchen purchases [${selectedPurIds.join(', ')}] as Paid via ${method} (total: ₹${totalCostSelected})`);
+      if (farmCash > 0) {
+        addDrawerEntryToDB({
+          staff_id: staff.find(s => s.name === selectedPaidByStaff || s.username === selectedPaidByStaff)?.id || currentUser?.id || '',
+          staff_name: selectedPaidByStaff,
+          type: 'handover',
+          amount: farmCash,
+          notes: `Drawer paid for kitchen purchases (${selectedPurIds.length} items)`,
+        });
       }
 
-      if (isOutOfPocket) {
-        alert(`✅ Marked selected purchases as PAID OUT OF POCKET by Cash Handler (${selectedPaidByStaff}). Added reimbursement credit of ₹${totalCostSelected} to staff salary advance ledger!`);
-      } else {
-        alert(`✅ Marked selected purchases as PAID using Farm Cash (₹${totalCostSelected}).`);
+      if (outOfPocket > 0) {
+        const staffMember = staff.find(s => s.name === selectedPaidByStaff || s.username === selectedPaidByStaff);
+        recordOutOfPocketCredit({
+          staff_id: staffMember?.id || currentUser?.id || '',
+          staff_name: selectedPaidByStaff,
+          amount: outOfPocket,
+          description: `Out-of-pocket for kitchen purchases (${selectedPurIds.length} items)`,
+        });
       }
+
+      if (onLogAudit) {
+        const currentUserName = currentUser?.name || 'Admin';
+        const desc = farmCash > 0 && outOfPocket > 0
+          ? `Farm Cash ₹${farmCash} + Out of Pocket ₹${outOfPocket} by ${selectedPaidByStaff}`
+          : farmCash > 0 ? `Farm Cash ₹${farmCash}` : `Out of Pocket ₹${outOfPocket} by ${selectedPaidByStaff}`;
+        onLogAudit(`${currentUserName} marked kitchen purchases [${selectedPurIds.join(', ')}] as Paid via ${desc} (total: ₹${totalCostSelected})`);
+      }
+
+      if (onDispatchTelegram) {
+        const items = kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).map(p => `• ${p.itemName} (${p.quantity} ${p.unit}) — ₹${Number(p.totalPrice).toLocaleString('en-IN')}`).join('\n');
+        const msg = `<b>🧾 KITCHEN PURCHASE PAYMENT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Paid By:</b> ${selectedPaidByStaff}\n🏦 <b>Farm Cash:</b> ₹${farmCash.toLocaleString('en-IN')}\n👝 <b>Out of Pocket:</b> ₹${outOfPocket.toLocaleString('en-IN')}\n💰 <b>Total:</b> ₹${totalCostSelected.toLocaleString('en-IN')}\n\n<b>Items:</b>\n${items}\n━━━━━━━━━━━━━━━━`;
+        onDispatchTelegram('Kitchen Purchase Payment', msg, 'finance');
+      }
+
+      alert(`✅ Marked ${selectedPurIds.length} purchases as Paid. ₹${farmCash} from Farm Cash, ₹${outOfPocket} Out of Pocket.`);
       setSelectedPurIds([]);
+      setSettlementFarmCash('');
+      setSettlementOutOfPocket('');
     };
 
     const handleDeletePurchase = (id: string, name: string) => {
@@ -1140,41 +1185,31 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
                 INVENTORY ITEM DETAIL (SELECT FROM MASTER MATERIALS CATALOG)
               </label>
-              <select
+              <SearchableSelect
                 required
                 value={purItemName}
-                onChange={e => {
-                  const val = e.target.value;
+                onChange={val => {
                   setPurItemName(val);
                   const matched = catalogItems.find(i => i.name === val);
                   if (matched) {
-                    // 1. Auto-fill Specification (e.g. standard pack size/spec)
                     const specText = matched.packSize ? `${matched.packSize} ${matched.unitLabel || matched.packUnit}` : (matched.specification || 'N/A');
                     setPurSpec(specText);
-
-                    // 2. Auto-fill Quantity / Volume
                     const defaultQty = matched.packSize || 1;
                     setPurQty(defaultQty);
-
-                    // 3. Auto-fill Unit
                     const defaultUnit = matched.unitLabel || matched.packUnit || 'Kg';
                     setPurUnit(defaultUnit);
-
-                    // 4. Auto-fill Total Price (₹) = unit price * quantity
                     const unitPrice = matched.price || matched.unit_cost || 0;
                     const calculatedTotal = unitPrice * defaultQty;
                     setPurTotalPrice(calculatedTotal > 0 ? Number(calculatedTotal.toFixed(2)) : '');
                   }
                 }}
-                className="w-full p-2.5 text-xs font-semibold text-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden focus:border-cyan-500 bg-white dark:bg-slate-900"
-              >
-                <option value="">Select product from Master Catalog... (e.g., Amul Butter)</option>
-                {catalogItems.map(item => (
-                  <option key={item.id} value={item.name}>
-                    {item.name} ({item.category}) - ₹{item.price}/{item.packUnit || item.unitLabel}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select product from Master Catalog... (e.g., Amul Butter)"
+                inputClassName="w-full p-2.5 text-xs font-semibold text-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden focus:border-cyan-500 bg-white dark:bg-slate-900"
+                options={catalogItems.map(item => ({
+                  value: item.name,
+                  label: `${item.name} (${item.category}) - ₹${item.price}/${item.packUnit || item.unitLabel}`,
+                }))}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1289,28 +1324,66 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Step 2: Settlement Engine */}
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-slate-700 text-xs w-12">2. Settled:</span>
-              <select
-                value={selectedPaidByStaff}
-                onChange={e => setSelectedPaidByStaff(e.target.value)}
-                className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 max-w-xs w-full"
-              >
-                <option value="">-- Paid By (Cash Handler Only) --</option>
-                {cashHandlers.map(u => (
-                  <option key={u.id} value={u.username}>
-                    💳 {u.username} ({u.role})
-                  </option>
-                ))}
-              </select>
+              <span className="font-bold text-slate-700 text-xs w-12">2. Paid By:</span>
+              {currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? (
+                <select
+                  value={selectedPaidByStaff}
+                  onChange={e => setSelectedPaidByStaff(e.target.value)}
+                  className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 max-w-xs w-full"
+                >
+                  <option value="">-- Paid By --</option>
+                  {cashHandlers.map(u => (
+                    <option key={u.id} value={u.username || u.name}>
+                      {u.name || u.username} ({u.role})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={selectedPaidByStaff}
+                  readOnly
+                  className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 max-w-xs w-full cursor-not-allowed"
+                />
+              )}
 
-              <select
-                value={settlementMethod}
-                onChange={e => setSettlementMethod(e.target.value)}
-                className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 max-w-md w-full"
-              >
-                <option value="Paid using Farm Cash (No Salary Impact)">Paid using Farm Cash (No Salary Impact)</option>
-                <option value="Paid Out of Pocket (Reimbursement Credit)">Paid Out of Pocket (Reimbursement Credit)</option>
-              </select>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                <Coins size={14} /> ₹{(kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0)).toLocaleString('en-IN')}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                  <Landmark size={14} className="text-slate-500" /> Cash:
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={settlementFarmCash}
+                  onChange={e => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setSettlementFarmCash(val);
+                    const total = kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0);
+                    if (typeof val === 'number') setSettlementOutOfPocket(Math.max(0, total - val));
+                  }}
+                  placeholder="0"
+                  className="w-20 p-1.5 border border-slate-300 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
+                  <Wallet size={14} className="text-slate-500" /> Pocket:
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={settlementOutOfPocket}
+                  onChange={e => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setSettlementOutOfPocket(val);
+                    const total = kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0);
+                    if (typeof val === 'number') setSettlementFarmCash(Math.max(0, total - val));
+                  }}
+                  placeholder="0"
+                  className="w-20 p-1.5 border border-slate-300 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </div>
 
               <button
                 onClick={handleMarkSelectedPaid}

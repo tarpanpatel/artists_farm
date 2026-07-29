@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt, Order, PettyCashEntry } from '../types';
-import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
 
 interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
@@ -37,13 +37,18 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   guests = [],
   activeMenuItemKey,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
   const [priceSearch, setPriceSearch] = useState('');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
+  const [ledgerData, setLedgerData] = useState<any[]>([]);
+  const [ledgerMonth, setLedgerMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   useEffect(() => {
     fetchExpenseItemPricesFromDB().then((prices) => {
@@ -62,6 +67,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     if (activeMenuItemKey === 'purchase_analytics') setActiveTab('expenses');
     else if (activeMenuItemKey === 'dashboard_analytics') setActiveTab('overview');
   }, [activeMenuItemKey]);
+
+  useEffect(() => {
+    if (['profit_loss', 'balance_sheet', 'cash_flow'].includes(activeTab)) {
+      fetchFinancialLedger(ledgerMonth).then(setLedgerData);
+    }
+  }, [activeTab, ledgerMonth]);
 
   const now = new Date();
   const getDateBounds = () => {
@@ -386,6 +397,36 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         >
           🛒 Expenses
         </button>
+        <button
+          onClick={() => setActiveTab('profit_loss')}
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'profit_loss'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          📊 P&L
+        </button>
+        <button
+          onClick={() => setActiveTab('balance_sheet')}
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'balance_sheet'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          ⚖️ Balance Sheet
+        </button>
+        <button
+          onClick={() => setActiveTab('cash_flow')}
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            activeTab === 'cash_flow'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          💰 Cash Flow
+        </button>
       </div>
 
       {/* TAB 1: OVERVIEW */}
@@ -659,6 +700,179 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 </table>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: PROFIT & LOSS */}
+      {activeTab === 'profit_loss' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-emerald-500 pl-2.5">
+                <BarChart3 className="w-4 h-4 text-emerald-600" /> Profit & Loss Statement
+              </h3>
+              <input
+                type="month"
+                value={ledgerMonth}
+                onChange={(e) => setLedgerMonth(e.target.value)}
+                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {(() => {
+              const income = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const expensesPL = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const netPL = income - expensesPL;
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Total Income</p>
+                      <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{income.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+                      <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">Total Expenses</p>
+                      <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{expensesPL.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className={`p-4 rounded-xl border ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
+                      <p className={`text-[10px] font-bold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? 'Profit' : 'Loss'}</p>
+                      <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400">Category</th>
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right">Amount (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {ledgerData.map((l, i) => (
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
+                            <td className={`p-2 font-mono font-bold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                        {ledgerData.length === 0 && (
+                          <tr><td colSpan={2} className="p-6 text-center text-slate-400">No ledger entries for this month.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 7: BALANCE SHEET */}
+      {activeTab === 'balance_sheet' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-purple-500 pl-2.5">
+                <Layers className="w-4 h-4 text-purple-600" /> Balance Sheet
+              </h3>
+              <input
+                type="month"
+                value={ledgerMonth}
+                onChange={(e) => setLedgerMonth(e.target.value)}
+                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {(() => {
+              const totalAssets = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const totalLiabilities = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const equity = totalAssets - totalLiabilities;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <p className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">Total Assets</p>
+                    <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{totalAssets.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+                    <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">Total Liabilities</p>
+                    <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{totalLiabilities.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Equity</p>
+                    <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{equity.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 8: CASH FLOW */}
+      {activeTab === 'cash_flow' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-cyan-500 pl-2.5">
+                <TrendingUp className="w-4 h-4 text-cyan-600" /> Cash Flow Statement
+              </h3>
+              <input
+                type="month"
+                value={ledgerMonth}
+                onChange={(e) => setLedgerMonth(e.target.value)}
+                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            {(() => {
+              const cashIn = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const cashOut = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const netCash = cashIn - cashOut;
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Cash Inflow</p>
+                      <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{cashIn.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+                      <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">Cash Outflow</p>
+                      <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{cashOut.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className={`p-4 rounded-xl border ${netCash >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
+                      <p className={`text-[10px] font-bold uppercase ${netCash >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net Cash Flow</p>
+                      <p className={`text-xl font-extrabold mt-1 ${netCash >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>{netCash >= 0 ? '+' : '-'}₹{Math.abs(netCash).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400">Entry</th>
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right">Amount (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {ledgerData.map((l, i) => (
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
+                            <td className={`p-2 font-mono font-bold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                        {ledgerData.length === 0 && (
+                          <tr><td colSpan={2} className="p-6 text-center text-slate-400">No ledger entries for this month.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

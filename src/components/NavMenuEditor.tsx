@@ -61,6 +61,31 @@ const getIconComponent = (name: string): React.ComponentType<any> => {
   return (LucideIcons as any)[name] || NavIcon;
 };
 
+// Tag synonyms so user search terms like "money" still find related icons
+const SEARCH_TAGS: Record<string, string[]> = {
+  money: ['dollar', 'banknote', 'coin', 'currency', 'wallet', 'cash', 'pay', 'receipt', 'fund', 'purse', 'treasury', 'wealth', 'finance', 'budget'],
+  save: ['floppy', 'download', 'archive', 'store', 'disk'],
+  delete: ['trash', 'remove', 'erase', 'x'],
+  add: ['plus', 'new', 'create', 'append'],
+  edit: ['pencil', 'pen', 'write', 'compose'],
+  view: ['eye', 'show', 'display', 'preview', 'visibility'],
+  search: ['find', 'lookup', 'magnify', 'scan'],
+  user: ['person', 'people', 'profile', 'account', 'member', 'staff'],
+  settings: ['gear', 'cog', 'configure', 'preferences', 'options', 'setup'],
+  home: ['house', 'dashboard'],
+  logout: ['signout', 'exit', 'leave', 'door'],
+  food: ['utensil', 'meal', 'dish', 'plate', 'restaurant', 'dining', 'eat', 'cuisine', 'cooking'],
+  drink: ['cup', 'glass', 'beverage', 'mug', 'coffee', 'tea', 'water'],
+  stock: ['inventory', 'warehouse', 'supply', 'storage', 'box'],
+  report: ['chart', 'analytics', 'statistics', 'graph', 'data', 'summary', 'statement'],
+  print: ['printer', 'receipt', 'bill'],
+  calendar: ['date', 'schedule', 'event', 'day', 'month'],
+  notification: ['bell', 'alert', 'alarm', 'reminder', 'notice'],
+  lock: ['secure', 'security', 'privacy', 'shield', 'protection', 'safety', 'password'],
+  menu: ['nav', 'navigation', 'list', 'sidebar'],
+  order: ['cart', 'purchase', 'buy', 'checkout', 'transaction', 'booking'],
+};
+
 export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   navItems,
   onUpdateNavItems,
@@ -343,8 +368,22 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const collapseAll = () => setExpandedIds(new Set());
 
   // ========== FILTERED LISTS ==========
+  const matchesSearch = (name: string, query: string) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    const nameLower = name.toLowerCase();
+    if (nameLower === q || nameLower.startsWith(q)) return true;
+    const words = name.split(/(?=[A-Z])/).map(w => w.toLowerCase());
+    if (words.some(w => w.startsWith(q))) return true;
+    // Check tag synonyms
+    const tagWords = SEARCH_TAGS[q];
+    if (tagWords) {
+      if (words.some(w => tagWords.some(t => w.startsWith(t) || w === t))) return true;
+    }
+    return false;
+  };
   const filteredIcons = ALL_LUCIDE_ICON_NAMES.filter(name =>
-    name.toLowerCase().includes(iconSearch.toLowerCase())
+    matchesSearch(name, iconSearch)
   );
   const filteredTabs = PAGE_OPTIONS.filter(p =>
     p.label.toLowerCase().includes(tabSearch.toLowerCase())
@@ -712,6 +751,29 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         <span>{items.filter(i => i.isVisible).length} visible / {items.length} total</span>
         {hasUnsaved && <span className="text-amber-600 font-bold">Unsaved changes</span>}
       </div>
+
+      {/* Floating Save Button */}
+      {hasUnsaved && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-2xl shadow-2xl transition-all cursor-pointer disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+          >
+            {isSaving ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="w-5 h-5" />
+                Save Menu
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

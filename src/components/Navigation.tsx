@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
 import { ChevronDown, ChevronRight, LogOut, Link as LinkIcon } from 'lucide-react';
 import { NavMenuItem } from '../types';
@@ -69,7 +69,43 @@ export const Navigation: React.FC<NavigationProps> = ({
   onLogout,
   navItems = [],
 }) => {
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+
+  // Auto-expand ancestors of the active item
+  useEffect(() => {
+    const findAndExpandAncestors = () => {
+      const activeItem = navItems.find(i => i.uniqueKey === activeMenuItemKey);
+      if (!activeItem) return;
+      const ancestorIds: string[] = [];
+      let current = activeItem;
+      while (current.parentId) {
+        ancestorIds.push(current.parentId);
+        const parent = navItems.find(i => i.id === current.parentId);
+        if (!parent) break;
+        current = parent;
+      }
+      if (ancestorIds.length > 0) {
+        setExpandedParents(prev => {
+          const next = new Set(prev);
+          ancestorIds.forEach(id => next.add(id));
+          return next;
+        });
+      }
+    };
+    findAndExpandAncestors();
+  }, [activeMenuItemKey, navItems]);
+
+  // Scroll active item into center of sidebar viewport
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const activeEl = document.querySelector('[data-uniquekey="' + activeMenuItemKey + '"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeMenuItemKey]);
 
   const isVisible = useCallback((allowedRoles?: string[]) => {
     if (!allowedRoles || allowedRoles.length === 0) return true;
@@ -220,11 +256,21 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     const iconSize = depth === 0 ? 'w-4 h-4' : 'w-3.5 h-3.5';
 
+    const itemKey = node.uniqueKey || node.tabKey;
+    const linkHref = node.customUrl || `#${itemKey}`;
+
     return (
-      <button
+      <a
         key={node.id}
-        onClick={() => handleTabClick({ tabKey: node.tabKey, uniqueKey: node.uniqueKey || node.tabKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab })}
-        className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : depth === 1 ? 'p-2 text-xs font-semibold' : 'p-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
+        data-uniquekey={itemKey}
+        href={linkHref}
+        target={node.openInNewTab ? '_blank' : undefined}
+        rel={node.openInNewTab ? 'noopener noreferrer' : undefined}
+        onClick={(e) => {
+          e.preventDefault();
+          handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
+        }}
+        className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'p-2.5 text-xs font-semibold' : depth === 1 ? 'p-2 text-xs font-semibold' : 'p-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
             : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
@@ -247,20 +293,27 @@ export const Navigation: React.FC<NavigationProps> = ({
             {badge.text}
           </span>
         )}
-      </button>
+      </a>
     );
   };
 
   const renderIconItem = (item: FlatNavItem, i: number) => {
     const ItemIcon = item.icon;
     const isActive = activeMenuItemKey === item.uniqueKey;
+    const linkHref = item.customUrl || `#${item.uniqueKey}`;
     return (
-      <button
+      <a
         key={`${item.uniqueKey}-${i}`}
-        onClick={() => handleTabClick(item)}
+        href={linkHref}
+        target={item.openInNewTab ? '_blank' : undefined}
+        rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+        onClick={(e) => {
+          e.preventDefault();
+          handleTabClick(item);
+        }}
         title={item.label}
         aria-label={item.label}
-        className={`relative w-10 h-10 my-0.5 flex items-center justify-center rounded-xl transition-all cursor-pointer group ${
+        className={`relative w-10 h-10 my-0.5 flex items-center justify-center rounded-xl transition-all cursor-pointer group no-underline ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs'
             : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
@@ -273,7 +326,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-gray-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
           {item.label}
         </span>
-      </button>
+      </a>
     );
   };
 

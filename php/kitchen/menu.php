@@ -295,6 +295,139 @@ function handleMenuRequests($pdo, $request_method, $action) {
             }
             break;
 
+        // ─── Recipe / BOM Engine ───
+        case 'get_recipes':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `menu_item_id` INT NOT NULL,
+                    `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
+                    `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+                    `servings` INT NOT NULL DEFAULT 1,
+                    `ingredients` JSON NOT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY `menu_item_idx` (`menu_item_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                $stmt = $pdo->query("SELECT dr.menu_item_id, dr.recipe_name, dr.yield_factor, dr.servings, dr.ingredients, COALESCE(m.name, '') AS menu_item_name
+                    FROM dish_recipes dr
+                    LEFT JOIN menu_items m ON dr.menu_item_id = m.id
+                    ORDER BY dr.updated_at DESC");
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $data = array_map(function($r) {
+                    $ings = json_decode($r['ingredients'], true) ?: [];
+                    return [
+                        'menuItemId' => (int)$r['menu_item_id'],
+                        'recipeName' => $r['recipe_name'],
+                        'yieldFactor' => (float)$r['yield_factor'],
+                        'servings' => (int)$r['servings'],
+                        'ingredients' => $ings,
+                        'menuItemName' => $r['menu_item_name'],
+                    ];
+                }, $rows);
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'save_recipe':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
+                        `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `menu_item_id` INT NOT NULL,
+                        `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
+                        `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+                        `servings` INT NOT NULL DEFAULT 1,
+                        `ingredients` JSON NOT NULL,
+                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY `menu_item_idx` (`menu_item_id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    $stmt = $pdo->prepare("INSERT INTO dish_recipes (menu_item_id, recipe_name, yield_factor, servings, ingredients)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE
+                            recipe_name = VALUES(recipe_name),
+                            yield_factor = VALUES(yield_factor),
+                            servings = VALUES(servings),
+                            ingredients = VALUES(ingredients)");
+                    $stmt->execute([
+                        (int)$input['menuItemId'],
+                        $input['recipeName'] ?? '',
+                        (float)($input['yieldFactor'] ?? 1),
+                        (int)($input['servings'] ?? 1),
+                        json_encode($input['ingredients'] ?? []),
+                    ]);
+                    echo json_encode(['status' => 'success', 'message' => 'Recipe saved successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_recipe':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM dish_recipes WHERE menu_item_id = ?");
+                    $stmt->execute([(int)$input['menuItemId']]);
+                    echo json_encode(['status' => 'success', 'message' => 'Recipe deleted successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        // ─── BOM Stock Depletion Engine ───
+        case 'deplete_stock':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $menuItemId = (int)$input['menuItemId'];
+                    $servedQty = (int)($input['quantity'] ?? 1);
+
+                    // Fetch the recipe for this menu item
+                    $stmt = $pdo->prepare("SELECT ingredients, servings FROM dish_recipes WHERE menu_item_id = ? LIMIT 1");
+                    $stmt->execute([$menuItemId]);
+                    $recipe = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$recipe) {
+                        echo json_encode(['status' => 'error', 'message' => 'No recipe found for this menu item']);
+                        break;
+                    }
+
+                    $ingredients = json_decode($recipe['ingredients'], true) ?: [];
+                    $recipeServings = max(1, (int)$recipe['servings']);
+                    $scale = $servedQty / $recipeServings;
+
+                    $deductions = [];
+                    foreach ($ingredients as $ing) {
+                        $name = $ing['name'] ?? '';
+                        $qty = (float)($ing['quantity'] ?? 0) * $scale;
+                        if (!$name || $qty <= 0) continue;
+
+                        // Deduct from req_catalog by matching item_name (case-insensitive)
+                        $upd = $pdo->prepare("UPDATE req_catalog SET current_stock = GREATEST(0, current_stock - ?) WHERE LOWER(item_name) = LOWER(?)");
+                        $upd->execute([$qty, $name]);
+
+                        $deductions[] = ['item' => $name, 'deducted' => round($qty, 3)];
+                    }
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Stock depleted successfully',
+                        'deductions' => $deductions,
+                    ]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid menu action']);

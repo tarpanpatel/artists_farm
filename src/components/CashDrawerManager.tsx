@@ -20,7 +20,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
   const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeForm, setActiveForm] = useState<'handover' | 'market_expense' | 'manual_adjustment'>('handover');
+  const [activeForm, setActiveForm] = useState<'handover' | 'manual_adjustment'>('handover');
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [handedTo, setHandedTo] = useState('');
@@ -70,11 +70,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
     const ok = await addDrawerEntryToDB(entry);
     if (ok) {
-      const typeLabel = activeForm === 'handover' ? 'Cash Handover' : activeForm === 'market_expense' ? 'Market Expense' : 'Manual Adjustment';
+      const typeLabel = activeForm === 'handover' ? 'Cash Handover' : 'Manual Adjustment';
       onLogAudit?.(`Recorded ${typeLabel}: ₹${amount} for ${staffMember.staffName}${activeForm === 'handover' ? ` (handed to ${handedTo})` : ''}`);
 
       if (onDispatchTelegram) {
-        const emoji = activeForm === 'handover' ? '🤝' : activeForm === 'market_expense' ? '🛒' : '⚙️';
+        const emoji = activeForm === 'handover' ? '🤝' : '⚙️';
         const fallbackMsg = `${emoji} <b>CASH DRAWER ${typeLabel.toUpperCase()}</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(amount).toLocaleString('en-IN')}</b>${activeForm === 'handover' ? `\n• Handed To: <b>${handedTo}</b>` : ''}${notes ? `\n• Notes: ${notes}` : ''}\n• Net Balance After: <b>₹${activeForm === 'handover' ? (staffMember.netBalance - Number(amount)).toLocaleString('en-IN') : staffMember.netBalance.toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
@@ -150,7 +150,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
         {[
           { key: 'handover' as const, label: '🤝 Handover', desc: 'Cash Given to Owner' },
-          { key: 'market_expense' as const, label: '🛒 Market Expense', desc: 'Cash Spent at Market' },
           { key: 'manual_adjustment' as const, label: '⚙️ Adjustment', desc: 'Admin Correction' },
         ].map(tab => (
           <button
@@ -172,7 +171,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-emerald-500 pl-2.5 mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && '🤝 RECORD CASH HANDOVER'}
-          {activeForm === 'market_expense' && '🛒 RECORD MARKET EXPENSE'}
           {activeForm === 'manual_adjustment' && '⚙️ MANUAL BALANCE ADJUSTMENT'}
         </h3>
 
@@ -239,7 +237,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder={activeForm === 'handover' ? 'e.g., End of day handover, shift change...' : activeForm === 'market_expense' ? 'e.g., Vegetables from local market...' : 'e.g., Correcting yesterday\'s error...'}
+              placeholder={activeForm === 'handover' ? 'e.g., End of day handover, shift change...' : 'e.g., Correcting yesterday\'s error...'}
               className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
             />
           </div>
@@ -253,7 +251,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               </div>
               {amount && Number(amount) > 0 && (
                 <div className="flex items-center justify-between text-[10px] font-bold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
-                  <span>After This {activeForm === 'handover' ? 'Handover' : activeForm === 'market_expense' ? 'Expense' : 'Adjustment'}</span>
+                  <span>After This {activeForm === 'handover' ? 'Handover' : 'Adjustment'}</span>
                   <span className="text-sm">
                     ₹{(activeForm === 'manual_adjustment'
                       ? selectedStaff.netBalance + Number(amount)
@@ -273,7 +271,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               <CheckCircle2 className="w-4 h-4" />
               <span>
                 {activeForm === 'handover' && 'RECORD HANDOVER'}
-                {activeForm === 'market_expense' && 'RECORD MARKET EXPENSE'}
                 {activeForm === 'manual_adjustment' && 'APPLY ADJUSTMENT'}
               </span>
             </button>
@@ -360,12 +357,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                       <span>-₹{s.drawerHandovers.toLocaleString('en-IN')}</span>
                     </div>
                   )}
-                  {s.marketExpenses > 0 && (
-                    <div className="flex justify-between text-purple-700 dark:text-purple-400">
-                      <span>Market Expenses</span>
-                      <span>-₹{s.marketExpenses.toLocaleString('en-IN')}</span>
-                    </div>
-                  )}
                   {s.manualAdjustments !== 0 && (
                     <div className={`flex justify-between ${s.manualAdjustments > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       <span>Adjustments</span>
@@ -419,10 +410,9 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   cell: (entry: CashDrawerEntry) => (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                      entry.type === 'market_expense' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
                       'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
                     }`}>
-                      {entry.type === 'handover' ? '🤝 Handover' : entry.type === 'market_expense' ? '🛒 Market' : '⚙️ Adjustment'}
+                      {entry.type === 'handover' ? '🤝 Handover' : '⚙️ Adjustment'}
                     </span>
                   ),
                 },

@@ -69,6 +69,10 @@ switch ($action) {
     case 'dedup_menu':
     case 'get_nav_menu':
     case 'save_nav_menu':
+    case 'get_recipes':
+    case 'save_recipe':
+    case 'delete_recipe':
+    case 'deplete_stock':
         handleMenuRequests($pdo, $request_method, $action);
         break;
 

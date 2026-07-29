@@ -37,6 +37,10 @@ export interface BillingReceipt {
   gstAmount?: number;
   gstCgst?: number;
   gstSgst?: number;
+  gstAccommodationRate?: number;
+  gstFoodRate?: number;
+  gstAccommodationAmount?: number;
+  gstFoodAmount?: number;
   discount: number;
   grandTotal: number;
   status: 'Paid' | 'Pending';
@@ -170,6 +174,18 @@ export interface AttendanceRecord {
   staffId: string;
   staffName: string;
   status: 'Present' | 'Absent' | 'Half Day' | 'Paid Leave' | 'Unpaid Leave' | string;
+  salaryStatus?: 'pending' | 'processed' | 'paid';
+}
+
+export interface SalaryEntry {
+  staffId: string;
+  staffName: string;
+  month: string;
+  presentDays: number;
+  dailyWage: number;
+  totalEarned: number;
+  advances: number;
+  netPayout: number;
 }
 
 export interface StaffAdvance {
@@ -249,7 +265,7 @@ export interface CashDrawerEntry {
   id: string | number;
   staff_id: string;
   staff_name: string;
-  type: 'handover' | 'market_expense' | 'manual_adjustment';
+  type: 'handover' | 'manual_adjustment';
   amount: number;
   handed_to?: string;
   notes?: string;
@@ -264,7 +280,6 @@ export interface CashDrawerSummary {
   cashCollected: number;
   cashExpenses: number;
   drawerHandovers: number;
-  marketExpenses: number;
   manualAdjustments: number;
   netBalance: number;
 }

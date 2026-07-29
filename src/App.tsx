@@ -17,6 +17,7 @@ import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { CustomCSSOverride } from './components/CustomCSSOverride';
 import { GlobalModal } from './components/GlobalModal';
+import { ToastProvider } from './components/ToastContext';
 import { LoginModal } from './components/LoginModal';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
@@ -1206,6 +1207,7 @@ ${itemsStr}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
+      <ToastProvider>
       {!isAuthenticated && (
         <LoginModal
           staffList={staff}
@@ -1316,6 +1318,8 @@ ${itemsStr}
               onAddGuest={handleAddGuest}
               onCheckoutGuest={handleCheckoutGuest}
               activeMenuItemKey={activeMenuItemKey}
+              onDispatchTelegram={dispatchTelegramAlert}
+              menu={menu} // Pass menu prop
             />
           )}
 
@@ -1370,6 +1374,7 @@ ${itemsStr}
               onAddEntry={handleAddPettyCash}
               onUpdateEntry={handleUpdatePettyCash}
               onDeleteEntry={handleDeletePettyCash}
+              onDispatchTelegram={dispatchTelegramAlert}
             />
           )}
 
@@ -1385,6 +1390,7 @@ ${itemsStr}
               expenses={pettyCash}
               auditLogs={auditLogs}
               onLogAudit={logAudit}
+              onDispatchTelegram={dispatchTelegramAlert}
             />
           )}
 
@@ -1399,7 +1405,10 @@ ${itemsStr}
           )}
 
           {activeTab === 'audit_logs' && (
-            <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
+            <>
+              <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
+              <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} menu={menu} />
+            </>
           )}
 
           {activeTab === 'export' && (
@@ -1460,6 +1469,7 @@ ${itemsStr}
       )}
 
       <GlobalModal />
+      </ToastProvider>
     </div>
   );
 }

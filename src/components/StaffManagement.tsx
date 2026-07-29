@@ -22,8 +22,8 @@ import {
   Key,
   Store
 } from 'lucide-react';
-import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
-import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB } from '../services/api';
+import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, SalaryEntry } from '../types';
+import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB } from '../services/api';
 
 interface StaffManagementProps {
   staff: StaffMember[];
@@ -36,6 +36,7 @@ interface StaffManagementProps {
   expenses?: any[];
   auditLogs?: any[];
   onLogAudit?: (actionText: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -49,6 +50,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   expenses,
   auditLogs,
   onLogAudit,
+  onDispatchTelegram,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
@@ -88,6 +90,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [editingPayee, setEditingPayee] = useState<PayeeEntity | null>(null);
+  const [userFormTab, setUserFormTab] = useState<'create' | 'update'>('create');
 
   // Attendance Calendar State
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -104,8 +107,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [advanceStaff, setAdvanceStaff] = useState<StaffMember | null>(null);
   const [advanceAmount, setAdvanceAmount] = useState<number>(0);
   const [advanceReason, setAdvanceReason] = useState('');
+  const [drawerSummary, setDrawerSummary] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchCashDrawerSummaryFromDB().then(data => {
+      if (Array.isArray(data)) setDrawerSummary(data);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => { localStorage.setItem('staff_advances', JSON.stringify(advances)); }, [advances]);
+
+  // Per-staff pay tracking
+  const [paidStaff, setPaidStaff] = useState<Set<string>>(new Set());
+  const [payingStaff, setPayingStaff] = useState<string | null>(null);
 
   const [searchUsers, setSearchUsers] = useState('');
   const [searchPayees, setSearchPayees] = useState('');
@@ -127,6 +141,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     };
     setAdvances((prev) => [...prev, newAdvance]);
     setIsAdvanceModalOpen(false);
+
+    // Record cash leaving the drawer + post to financial_ledger
+    addDrawerEntryToDB({
+      staff_id: advanceStaff.id,
+      staff_name: advanceStaff.name,
+      type: 'handover',
+      amount: advanceAmount,
+      notes: `Staff advance: ${newAdvance.reason}`,
+    });
+
+    if (onLogAudit) {
+      onLogAudit(`Admin gave advance of ₹${advanceAmount} to ${advanceStaff.name} (${newAdvance.reason})`);
+    }
+
+    if (onDispatchTelegram) {
+      const msg = `<b>💵 ADVANCE GIVEN</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${advanceStaff.name}\n💰 <b>Amount:</b> ₹${advanceAmount.toLocaleString('en-IN')}\n📝 <b>Reason:</b> ${newAdvance.reason}\n📅 <b>Month:</b> ${monthKey}\n━━━━━━━━━━━━━━━━`;
+      onDispatchTelegram('Staff Advance', msg, 'finance');
+    }
+
     setAdvanceStaff(null);
     setAdvanceAmount(0);
     setAdvanceReason('');
@@ -210,8 +243,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const totalEarned = Math.round(dailyWage * presentDays * 100) / 100;
     const moneyOwed = Math.round((s.monthlySalary - totalEarned) * 100) / 100;
     const staffAdvances = monthAdvances.filter((a) => a.staffId === s.id).reduce((sum, a) => sum + a.amount, 0);
-    const pendingPayout = Math.round((totalEarned - staffAdvances) * 100) / 100;
-    return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, pendingPayout };
+    const ds = drawerSummary.find(d => d.staffId === s.id || d.username === s.name || d.staffName === s.name);
+    const cashCollected = ds?.cashCollected ?? 0;
+    const handovers = ds?.drawerHandovers ?? 0;
+    const outOfPocket = ds?.outOfPocketExpenses ?? 0;
+    const netDrawer = cashCollected - handovers - outOfPocket;
+    const pendingPayout = Math.round((totalEarned - staffAdvances - netDrawer) * 100) / 100;
+    return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, cashCollected, handovers, outOfPocket, netDrawer, pendingPayout };
   });
 
   const filteredUsers = users.filter(u => !searchUsers || u.username.toLowerCase().includes(searchUsers.toLowerCase()) || u.role.toLowerCase().includes(searchUsers.toLowerCase()));
@@ -607,238 +645,248 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
           {/* RIGHT COLUMN: MANAGERIAL ENTRY FORMS (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Form 1: Create Login Staff Account */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 shadow-2xs text-xs">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
-                ➕ Create Login Staff Account
-              </h4>
-
-              <form onSubmit={handleCreateUser} className="space-y-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Username</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="Username..."
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">4-Digit Passcode PIN</label>
-                  <input
-                    type="password"
-                    required
-                    maxLength={4}
-                    value={newPasscode}
-                    onChange={(e) => setNewPasscode(e.target.value)}
-                    placeholder="••••"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
-                  <select
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                  >
-                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                  <input
-                    type="checkbox"
-                    id="isFinancialHandlerCheck"
-                    checked={newIsFinancialHandler}
-                    onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
-                    className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                  />
-                  <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                    Show in Cash Dropdowns
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Payment QR Code Image (Optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                  />
-                </div>
-
+            {/* Merged Form 1+3: Create & Update User with Tabs */}
+            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs overflow-hidden">
+              {/* Tabs */}
+              <div className="flex border-b border-slate-200 dark:border-slate-700">
                 <button
-                  type="submit"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                  onClick={() => setUserFormTab('create')}
+                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors ${
+                    userFormTab === 'create'
+                      ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500'
+                      : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                  }`}
                 >
-                  Register Staff Member
+                  ➕ Create Login Staff Account
                 </button>
-              </form>
+                <button
+                  onClick={() => setUserFormTab('update')}
+                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors ${
+                    userFormTab === 'update'
+                      ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border-b-2 border-amber-500'
+                      : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                  }`}
+                >
+                  ⚙ Update Passcode / QR Code
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="p-5">
+                {userFormTab === 'create' ? (
+                  <form onSubmit={handleCreateUser} className="space-y-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Username</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        placeholder="Username..."
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">4-Digit Passcode PIN</label>
+                      <input
+                        type="password"
+                        required
+                        maxLength={4}
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value)}
+                        placeholder="••••"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
+                      <select
+                        value={newRole}
+                        onChange={(e) => setNewRole(e.target.value as any)}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                      >
+                        {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        id="isFinancialHandlerCheck"
+                        checked={newIsFinancialHandler}
+                        onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        Show in Cash Dropdowns
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Payment QR Code Image (Optional)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    >
+                      Register Staff Member
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
+                      <select
+                        required
+                        value={selectedUpdateUserId}
+                        onChange={(e) => {
+                          const uid = e.target.value;
+                          setSelectedUpdateUserId(uid);
+                          const target = users.find((u) => u.id === uid);
+                          if (target) {
+                            setUpdateRole(target.role);
+                            setUpdateIsFinancialHandler(target.isFinancialHandler);
+                          }
+                        }}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                      >
+                        <option value="">-- Choose User Profile --</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.username} ({u.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
+                      <select
+                        value={updateRole}
+                        onChange={(e) => setUpdateRole(e.target.value as any)}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                      >
+                        <option value="">-- Keep Current Role --</option>
+                        {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 4-Digit Passcode PIN (Leave blank to keep current)</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={updatePasscode}
+                        onChange={(e) => setUpdatePasscode(e.target.value)}
+                        placeholder="••••"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        id="updateIsFinancialHandlerCheck"
+                        checked={updateIsFinancialHandler}
+                        onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        Show in Cash Dropdowns
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Replace Payment QR Code Image</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    >
+                      Apply Account Changes
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
 
-            {/* Form 2: Register Account Payee (Permanent) */}
-            <div className="bg-orange-50/60 dark:bg-orange-950/20 p-5 rounded-2xl border border-orange-200 dark:border-orange-900/60 space-y-3 shadow-2xs text-xs">
-              <h4 className="font-bold text-orange-900 dark:text-orange-300 text-sm flex items-center gap-1.5">
-                ➕ Register Account Payee (Permanent)
-              </h4>
+            {/* Form 2: Register Account Payee */}
+            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs overflow-hidden">
+              <div className="p-5 space-y-3">
+                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  ➕ Register Account Payee
+                </h4>
 
-              <form onSubmit={handleCreatePayee} className="space-y-3">
-                <div>
-                  <label className="block text-orange-900 dark:text-orange-300 font-bold mb-1">Payee Account Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newPayeeName}
-                    onChange={(e) => setNewPayeeName(e.target.value)}
-                    placeholder="e.g. Raju Grocery / Pool Supplier"
-                    className="w-full p-2.5 rounded-xl border border-orange-300 dark:border-orange-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                </div>
+                <form onSubmit={handleCreatePayee} className="space-y-3">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Payee Account Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPayeeName}
+                      onChange={(e) => setNewPayeeName(e.target.value)}
+                      placeholder="e.g. Raju Grocery / Pool Supplier"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-orange-900 dark:text-orange-300 font-bold mb-1">Classification Group</label>
-                  <select
-                    value={newPayeeType}
-                    onChange={(e) => setNewPayeeType(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl border border-orange-300 dark:border-orange-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Classification Group</label>
+                    <select
+                      value={newPayeeType}
+                      onChange={(e) => setNewPayeeType(e.target.value as any)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                    >
+                      <option value="Vendor">Business Vendor (Daily/Project Supplies)</option>
+                      <option value="Third Party">Third Party Account (Pass-Through Routing)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Upload UPI QR Image Screenshot</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setNewPayeeQrCode(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
                   >
-                    <option value="Vendor">Business Vendor (Daily/Project Supplies)</option>
-                    <option value="Third Party">Third Party Account (Pass-Through Routing)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-orange-900 dark:text-orange-300 font-bold mb-1">Upload UPI QR Image Screenshot</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setNewPayeeQrCode(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-orange-300 dark:border-orange-800"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                >
-                  Save Payee to Database Forever
-                </button>
-              </form>
-            </div>
-
-            {/* Form 3: Update Passcode / QR Code */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 shadow-2xs text-xs">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
-                ⚙ Update Passcode / QR Code
-              </h4>
-
-              <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
-                  <select
-                    required
-                    value={selectedUpdateUserId}
-                    onChange={(e) => {
-                      const uid = e.target.value;
-                      setSelectedUpdateUserId(uid);
-                      const target = users.find((u) => u.id === uid);
-                      if (target) {
-                        setUpdateRole(target.role);
-                        setUpdateIsFinancialHandler(target.isFinancialHandler);
-                      }
-                    }}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                  >
-                    <option value="">-- Choose User Profile --</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.username} ({u.role})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
-                  <select
-                    value={updateRole}
-                    onChange={(e) => setUpdateRole(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                  >
-                    <option value="">-- Keep Current Role --</option>
-                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 4-Digit Passcode PIN (Leave blank to keep current)</label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    value={updatePasscode}
-                    onChange={(e) => setUpdatePasscode(e.target.value)}
-                    placeholder="••••"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                  <input
-                    type="checkbox"
-                    id="updateIsFinancialHandlerCheck"
-                    checked={updateIsFinancialHandler}
-                    onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                    className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                  />
-                  <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                    Show in Cash Dropdowns
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Replace Payment QR Code Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                >
-                  Apply Account Changes
-                </button>
-              </form>
+                    Save Payee to Database
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -1115,12 +1163,28 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   cell: (row: any) => <span className="font-bold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
                 },
                 {
-                  name: 'Money Owed (₹)',
-                  selector: (row: any) => row.moneyOwed,
+                  name: 'Collected (₹)',
+                  selector: (row: any) => row.cashCollected,
                   sortable: true,
                   right: true,
-                  width: '130px',
-                  cell: (row: any) => <span className="font-bold text-orange-600 dark:text-orange-400">{row.moneyOwed > 0 ? `+ ₹${row.moneyOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}</span>,
+                  width: '110px',
+                  cell: (row: any) => <span className="font-bold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                },
+                {
+                  name: 'Out of Pocket (₹)',
+                  selector: (row: any) => row.outOfPocket,
+                  sortable: true,
+                  right: true,
+                  width: '120px',
+                  cell: (row: any) => <span className="font-bold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                },
+                {
+                  name: 'Handovers (₹)',
+                  selector: (row: any) => row.handovers,
+                  sortable: true,
+                  right: true,
+                  width: '110px',
+                  cell: (row: any) => <span className="font-bold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
                 },
                 {
                   name: 'Advances (₹)',
@@ -1141,12 +1205,58 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {
                   name: 'Actions',
                   center: true,
-                  width: '130px',
-                  cell: (row: any) => (
-                    <button onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }} className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1 mx-auto">
-                      <Plus className="w-3 h-3" /> Give Advance
-                    </button>
-                  ),
+                  width: '200px',
+                  cell: (row: any) => {
+                    const isPaid = paidStaff.has(row.staff.id);
+                    const isPaying = payingStaff === row.staff.id;
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
+                          className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> Advance
+                        </button>
+                        {isPaid ? (
+                          <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Paid
+                          </span>
+                        ) : (
+                          <button
+                            disabled={isPaying || row.pendingPayout <= 0}
+                            onClick={async () => {
+                              setPayingStaff(row.staff.id);
+                              const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+                              const recs = attendance.filter(a => a.staffId === row.staff.id && a.date.startsWith(monthKey));
+                              await saveAttendanceToDB(recs);
+                              const ok = await generateSalaryEntry({
+                                staffId: row.staff.id,
+                                staffName: row.staff.name,
+                                amount: row.pendingPayout,
+                                month: monthKey,
+                                description: `Salary (Auto): ${row.staff.name} - ${monthKey}`,
+                              });
+                              setPayingStaff(null);
+                              if (ok) {
+                                setPaidStaff(prev => new Set(prev).add(row.staff.id));
+                                if (onDispatchTelegram) {
+                                  const msg = `<b>💰 SALARY PAYMENT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${row.staff.name}\n📅 <b>Month:</b> ${monthKey}\n💵 <b>Amount:</b> ₹${row.pendingPayout.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+                                  onDispatchTelegram('Salary Payment', msg, 'finance');
+                                }
+                              }
+                            }}
+                            className={`font-bold text-[10px] px-2 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                              row.pendingPayout <= 0
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'
+                            }`}
+                          >
+                            {isPaying ? 'Paying...' : <><IndianRupee className="w-3 h-3" /> Pay Now</>}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  },
                 },
               ]}
               data={filteredPayout}
@@ -1538,6 +1648,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };

@@ -1,19 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useReducer } from 'react';
+import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
-import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, deleteExpenseFromDB, fetchStaffUsersFromDB } from '../services/api';
-
-const FALLBACK_EXPENSES = [
-  'Badminton racket', 'Ball', 'Bat', 'Bedsheets', 'Blanket', 'Broom', 'Brush', 'Bucket',
-  'Bulb', 'Carrom board', 'Chemical', 'Chess board', 'Cleaning Net', 'Curtains', 'Denial kit',
-  'Diesel', 'Dustpan', 'Electricity Bill', 'Extension Board', 'Fan', 'Filter', 'Gargabe bag',
-  'Glass cleaner', 'Hair dryer', 'Hardware', 'Internet', 'Light', 'MCB', 'Mop', 'Motor Repair',
-  'Paint', 'Petrol', 'Pillow Covers', 'Pipe', 'Primer', 'Pump', 'Putty', 'PVC Fittings',
-  'Roller', 'Room freshner', 'Shampoo', 'Shower', 'Soap', 'Stumps', 'Surf', 'Switch',
-  'Tap', 'Thinner', 'Toilet Brush', 'Toilet cleaner', 'Toilet Paper', 'Towels', 'Tube',
-  'Tube Light', 'Vacum', 'Wash basin', 'Washing Machine', 'Water Bill', 'Water Tank', 'Wiper', 'Wire'
-];
+import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, addExpenseToDB, updateExpenseInDB, deleteExpenseFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 
 interface PettyCashManagementProps {
   entries: PettyCashEntry[];
@@ -22,6 +11,47 @@ interface PettyCashManagementProps {
   onUpdateEntry?: (entry: PettyCashEntry) => void;
   onDeleteEntry?: (id: string) => void;
   activeRole?: string;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+}
+
+interface FormState {
+  expenseDate: string;
+  category: string;
+  description: string;
+  moreInfoNotes: string;
+  amount: number | '';
+  paymentMode: string;
+  paidBy: string;
+  showDrawerSplit: boolean;
+  drawerAmount: number | '';
+  staffAmount: number | '';
+  invoiceBillUrl: string;
+  paymentScreenshotUrl: string;
+}
+
+type FormAction =
+  | { type: 'SET_FIELD'; field: keyof FormState; value: any }
+  | { type: 'RESET_FORM' };
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'RESET_FORM':
+      return {
+        ...state,
+        description: '',
+        moreInfoNotes: '',
+        amount: '',
+        invoiceBillUrl: '',
+        paymentScreenshotUrl: '',
+        showDrawerSplit: false,
+        drawerAmount: '',
+        staffAmount: '',
+      };
+    default:
+      return state;
+  }
 }
 
 export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
@@ -30,17 +60,24 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   onAddEntry,
   onUpdateEntry,
   onDeleteEntry,
-  activeRole = 'Super Admin',
+  activeRole,
+  onDispatchTelegram,
 }) => {
-  // Form State - Default category is "Other"
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [category, setCategory] = useState<string>('Other');
-  const [description, setDescription] = useState('');
-  const [moreInfoNotes, setMoreInfoNotes] = useState('');
-  const [amount, setAmount] = useState<number | ''>('');
-  const [paymentMode, setPaymentMode] = useState<string>('Online / UPI / QR');
+  const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
+    expenseDate: new Date().toISOString().split('T')[0],
+    category: 'Other',
+    description: '',
+    moreInfoNotes: '',
+    amount: '',
+    paymentMode: 'UPI / QR',
+    paidBy: 'Tarpan',
+    showDrawerSplit: false,
+    drawerAmount: '',
+    staffAmount: '',
+    invoiceBillUrl: '',
+    paymentScreenshotUrl: '',
+  }));
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
-  const [paidBy, setPaidBy] = useState('Tarpan');
 
   useEffect(() => {
     fetchStaffUsersFromDB().then((users) => {
@@ -53,15 +90,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   }, []);
 
+  // Sync split fields when amount/visibility changes and fields are empty
+  useEffect(() => {
+    const numAmt = formState.amount === '' ? 0 : Number(formState.amount);
+    if (numAmt <= 0) return;
+    if (formState.drawerAmount === '' && formState.staffAmount === '') {
+      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: 0 });
+      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: numAmt });
+    }
+  }, [formState.amount, formState.showDrawerSplit]);
+
   // Item prices map from database
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
 
   // Expense items list from database (replaces hardcoded array)
-  const [expenseItems, setExpenseItems] = useState<string[]>(FALLBACK_EXPENSES);
-
-  // Proof Management States (Base64 URL)
-  const [invoiceBillUrl, setInvoiceBillUrl] = useState<string>('');
-  const [paymentScreenshotUrl, setPaymentScreenshotUrl] = useState<string>('');
+  const [expenseItems, setExpenseItems] = useState<string[]>([]);
 
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
@@ -120,11 +163,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          if (type === 'invoice') {
-            setInvoiceBillUrl(compressedBase64);
-          } else {
-            setPaymentScreenshotUrl(compressedBase64);
-          }
+          dispatch({ type: 'SET_FIELD', field: type === 'invoice' ? 'invoiceBillUrl' : 'paymentScreenshotUrl', value: compressedBase64 });
         }
       };
       img.src = event.target?.result as string;
@@ -134,17 +173,17 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Handle Description change with Auto-fill Price lookup
   const handleDescriptionChange = (val: string) => {
-    setDescription(val);
+    dispatch({ type: 'SET_FIELD', field: 'description', value: val });
     const trimmed = val.trim();
     if (trimmed && itemPrices[trimmed] !== undefined) {
-      setAmount(itemPrices[trimmed]);
+      dispatch({ type: 'SET_FIELD', field: 'amount', value: itemPrices[trimmed] });
     } else {
       // Check case-insensitive match
       const matchedKey = Object.keys(itemPrices).find(
         k => k.toLowerCase() === trimmed.toLowerCase()
       );
       if (matchedKey && itemPrices[matchedKey] !== undefined) {
-        setAmount(itemPrices[matchedKey]);
+        dispatch({ type: 'SET_FIELD', field: 'amount', value: itemPrices[matchedKey] });
       }
     }
   };
@@ -152,51 +191,68 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
+    if (!formState.description || !formState.amount) return;
 
     // Security Gate check for Salaries
-    if (category === 'Salaries' && activeRole !== 'Admin' && activeRole !== 'Super Admin') {
+    if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin') {
       alert('🔒 Access Denied: Only Admins or Super Admins are authorized to record Salary payments.');
       return;
     }
 
-    const finalDescription = category === 'Salaries' ? `Salary payout for ${description}` : description;
+    const finalDescription = formState.category === 'Salaries' ? `Salary payout for ${formState.description}` : formState.description;
 
     const entry: PettyCashEntry = {
       id: `pc-${Date.now().toString().slice(-4)}`,
-      date: expenseDate,
-      costCategory: category,
-      category,
+      date: formState.expenseDate,
+      costCategory: formState.category,
+      category: formState.category,
       description: finalDescription,
-      moreInfoNotes: moreInfoNotes || undefined,
-      vendor: paidBy,
-      paidBy: paidBy,
-      amount: Number(amount),
-      paymentMode,
-      invoiceBillUrl: invoiceBillUrl || undefined,
-      paymentScreenshotUrl: paymentScreenshotUrl || undefined,
+      moreInfoNotes: formState.moreInfoNotes || undefined,
+      vendor: formState.paidBy,
+      paidBy: formState.paidBy,
+      amount: Number(formState.amount),
+      paymentMode: formState.paymentMode,
+      invoiceBillUrl: formState.invoiceBillUrl || undefined,
+      paymentScreenshotUrl: formState.paymentScreenshotUrl || undefined,
       type: 'Expense'
     };
 
     onAddEntry(entry);
     addExpenseToDB(entry);
 
-    // Update item price tracking map locally
-    if (category === 'Other' && description.trim() && amount) {
-      setItemPrices(prev => ({ ...prev, [description.trim()]: Number(amount) }));
+    const handler = financialHandlers.find((h: any) => h.username === formState.paidBy);
+    if (formState.drawerAmount && Number(formState.drawerAmount) > 0) {
+      addDrawerEntryToDB({
+        staff_id: handler?.id || '',
+        staff_name: handler?.name || handler?.username || formState.paidBy,
+        type: 'handover',
+        amount: Number(formState.drawerAmount),
+        notes: `Drawer paid for ${finalDescription} (${formState.category})`,
+      });
+    }
+    if (formState.staffAmount && Number(formState.staffAmount) > 0) {
+      recordOutOfPocketCredit({
+        staff_id: handler?.id || '',
+        staff_name: handler?.name || handler?.username || formState.paidBy,
+        amount: Number(formState.staffAmount),
+        description: `Out-of-pocket for ${finalDescription} (${formState.category})`,
+      });
     }
 
-    // Cash Drawer Sync alert
-    if (paymentMode === 'Cash') {
-      alert(`[Cash Drawer Sync] Recorded cash outflow of ₹${amount}. Cash-in-hand reduced for cashier: ${paidBy}.`);
+    if (onDispatchTelegram) {
+      const d = Number(formState.drawerAmount || 0);
+      const s = Number(formState.staffAmount || 0);
+      const msg = `<b>💸 EXPENSE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📂 <b>Category:</b> ${formState.category}\n📝 <b>Description:</b> ${finalDescription}\n👤 <b>Paid By:</b> ${formState.paidBy}\n🏦 <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\n👝 <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}\n💰 <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+      onDispatchTelegram('Expense', msg, 'finance');
+    }
+
+    // Update item price tracking map locally
+    if (formState.category === 'Other' && formState.description.trim() && formState.amount) {
+      setItemPrices(prev => ({ ...prev, [formState.description.trim()]: Number(formState.amount) }));
     }
 
     // Reset Form
-    setDescription('');
-    setMoreInfoNotes('');
-    setAmount('');
-    setInvoiceBillUrl('');
-    setPaymentScreenshotUrl('');
+    dispatch({ type: 'RESET_FORM' });
   };
 
   // Double click cell to edit inline
@@ -293,8 +349,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <input
                 type="date"
                 required
-                value={expenseDate}
-                onChange={e => setExpenseDate(e.target.value)}
+                value={formState.expenseDate}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: e.target.value })}
                 onClick={e => { try { e.currentTarget.showPicker(); } catch {} }}
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold cursor-pointer"
               />
@@ -303,12 +359,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Cost Category Group</label>
               <select
-                value={category}
-                onChange={e => setCategory(e.target.value)}
+                value={formState.category}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'category', value: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
               >
                 <option value="Other">Other</option>
-                <option value="Salaries">Salaries</option>
+                <option value="Salaries">Salaries (Manual)</option>
+                <option value="Salary (Auto)">Salary (Auto)</option>
                 <option value="Bills">Bills</option>
               </select>
             </div>
@@ -316,11 +373,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           <div>
             <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Details Descriptions *</label>
-            {category === 'Salaries' ? (
+            {formState.category === 'Salaries' || formState.category === 'Salary (Auto)' ? (
               <div>
                 <select
                   required
-                  value={description}
+                  value={formState.description}
                   onChange={e => handleDescriptionChange(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
                 >
@@ -329,7 +386,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
                   ))}
                 </select>
-                {category === 'Salaries' && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
+                {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
                   <p className="text-red-500 font-semibold text-[10px] mt-1">🔒 Warning: You are not logged in as Admin. Salary submission will be blocked.</p>
                 )}
               </div>
@@ -338,7 +395,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <input
                   type="text"
                   required
-                  value={description}
+                  value={formState.description}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   onChange={e => {
@@ -353,7 +410,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 {showSuggestions && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                     {expenseItems.filter(item => 
-                      item.toLowerCase().includes(description.toLowerCase().trim())
+                      item.toLowerCase().includes(formState.description.toLowerCase().trim())
                     ).map(item => (
                       <div
                         key={item}
@@ -372,7 +429,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       </div>
                     ))}
                     {expenseItems.filter(item => 
-                      item.toLowerCase().includes(description.toLowerCase().trim())
+                      item.toLowerCase().includes(formState.description.toLowerCase().trim())
                     ).length === 0 && (
                       <div className="p-3 text-slate-400 italic text-center">
                         No matching pre-stored items found. You can still type a custom description!
@@ -387,8 +444,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div>
             <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">& More Information (If Any)</label>
             <textarea
-              value={moreInfoNotes}
-              onChange={e => setMoreInfoNotes(e.target.value)}
+              value={formState.moreInfoNotes}
+              onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
               placeholder="Optional contextual notes..."
               className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-20 font-medium"
             />
@@ -401,14 +458,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 type="number"
                 step="0.01"
                 required
-                value={amount}
-                onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                value={formState.amount}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'amount', value: e.target.value === '' ? '' : Number(e.target.value) })}
                 placeholder="e.g., 450"
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
               />
-              {description.trim() && itemPrices[description.trim()] !== undefined && (
+              {formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                  💡 Last input price auto-filled: ₹{itemPrices[description.trim()]} (Editable)
+                  💡 Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
               )}
             </div>
@@ -416,20 +473,73 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Payment Mode</label>
               <select
-                value={paymentMode}
-                onChange={e => setPaymentMode(e.target.value)}
+                value={formState.paymentMode}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
               >
-                <option value="Online / UPI / QR">Online / UPI / QR</option>
+                <option value="UPI / QR">UPI / QR</option>
                 <option value="Cash">Cash</option>
+                <option value="Mixed">Mixed</option>
               </select>
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 font-bold">
+              <input
+                type="checkbox"
+                checked={formState.showDrawerSplit}
+                onChange={e => {
+                  dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: e.target.checked });
+                }}
+              />
+              <span className="flex items-center gap-1">
+                <Landmark size={14} className="text-slate-500" /> From Cash Drawer
+              </span>
+            </label>
+
+            {formState.showDrawerSplit && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Landmark size={14} className="text-slate-500" /> Cash Drawer (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formState.drawerAmount}
+                    onChange={e => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: val });
+                      if (typeof val === 'number' && typeof formState.amount === 'number' && val <= formState.amount) {
+                        dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount - val });
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Wallet size={14} className="text-slate-500" /> Out of Pocket (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formState.staffAmount}
+                    onChange={e => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
+                      if (typeof val === 'number' && typeof formState.amount === 'number' && val <= formState.amount) {
+                        dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: formState.amount - val });
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Paid By</label>
               <select
-                value={paidBy}
-                onChange={e => setPaidBy(e.target.value)}
+                value={formState.paidBy}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
               >
                 {financialHandlers.map(h => (
@@ -451,10 +561,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <FileText className="w-4 h-4 text-slate-400" />
-                <span>{invoiceBillUrl ? '✓ Invoice Loaded (Compressed)' : 'Choose Document'}</span>
+                <span>{formState.invoiceBillUrl ? '✓ Invoice Loaded (Compressed)' : 'Choose Document'}</span>
               </div>
-              {invoiceBillUrl && (
-                <img src={invoiceBillUrl} alt="Invoice" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+              {formState.invoiceBillUrl && (
+                <img src={formState.invoiceBillUrl} alt="Invoice" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
             </div>
 
@@ -468,10 +578,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
-                <span>{paymentScreenshotUrl ? '✓ Screenshot Loaded (Compressed)' : 'Select Screenshot'}</span>
+                <span>{formState.paymentScreenshotUrl ? '✓ Screenshot Loaded (Compressed)' : 'Select Screenshot'}</span>
               </div>
-              {paymentScreenshotUrl && (
-                <img src={paymentScreenshotUrl} alt="Screenshot" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+              {formState.paymentScreenshotUrl && (
+                <img src={formState.paymentScreenshotUrl} alt="Screenshot" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
             </div>
           </div>
@@ -540,9 +650,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               selector: (entry: any) => entry.category || entry.costCategory,
               sortable: true,
               width: '120px',
-              cell: (entry: any) => (
-                <span className="bg-slate-100 dark:bg-slate-900 px-2 py-0.5 border border-slate-200 dark:border-slate-700 rounded font-bold text-[10px]">{entry.category || entry.costCategory}</span>
-              ),
+              cell: (entry: any) => {
+                const cat = entry.category || entry.costCategory || '';
+                const isAutoSalary = cat === 'Salary (Auto)' || entry.description?.startsWith('Salary (Auto):');
+                return (
+                  <span className={`px-2 py-0.5 rounded font-bold text-[10px] border ${
+                    isAutoSalary
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
+                      : cat === 'Salaries'
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'
+                      : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                  }`}>
+                    {isAutoSalary ? 'Salary (Auto)' : cat}
+                  </span>
+                );
+              },
             },
             {
               name: 'Description',
@@ -660,7 +782,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
                 >
                   <option value="Other">Other</option>
-                  <option value="Salaries">Salaries</option>
+                  <option value="Salaries">Salaries (Manual)</option>
+                  <option value="Salary (Auto)">Salary (Auto)</option>
                   <option value="Bills">Bills</option>
                 </select>
               </div>

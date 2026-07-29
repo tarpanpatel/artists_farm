@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed,
@@ -25,7 +26,8 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish } from '../services/api';
+import { SearchableSelect } from './SearchableSelect';
 import DataTable from 'react-data-table-component';
 
 interface KitchenManagementProps {
@@ -193,6 +195,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       room_number: ord.roomNumber,
     });
 
+    // BOM Stock Depletion: auto-deduct ingredients from inventory
+    const matchedMenuItem = menu.find((m) => m.name.toLowerCase() === item.name.toLowerCase());
+    if (matchedMenuItem && allRecipes[matchedMenuItem.id]) {
+      const depResult = await depleteStockForDish(matchedMenuItem.id, item.quantity);
+      if (depResult.status !== 'success') {
+        console.warn('Stock depletion warning:', depResult.message);
+      }
+    }
+
     if (onDispatchTelegram) {
       const servedVars: Record<string, string> = {
         item_name: item.name,
@@ -342,9 +353,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setActiveTab('kds');
   };
 
-  // ─── Beta Recipe Builder State ───
-  const RECIPE_STORAGE_KEY = 'artists_farm_dish_recipes';
-  const PRESET_STORAGE_KEY = 'artists_farm_recipe_presets';
+  // ─── Beta Recipe Builder State (DB-backed) ───
 
   interface RecipeIngredient {
     id: string;
@@ -371,14 +380,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [selectedRecipeMenuItemId, setSelectedRecipeMenuItemId] = useState<number>(menu[0]?.id || 0);
   const selectedRecipeMenuItem = menu.find((m) => m.id === selectedRecipeMenuItemId) || menu[0];
 
-  const loadAllRecipes = (): Record<number, DishRecipe> => {
-    try { return JSON.parse(localStorage.getItem(RECIPE_STORAGE_KEY) || '{}'); } catch { return {}; }
-  };
-  const saveAllRecipes = (all: Record<number, DishRecipe>) => {
-    localStorage.setItem(RECIPE_STORAGE_KEY, JSON.stringify(all));
-  };
-
-  const [allRecipes, setAllRecipes] = useState<Record<number, DishRecipe>>(() => loadAllRecipes());
+  const [allRecipes, setAllRecipes] = useState<Record<number, DishRecipe>>({});
   const currentRecipe: DishRecipe = allRecipes[selectedRecipeMenuItemId] || { ...defaultRecipe, recipeName: selectedRecipeMenuItem?.name || '' };
 
   const [recipeName, setRecipeName] = useState(currentRecipe.recipeName);
@@ -387,9 +389,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>(currentRecipe.ingredients);
   const [editingRecipeName, setEditingRecipeName] = useState(false);
   const [tempRecipeName, setTempRecipeName] = useState('');
+  const [recipeDirty, setRecipeDirty] = useState(false);
 
   const [presets, setPresets] = useState<RecipePreset[]>(() => {
-    try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('artists_farm_recipe_presets') || '[]'); } catch { return []; }
   });
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
@@ -401,24 +404,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [selectedStockItemId, setSelectedStockItemId] = useState('');
   const [recipeSearch, setRecipeSearch] = useState('');
 
-  // Persist recipe on every change
+  // Load recipes from DB on mount
   useEffect(() => {
-    if (!selectedRecipeMenuItemId) return;
-    setAllRecipes((prev) => ({
-      ...prev,
-      [selectedRecipeMenuItemId]: {
-        recipeName: recipeName || selectedRecipeMenuItem?.name || '',
-        yieldFactor,
-        servings,
-        ingredients: recipeIngredients,
-      },
-    }));
-  }, [recipeName, yieldFactor, servings, recipeIngredients, selectedRecipeMenuItemId]);
-
-  // Save to localStorage whenever allRecipes changes
-  useEffect(() => {
-    saveAllRecipes(allRecipes);
-  }, [allRecipes]);
+    fetchRecipesFromDB().then((recipes) => {
+      const map: Record<number, DishRecipe> = {};
+      for (const r of recipes) {
+        map[r.menuItemId] = {
+          recipeName: r.recipeName || '',
+          yieldFactor: r.yieldFactor || 1,
+          servings: r.servings || 1,
+          ingredients: r.ingredients || [],
+        };
+      }
+      setAllRecipes(map);
+    });
+  }, []);
 
   // Load recipe when switching dishes
   useEffect(() => {
@@ -437,9 +437,30 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setEditingRecipeName(false);
   }, [selectedRecipeMenuItemId]);
 
+  // Track dirty state when recipe fields change
+  useEffect(() => {
+    setRecipeDirty(true);
+  }, [recipeName, yieldFactor, servings, recipeIngredients]);
+
+  // Debounced save to DB
+  useEffect(() => {
+    if (!recipeDirty || !selectedRecipeMenuItemId) return;
+    const timer = setTimeout(() => {
+      saveRecipeToDB({
+        menuItemId: selectedRecipeMenuItemId,
+        recipeName: recipeName || selectedRecipeMenuItem?.name || '',
+        yieldFactor,
+        servings,
+        ingredients: recipeIngredients,
+      });
+      setRecipeDirty(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [recipeName, yieldFactor, servings, recipeIngredients, recipeDirty, selectedRecipeMenuItemId]);
+
   // Save presets to localStorage
   useEffect(() => {
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+    localStorage.setItem('artists_farm_recipe_presets', JSON.stringify(presets));
   }, [presets]);
 
   const handleStockItemSelect = (itemId: string) => {
@@ -1573,7 +1594,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 noHeader
                 customStyles={{
                   headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', backgroundColor: '#f8fafc', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '12px', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '10px', paddingLeft: '12px' } },
                   rows: { style: { minHeight: '44px' } },
                 }}
                 noDataComponent={
@@ -1682,16 +1703,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Dish:</span>
-                <select
-                  value={selectedRecipeMenuItemId}
-                  onChange={(e) => setSelectedRecipeMenuItemId(Number(e.target.value))}
-                  className="p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-700 cursor-pointer"
-                >
-                  {menu.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name} — ₹{m.price}</option>
-                  ))}
-                </select>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">Dish:</span>
+                <SearchableSelect
+                  value={String(selectedRecipeMenuItemId)}
+                  onChange={(val) => setSelectedRecipeMenuItemId(Number(val))}
+                  placeholder="Search dishes..."
+                  inputClassName="p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-700 w-72"
+                  dropdownClassName="border-indigo-200 dark:border-indigo-700"
+                  options={menu.map(m => ({
+                    value: String(m.id),
+                    label: `${m.name} — ₹${m.price}`,
+                  }))}
+                />
               </div>
             </div>
           </div>
@@ -1810,6 +1833,42 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
           </div>
 
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {allRecipes[selectedRecipeMenuItemId] && (
+              <>
+                <button
+                  onClick={async () => {
+                    if (confirm(`Delete recipe for "${selectedRecipeMenuItem?.name}"?`)) {
+                      await deleteRecipeFromDB(selectedRecipeMenuItemId);
+                      setAllRecipes((prev) => { const n = { ...prev }; delete n[selectedRecipeMenuItemId]; return n; });
+                      setRecipeIngredients([]);
+                      setRecipeName(selectedRecipeMenuItem?.name || '');
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" /> Delete Recipe
+                </button>
+                <button
+                  onClick={async () => {
+                    const qty = prompt(`Deplete stock for how many servings of "${selectedRecipeMenuItem?.name}"?`, '1');
+                    if (!qty || isNaN(Number(qty))) return;
+                    const res = await depleteStockForDish(selectedRecipeMenuItemId, Number(qty));
+                    if (res.status === 'success') {
+                      alert(`✅ Stock depleted: ${res.deductions?.length || 0} ingredients deducted.`);
+                    } else {
+                      alert(`⚠️ ${res.message || 'No recipe found for this dish.'}`);
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 rounded-lg cursor-pointer transition-colors"
+                >
+                  <Scale className="w-3 h-3" /> Deplete Stock (Manual)
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             {/* Ingredients Table */}
@@ -1918,19 +1977,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">From Kitchen Stock</label>
                   {inventory && inventory.length > 0 ? (
-                    <select
+                    <SearchableSelect
                       required
                       value={selectedStockItemId}
-                      onChange={(e) => handleStockItemSelect(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">-- Choose Ingredient --</option>
-                      {inventory.filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category)).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} ({item.category}) — {item.currentStock} {item.unit}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => handleStockItemSelect(val)}
+                      placeholder="-- Choose Ingredient --"
+                      inputClassName="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                      dropdownClassName="border-slate-200 dark:border-slate-600"
+                      options={inventory
+                        .filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category))
+                        .map(item => ({
+                          value: item.id,
+                          label: `${item.name} (${item.category}) — ${item.currentStock} ${item.unit}`,
+                        }))}
+                    />
                   ) : (
                     <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[11px]">
                       No stock items. Add raw materials in <strong>Edit Kitchen Stock</strong> first.

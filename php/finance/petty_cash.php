@@ -333,7 +333,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
                     `staff_id` VARCHAR(50) NOT NULL,
                     `staff_name` VARCHAR(150) NOT NULL,
-                    `type` ENUM('handover','market_expense','manual_adjustment') NOT NULL,
+                    `type` ENUM('handover','manual_adjustment') NOT NULL,
                     `amount` DECIMAL(10,2) NOT NULL,
                     `handed_to` VARCHAR(150) DEFAULT NULL,
                     `notes` TEXT DEFAULT NULL,
@@ -373,7 +373,6 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     // Step 4: Handovers and adjustments from cash_drawer_entries
                     $handoverTotal = 0;
                     $adjustmentTotal = 0;
-                    $marketExpenseTotal = 0;
                     try {
                         $stmtHand = $pdo->prepare("SELECT type, COALESCE(SUM(amount), 0) as total FROM cash_drawer_entries WHERE staff_id = ? GROUP BY type");
                         $stmtHand->execute([$staffId]);
@@ -381,11 +380,18 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         foreach ($rows as $r) {
                             if ($r['type'] === 'handover') $handoverTotal = (float)$r['total'];
                             if ($r['type'] === 'manual_adjustment') $adjustmentTotal = (float)$r['total'];
-                            if ($r['type'] === 'market_expense') $marketExpenseTotal = (float)$r['total'];
                         }
                     } catch (PDOException $e) {}
 
-                    $netBalance = $cashIn - $cashOut - $handoverTotal - $marketExpenseTotal + $adjustmentTotal;
+                    // Step 5: Out-of-pocket kitchen purchases
+                    $outOfPocketTotal = 0;
+                    try {
+                        $stmtOop = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM kitchen_purchases_log WHERE paid_by_staff = ? AND settlement_method = 'Paid Out of Pocket'");
+                        $stmtOop->execute([$staffName]);
+                        $outOfPocketTotal = (float)$stmtOop->fetchColumn();
+                    } catch (PDOException $e) {}
+
+                    $netBalance = $cashIn - $cashOut - $handoverTotal + $adjustmentTotal;
 
                     $summaries[] = [
                         'staffId' => $staffId,
@@ -395,8 +401,8 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         'cashCollected' => round($cashIn, 2),
                         'cashExpenses' => round($cashOut, 2),
                         'drawerHandovers' => round($handoverTotal, 2),
-                        'marketExpenses' => round($marketExpenseTotal, 2),
                         'manualAdjustments' => round($adjustmentTotal, 2),
+                        'outOfPocketExpenses' => round($outOfPocketTotal, 2),
                         'netBalance' => round($netBalance, 2),
                     ];
                 }
@@ -415,7 +421,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
                         `staff_id` VARCHAR(50) NOT NULL,
                         `staff_name` VARCHAR(150) NOT NULL,
-                        `type` ENUM('handover','market_expense','manual_adjustment') NOT NULL,
+                        `type` ENUM('handover','manual_adjustment') NOT NULL,
                         `amount` DECIMAL(10,2) NOT NULL,
                         `handed_to` VARCHAR(150) DEFAULT NULL,
                         `notes` TEXT DEFAULT NULL,
@@ -460,7 +466,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
                     `staff_id` VARCHAR(50) NOT NULL,
                     `staff_name` VARCHAR(150) NOT NULL,
-                    `type` ENUM('handover','market_expense','manual_adjustment') NOT NULL,
+                    `type` ENUM('handover','manual_adjustment') NOT NULL,
                     `amount` DECIMAL(10,2) NOT NULL,
                     `handed_to` VARCHAR(150) DEFAULT NULL,
                     `notes` TEXT DEFAULT NULL,
@@ -477,7 +483,13 @@ function handleFinanceRequests($pdo, $request_method, $action) {
         case 'get_financial_ledger':
             try {
                 ensureFinancialLedger($pdo);
-                $stmt = $pdo->query("SELECT * FROM financial_ledger ORDER BY occurred_at DESC, id DESC LIMIT 1000");
+                $month = $_GET['month'] ?? '';
+                if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE DATE_FORMAT(occurred_at, '%Y-%m') = ? ORDER BY occurred_at DESC, id DESC");
+                    $stmt->execute([$month]);
+                } else {
+                    $stmt = $pdo->query("SELECT * FROM financial_ledger ORDER BY occurred_at DESC, id DESC LIMIT 1000");
+                }
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -502,6 +514,27 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     'description' => $input['description'] ?? '',
                 ]);
                 echo json_encode(['status' => 'success', 'id' => $paymentId]);
+            }
+            break;
+
+        case 'record_out_of_pocket':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $creditId = 'oop-' . uniqid();
+                postFinancialLedger($pdo, [
+                    'entry_key' => 'out_of_pocket:' . $creditId,
+                    'direction' => 'credit',
+                    'amount' => $input['amount'] ?? 0,
+                    'category' => 'Out of Pocket Reimbursement',
+                    'payment_method' => 'Cash',
+                    'party_type' => 'staff',
+                    'party_id' => $input['staff_id'] ?? '',
+                    'party_name' => $input['staff_name'] ?? '',
+                    'source_type' => 'out_of_pocket',
+                    'source_id' => $creditId,
+                    'description' => $input['description'] ?? 'Kitchen purchase paid out of pocket',
+                ]);
+                echo json_encode(['status' => 'success', 'id' => $creditId]);
             }
             break;
 

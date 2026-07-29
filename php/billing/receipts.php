@@ -32,6 +32,10 @@ function handleReceiptRequests($pdo, $request_method, $action) {
             `gst_amount` DECIMAL(10,2) DEFAULT 0,
             `gst_cgst` DECIMAL(10,2) DEFAULT 0,
             `gst_sgst` DECIMAL(10,2) DEFAULT 0,
+            `gst_accommodation_rate` DECIMAL(5,2) DEFAULT 0,
+            `gst_food_rate` DECIMAL(5,2) DEFAULT 0,
+            `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0,
+            `gst_food_amount` DECIMAL(10,2) DEFAULT 0,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         // Auto-add GST columns on older schemas
@@ -40,6 +44,10 @@ function handleReceiptRequests($pdo, $request_method, $action) {
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_rate`"); } catch (PDOException $e) {}
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_cgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_amount`"); } catch (PDOException $e) {}
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_sgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_cgst`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_sgst`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_accommodation_rate`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_food_rate`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_accommodation_amount`"); } catch (PDOException $e) {}
     } catch (PDOException $e) {}
 
     switch ($action) {
@@ -64,7 +72,7 @@ function handleReceiptRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst)");
+                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount)");
                     $stmt->execute([
                         $input['id'] ?? 'REC-' . time(),
                         $input['guestId'] ?? '',
@@ -89,7 +97,11 @@ function handleReceiptRequests($pdo, $request_method, $action) {
                         floatval($input['gstRate'] ?? 0),
                         floatval($input['gstAmount'] ?? 0),
                         floatval($input['gstCgst'] ?? 0),
-                        floatval($input['gstSgst'] ?? 0)
+                        floatval($input['gstSgst'] ?? 0),
+                        floatval($input['gstAccommodationRate'] ?? 0),
+                        floatval($input['gstFoodRate'] ?? 0),
+                        floatval($input['gstAccommodationAmount'] ?? 0),
+                        floatval($input['gstFoodAmount'] ?? 0)
                     ]);
 
                     // Record only the settlement collected at checkout. Registration

@@ -32,6 +32,7 @@ interface GuestManagementProps {
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   activeMenuItemKey?: string;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
 }
 
 // Full menu dish catalog matching the PHP script dropdown
@@ -141,6 +142,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onAddGuest,
   onCheckoutGuest,
   activeMenuItemKey,
+  onDispatchTelegram,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -270,9 +272,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     localStorage.removeItem(getRemovedKey(guestId));
   };
 
-  // GST optional toggle
+  // GST optional toggle — rate auto-detected from room tariff slab
   const [gstEnabled, setGstEnabled] = useState(false);
-  const [gstRate, setGstRate] = useState(18);
+  const getGstSlab = (rate: number): number => {
+    if (rate <= 1000) return 5;
+    if (rate <= 2500) return 12;
+    if (rate <= 5000) return 18;
+    return 28;
+  };
+  const gstAccommodationRate = getGstSlab(baseLodging);
+  const gstFoodRate = 5;
 
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -330,7 +339,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const incidentalsSubtotal = foodTotal;
   const lodgingPendingDue = Math.max(0, baseLodging - advancePaid);
   const preGstTotal = Math.max(0, lodgingPendingDue + foodTotal + netAdjustments);
-  const gstAmount = gstEnabled ? Math.round(preGstTotal * gstRate) / 100 : 0;
+  const gstAccommodationAmount = gstEnabled ? Math.round((lodgingPendingDue + netAdjustments) * gstAccommodationRate) / 100 : 0;
+  const gstFoodAmount = gstEnabled ? Math.round(foodTotal * gstFoodRate) / 100 : 0;
+  const gstAmount = gstAccommodationAmount + gstFoodAmount;
   const gstCgst = gstAmount / 2;
   const gstSgst = gstAmount / 2;
   const grandTargetDue = preGstTotal + gstAmount;
@@ -509,10 +520,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           discount: discounts,
           grandTotal: grandTargetDue,
           gstEnabled,
-          gstRate,
+          gstRate: gstAccommodationRate,
           gstAmount,
           gstCgst,
           gstSgst,
+          gstAccommodationRate,
+          gstFoodRate,
+          gstAccommodationAmount,
+          gstFoodAmount,
           status: 'Paid',
           paidAt: `${checkoutDateStr} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
           paymentMethod: primaryMode,
@@ -522,6 +537,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         };
 
         onCheckoutGuest(receipt);
+
+        if (onDispatchTelegram) {
+          const modes = splitRows.map(r => `${r.mode}: ₹${r.amount.toLocaleString('en-IN')}`).join(', ');
+          const msg = `<b>🧾 GUEST CHECKOUT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> ${receipt.guestName}\n🏠 <b>Room:</b> ${receipt.roomNumber}\n🏨 <b>Lodging:</b> ₹${(receipt.roomTotal || 0).toLocaleString('en-IN')}\n🍽 <b>Food:</b> ₹${(receipt.kitchenTotal || 0).toLocaleString('en-IN')}\n📋 <b>Misc:</b> ₹${(receipt.miscTotal || 0).toLocaleString('en-IN')}\n💳 <b>Payment:</b> ${modes}\n💰 <b>Grand Total:</b> ₹${receipt.grandTotal.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+          onDispatchTelegram('Guest Checkout Settlement', msg, 'finance');
+        }
+
         window.alert(`✅ Settlement completed for ${currentGuest.guestName}! Receipt generated.`);
         window.location.hash = '#dashboard';
       }
@@ -716,7 +738,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <label className="block mb-1">Advance Received By *</label>
                 <select required className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
                   <option value="">-- Select Staff/User --</option>
-                  {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  {staff.filter(s => s.isFinancialHandler).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
               </div>
             </div>
@@ -730,7 +752,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <label className="block mb-1">Pending Received By</label>
                 <select className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
                   <option value="">-- Select Staff/User --</option>
-                  {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  {staff.filter(s => s.isFinancialHandler).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
               </div>
             </div>
@@ -1167,7 +1189,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <span>-₹{discounts.toFixed(2)}</span>
                       </div>
                     )}
-                    {/* GST Toggle & Rate */}
+                    {/* GST Toggle — rate auto-detected from room tariff slab */}
                     <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-1.5">
                       <div className="flex items-center gap-2">
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -1182,28 +1204,34 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <span className="font-bold text-slate-600 text-[11px]">Apply GST</span>
                       </div>
                       {gstEnabled && (
-                        <select
-                          value={gstRate}
-                          onChange={(e) => setGstRate(Number(e.target.value))}
-                          className="text-xs font-bold border border-slate-300 rounded-md px-2 py-0.5 bg-white"
-                        >
-                          <option value={0}>0%</option>
-                          <option value={5}>5%</option>
-                          <option value={12}>12%</option>
-                          <option value={18}>18%</option>
-                          <option value={28}>28%</option>
-                        </select>
+                        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          Acc: {gstAccommodationRate}% | Food: 5%
+                        </span>
                       )}
                     </div>
                     {gstEnabled && gstAmount > 0 && (
                       <>
+                        <div className="border-t border-dashed border-slate-100 pt-1 mb-1" />
+                        <div className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">Item-wise GST</div>
                         <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
-                          <span>CGST @ {gstRate / 2}%:</span>
-                          <span>₹{gstCgst.toFixed(2)}</span>
+                          <span>Accommodation GST @ {gstAccommodationRate}%:</span>
+                          <span>₹{gstAccommodationAmount.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
-                          <span>SGST @ {gstRate / 2}%:</span>
-                          <span>₹{gstSgst.toFixed(2)}</span>
+                        {foodTotal > 0 && (
+                          <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
+                            <span>Food GST @ {gstFoodRate}%:</span>
+                            <span>₹{gstFoodAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-dashed border-slate-200 pt-1 mt-1">
+                          <div className="flex justify-between items-center text-blue-700 font-bold text-[11px]">
+                            <span>Total CGST @ 50%:</span>
+                            <span>₹{gstCgst.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-blue-700 font-bold text-[11px]">
+                            <span>Total SGST @ 50%:</span>
+                            <span>₹{gstSgst.toFixed(2)}</span>
+                          </div>
                         </div>
                       </>
                     )}
@@ -1625,19 +1653,31 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
               )}
 
-              {/* GST Breakdown */}
+              {/* GST Breakdown — item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
                   <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     Tax Breakdown (GST)
                   </div>
                   <div className="flex justify-between text-black text-[11px]">
-                    <span>CGST @ {gstRate / 2}%:</span>
-                    <span>₹{gstCgst.toFixed(2)}</span>
+                    <span>Accommodation @ {gstAccommodationRate}%:</span>
+                    <span>₹{gstAccommodationAmount.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-black text-[11px]">
-                    <span>SGST @ {gstRate / 2}%:</span>
-                    <span>₹{gstSgst.toFixed(2)}</span>
+                  {gstFoodAmount > 0 && (
+                    <div className="flex justify-between text-black text-[11px]">
+                      <span>Food @ {gstFoodRate}%:</span>
+                      <span>₹{gstFoodAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-dashed border-slate-300 pt-1">
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>CGST (50% split):</span>
+                      <span>₹{gstCgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>SGST (50% split):</span>
+                      <span>₹{gstSgst.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               )}

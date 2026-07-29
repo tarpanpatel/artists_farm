@@ -715,6 +715,10 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
         gstAmount: Number(r.gst_amount || 0),
         gstCgst: Number(r.gst_cgst || 0),
         gstSgst: Number(r.gst_sgst || 0),
+        gstAccommodationRate: Number(r.gst_accommodation_rate || 0),
+        gstFoodRate: Number(r.gst_food_rate || 0),
+        gstAccommodationAmount: Number(r.gst_accommodation_amount || 0),
+        gstFoodAmount: Number(r.gst_food_amount || 0),
       }));
     }
   } catch (err) {
@@ -1104,6 +1108,164 @@ export async function addServedLogToDB(log: {
   } catch (err) {
     console.error('Failed to add served log:', err);
     return false;
+  }
+}
+
+export async function saveAttendanceToDB(records: any[]): Promise<boolean> {
+  try {
+    for (const rec of records) {
+      await apiFetch(`${API_BASE}?action=log_attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: rec.date,
+          staffId: rec.staffId,
+          status: rec.status,
+          marked_by: 'Admin',
+        }),
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to save attendance:', err);
+    return false;
+  }
+}
+
+export async function generateSalaryEntry(data: {
+  staffId: string;
+  staffName: string;
+  amount: number;
+  month: string;
+  description: string;
+}): Promise<boolean> {
+  try {
+    // Create PettyCash entry
+    const pet = await apiFetch(`${API_BASE}?action=add_petty_cash`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: data.month + '-01',
+        category: 'Salaries',
+        description: data.description,
+        amount: data.amount,
+        paymentMode: 'Bank Transfer',
+        vendor: data.staffName,
+        paidBy: 'Admin',
+        type: 'Expense',
+      }),
+    });
+    const petJson = await pet.json();
+    // Post to financial ledger
+    await apiFetch(`${API_BASE}?action=record_salary_payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payment_id: `salary-${data.staffId}-${data.month}`,
+        staff_id: data.staffId,
+        staff_name: data.staffName,
+        amount: data.amount,
+        description: data.description,
+        payment_method: 'Bank Transfer',
+      }),
+    });
+    return petJson.status === 'success';
+  } catch (err) {
+    console.error('Failed to generate salary entry:', err);
+    return false;
+  }
+}
+
+export async function fetchFinancialLedger(month: string): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_financial_ledger&month=${month}`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch financial ledger:', err);
+  }
+  return [];
+}
+
+export async function recordOutOfPocketCredit(entry: {
+  staff_id: string;
+  staff_name: string;
+  amount: number;
+  description?: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=record_out_of_pocket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to record out-of-pocket credit:', err);
+    return false;
+  }
+}
+
+export async function fetchRecipesFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_recipes`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch recipes:', err);
+  }
+  return [];
+}
+
+export async function saveRecipeToDB(recipe: {
+  menuItemId: number;
+  recipeName: string;
+  yieldFactor: number;
+  servings: number;
+  ingredients: { id: string; name: string; quantity: number; unit: string; costPerUnit: number }[];
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=save_recipe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(recipe),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to save recipe:', err);
+    return false;
+  }
+}
+
+export async function deleteRecipeFromDB(menuItemId: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_recipe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menuItemId }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete recipe:', err);
+    return false;
+  }
+}
+
+export async function depleteStockForDish(menuItemId: number, quantity: number): Promise<any> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=deplete_stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menuItemId, quantity }),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    console.error('Failed to deplete stock:', err);
+    return { status: 'error', message: String(err) };
   }
 }
 

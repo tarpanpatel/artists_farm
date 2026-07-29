@@ -1,4 +1,5 @@
 import React from 'react';
+import * as LucideIcons from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
@@ -32,6 +33,11 @@ import {
   User,
   Wallet,
   HelpCircle,
+  ScrollText,
+  Grid,
+  Bot,
+  Settings,
+  Navigation as NavIcon,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -67,6 +73,11 @@ const iconMap: Record<string, React.ElementType> = {
   ShieldAlert,
   User,
   Wallet,
+  ScrollText,
+  Grid,
+  Bot,
+  Settings,
+  NavIcon,
 };
 
 interface DynamicIconProps {
@@ -75,10 +86,10 @@ interface DynamicIconProps {
 }
 
 export const DynamicIcon: React.FC<DynamicIconProps> = ({ name, className = 'w-4 h-4' }) => {
-  const IconComponent = iconMap[name] || HelpCircle;
+  const IconComponent = iconMap[name] || (LucideIcons as any)[name] || HelpCircle;
   return <IconComponent className={className} />;
 };
 
 export const getIconComponent = (name: string): React.ElementType => {
-  return iconMap[name] || HelpCircle;
+  return iconMap[name] || (LucideIcons as any)[name] || HelpCircle;
 };
