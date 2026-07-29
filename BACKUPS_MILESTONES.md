@@ -27,7 +27,8 @@ git checkout main
 | Date | Tag / Branch | Description |
 |------|-------------|-------------|
 | 2026-07-28 | `style-audit-baseline-2026-07-28` | Style audit baseline |
-| 2026-07-29 | `milestone-single-property` / `backup-single-property` | Single-property complete. Recipe Builder + BOM Stock Depletion Engine, Telegram notifications for all money transactions, searchable dropdowns, merged Create/Update user forms, Staff Advances ledger fix |
+| 2026-07-29 | `milestone-single-property` / `backup-single-property` | Single-property stable. Recipe Builder + BOM Stock Depletion Engine, Telegram notifications, searchable dropdowns, merged Create/Update user forms, Staff Advances ledger fix |
+| 2026-07-29 (v2) | `milestone-single-property` (re-tagged) / `multi` / `db-purity` | Global Toast system (`ToastContext.tsx` + `ToastProvider`), PettyCash `useReducer` refactor + `FALLBACK_EXPENSES` removed, KitchenManagement POS categories + KDS helpers + Staff Meals reducer, AuditLogsView fragment fix |
 
 ## What's in `backup-single-property`
 
