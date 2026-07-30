@@ -335,7 +335,7 @@ $allModules = getAllModules($pdo);
                         </div>
                         <div class="tenant-actions">
                             <button class="btn btn-primary btn-sm" onclick="impersonateTenant(<?php echo (int)$t['id']; ?>, '<?php echo htmlspecialchars($t['slug']); ?>')">📊 Dashboard</button>
-                            <button class="btn btn-secondary btn-sm" onclick="editTenant(<?php echo (int)$t['id']; ?>, event)" data-name="<?php echo htmlspecialchars($t['name']); ?>" data-owner-name="<?php echo htmlspecialchars($t['owner_name'] ?? ''); ?>" data-owner-email="<?php echo htmlspecialchars($t['owner_email'] ?? ''); ?>" data-plan="<?php echo htmlspecialchars($t['subscription_plan']); ?>">Edit</button>
+                            <button class="btn btn-secondary btn-sm" onclick="editTenant(<?php echo (int)$t['id']; ?>, event)" data-tenant-id="<?php echo (int)$t['id']; ?>" data-name="<?php echo htmlspecialchars($t['name']); ?>" data-owner-name="<?php echo htmlspecialchars($t['owner_name'] ?? ''); ?>" data-owner-email="<?php echo htmlspecialchars($t['owner_email'] ?? ''); ?>" data-plan="<?php echo htmlspecialchars($t['subscription_plan']); ?>" data-max-properties="<?php echo (int)($t['max_properties'] ?? 5); ?>" data-max-users="<?php echo (int)($t['max_users'] ?? 10); ?>">Edit</button>
                             <?php if ($t['is_active']): ?>
                                 <button class="btn btn-danger btn-sm" onclick="deactivateTenant(<?php echo (int)$t['id']; ?>)">Deactivate</button>
                             <?php else: ?>
@@ -420,6 +420,14 @@ $allModules = getAllModules($pdo);
                     <option value="pro">Pro</option>
                     <option value="enterprise">Enterprise</option>
                 </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Max Properties</label>
+                <input type="number" id="tenantMaxProperties" class="form-input" value="5" min="1">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Max Users</label>
+                <input type="number" id="tenantMaxUsers" class="form-input" value="10" min="1">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('createTenantModal')">Cancel</button>
@@ -528,7 +536,18 @@ $allModules = getAllModules($pdo);
 
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-        function openCreateTenantModal() { openModal('createTenantModal'); }
+        function openCreateTenantModal() {
+            document.getElementById('tenantName').value = '';
+            document.getElementById('tenantName').dataset.tenantId = '';
+            document.getElementById('tenantSlug').value = '';
+            document.getElementById('tenantOwnerName').value = '';
+            document.getElementById('tenantOwnerEmail').value = '';
+            document.getElementById('tenantPlan').value = 'free';
+            document.getElementById('tenantMaxProperties').value = '5';
+            document.getElementById('tenantMaxUsers').value = '10';
+            document.getElementById('createTenantModal').querySelector('.modal-header span').textContent = 'Create New Tenant';
+            openModal('createTenantModal');
+        }
         function openCreatePropertyModal(tenantId) {
             document.getElementById('propertyModalTitle').textContent = 'Add New Property';
             document.getElementById('propertyId').value = '';
@@ -548,19 +567,41 @@ $allModules = getAllModules($pdo);
             const name = document.getElementById('tenantName').value.trim();
             const slug = document.getElementById('tenantSlug').value.trim();
             if (!name || !slug) { alert('Name and slug are required'); return; }
-            post('create_tenant', { name, slug, owner_name: document.getElementById('tenantOwnerName').value.trim(), owner_email: document.getElementById('tenantOwnerEmail').value.trim(), subscription_plan: document.getElementById('tenantPlan').value }).then(data => {
-                if (data.success && data.admin_username) { alert(data.message + '\n\nSuper Admin:\nUsername: ' + data.admin_username + '\nPassword: ' + data.admin_temp_password); location.reload(); }
-                else { alert(data.message); if (data.success) location.reload(); }
-            });
+            const tenantId = document.getElementById('tenantName').dataset.tenantId;
+            const payload = {
+                name,
+                slug,
+                owner_name: document.getElementById('tenantOwnerName').value.trim(),
+                owner_email: document.getElementById('tenantOwnerEmail').value.trim(),
+                subscription_plan: document.getElementById('tenantPlan').value,
+                max_properties: parseInt(document.getElementById('tenantMaxProperties').value) || 5,
+                max_users: parseInt(document.getElementById('tenantMaxUsers').value) || 10
+            };
+            if (tenantId) {
+                payload.tenant_id = tenantId;
+                post('edit_tenant', payload).then(data => {
+                    alert(data.message);
+                    if (data.success) location.reload();
+                });
+            } else {
+                post('create_tenant', payload).then(data => {
+                    if (data.success && data.admin_username) { alert(data.message + '\n\nSuper Admin:\nUsername: ' + data.admin_username + '\nPassword: ' + data.admin_temp_password); location.reload(); }
+                    else { alert(data.message); if (data.success) location.reload(); }
+                });
+            }
         }
 
         function editTenant(tenantId, event) {
             const btn = event.target;
             document.getElementById('tenantName').value = btn.dataset.name;
+            document.getElementById('tenantName').dataset.tenantId = btn.dataset.tenantId;
             document.getElementById('tenantSlug').value = btn.dataset.name.toLowerCase().replace(/\s+/g, '-');
             document.getElementById('tenantOwnerName').value = btn.dataset.ownerName;
             document.getElementById('tenantOwnerEmail').value = btn.dataset.ownerEmail;
             document.getElementById('tenantPlan').value = btn.dataset.plan;
+            document.getElementById('tenantMaxProperties').value = btn.dataset.maxProperties || 5;
+            document.getElementById('tenantMaxUsers').value = btn.dataset.maxUsers || 10;
+            document.getElementById('createTenantModal').querySelector('.modal-header span').textContent = 'Edit Tenant';
             openModal('createTenantModal');
         }
 
