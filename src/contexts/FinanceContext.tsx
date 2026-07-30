@@ -6,6 +6,7 @@ import {
   updateExpenseInDB,
   deleteExpenseFromDB,
 } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface FinanceContextValue {
   pettyCash: PettyCashEntry[];
@@ -34,6 +35,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [pettyCash, setPettyCash] = useState<PettyCashEntry[]>([]);
 
   const refreshPettyCash = useCallback(async () => {
@@ -42,8 +44,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    refreshPettyCash();
-  }, [refreshPettyCash]);
+    if (isAuthenticated) {
+      refreshPettyCash();
+    }
+  }, [refreshPettyCash, isAuthenticated]);
 
   const addPettyCash = (entry: PettyCashEntry) => {
     setPettyCash((prev) => [entry, ...prev]);

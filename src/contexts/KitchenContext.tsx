@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Order } from '../types';
 import { fetchOrdersFromDB } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface KitchenContextValue {
   orders: Order[];
@@ -23,6 +24,7 @@ export const useKitchenContext = (): KitchenContextValue => {
 };
 
 export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
 
   const refreshOrders = useCallback(async () => {
@@ -31,8 +33,10 @@ export const KitchenProvider: React.FC<KitchenProviderProps> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    refreshOrders();
-  }, [refreshOrders]);
+    if (isAuthenticated) {
+      refreshOrders();
+    }
+  }, [refreshOrders, isAuthenticated]);
 
   const pendingOrdersCount = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing').length;
 

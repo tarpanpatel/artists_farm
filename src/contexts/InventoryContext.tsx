@@ -4,6 +4,7 @@ import {
   fetchInventoryFromDB,
   updateInventoryStockInDB,
 } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface InventoryContextValue {
   inventory: InventoryItem[];
@@ -35,6 +36,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const currentUserName = currentUser?.name || 'Admin';
@@ -47,8 +49,10 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    refreshInventory();
-  }, [refreshInventory]);
+    if (isAuthenticated) {
+      refreshInventory();
+    }
+  }, [refreshInventory, isAuthenticated]);
 
   const updateStock = (itemId: string, newStock: number) => {
     const item = inventory.find((i) => i.id === itemId);
