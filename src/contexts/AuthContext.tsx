@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { StaffMember } from '../types';
+import { getPropertySlug } from '../services/api';
 
 interface AuthContextValue {
   currentUser: StaffMember | null;
@@ -18,17 +19,23 @@ export const useAuth = (): AuthContextValue => {
   return ctx;
 };
 
+// Session keys are namespaced per property so logging out of one property
+// (e.g. /goa/) doesn't clear the session of another (e.g. /jaipur/) sharing
+// the same browser origin.
+const authKey = () => `artists_farm_authenticated_${getPropertySlug()}`;
+const userKey = () => `artists_farm_user_${getPropertySlug()}`;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('artists_farm_authenticated') === 'true';
+      return localStorage.getItem(authKey()) === 'true';
     }
     return false;
   });
 
   const [currentUser, setCurrentUser] = useState<StaffMember | null>(() => {
     if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
+      const savedUser = localStorage.getItem(userKey());
       if (savedUser) {
         try { return JSON.parse(savedUser); } catch (e) {}
       }
@@ -38,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [activeRole, setActiveRole] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
+      const savedUser = localStorage.getItem(userKey());
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
@@ -53,17 +60,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
     setCurrentUser(staff);
     setActiveRole(staff.role || 'Staff');
-    localStorage.setItem('artists_farm_authenticated', 'true');
-    localStorage.setItem('artists_farm_user', JSON.stringify(staff));
+    localStorage.setItem(authKey(), 'true');
+    localStorage.setItem(userKey(), JSON.stringify(staff));
   }, []);
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
     setCurrentUser(null);
-    localStorage.removeItem('artists_farm_authenticated');
-    localStorage.removeItem('artists_farm_user');
+    localStorage.removeItem(authKey());
+    localStorage.removeItem(userKey());
   }, []);
-
   return (
     <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, setActiveRole, login, logout }}>
       {children}

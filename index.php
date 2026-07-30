@@ -4,6 +4,13 @@
  * Main Production Entry Point for XAMPP / Apache / cPanel PHP Hosting
  */
 
+session_start();
+require_once __DIR__ . '/php/config/database.php';
+require_once __DIR__ . '/php/auth/saas_auth.php';
+
+// Set correct content type for HTML (database.php sets application/json by default)
+header('Content-Type: text/html; charset=UTF-8');
+
 $dist_index = __DIR__ . '/dist/index.html';
 
 // Prevent caching of the main entry point to ensure Vite HMR and new builds always load
@@ -11,12 +18,26 @@ header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
+// Get tenant and property slugs from URL (for React)
+$tenantSlug = isset($_GET['tenant_slug']) ? htmlspecialchars($_GET['tenant_slug']) : '';
+$propertySlug = isset($_GET['property_slug']) ? htmlspecialchars($_GET['property_slug']) : '';
+
 if (file_exists($dist_index)) {
     // Serve the production single-page application built from React
     $html = file_get_contents($dist_index);
-    // Fix relative asset path references when serving dist/index.html from root folder
-    $html = str_replace('./assets/', 'dist/assets/', $html);
-    $html = str_replace('="/assets/', '="dist/assets/', $html);
+
+    // Fix all relative asset paths to be absolute from /artists_farm/
+    // This ensures assets load correctly regardless of the URL depth
+    $html = str_replace('href="./assets/', 'href="/artists_farm/dist/assets/', $html);
+    $html = str_replace('src="./assets/', 'src="/artists_farm/dist/assets/', $html);
+    $html = str_replace('./assets/', '/artists_farm/dist/assets/', $html);
+    $html = str_replace('src="dist/', 'src="/artists_farm/dist/', $html);
+    $html = str_replace('href="dist/', 'href="/artists_farm/dist/', $html);
+    $html = str_replace('="/assets/', '="/artists_farm/dist/assets/', $html);
+
+    // Inject tenant and property slugs into the page so React can access them
+    $html = str_replace('</head>', "<script>window.__TENANT_SLUG__ = '$tenantSlug'; window.__PROPERTY_SLUG__ = '$propertySlug';</script>\n</head>", $html);
+
     echo $html;
     exit();
 }

@@ -2,14 +2,51 @@
  * API service helper for Artists Farm Resort PHP/MySQL backend.
  */
 
+import { PropertyTelegramConfig, ApiStatus } from '../types';
+
 // Dynamically resolve the API base to handle subfolder deployment (e.g. /artists_farm/)
-// On Vite dev server (port 3000), the proxy handles /php routing, so _base must be empty.
-// On production (XAMPP, cPanel), derive _base from the URL path.
-const _isDev = window.location.port === '3000';
-const _base = _isDev ? '' : window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
+// On Vite dev server (ports 3000, 5173, 5174, 8080), the proxy handles /php routing, so _base must be empty.
+// On production (XAMPP, cPanel), derive _base from the URL path by going up to the app root (/artists_farm/).
+const _isDev = ['3000', '5173', '5174', '8080'].includes(window.location.port.toString());
+const _base = _isDev ? '' : (() => {
+  const path = window.location.pathname.replace(/#.*$/, '');
+  const match = path.match(/^(.*?\/artists_farm)(\/|$)/);
+  return match ? match[1] : '/artists_farm';
+})();
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 const API_KEY = 'artists-farm-secure-key-2026';
+
+// Path segments that are real app directories/routes, never a property slug.
+const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm']);
+
+/**
+ * Identifies which property (e.g. "goa", "jaipur") this browser tab is on, mirroring the
+ * priority order php/config/property_resolver.php uses server-side: an explicit
+ * ?property_slug= query param first, then the URL path segment written by the
+ * .htaccess multi-tenant rewrite. Falls back to 'default' when no slug is present
+ * (e.g. the primary property served at the app root, or during local dev).
+ * Used to namespace per-property browser storage (see AuthContext) so logging out
+ * of one property's tab doesn't affect a tab open on a different property.
+ */
+export function getPropertySlug(): string {
+  if (typeof window === 'undefined') return 'default';
+
+  const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
+  if (fromQuery) return fromQuery.toLowerCase();
+
+  const segments = window.location.pathname
+    .replace(/#.*$/, '')
+    .split('/')
+    .filter(Boolean)
+    .filter((seg) => !seg.includes('.'));
+
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const seg = segments[i].toLowerCase();
+    if (!RESERVED_PATH_SEGMENTS.has(seg) && /^[a-z0-9-]+$/.test(seg)) return seg;
+  }
+  return 'default';
+}
 
 export function isTestingModeActive(): boolean {
   if (typeof window !== 'undefined') {
@@ -31,6 +68,8 @@ export function getTestingHeaders(customHeaders: Record<string, string> = {}): R
     headers['X-Testing-Mode'] = '1';
   }
   headers['X-API-Key'] = API_KEY;
+  // Add X-Property-Slug header for multi-tenancy resolution on the backend
+  headers['X-Property-Slug'] = getPropertySlug();
   return headers;
 }
 
@@ -41,6 +80,34 @@ async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
     headers: getTestingHeaders(customHeaders),
   });
 }
+
+export const fetchApiStatus = async (): Promise<ApiStatus | null> => {
+  try {
+    const response = await apiFetch(`${API_BASE}`); // No action parameter for default
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching API status:", error);
+    return null;
+  }
+};
+
+export const fetchCurrentProperty = async (): Promise<any | null> => {
+  try {
+    const response = await apiFetch(`${API_BASE}?action=get_current_property`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error fetching current property:", error);
+    return null;
+  }
+};
 
 export async function resetTestDatabaseInDB(): Promise<{ success: boolean; message?: string }> {
   try {
@@ -785,7 +852,7 @@ export async function deleteMenuItemDB(id: number): Promise<boolean> {
   }
 }
 
-export async function dedupMenuDB(): Promise<{removed: number, remaining: number}> {
+export async function dedupMenuDB(): Promise<{ removed: number, remaining: number }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=dedup_menu`, {
       method: 'POST',
@@ -809,6 +876,21 @@ export async function fetchNavMenuFromDB(): Promise<any[]> {
     }
   } catch (err) {
     console.error('Failed to fetch nav menu from DB:', err);
+  }
+  return [];
+}
+
+// Returns the current property's modules with their enabled state (system_modules
+// joined against property_modules, see php/modules/module_manager.php).
+export async function fetchPropertyModulesFromDB(): Promise<{ slug: string; is_enabled: boolean }[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_property_modules`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch property modules from DB:', err);
   }
   return [];
 }
@@ -949,6 +1031,7 @@ export async function sendTelegramAlertDB(payload: {
   category: string;
   message: string;
   replyMarkup?: any;
+  templateKey?: string;
 }): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=send_telegram_alert`, {
@@ -960,6 +1043,35 @@ export async function sendTelegramAlertDB(payload: {
     return json.status === 'success';
   } catch (err) {
     console.error('Failed to send Telegram alert via backend proxy:', err);
+    return false;
+  }
+}
+
+export async function fetchTelegramConfigDB(): Promise<PropertyTelegramConfig> {
+  const fallback: PropertyTelegramConfig = { enabled: true, botToken: null, groups: [], routing: {} };
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_telegram_config`);
+    const json = await res.json();
+    if (json.status === 'success' && json.data) {
+      return { ...fallback, ...json.data, routing: json.data.routing || {} };
+    }
+  } catch (err) {
+    console.error('Failed to fetch Telegram config from DB:', err);
+  }
+  return fallback;
+}
+
+export async function saveTelegramConfigDB(config: PropertyTelegramConfig): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=save_telegram_config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to save Telegram config to DB:', err);
     return false;
   }
 }
@@ -1268,4 +1380,3 @@ export async function depleteStockForDish(menuItemId: number, quantity: number):
     return { status: 'error', message: String(err) };
   }
 }
-
