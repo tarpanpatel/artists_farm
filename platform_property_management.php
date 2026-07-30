@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 assignDefaultModules($pdo, $tenantId, $propertyId);
                 $adminUser = createTenantAdminUser($pdo, $input['name'] ?? '', $tenantId, $propertyId);
             }
-            echo json_encode(['success' => true, 'message' => 'Tenant created successfully', 'admin_username' => $adminUser['username'] ?? null, 'admin_temp_password' => $adminUser['temp_password'] ?? null]);
+            echo json_encode(['success' => true, 'message' => 'Tenant created successfully', 'admin_username' => $adminUser['username'] ?? null, 'admin_passcode' => $adminUser['passcode'] ?? null]);
             break;
 
         case 'edit_tenant':
@@ -585,7 +585,7 @@ $allModules = getAllModules($pdo);
                 });
             } else {
                 post('create_tenant', payload).then(data => {
-                    if (data.success && data.admin_username) { alert(data.message + '\n\nSuper Admin:\nUsername: ' + data.admin_username + '\nPassword: ' + data.admin_temp_password); location.reload(); }
+                    if (data.success && data.admin_username) { alert(data.message + '\n\nSuper Admin:\nUsername: ' + data.admin_username + '\nDefault Passcode: ' + data.admin_passcode); location.reload(); }
                     else { alert(data.message); if (data.success) location.reload(); }
                 });
             }
