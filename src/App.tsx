@@ -1254,8 +1254,8 @@ ${itemsStr}
 
 export function App() {
   return (
-    <StaffProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <StaffProvider>
         <FinanceProvider>
           <InventoryProvider>
             <KitchenProvider>
@@ -1263,7 +1263,7 @@ export function App() {
             </KitchenProvider>
           </InventoryProvider>
         </FinanceProvider>
-      </AuthProvider>
-    </StaffProvider>
+      </StaffProvider>
+    </AuthProvider>
   );
 }
