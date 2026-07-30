@@ -4,11 +4,12 @@
  * Function: Menu dish inventory, prices, categories, and custom dishes builder.
  */
 
-function handleMenuRequests($pdo, $request_method, $action) {
+function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
     // Ensure menu_items table exists
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `menu_items` (
             `id` VARCHAR(50) PRIMARY KEY,
+            `property_id` INT NOT NULL DEFAULT 1,
             `name` VARCHAR(255) NOT NULL,
             `category` VARCHAR(100) NOT NULL DEFAULT 'Starters',
             `price` DECIMAL(10,2) NOT NULL,
@@ -27,13 +28,16 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 $sql = "SELECT m.id, m.name, m.category_id, COALESCE(c.name, 'Starters') AS category, m.price, (COALESCE(m.is_hidden, 0) = 0) AS available, COALESCE(m.image_path, '') AS image_path
                         FROM menu_items m
                         LEFT JOIN menu_categories c ON m.category_id = c.id
+                        WHERE m.property_id = ?
                         ORDER BY COALESCE(c.sort_order, 99) ASC, m.name ASC";
                 try {
-                    $stmt = $pdo->query($sql);
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$propertyId]);
                     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 } catch (PDOException $e1) {
                     // Fallback query for DB schema with category column directly
-                    $stmt = $pdo->query("SELECT id, name, NULL AS category_id, category, price, available, image_path FROM menu_items ORDER BY category ASC, name ASC");
+                    $stmt = $pdo->prepare("SELECT id, name, NULL AS category_id, category, price, available, image_path FROM menu_items WHERE property_id = ? ORDER BY category ASC, name ASC");
+                    $stmt->execute([$propertyId]);
                     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
@@ -59,8 +63,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
                     // Dedup: skip if item with same name already exists
-                    $nameCheck = $pdo->prepare("SELECT id FROM menu_items WHERE name = ? LIMIT 1");
-                    $nameCheck->execute([$input['name']]);
+                    $nameCheck = $pdo->prepare("SELECT id FROM menu_items WHERE name = ? AND property_id = ? LIMIT 1");
+                    $nameCheck->execute([$input['name'], $propertyId]);
                     if ($nameCheck->fetchColumn()) {
                         echo json_encode(['status' => 'success', 'message' => 'Menu item already exists, skipped']);
                         break;
@@ -77,8 +81,9 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     }
 
                     try {
-                        $stmt = $pdo->prepare("INSERT INTO menu_items (category_id, name, price, is_hidden, image_path) VALUES (?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO menu_items (property_id, category_id, name, price, is_hidden, image_path) VALUES (?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
+                            $propertyId,
                             $catId,
                             $input['name'],
                             $input['price'],
@@ -86,8 +91,9 @@ function handleMenuRequests($pdo, $request_method, $action) {
                             $input['imagePath'] ?? ''
                         ]);
                     } catch (PDOException $e1) {
-                        $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, price, available, image_path) VALUES (?, ?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO menu_items (property_id, id, name, category, price, available, image_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
+                            $propertyId,
                             $input['id'] ?? null,
                             $input['name'],
                             $input['category'] ?? 'Starters',
@@ -116,24 +122,26 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     }
 
                     try {
-                        $stmt = $pdo->prepare("UPDATE menu_items SET name = COALESCE(?, name), category_id = COALESCE(?, category_id), price = COALESCE(?, price), is_hidden = COALESCE(?, is_hidden), image_path = COALESCE(?, image_path) WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE menu_items SET name = COALESCE(?, name), category_id = COALESCE(?, category_id), price = COALESCE(?, price), is_hidden = COALESCE(?, is_hidden), image_path = COALESCE(?, image_path) WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['name'] ?? null,
                             $catId,
                             isset($input['price']) ? $input['price'] : null,
                             isset($input['available']) ? ($input['available'] ? 0 : 1) : null,
                             $input['imagePath'] ?? null,
-                            $input['id']
+                            $input['id'],
+                            $propertyId
                         ]);
                     } catch (PDOException $e1) {
-                        $stmt = $pdo->prepare("UPDATE menu_items SET name = COALESCE(?, name), category = COALESCE(?, category), price = COALESCE(?, price), available = COALESCE(?, available), image_path = COALESCE(?, image_path) WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE menu_items SET name = COALESCE(?, name), category = COALESCE(?, category), price = COALESCE(?, price), available = COALESCE(?, available), image_path = COALESCE(?, image_path) WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['name'] ?? null,
                             $input['category'] ?? null,
                             isset($input['price']) ? $input['price'] : null,
                             isset($input['available']) ? ($input['available'] ? 1 : 0) : null,
                             $input['imagePath'] ?? null,
-                            $input['id']
+                            $input['id'],
+                            $propertyId
                         ]);
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Menu item updated successfully']);
@@ -147,8 +155,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id = ?");
-                    $stmt->execute([$input['id']]);
+                    $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['id'], $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Menu item deleted successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -160,6 +168,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `nav_menu_items` (
                     `id` VARCHAR(50) PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `title` VARCHAR(255) NOT NULL,
                     `tab_key` VARCHAR(100) NOT NULL,
                     `unique_key` VARCHAR(100) NOT NULL,
@@ -177,6 +186,9 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
+                // Navigation structure is shared across every property/tenant (unlike
+                // property_modules, which controls per-property feature visibility on
+                // top of this shared structure) — intentionally not property_id-scoped.
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -208,6 +220,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `nav_menu_items` (
                         `id` VARCHAR(50) PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `title` VARCHAR(255) NOT NULL,
                         `tab_key` VARCHAR(100) NOT NULL,
                         `unique_key` VARCHAR(100) NOT NULL,
@@ -220,6 +233,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                     try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
+                    // Navigation structure is shared across every property/tenant, so a
+                    // save here is not scoped to $propertyId — see get_nav_menu above.
                     $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab, parent_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -277,17 +292,21 @@ function handleMenuRequests($pdo, $request_method, $action) {
         case 'dedup_menu':
             if ($request_method === 'POST') {
                 try {
-                    $minIds = $pdo->query("SELECT MIN(id) AS keep_id, name FROM menu_items GROUP BY name")->fetchAll(PDO::FETCH_ASSOC);
-                    $keepIds = array_column($minIds, 'keep_id');
+                    $minIds = $pdo->prepare("SELECT MIN(id) AS keep_id, name FROM menu_items WHERE property_id = ? GROUP BY name");
+                    $minIds->execute([$propertyId]);
+                    $keepRows = $minIds->fetchAll(PDO::FETCH_ASSOC);
+                    $keepIds = array_column($keepRows, 'keep_id');
                     if (count($keepIds) > 0) {
                         $placeholders = implode(',', array_fill(0, count($keepIds), '?'));
-                        $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id NOT IN ($placeholders)");
-                        $stmt->execute($keepIds);
+                        $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id NOT IN ($placeholders) AND property_id = ?");
+                        $stmt->execute(array_merge($keepIds, [$propertyId]));
                         $removed = $stmt->rowCount();
                     } else {
                         $removed = 0;
                     }
-                    $count = $pdo->query("SELECT COUNT(*) FROM menu_items")->fetchColumn();
+                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM menu_items WHERE property_id = ?");
+                    $countStmt->execute([$propertyId]);
+                    $count = $countStmt->fetchColumn();
                     echo json_encode(['status' => 'success', 'removed' => $removed, 'remaining' => (int)$count]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -300,6 +319,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `menu_item_id` INT NOT NULL,
                     `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
                     `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
@@ -310,10 +330,12 @@ function handleMenuRequests($pdo, $request_method, $action) {
                     UNIQUE KEY `menu_item_idx` (`menu_item_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->query("SELECT dr.menu_item_id, dr.recipe_name, dr.yield_factor, dr.servings, dr.ingredients, COALESCE(m.name, '') AS menu_item_name
+                $stmt = $pdo->prepare("SELECT dr.menu_item_id, dr.recipe_name, dr.yield_factor, dr.servings, dr.ingredients, COALESCE(m.name, '') AS menu_item_name
                     FROM dish_recipes dr
                     LEFT JOIN menu_items m ON dr.menu_item_id = m.id
+                    WHERE dr.property_id = ?
                     ORDER BY dr.updated_at DESC");
+                $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
                     $ings = json_decode($r['ingredients'], true) ?: [];
@@ -338,6 +360,7 @@ function handleMenuRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `menu_item_id` INT NOT NULL,
                         `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
                         `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
@@ -348,14 +371,15 @@ function handleMenuRequests($pdo, $request_method, $action) {
                         UNIQUE KEY `menu_item_idx` (`menu_item_id`)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $stmt = $pdo->prepare("INSERT INTO dish_recipes (menu_item_id, recipe_name, yield_factor, servings, ingredients)
-                        VALUES (?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO dish_recipes (property_id, menu_item_id, recipe_name, yield_factor, servings, ingredients)
+                        VALUES (?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             recipe_name = VALUES(recipe_name),
                             yield_factor = VALUES(yield_factor),
                             servings = VALUES(servings),
                             ingredients = VALUES(ingredients)");
                     $stmt->execute([
+                        $propertyId,
                         (int)$input['menuItemId'],
                         $input['recipeName'] ?? '',
                         (float)($input['yieldFactor'] ?? 1),
@@ -373,8 +397,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM dish_recipes WHERE menu_item_id = ?");
-                    $stmt->execute([(int)$input['menuItemId']]);
+                    $stmt = $pdo->prepare("DELETE FROM dish_recipes WHERE menu_item_id = ? AND property_id = ?");
+                    $stmt->execute([(int)$input['menuItemId'], $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Recipe deleted successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -411,8 +435,8 @@ function handleMenuRequests($pdo, $request_method, $action) {
                         if (!$name || $qty <= 0) continue;
 
                         // Deduct from req_catalog by matching item_name (case-insensitive)
-                        $upd = $pdo->prepare("UPDATE req_catalog SET current_stock = GREATEST(0, current_stock - ?) WHERE LOWER(item_name) = LOWER(?)");
-                        $upd->execute([$qty, $name]);
+                        $upd = $pdo->prepare("UPDATE req_catalog SET current_stock = GREATEST(0, current_stock - ?) WHERE LOWER(item_name) = LOWER(?) AND property_id = ?");
+                        $upd->execute([$qty, $name, $propertyId]);
 
                         $deductions[] = ['item' => $name, 'deducted' => round($qty, 3)];
                     }

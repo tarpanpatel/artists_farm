@@ -31,7 +31,7 @@ interface StaffManagementProps {
   activeMenuItemKey?: string;
   auditLogs?: any[];
   onLogAudit?: (actionText: string) => void;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
 }
 

@@ -9,11 +9,19 @@ import {
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB } from '../services/api';
+import { isKitchenModuleNavItem } from '../data/appConfig';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
   onUpdateNavItems: (items: NavMenuItem[]) => void;
   activeRole: string;
+  // True for properties with the kitchen module off: kitchen-related items
+  // (Take Food Order, Stock Requests, Edit Food Menu, etc.) are hidden from
+  // this list so they can't be confused for something manageable here, but
+  // they're never removed from `items` — every save still round-trips them
+  // untouched (see extractFromDOM and handleSave), since nav_menu_items is one
+  // shared config across every property, not a per-property one.
+  hideKitchenItems?: boolean;
 }
 
 const ALL_ROLES = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
@@ -90,6 +98,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   navItems,
   onUpdateNavItems,
   activeRole,
+  hideKitchenItems = false,
 }) => {
   const [items, setItems] = useState<NavMenuItem[]>(navItems);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -145,7 +154,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return roots;
   }, []);
 
-  const tree = buildTree(items);
+  // Kitchen items stay in `items` (and get saved) untouched — only what's
+  // rendered/selectable in the tree is restricted. See extractFromDOM below
+  // for how drag-and-drop reorders avoid dropping the hidden ones.
+  const hiddenItems = hideKitchenItems ? items.filter(isKitchenModuleNavItem) : [];
+  const visibleItems = hideKitchenItems ? items.filter((i) => !isKitchenModuleNavItem(i)) : items;
+
+  const tree = buildTree(visibleItems);
 
   const flattenAll = useCallback((nodes: (NavMenuItem & { children: any[] })[], parentId: string | null = null): NavMenuItem[] => {
     const result: NavMenuItem[] = [];
@@ -198,8 +213,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     };
     const rootUl = sortableContainerRef.current?.querySelector(':scope > ul') as HTMLUListElement | null;
     if (rootUl) processList(rootUl, null);
-    return result;
-  }, [items]);
+    // The DOM only contains rendered (visible) items — reappend anything hidden
+    // by hideKitchenItems unchanged so a drag-reorder never drops it from state.
+    return [...result, ...hiddenItems];
+  }, [items, hiddenItems]);
 
   const initSortable = useCallback(() => {
     sortableInstances.current.forEach(s => s.destroy());
@@ -599,7 +616,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${!item.parentId ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
                 Root Level (no parent)
               </button>
-              {items.filter(i => i.id !== item.id).map(i => {
+              {visibleItems.filter(i => i.id !== item.id).map(i => {
                 const parentLabel = i.parentId ? `\u00A0\u00A0\u21B3 ${i.title}` : i.title;
                 return (
                   <button key={i.id} onClick={() => handleParentChange(item.id, i.id)}
@@ -631,7 +648,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <h3 className="font-extrabold text-slate-900 text-sm">Menu Structure</h3>
-            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{items.length} items</span>
+            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
+            {hiddenItems.length > 0 && (
+              <span className="text-[10px] font-medium text-slate-400" title="Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.">
+                ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer">
@@ -678,7 +700,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <select value={newItem.parentId || ''} onChange={(e) => setNewItem(p => ({ ...p, parentId: e.target.value || null }))}
               className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
               <option value="">Root Level (no parent)</option>
-              {items.filter(i => i.id !== newItem.parentId).map(i => (
+              {visibleItems.filter(i => i.id !== newItem.parentId).map(i => (
                 <option key={i.id} value={i.id}>{'  '.repeat(0)}{i.title}</option>
               ))}
             </select>
@@ -724,7 +746,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <button onClick={collapseAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">Collapse All</button>
             <span className="text-slate-300">|</span>
             <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
-              <input type="checkbox" checked={selectedIds.size === items.length && items.length > 0} onChange={() => { if (selectedIds.size === items.length) setSelectedIds(new Set()); else setSelectedIds(new Set(items.map(i => i.id))); }} className="w-3 h-3" />
+              <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3" />
               Select All
             </label>
           </>
@@ -748,7 +770,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500">
-        <span>{items.filter(i => i.isVisible).length} visible / {items.length} total</span>
+        <span>{visibleItems.filter(i => i.isVisible).length} visible / {visibleItems.length} total</span>
         {hasUnsaved && <span className="text-amber-600 font-bold">Unsaved changes</span>}
       </div>
 

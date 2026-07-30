@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . "/testing_sandbox.php";
+require_once __DIR__ . "/property_resolver.php";
 
 $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
@@ -32,7 +33,13 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
     $db_host = 'localhost';
     $live_db = 'artists_farm';
     $db_user = 'artist_farm';
-    $db_pass = getenv('DB_PASSWORD') ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : 'tPatel13@');
+    $db_pass = getenv('DB_PASSWORD') ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : null);
+    if ($db_pass === null) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Database credentials not configured. Set DB_PASSWORD env var or create php/config/db_pass.php.']);
+        error_log('Production DB password missing: set DB_PASSWORD env var or php/config/db_pass.php');
+        exit();
+    }
 }
 
 $is_testing_mode = false;
@@ -53,6 +60,29 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
+    // Ensure properties table exists and seed default
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `properties` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `name` VARCHAR(255) NOT NULL,
+      `slug` VARCHAR(100) NOT NULL UNIQUE,
+      `domain` VARCHAR(255) DEFAULT NULL,
+      `address` TEXT DEFAULT NULL,
+      `gstin` VARCHAR(50) DEFAULT NULL,
+      `logo_url` VARCHAR(500) DEFAULT NULL,
+      `telegram_bot_token` VARCHAR(255) DEFAULT NULL,
+      `telegram_kitchen_chat_id` VARCHAR(100) DEFAULT NULL,
+      `telegram_admin_chat_id` VARCHAR(100) DEFAULT NULL,
+      `telegram_finance_chat_id` VARCHAR(100) DEFAULT NULL,
+      `currency` VARCHAR(10) DEFAULT 'INR',
+      `timezone` VARCHAR(50) DEFAULT 'Asia/Kolkata',
+      `is_active` TINYINT(1) DEFAULT 1,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
+      ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
+      ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
+
 } catch (PDOException $e) {
     if ($is_testing_mode) {
         // Test database might not exist yet, attempt to auto-create and clone from live database

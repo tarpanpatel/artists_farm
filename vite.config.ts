@@ -10,13 +10,13 @@ export default defineConfig({
     port: 3000,
     allowedHosts: true,
     proxy: {
-      '/artists_farm/php': {
-        target: 'http://localhost/artists_farm',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/artists_farm/, ''),
-      },
       '/php': {
-        target: 'http://localhost/artists_farm',
+        target: 'http://localhost',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/php/, '/artists_farm/php'),
+      },
+      '/artists_farm/php': {
+        target: 'http://localhost',
         changeOrigin: true,
       }
     }

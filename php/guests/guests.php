@@ -4,11 +4,11 @@
  * Function: Resident registration, stay breakdown, and check-out status.
  */
 
-function handleGuestRequests($pdo, $request_method, $action) {
+function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
             $count = 0;
-            try { $count = $pdo->query("SELECT COUNT(*) FROM guests")->fetchColumn(); } catch (PDOException $e) {}
+            try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM guests WHERE property_id = ?"); $stmt->execute([$propertyId]); $count = $stmt->fetchColumn(); } catch (PDOException $e) {}
             if ($count == 0) {
                 $seedGuests = [
                     ['10','Villa 101 Resident Group','8888888','2026-07-20','2026-07-21','2026-07-21','Villa 101','Active','Jain Food & Misc Arrangement (+₹200)'],
@@ -24,26 +24,28 @@ function handleGuestRequests($pdo, $request_method, $action) {
                 ];
                 // Try modern schema first
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO guests (id, guest_name, phone_number, checkin_date, expected_checkout, checkout_date, room_number, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (id, guest_name, phone_number, checkin_date, expected_checkout, checkout_date, room_number, status, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     foreach ($seedGuests as $g) {
-                        $stmt->execute($g);
+                        $stmt->execute([...$g, $propertyId]);
                     }
                 } catch (PDOException $e) {
                     // Fallback to old schema
                     try {
-                        $stmt = $pdo->prepare("INSERT INTO guests (id, name, contact, check_in, expected_checkout, check_out, room_number, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO guests (id, name, contact, check_in, expected_checkout, check_out, room_number, status, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         foreach ($seedGuests as $g) {
-                            $stmt->execute([$g[0], $g[1], $g[2], $g[3], $g[4], $g[5], $g[6], $g[7], $g[8]]);
+                            $stmt->execute([$g[0], $g[1], $g[2], $g[3], $g[4], $g[5], $g[6], $g[7], $g[8], $propertyId]);
                         }
                     } catch (PDOException $e2) {}
                 }
             }
             try {
-                $stmt = $pdo->query("SELECT * FROM guests ORDER BY checkin_date DESC");
+                $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY checkin_date DESC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
-                    $stmt = $pdo->query("SELECT * FROM guests ORDER BY check_in DESC");
+                    $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY check_in DESC");
+                    $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);
@@ -55,7 +57,7 @@ function handleGuestRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -68,6 +70,7 @@ function handleGuestRequests($pdo, $request_method, $action) {
                         $input['notes'] ?? '',
                         $input['booking_source'] ?? '',
                         intval($input['no_of_guests'] ?? 1),
+                        $propertyId,
                     ]);
                     $newId = $pdo->lastInsertId();
                     $advance = floatval($input['advance_paid'] ?? 0);
@@ -98,11 +101,11 @@ function handleGuestRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', checkout_date = ? WHERE id = ?");
-                    $stmt->execute([date('Y-m-d'), $input['id']]);
+                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', checkout_date = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([date('Y-m-d'), $input['id'], $propertyId]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', check_out = ? WHERE id = ?");
-                    $stmt->execute([date('Y-m-d H:i:s'), $input['id']]);
+                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', check_out = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([date('Y-m-d H:i:s'), $input['id'], $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
             }

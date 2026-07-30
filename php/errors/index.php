@@ -28,7 +28,6 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
 
     if ($action === 'log_event') {
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-        $tenantIdInput = $input['tenant_id'] ?? 'unknown_tenant'; // NEW: Capture tenant_id
         $portalInput = $input['portal'] ?? 'js';
         $severityInput = $input['severity'] ?? 'JS Exception';
         $msgInput = $input['msg'] ?? 'Client Error';
@@ -36,7 +35,6 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
         $extraData = $input['extra'] ?? [];
 
         TelescopeLogger::log($portalInput, $severityInput, $msgInput, $originInput, $extraData);
-        TelescopeLogger::log($portalInput, $severityInput, $msgInput, $originInput, $extraData, $tenantIdInput); // NEW: Pass tenant_id
 
         echo json_encode(['status' => 'success', 'message' => 'Log entry captured successfully']);
         exit();

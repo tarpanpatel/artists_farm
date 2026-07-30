@@ -21,9 +21,11 @@ import {
   Eye,
   Eraser,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
-import { TelegramConfig, TelegramDispatchLog } from '../types';
-import { invalidateTemplateCache } from '../services/api';
+import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
+import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB } from '../services/api';
+import { TelegramConnectionSettings } from './TelegramConnectionSettings';
 
 export interface TelegramInlineButton {
   id: string;
@@ -329,7 +331,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [config, setConfig] = useState<TelegramConfig>(telegramConfig);
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
+      const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
       if (savedUser) {
         try {
           const userObj = JSON.parse(savedUser);
@@ -345,6 +347,49 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [testSent, setTestSent] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
+
+  // Per-property Telegram connection settings (bot token, groups, per-template
+  // routing) — shared between the Connection Settings drawer and the per-template
+  // "Send to" picker in the editor below, so both read/write the same state.
+  const [tgSettings, setTgSettings] = useState<PropertyTelegramConfig | null>(null);
+  const [tgSaving, setTgSaving] = useState(false);
+  const [tgSaved, setTgSaved] = useState(false);
+  const [tgRoutingSaving, setTgRoutingSaving] = useState(false);
+
+  useEffect(() => {
+    fetchTelegramConfigDB().then(setTgSettings);
+  }, []);
+
+  const updateTgSettings = (patch: Partial<PropertyTelegramConfig>) => {
+    setTgSettings((prev) => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const saveTgSettings = async (override?: PropertyTelegramConfig) => {
+    const toSave = override ?? tgSettings;
+    if (!toSave) return false;
+    setTgSaving(true);
+    const ok = await saveTelegramConfigDB(toSave);
+    setTgSaving(false);
+    if (ok) {
+      setTgSaved(true);
+      setTimeout(() => setTgSaved(false), 2000);
+    }
+    return ok;
+  };
+
+  // Routing changes save immediately — no separate "did you remember to click
+  // Save?" step for picking a notification's destination group.
+  const setTemplateRouting = async (dbKey: string, groupKey: string) => {
+    if (!tgSettings) return;
+    const routing = { ...tgSettings.routing };
+    if (groupKey) routing[dbKey] = groupKey;
+    else delete routing[dbKey];
+    const next = { ...tgSettings, routing };
+    setTgSettings(next);
+    setTgRoutingSaving(true);
+    await saveTelegramConfigDB(next);
+    setTgRoutingSaving(false);
+  };
 
   // Active Template
   const currentTpl = templatesList.find((t) => t.id === activeTemplateId) || templatesList[0];
@@ -685,7 +730,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             className="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Bot className="w-4 h-4 text-sky-600" />
-            <span>Bot Control & Status</span>
+            <span>Connection Settings</span>
           </button>
           {!isEmbedded && onClose && (
             <button
@@ -698,17 +743,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
       </div>
 
-      {/* Optional Bot Control Drawer */}
+      {/* Connection Settings Drawer: per-property bot token, group chats & routing */}
       {showBotSettings && (
-        <div className="bg-slate-900 text-white p-4 rounded-xl space-y-3 border border-slate-700 animate-fade-in shadow-inner">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs">
-              <Bot className="w-4 h-4 text-sky-400" />
-              <span className="font-semibold text-slate-200">Bot Service ID:</span>
-              <code className="text-sky-300 bg-slate-800 px-2 py-0.5 rounded font-mono text-[11px]">
-                @{config.botUsername || 'ArtistsFarmBot'}
-              </code>
-            </div>
+        <div className="space-y-2">
+          <div className="flex justify-end">
             <button
               onClick={handleTest}
               className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
@@ -717,19 +755,19 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               <span>{testSent ? 'Ping Dispatched!' : 'Send Test Ping'}</span>
             </button>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2 border-t border-slate-800">
-            <div>
-              <span className="text-slate-400 text-[11px] block">Target Group Chat ID:</span>
-              <code className="text-slate-200 font-mono text-[11px]">{config.chatId || '-10023481912'}</code>
+          {tgSettings ? (
+            <TelegramConnectionSettings
+              config={tgSettings}
+              onChange={updateTgSettings}
+              onSave={() => saveTgSettings()}
+              saving={tgSaving}
+              saved={tgSaved}
+            />
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 py-4">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading Telegram settings…
             </div>
-            <div>
-              <span className="text-slate-400 text-[11px] block">Webhook Listener Status:</span>
-              <span className="text-emerald-400 font-semibold flex items-center gap-1 text-[11px]">
-                <ShieldCheck className="w-3.5 h-3.5" /> webhook_handler.php Active
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -798,6 +836,31 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <span>Save Changes</span>
               </button>
             </div>
+          </div>
+
+          {/* Per-template Telegram routing: which group receives this specific notification */}
+          <div className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-xl px-3 py-2">
+            <Send className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">Send to:</label>
+            {tgSettings ? (
+              <select
+                value={tgSettings.routing[currentTpl.dbKey] ?? ''}
+                onChange={(e) => setTemplateRouting(currentTpl.dbKey, e.target.value)}
+                disabled={tgRoutingSaving}
+                className="flex-1 bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-800 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-100"
+              >
+                <option value="">Not sent</option>
+                {tgSettings.groups.map((g) => (
+                  <option key={g.key} value={g.key}>{g.name}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-[11px] text-slate-400">Loading…</span>
+            )}
+            {tgRoutingSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />}
+            {tgSettings && tgSettings.groups.length === 0 && (
+              <span className="text-[10px] text-slate-500 shrink-0">Add a group in Connection Settings first</span>
+            )}
           </div>
 
           {/* Insert Available Variables */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { OperationalDashboard } from './components/OperationalDashboard';
@@ -26,7 +26,8 @@ import { InventoryProvider, useInventoryContext } from './contexts/InventoryCont
 import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB } from './services/api';
+import { isKitchenModuleNavItem } from './data/appConfig';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty } from './services/api';
 
 
 
@@ -100,6 +101,8 @@ function AppBody() {
   const initialActive = getInitialActiveState();
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
+  const [propertyName, setPropertyName] = useState<string>('Artists Farm');
+  const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>('blue'); // Default color scheme
 
   useEffect(() => {
     localStorage.setItem('artists_farm_active_tab', activeTab);
@@ -126,7 +129,7 @@ function AppBody() {
         }
       }
     };
-    
+
     document.addEventListener('focusin', handleFocusIn);
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
@@ -189,7 +192,7 @@ function AppBody() {
         }
       }
     };
-    
+
     const handleInputEvents = (e: Event) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT') {
@@ -203,7 +206,7 @@ function AppBody() {
     document.addEventListener('focusin', handleFocus);
     document.addEventListener('mouseover', handleInputEvents);
     document.addEventListener('touchstart', handleInputEvents);
-    
+
     return () => {
       document.removeEventListener('focusin', handleFocus);
       document.removeEventListener('mouseover', handleInputEvents);
@@ -224,7 +227,7 @@ function AppBody() {
   const TELEGRAM_BOT_TOKEN = '8999394059:AAHGKM4gFvH6IIQtOEiuiKEL7ewflHSa6DU';
 
   const getTelegramChannelIds = () => {
-    const isLocal = typeof window !== 'undefined' && 
+    const isLocal = typeof window !== 'undefined' &&
       ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     if (isLocal) {
       return {
@@ -417,6 +420,60 @@ function AppBody() {
     });
   }, []);
 
+  // Apply property color scheme to document.documentElement using CSS variables
+  useEffect(() => {
+    const colorVariants: Record<string, Record<string, string>> = {
+      'blue': { '400': '#60a5fa', '600': '#2563eb', '700': '#1d4ed8' },
+      'emerald': { '400': '#34d399', '600': '#059669', '700': '#047857' },
+      'red': { '400': '#f87171', '600': '#dc2626', '700': '#b91c1c' },
+      'indigo': { '400': '#818cf8', '600': '#4f46e5', '700': '#4338ca' },
+      'purple': { '400': '#d8b4fe', '600': '#9333ea', '700': '#7e22ce' },
+      'pink': { '400': '#f472b6', '600': '#ec4899', '700': '#be185d' },
+      'amber': { '400': '#fbbf24', '600': '#d97706', '700': '#b45309' },
+      'cyan': { '400': '#22d3ee', '600': '#0891b2', '700': '#0e7490' },
+      'slate': { '400': '#94a3b8', '600': '#475569', '700': '#334155' },
+      'gray': { '400': '#9ca3af', '600': '#4b5563', '700': '#374151' },
+    };
+    const colors = colorVariants[currentPropertyColorScheme] || colorVariants['blue'];
+    Object.entries(colors).forEach(([variant, hex]) => {
+      document.documentElement.style.setProperty(`--app-primary-${variant}`, hex);
+    });
+    // Also set the theme class for any CSS-based theming
+    document.documentElement.setAttribute('data-color-scheme', currentPropertyColorScheme);
+  }, [currentPropertyColorScheme]);
+
+
+  // Fetch current property name on startup
+  useEffect(() => {
+    fetchCurrentProperty().then((property) => {
+      if (property && property.name) {
+        setPropertyName(property.name);
+      }
+    });
+    fetchCurrentProperty().then((property) => {
+      if (property && property.tailwind_color_scheme) setCurrentPropertyColorScheme(property.tailwind_color_scheme);
+    });
+  }, []);
+
+  // Hydrate this property's module toggles (kitchen module gates the Kitchen &
+  // Food nav items — but not "Edit Main Menu & RBAC" itself, that editor stays
+  // reachable regardless; it just hides kitchen items from its own list, see
+  // NavMenuEditor's hideKitchenItems prop below)
+  const [kitchenModuleEnabled, setKitchenModuleEnabled] = useState(true);
+  useEffect(() => {
+    fetchPropertyModulesFromDB().then((modules) => {
+      const kitchen = modules.find((m) => m.slug === 'kitchen');
+      if (kitchen) setKitchenModuleEnabled(!!kitchen.is_enabled);
+    });
+  }, []);
+
+  // Nav items filtered by this property's module toggles. Used for rendering and
+  // route guards; NavMenuEditor still edits the unfiltered `navItems` config.
+  const visibleNavItems = useMemo(() => {
+    if (kitchenModuleEnabled) return navItems;
+    return navItems.filter((item) => !isKitchenModuleNavItem(item));
+  }, [navItems, kitchenModuleEnabled]);
+
   // Hydrate guests, menu, orders, inventory, attendance, and audit logs from DB on startup
   useEffect(() => {
     fetchGuestsFromDB().then((data) => {
@@ -455,24 +512,24 @@ function AppBody() {
     return item.roles.includes(role);
   };
 
-  // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or navItems update
+  // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (navItems.length === 0) return;
+    if (visibleNavItems.length === 0) return;
 
     const currentKey = activeMenuItemKey;
-    const allowed = isRouteAllowed(currentKey, activeRole, navItems);
+    const allowed = isRouteAllowed(currentKey, activeRole, visibleNavItems);
     if (!allowed) {
       // Find first permitted route for current user role
-      const firstPermitted = navItems.find((i) => i.isVisible && i.roles.includes(activeRole));
+      const firstPermitted = visibleNavItems.find((i) => i.isVisible && i.roles.includes(activeRole));
       const fallbackTab = firstPermitted ? (firstPermitted.tabKey as TabType) : 'dashboard';
       const fallbackKey = firstPermitted ? (firstPermitted.uniqueKey || firstPermitted.tabKey) : 'dashboard';
-      
+
       setActiveTab(fallbackTab);
       setActiveMenuItemKey(fallbackKey);
       window.location.hash = `#${fallbackKey}`;
     }
-  }, [activeRole, activeMenuItemKey, navItems, isAuthenticated]);
+  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated]);
 
   // Guard Effect 2: Trigger whenever user types a URL hash in the browser bar
   useEffect(() => {
@@ -482,7 +539,7 @@ function AppBody() {
 
       const hash = window.location.hash.replace('#', '').trim();
       if (!hash) return;
-      
+
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'guest_registration' },
@@ -530,7 +587,7 @@ function AppBody() {
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then fallback to dashboard
       if (!routeMap[hash]) {
-        const dynamicItem = navItems.find((n) => n.uniqueKey === hash || n.tabKey === hash);
+        const dynamicItem = visibleNavItems.find((n) => n.uniqueKey === hash || n.tabKey === hash);
         if (dynamicItem && dynamicItem.isVisible) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
           setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
@@ -544,7 +601,7 @@ function AppBody() {
 
       const targetRoute = routeMap[hash];
       // Check RBAC permission for route target
-      const allowed = isRouteAllowed(targetRoute.key, activeRole, navItems);
+      const allowed = isRouteAllowed(targetRoute.key, activeRole, visibleNavItems);
       if (allowed) {
         setActiveTab(targetRoute.tab);
         setActiveMenuItemKey(targetRoute.key);
@@ -562,19 +619,20 @@ function AppBody() {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [activeRole, navItems, isAuthenticated]);
+  }, [activeRole, visibleNavItems, isAuthenticated]);
 
   // Helper to dispatch real Telegram Notifications via Secure PHP Proxy API
   const dispatchTelegramAlert = async (
     eventType: string,
     message: string,
     category: 'kitchen' | 'admin' | 'finance' | 'all' = 'all',
-    replyMarkup?: any
+    replyMarkup?: any,
+    templateKey?: string
   ) => {
     const logId = `tg-${Date.now().toString().slice(-4)}`;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-    
+
     // Add pending log entry
     const newLog: TelegramDispatchLog = {
       id: logId,
@@ -595,6 +653,7 @@ function AppBody() {
         category,
         message,
         replyMarkup,
+        templateKey,
       });
       if (!ok) {
         hasError = true;
@@ -711,7 +770,7 @@ function AppBody() {
     );
     await checkoutGuestInDB(receipt.guestId);
     saveReceiptToDB(receipt);
-    
+
     let itemsStr = '';
     if (receipt.roomTotal > 0) {
       itemsStr += `  • Lodging (${receipt.nightsCount || 1} nights): <b>₹${receipt.roomTotal}</b>\n`;
@@ -755,7 +814,7 @@ ${itemsStr}
       };
       const resolved = await resolveTelegramTemplate('checkout_settlement_bill', checkoutVars);
       const finalMsg = resolved || msg;
-      dispatchTelegramAlert('Checkout', finalMsg, 'finance');
+      dispatchTelegramAlert('Checkout', finalMsg, 'finance', undefined, 'checkout_settlement_bill');
     }
   };
 
@@ -770,7 +829,7 @@ ${itemsStr}
     const oldItem = menu.find((m) => m.id === id);
     setMenu((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
     updateMenuItemDB(id, updated);
-    
+
     const changes: string[] = [];
     if (oldItem) {
       if (updated.name !== undefined && updated.name !== oldItem.name) {
@@ -790,7 +849,7 @@ ${itemsStr}
       }
     }
     const currentUserName = currentUser?.name || activeRole;
-    const logMsg = changes.length > 0 
+    const logMsg = changes.length > 0
       ? `${currentUserName} updated food menu item: ${changes.join(', ')}`
       : `${currentUserName} updated food menu item ${oldItem?.name || id}`;
     logAudit(logMsg);
@@ -844,7 +903,7 @@ ${itemsStr}
   const handleRequestMaterial = async (req: Requisition) => {
     addRequisition(req);
     logAudit(`Created material requisition ${req.id} for ${req.requestedQty} ${req.unit} of ${req.itemName}`);
-    
+
     if (telegramConfig.enabledEvents.materialRequisitions) {
       const reqVars: Record<string, string> = {
         req_id: req.id,
@@ -856,7 +915,7 @@ ${itemsStr}
       };
       const resolved = await resolveTelegramTemplate('material_requisition_single', reqVars);
       const reqMsg = resolved || `📦 <b>NEW MATERIAL REQUISITION SHEET #${req.id}</b>\n• Requested By: <b>${req.requestedBy || activeRole}</b>\n• Material Item: <b>${req.requestedQty} ${req.unit}</b> of <b>${req.itemName}</b>\n• Initial Status: <b>${req.status}</b>`;
-      dispatchTelegramAlert('Requisition', reqMsg, 'kitchen');
+      dispatchTelegramAlert('Requisition', reqMsg, 'kitchen', undefined, 'material_requisition_single');
     }
 
     recordTelescopeLog({
@@ -884,7 +943,7 @@ ${itemsStr}
       };
       const resolved = await resolveTelegramTemplate('inventory_low_stock', lowStockVars);
       const lowMsg = resolved || `⚠️ <b>LOW STOCK WARNING ALERT</b>\n• Inventory Item: <b>${item.name}</b>\n• Current Balance: <b>${newStock} ${item.unit}</b> (Min Threshold: ${item.minThreshold} ${item.unit})\n• Action Required: Reorder stock from vendor.`;
-      dispatchTelegramAlert('Low Stock', lowMsg, 'kitchen');
+      dispatchTelegramAlert('Low Stock', lowMsg, 'kitchen', undefined, 'inventory_low_stock');
     }
 
     recordTelescopeLog({
@@ -912,7 +971,7 @@ ${itemsStr}
   const handleAddPettyCash = async (entry: PettyCashEntry) => {
     addPettyCash(entry);
     logAudit(`Recorded petty cash ${entry.type}: ₹${entry.amount} - ${entry.description}`);
-    
+
     if (telegramConfig.enabledEvents.pettyCashExpenses) {
       const pettyVars: Record<string, string> = {
         entry_type: entry.type.toUpperCase(),
@@ -923,7 +982,7 @@ ${itemsStr}
       };
       const resolved = await resolveTelegramTemplate('finance_petty_cash_expense', pettyVars);
       const pettyMsg = resolved || `💰 <b>PETTY CASH ${entry.type.toUpperCase()} RECORDED</b>\n• Amount: <b>₹${entry.amount}</b>\n• Category: <b>${entry.category}</b>\n• Vendor / Payee: <b>${entry.vendor}</b>\n• Description: ${entry.description}`;
-      dispatchTelegramAlert('Petty Cash', pettyMsg, 'finance');
+      dispatchTelegramAlert('Petty Cash', pettyMsg, 'finance', undefined, 'finance_petty_cash_expense');
     }
 
     recordTelescopeLog({
@@ -971,217 +1030,223 @@ ${itemsStr}
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
       <ToastProvider>
-      {!isAuthenticated && (
-        <LoginModal
-          onLoginSuccess={handleLoginSuccess}
-          onLoginFailed={handleLoginFailed}
+        {!isAuthenticated && (
+          <LoginModal
+            onLoginSuccess={handleLoginSuccess}
+            onLoginFailed={handleLoginFailed}
+          />
+        )}
+
+        {isAuthenticated && (
+          <Header
+            onLogout={handleLogout}
+            onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            isIconOnly={isIconOnly}
+            onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
+            isDarkMode={isDarkMode}
+            currentPropertyColorScheme={currentPropertyColorScheme}
+            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+            isTestingMode={isTestingMode}
+            propertyName={propertyName}
+            onToggleTestingMode={handleToggleTestingMode}
+          />
+        )}
+
+        {isAuthenticated && isTestingMode && (
+          <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold shadow-md flex flex-wrap items-center justify-between z-40 border-b border-amber-400 mt-16">
+            <div className="flex items-center gap-2">
+              <span className="bg-slate-950 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
+                🧪 TEST MODE ACTIVE
+              </span>
+              <span>
+                All modifications are isolated in the Sandbox Database. Live production data remains completely protected.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1 sm:mt-0">
+              <button
+                onClick={handleResetTestDatabase}
+                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 text-[11px]"
+              >
+                🔄 Reset Sandbox Data
+              </button>
+              <button
+                onClick={handleToggleTestingMode}
+                className="bg-amber-800 hover:bg-amber-900 text-white font-bold px-2.5 py-1 rounded-lg transition-all text-[11px] cursor-pointer"
+              >
+                Exit Test Mode
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isAuthenticated && (
+          <Navigation
+            activeTab={activeTab}
+            setActiveTab={(tab) => handleNavigateTab(tab)}
+            activeMenuItemKey={activeMenuItemKey}
+            setActiveMenuItemKey={setActiveMenuItemKey}
+            guests={guests}
+            isSidebarOpen={isSidebarOpen}
+            onCloseSidebar={() => setIsSidebarOpen(false)}
+            onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
+            isIconOnly={isIconOnly}
+            onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
+            navItems={visibleNavItems}
+          />
+        )}
+
+        <TelegramNotificationModal
+          isOpen={isTelegramModalOpen}
+          onClose={() => setIsTelegramModalOpen(false)}
+          telegramConfig={telegramConfig}
+          onUpdateConfig={setTelegramConfig}
+          dispatchLogs={telegramLogs}
+          onSendTestNotification={handleSendTestNotification}
         />
-      )}
 
-      {isAuthenticated && (
-      <Header
-        onLogout={handleLogout}
-        onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        isIconOnly={isIconOnly}
-        onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-        isTestingMode={isTestingMode}
-        onToggleTestingMode={handleToggleTestingMode}
-      />
-      )}
+        {/* Main Flowbite Dashboard Container */}
+        {isAuthenticated && (
+          <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
+            <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
 
-      {isAuthenticated && isTestingMode && (
-        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold shadow-md flex flex-wrap items-center justify-between z-40 border-b border-amber-400 mt-16">
-          <div className="flex items-center gap-2">
-            <span className="bg-slate-950 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
-              🧪 TEST MODE ACTIVE
-            </span>
-            <span>
-              All modifications are isolated in the Sandbox Database. Live production data remains completely protected.
-            </span>
+              {activeTab === 'dashboard' && (
+                <OperationalDashboard
+                  guests={guests}
+                  onNavigate={(tab) => handleNavigateTab(tab)}
+                  onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                  kitchenModuleEnabled={kitchenModuleEnabled}
+                />
+              )}
+
+              {activeTab === 'guests' && (
+                <GuestManagement
+                  guests={guests}
+                  receipts={receipts}
+                  onAddGuest={handleAddGuest}
+                  onCheckoutGuest={handleCheckoutGuest}
+                  activeMenuItemKey={activeMenuItemKey}
+                  onDispatchTelegram={dispatchTelegramAlert}
+                  menu={menu}
+                />
+              )}
+
+              {activeTab === 'kitchen' && (
+                <KitchenManagement
+                  guests={guests}
+                  menu={menu}
+                  onAddMenuItem={handleAddMenuItem}
+                  onRequestMaterial={handleRequestMaterial}
+                  onDispatchTelegram={dispatchTelegramAlert}
+                  activeMenuItemKey={activeMenuItemKey}
+                  isTestingMode={isTestingMode}
+                />
+              )}
+
+              {activeTab === 'inventory' && (
+                <InventoryManagement
+                  onUpdateStock={handleUpdateStock}
+                  onAddInventoryItem={handleAddInventoryItem}
+                  onUpdateItemImage={handleUpdateInventoryItemImage}
+                  activeMenuItemKey={activeMenuItemKey}
+                  onDispatchTelegram={dispatchTelegramAlert}
+                  onLogAudit={logAudit}
+                />
+              )}
+
+              {activeTab === 'petty_cash' && activeMenuItemKey === 'edit_expense_items' && (
+                <ExpenseItemsManagement />
+              )}
+
+              {activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
+                <CashDrawerManager
+                  onLogAudit={logAudit}
+                  onDispatchTelegram={dispatchTelegramAlert}
+                />
+              )}
+
+              {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
+                <PettyCashManagement
+                  onDispatchTelegram={dispatchTelegramAlert}
+                />
+              )}
+
+              {activeTab === 'staff' && (
+                <StaffManagement
+                  activeMenuItemKey={activeMenuItemKey}
+                  auditLogs={auditLogs}
+                  onLogAudit={logAudit}
+                  onDispatchTelegram={dispatchTelegramAlert}
+                />
+              )}
+
+              {activeTab === 'analytics' && (
+                <AnalyticsDashboard
+                  receipts={receipts}
+                  guests={guests}
+                  activeMenuItemKey={activeMenuItemKey}
+                  kitchenModuleEnabled={kitchenModuleEnabled}
+                />
+              )}
+
+              {activeTab === 'audit_logs' && (
+                <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
+              )}
+
+              {activeTab === 'export' && (
+                <DataExportCenter
+                  guests={guests}
+                  receipts={receipts}
+                  menu={menu}
+                  auditLogs={auditLogs}
+                  kitchenModuleEnabled={kitchenModuleEnabled}
+                />
+              )}
+
+              {activeTab === 'menu_manager' && (
+                <MenuManager
+                  foodMenu={menu}
+                  onAddFoodItem={handleAddMenuItem}
+                  onUpdateFoodItem={handleUpdateMenuItem}
+                  onDeleteFoodItem={handleDeleteMenuItem}
+                  navItems={navItems}
+                  onUpdateNavItems={handleUpdateNavItems}
+                  activeMenuItemKey={activeMenuItemKey}
+                  kitchenModuleEnabled={kitchenModuleEnabled}
+                />
+              )}
+
+              {activeTab === 'petty_cash' && activeMenuItemKey === 'misc_charges' && (
+                <MiscChargesManagement onLogAudit={logAudit} />
+              )}
+
+              {activeTab === 'telegram' && (
+                <TelegramNotificationModal
+                  isOpen={true}
+                  onClose={() => setIsTelegramModalOpen(false)}
+                  telegramConfig={telegramConfig}
+                  onUpdateConfig={setTelegramConfig}
+                  dispatchLogs={telegramLogs}
+                  onSendTestNotification={handleSendTestNotification}
+                  isEmbedded={true}
+                  onLogAudit={logAudit}
+                />
+              )}
+
+              {activeTab === 'custom_css' && (
+                <CustomCSSOverride />
+              )}
+            </main>
           </div>
-          <div className="flex items-center gap-2 mt-1 sm:mt-0">
-            <button
-              onClick={handleResetTestDatabase}
-              className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 text-[11px]"
-            >
-              🔄 Reset Sandbox Data
-            </button>
-            <button
-              onClick={handleToggleTestingMode}
-              className="bg-amber-800 hover:bg-amber-900 text-white font-bold px-2.5 py-1 rounded-lg transition-all text-[11px] cursor-pointer"
-            >
-              Exit Test Mode
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {isAuthenticated && (
-      <Navigation
-        activeTab={activeTab}
-        setActiveTab={(tab) => handleNavigateTab(tab)}
-        activeMenuItemKey={activeMenuItemKey}
-        setActiveMenuItemKey={setActiveMenuItemKey}
-        guests={guests}
-        isSidebarOpen={isSidebarOpen}
-        onCloseSidebar={() => setIsSidebarOpen(false)}
-        onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
-        isIconOnly={isIconOnly}
-        onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
-        navItems={navItems}
-      />
-      )}
+        {/* Unauthenticated: show login-only content */}
+        {!isAuthenticated && (
+          <div className="flex-1" />
+        )}
 
-      <TelegramNotificationModal
-        isOpen={isTelegramModalOpen}
-        onClose={() => setIsTelegramModalOpen(false)}
-        telegramConfig={telegramConfig}
-        onUpdateConfig={setTelegramConfig}
-        dispatchLogs={telegramLogs}
-        onSendTestNotification={handleSendTestNotification}
-      />
-
-      {/* Main Flowbite Dashboard Container */}
-      {isAuthenticated && (
-      <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
-        <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
-
-          {activeTab === 'dashboard' && (
-            <OperationalDashboard
-              guests={guests}
-              onNavigate={(tab) => handleNavigateTab(tab)}
-              onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
-            />
-          )}
-
-          {activeTab === 'guests' && (
-            <GuestManagement
-              guests={guests}
-              receipts={receipts}
-              onAddGuest={handleAddGuest}
-              onCheckoutGuest={handleCheckoutGuest}
-              activeMenuItemKey={activeMenuItemKey}
-              onDispatchTelegram={dispatchTelegramAlert}
-              menu={menu}
-            />
-          )}
-
-          {activeTab === 'kitchen' && (
-            <KitchenManagement
-              guests={guests}
-              menu={menu}
-              onAddMenuItem={handleAddMenuItem}
-              onRequestMaterial={handleRequestMaterial}
-              onDispatchTelegram={dispatchTelegramAlert}
-              activeMenuItemKey={activeMenuItemKey}
-              isTestingMode={isTestingMode}
-            />
-          )}
-
-          {activeTab === 'inventory' && (
-            <InventoryManagement
-              onUpdateStock={handleUpdateStock}
-              onAddInventoryItem={handleAddInventoryItem}
-              onUpdateItemImage={handleUpdateInventoryItemImage}
-              activeMenuItemKey={activeMenuItemKey}
-              onDispatchTelegram={dispatchTelegramAlert}
-              onLogAudit={logAudit}
-            />
-          )}
-
-          {activeTab === 'petty_cash' && activeMenuItemKey === 'edit_expense_items' && (
-            <ExpenseItemsManagement />
-          )}
-
-          {activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
-            <CashDrawerManager
-              onLogAudit={logAudit}
-              onDispatchTelegram={dispatchTelegramAlert}
-            />
-          )}
-
-          {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
-            <PettyCashManagement
-              onDispatchTelegram={dispatchTelegramAlert}
-            />
-          )}
-
-          {activeTab === 'staff' && (
-            <StaffManagement
-              activeMenuItemKey={activeMenuItemKey}
-              auditLogs={auditLogs}
-              onLogAudit={logAudit}
-              onDispatchTelegram={dispatchTelegramAlert}
-            />
-          )}
-
-          {activeTab === 'analytics' && (
-            <AnalyticsDashboard
-              receipts={receipts}
-              guests={guests}
-              activeMenuItemKey={activeMenuItemKey}
-            />
-          )}
-
-          {activeTab === 'audit_logs' && (
-            <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
-          )}
-
-          {activeTab === 'export' && (
-            <DataExportCenter
-              guests={guests}
-              receipts={receipts}
-              menu={menu}
-              auditLogs={auditLogs}
-            />
-          )}
-
-          {activeTab === 'menu_manager' && (
-            <MenuManager
-              foodMenu={menu}
-              onAddFoodItem={handleAddMenuItem}
-              onUpdateFoodItem={handleUpdateMenuItem}
-              onDeleteFoodItem={handleDeleteMenuItem}
-              navItems={navItems}
-              onUpdateNavItems={handleUpdateNavItems}
-              activeMenuItemKey={activeMenuItemKey}
-            />
-          )}
-
-          {activeTab === 'petty_cash' && activeMenuItemKey === 'misc_charges' && (
-            <MiscChargesManagement onLogAudit={logAudit} />
-          )}
-
-          {activeTab === 'telegram' && (
-            <TelegramNotificationModal
-              isOpen={true}
-              onClose={() => setIsTelegramModalOpen(false)}
-              telegramConfig={telegramConfig}
-              onUpdateConfig={setTelegramConfig}
-              dispatchLogs={telegramLogs}
-              onSendTestNotification={handleSendTestNotification}
-              isEmbedded={true}
-              onLogAudit={logAudit}
-            />
-          )}
-
-          {activeTab === 'custom_css' && (
-            <CustomCSSOverride />
-          )}
-        </main>
-      </div>
-      )}
-
-      {/* Unauthenticated: show login-only content */}
-      {!isAuthenticated && (
-        <div className="flex-1" />
-      )}
-
-      <GlobalModal />
+        <GlobalModal />
       </ToastProvider>
     </div>
   );

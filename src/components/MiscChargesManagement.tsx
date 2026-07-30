@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
 import DataTable from 'react-data-table-component';
+import { getPropertySlug } from '../services/api';
 
 interface MiscChargeTemplate {
   id: string | number;
@@ -55,7 +56,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('artists_farm_user');
+      const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
       if (savedUser) {
         try {
           const userObj = JSON.parse(savedUser);

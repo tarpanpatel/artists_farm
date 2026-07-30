@@ -56,7 +56,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
     setIsLoading(true);
     try {
-      const response = await fetch('/artists_farm/api/authenticate.php', {
+      const response = await fetch('/artists_farm/php/api/authenticate.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,7 +101,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
     setIsLoading(true);
     try {
-      const response = await fetch('/artists_farm/api/authenticate.php', {
+      const response = await fetch('/artists_farm/php/api/authenticate.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,20 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /artists_farm/
+
+    # Handle tenant/property routing for multi-tenant SaaS
+    # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
+    # Only rewrites when the full path isn't a real file/directory, so
+    # /php/..., /dist/..., /assets/..., /api/... etc. are left untouched
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([a-z0-9-]+)/([a-z0-9-]+)/(.*)$ index.php?tenant_slug=$1&property_slug=$2 [QSA,L]
+
+    # Fallback for single segment (tenant dashboard)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([a-z0-9-]+)/(.*)$ $2?property_slug=$1 [QSA,L]
+
+    # Keep existing rules
     RewriteRule ^food_menu/?$ food_menu.php [L]
 </IfModule>

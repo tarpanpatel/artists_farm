@@ -16,7 +16,7 @@ interface InventoryManagementProps {
   onAddInventoryItem: (item: InventoryItem) => void;
   onUpdateItemImage?: (itemId: string, imagePath: string) => void;
   activeMenuItemKey?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
 }
 
@@ -470,7 +470,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     if (onDispatchTelegram) {
       const resolved = await resolveTelegramTemplate('requisition_stock_fulfilled', templateVars);
       const tgMessage = resolved || `${headerTitle}\n━━━━━━━━━━━━━━━━━━\n🆔 Sheet ID: #${selectedFulfillSheet.id}\n👤 Processed By: ${staffName}\n📅 Fulfillment Time: ${formattedTime}\n🟢 Global Status: ${calculatedStatus}\n━━━━━━━━━━━━━━━━━━\n📝 Items Variance Manifest:\n${manifestStr}`;
-      onDispatchTelegram('Stock Fulfillment', tgMessage, 'kitchen');
+      onDispatchTelegram('Stock Fulfillment', tgMessage, 'kitchen', undefined, 'requisition_stock_fulfilled');
     }
     
     const updatedStatus = calculatedStatus.toUpperCase();
@@ -631,7 +631,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       };
       const resolved = await resolveTelegramTemplate('requisition_material_request', reqVars);
       const tgMessage = resolved || `📋 <b>NEW STOCK REQUISITION SHEET #${newSheetId}</b>\n━━━━━━━━━━━━━━━━━━\n👤 Requested By: <b>${currentUser?.name || 'Staff'}</b>\n📅 Date: ${newSheet.date}\n🟢 Status: <b>PENDING</b>\n━━━━━━━━━━━━━━━━━━\n📝 Items Requested:\n${itemsListStr}`;
-      onDispatchTelegram('Requisition', tgMessage, 'kitchen');
+      onDispatchTelegram('Requisition', tgMessage, 'kitchen', undefined, 'requisition_material_request');
     }
 
     setReqBasket([]);

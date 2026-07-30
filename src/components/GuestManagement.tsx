@@ -34,7 +34,7 @@ interface GuestManagementProps {
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   activeMenuItemKey?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
 }
 
 

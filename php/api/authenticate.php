@@ -20,7 +20,8 @@ $username = $input['username'] ?? '';
 $passcode = $input['passcode'] ?? '';
 
 if (!$username || !$passcode) {
-    echo json_encode(['success' => false, 'message' => 'Username and passcode required']);
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Username and 6-digit passcode required']);
     exit;
 }
 

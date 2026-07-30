@@ -16,11 +16,12 @@ require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../telegram/telegram.php';
+require_once __DIR__ . '/../modules/module_manager.php';
 
 // Simple API Key Authentication
 $api_key = getenv('API_KEY') ?: 'artists-farm-secure-key-2026';
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property'];
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -33,24 +34,49 @@ if ($is_write_action && $provided_key !== $api_key) {
     exit;
 }
 
+$propertyId = getCurrentPropertyId($pdo);
+$currentProperty = getCurrentProperty($pdo); // Get the full property details
+
+// Actions that belong entirely to food service: kitchen orders, the food menu
+// & recipes, and the whole stock/requisitions/kitchen-purchases inventory
+// system (php/inventory/inventory.php has no non-food inventory concept).
+// A property with the 'kitchen' module disabled gets none of this — enforced
+// here so disabling it actually stops the data from being created/read, not
+// just hides the nav link.
+$kitchen_module_actions = [
+    'get_orders', 'create_order', 'update_order_status', 'get_served_logs', 'add_served_log',
+    'get_menu', 'add_menu_item', 'update_menu_item', 'delete_menu_item', 'dedup_menu',
+    'get_recipes', 'save_recipe', 'delete_recipe', 'deplete_stock',
+    'get_inventory', 'update_stock',
+    'get_stock_requests', 'create_stock_request', 'update_stock_request_status',
+    'get_wastage_logs', 'create_wastage_log',
+    'get_kitchen_purchases', 'create_kitchen_purchase', 'bulk_update_kitchen_purchases', 'delete_kitchen_purchase',
+    'get_material_categories', 'update_material_category', 'delete_material_category', 'add_material_category',
+    'toggle_ingredient_category', 'add_catalog_item', 'update_catalog_item', 'delete_catalog_item',
+    'bulk_update_catalog_category', 'seed_catalog', 'fix_orphan_categories',
+];
+if (in_array($action, $kitchen_module_actions, true)) {
+    requireModule($pdo, 'kitchen', $propertyId);
+}
+
 switch ($action) {
     // --- GUESTS ---
     case 'get_guests':
     case 'add_guest':
     case 'checkout_guest':
-        handleGuestRequests($pdo, $request_method, $action);
+        handleGuestRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- BILLING & CHECKOUT ---
     case 'add_direct_food_incidentals':
     case 'add_adjustment':
     case 'finalize_checkout':
-        handleBillingRequests($pdo, $request_method, $action);
+        handleBillingRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     case 'get_receipts':
     case 'save_receipt':
-        handleReceiptRequests($pdo, $request_method, $action);
+        handleReceiptRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- KITCHEN ORDERS & MENU ---
@@ -59,7 +85,7 @@ switch ($action) {
     case 'update_order_status':
     case 'get_served_logs':
     case 'add_served_log':
-        handleKitchenRequests($pdo, $request_method, $action);
+        handleKitchenRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     case 'get_menu':
@@ -73,7 +99,7 @@ switch ($action) {
     case 'save_recipe':
     case 'delete_recipe':
     case 'deplete_stock':
-        handleMenuRequests($pdo, $request_method, $action);
+        handleMenuRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- INVENTORY & STOCK ---
@@ -99,7 +125,7 @@ switch ($action) {
     case 'bulk_update_catalog_category':
     case 'seed_catalog':
     case 'fix_orphan_categories':
-        handleInventoryRequests($pdo, $request_method, $action);
+        handleInventoryRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- FINANCE & PETTY CASH ---
@@ -119,7 +145,7 @@ switch ($action) {
     case 'get_drawer_entries':
     case 'get_financial_ledger':
     case 'record_salary_payment':
-        handleFinanceRequests($pdo, $request_method, $action);
+        handleFinanceRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- STAFF & PAYROLL ---
@@ -133,18 +159,30 @@ switch ($action) {
     case 'delete_payee':
     case 'get_attendance':
     case 'log_attendance':
-        handleStaffRequests($pdo, $request_method, $action);
+        handleStaffRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- AUDIT LOGS ---
     case 'get_audit_logs':
     case 'add_audit_log':
-        handleAuditRequests($pdo, $request_method, $action);
+        handleAuditRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- TELEGRAM ---
     case 'send_telegram_alert':
-        handleTelegramRequests($pdo, $request_method, $action);
+    case 'get_telegram_config':
+    case 'save_telegram_config':
+        handleTelegramRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- MODULES ---
+    case 'get_property_modules':
+        echo json_encode(['status' => 'success', 'data' => getPropertyModules($pdo, $propertyId)]);
+        break;
+
+    // --- PROPERTY ---
+    case 'get_current_property':
+        echo json_encode(['status' => 'success', 'data' => $currentProperty]);
         break;
 
     // --- SANDBOX / TESTING ---
@@ -153,9 +191,10 @@ switch ($action) {
         break;
 
     default:
+        $propertyName = $currentProperty['name'] ?? 'Artists Farm'; // Default if not found
         echo json_encode([
             'status' => 'online',
-            'system' => 'Artists Farm Jaipur Terminal API',
+            'system' => $propertyName . ' Terminal API', // Use property name here
             'version' => '2.0.0',
             'server_time' => date('Y-m-d H:i:s'),
             'modules' => [

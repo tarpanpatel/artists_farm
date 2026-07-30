@@ -63,6 +63,7 @@ interface MenuManagerProps {
   navItems: NavMenuItem[];
   onUpdateNavItems: (items: NavMenuItem[]) => void;
   activeMenuItemKey?: string;
+  kitchenModuleEnabled?: boolean;
 }
 
 const AVAILABLE_ICONS = [
@@ -98,6 +99,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   navItems,
   onUpdateNavItems,
   activeMenuItemKey,
+  kitchenModuleEnabled = true,
 }) => {
   const { staff } = useStaff();
   const { activeRole } = useAuth();
@@ -541,6 +543,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           navItems={navItems}
           onUpdateNavItems={onUpdateNavItems}
           activeRole={activeRole}
+          hideKitchenItems={!kitchenModuleEnabled}
         />
       )}
 

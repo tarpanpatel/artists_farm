@@ -253,6 +253,22 @@ export interface TelegramConfig {
   templates?: TelegramTemplate[];
 }
 
+export interface TelegramGroup {
+  key: string;
+  name: string;
+  chatId: string;
+}
+
+// Per-property Telegram connection settings: bot token, named group chats, and
+// which group each notification category (kitchen/finance/admin) routes to.
+// Persisted server-side via get_telegram_config / save_telegram_config.
+export interface PropertyTelegramConfig {
+  enabled: boolean;
+  botToken: string | null;
+  groups: TelegramGroup[];
+  routing: Record<string, string>;
+}
+
 export interface TelegramDispatchLog {
   id: string;
   timestamp: string;
@@ -285,3 +301,10 @@ export interface CashDrawerSummary {
   netBalance: number;
 }
 
+export interface ApiStatus {
+  status: string;
+  system: string;
+  version: string;
+  server_time: string;
+  modules: Record<string, string>;
+}

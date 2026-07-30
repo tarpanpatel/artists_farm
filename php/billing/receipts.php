@@ -4,11 +4,12 @@
  * Function: Persistent checkout receipt storage and retrieval from billing_receipts table.
  */
 
-function handleReceiptRequests($pdo, $request_method, $action) {
+function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create billing_receipts table
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_receipts` (
             `id` VARCHAR(50) PRIMARY KEY,
+            `property_id` VARCHAR(50) DEFAULT '',
             `guest_id` VARCHAR(50) DEFAULT '',
             `guest_name` VARCHAR(100) DEFAULT '',
             `room_number` VARCHAR(50) DEFAULT '',
@@ -53,11 +54,13 @@ function handleReceiptRequests($pdo, $request_method, $action) {
     switch ($action) {
         case 'get_receipts':
             try {
-                $stmt = $pdo->query("SELECT * FROM billing_receipts ORDER BY created_at DESC");
+                $stmt = $pdo->prepare("SELECT * FROM billing_receipts WHERE property_id = ? ORDER BY created_at DESC");
+                $stmt->execute([$propertyId]);
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if (empty($data)) {
                     // Fallback: try to reconstruct from audit_logs if billing_receipts is empty
-                    $stmt = $pdo->query("SELECT * FROM audit_logs WHERE action LIKE '%Checkout%' ORDER BY timestamp DESC");
+                    $stmt = $pdo->prepare("SELECT * FROM audit_logs WHERE property_id = ? AND action LIKE '%Checkout%' ORDER BY timestamp DESC");
+                    $stmt->execute([$propertyId]);
                     $auditData = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     echo json_encode(['status' => 'success', 'data' => $auditData]);
                 } else {
@@ -72,9 +75,10 @@ function handleReceiptRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount)");
+                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount)");
                     $stmt->execute([
                         $input['id'] ?? 'REC-' . time(),
+                        $propertyId,
                         $input['guestId'] ?? '',
                         $input['guestName'] ?? '',
                         $input['roomNumber'] ?? '',
@@ -125,11 +129,12 @@ function handleReceiptRequests($pdo, $request_method, $action) {
 
                     // Also log to audit trail
                     try {
-                        $logStmt = $pdo->prepare("INSERT INTO audit_logs (timestamp, user, action) VALUES (?, ?, ?)");
+                        $logStmt = $pdo->prepare("INSERT INTO audit_logs (timestamp, user, action, property_id) VALUES (?, ?, ?, ?)");
                         $logStmt->execute([
                             date('Y-m-d H:i:s'),
                             $input['guestName'] ?? 'Guest',
-                            'Completed Split Checkout for Guest ' . ($input['guestId'] ?? 'Room') . ' Amount: ₹' . ($input['grandTotal'] ?? 0)
+                            'Completed Split Checkout for Guest ' . ($input['guestId'] ?? 'Room') . ' Amount: ₹' . ($input['grandTotal'] ?? 0),
+                            $propertyId
                         ]);
                     } catch (PDOException $la) {}
 

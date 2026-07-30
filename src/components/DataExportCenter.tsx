@@ -27,6 +27,7 @@ interface DataExportCenterProps {
   receipts: BillingReceipt[];
   menu: MenuItem[];
   auditLogs: AuditLog[];
+  kitchenModuleEnabled?: boolean;
 }
 
 export const DataExportCenter: React.FC<DataExportCenterProps> = ({
@@ -34,6 +35,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   receipts,
   menu,
   auditLogs,
+  kitchenModuleEnabled = true,
 }) => {
   const { orders } = useKitchenContext();
   const { staff, attendance } = useStaff();
@@ -469,26 +471,29 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             </button>
           </div>
 
-          {/* Card 2: Kitchen Purchases */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
-            <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
-                <Utensils className="w-4 h-4 text-amber-600" />
-                <span>🍳 Kitchen Purchases Workbook</span>
-              </h3>
-              <p className="text-xs text-gray-500">
-                Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.
-              </p>
+          {/* Card 2: Kitchen Purchases — properties with no food service have
+              nothing here (the underlying data is blocked at the API layer). */}
+          {kitchenModuleEnabled && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                  <Utensils className="w-4 h-4 text-amber-600" />
+                  <span>🍳 Kitchen Purchases Workbook</span>
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exportKitchenExpenses}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                <span>EXPORT SHEETS</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={exportKitchenExpenses}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
-            >
-              <Download className="w-4 h-4" />
-              <span>EXPORT SHEETS</span>
-            </button>
-          </div>
+          )}
 
           {/* Card 3: Farm Upkeep & Utilities */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">

@@ -8,7 +8,7 @@ import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, fetchStaffUsersF
 
 interface PettyCashManagementProps {
   activeRole?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin') => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
 }
 
 interface FormState {

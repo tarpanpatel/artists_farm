@@ -4,7 +4,7 @@
  * Function: Requisitions, warehouse stock fulfillment, deficit shortfalls, and kitchen purchase tracking.
  */
 
-function handleInventoryRequests($pdo, $request_method, $action) {
+function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_inventory':
             try {
@@ -12,8 +12,10 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 $sql = "SELECT r.id, r.item_name as name, r.category_id, COALESCE(c.name, 'General') as category, r.current_stock as quantity, r.unit_label as unit, COALESCE(r.image_path, '') as image_path 
                         FROM req_catalog r 
                         LEFT JOIN material_categories c ON r.category_id = c.id 
+                        WHERE r.property_id = ?
                         ORDER BY r.item_name ASC";
-                $stmt = $pdo->query($sql);
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
@@ -25,13 +27,15 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     // Auto-create req_catalog table if both are missing
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `item_name` VARCHAR(255) NOT NULL,
                         `category_id` INT DEFAULT 1,
                         `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                         `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg'
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $stmt = $pdo->query("SELECT id, item_name as name, 'General' as category, current_stock as quantity, unit_label as unit FROM req_catalog ORDER BY item_name ASC");
+                    $stmt = $pdo->prepare("SELECT id, item_name as name, 'General' as category, current_stock as quantity, unit_label as unit FROM req_catalog WHERE property_id = ? ORDER BY item_name ASC");
+                    $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 }
             }
@@ -41,11 +45,11 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("UPDATE req_catalog SET current_stock = ? WHERE id = ?");
-                    $stmt->execute([$input['quantity'], $input['id']]);
+                    $stmt = $pdo->prepare("UPDATE req_catalog SET current_stock = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['quantity'], $input['id'], $propertyId]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE inventory_items SET quantity = ? WHERE id = ?");
-                    $stmt->execute([$input['quantity'], $input['id']]);
+                    $stmt = $pdo->prepare("UPDATE inventory_items SET quantity = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['quantity'], $input['id'], $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Stock quantity updated']);
             }
@@ -55,6 +59,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `stock_requisitions` (
                     `id` VARCHAR(50) PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
                     `date` VARCHAR(100) NOT NULL,
                     `items` JSON NOT NULL,
@@ -62,15 +67,17 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 // Seed default data if empty
-                $count = $pdo->query("SELECT COUNT(*) FROM stock_requisitions")->fetchColumn();
-                if ($count == 0) {
-                    $pdo->exec("INSERT INTO `stock_requisitions` (`id`, `status`, `date`, `items`) VALUES
-                        ('1166', 'PENDING', '21 Jul 2026 - 10:21 PM', '[\"Green Pea (x1 Kg)\", \"Hari Mirchi (x1 Kg)\"]'),
-                        ('1165', 'PENDING', '21 Jul 2026 - 09:05 PM', '[\"Black Pepper (x1 Pcs)\", \"Basmati Rice (x1 Pc)\"]'),
-                        ('1164', 'PENDING', '21 Jul 2026 - 08:53 PM', '[\"Ajino Moto (x1 Gm)\"]')");
+                $count = $pdo->prepare("SELECT COUNT(*) FROM stock_requisitions WHERE property_id = ?");
+                $count->execute([$propertyId]);
+                if ((int)$count->fetchColumn() == 0) {
+                    $pdo->exec("INSERT INTO `stock_requisitions` (`id`, `property_id`, `status`, `date`, `items`) VALUES
+                        ('1166', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 10:21 PM', '[\"Green Pea (x1 Kg)\", \"Hari Mirchi (x1 Kg)\"]'),
+                        ('1165', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 09:05 PM', '[\"Black Pepper (x1 Pcs)\", \"Basmati Rice (x1 Pc)\"]'),
+                        ('1164', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 08:53 PM', '[\"Ajino Moto (x1 Gm)\"]')");
                 }
 
-                $stmt = $pdo->query("SELECT id, status, date, items FROM stock_requisitions ORDER BY CAST(id AS UNSIGNED) DESC, created_at DESC");
+                $stmt = $pdo->prepare("SELECT id, status, date, items FROM stock_requisitions WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) DESC, created_at DESC");
+                $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($rows as &$row) {
                     $row['items'] = json_decode($row['items'], true) ?: [];
@@ -85,9 +92,10 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO stock_requisitions (id, status, date, items) VALUES (?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO stock_requisitions (id, property_id, status, date, items) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['id'],
+                        $propertyId,
                         $input['status'] ?? 'PENDING',
                         $input['date'],
                         json_encode($input['items'] ?? [])
@@ -105,17 +113,19 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $itemsArr = array_values(array_filter($input['items'] ?? [], function($v) { return !empty($v); }));
                     if (!empty($itemsArr)) {
-                        $stmt = $pdo->prepare("UPDATE stock_requisitions SET status = ?, items = ? WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE stock_requisitions SET status = ?, items = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['status'],
                             json_encode($itemsArr),
-                            $input['id']
+                            $input['id'],
+                            $propertyId
                         ]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE stock_requisitions SET status = ? WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE stock_requisitions SET status = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['status'],
-                            $input['id']
+                            $input['id'],
+                            $propertyId
                         ]);
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Stock request updated in MySQL']);
@@ -129,6 +139,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_wastage_logs` (
                     `id` VARCHAR(50) PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `date` VARCHAR(50) NOT NULL,
                     `item_name` VARCHAR(255) NOT NULL,
                     `wasted_qty` DECIMAL(10,2) NOT NULL,
@@ -139,7 +150,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->query("SELECT id, date, item_name as itemName, wasted_qty as wastedQty, unit, reason, reported_by as reportedBy, notes FROM kitchen_wastage_logs ORDER BY created_at DESC");
+                $stmt = $pdo->prepare("SELECT id, date, item_name as itemName, wasted_qty as wastedQty, unit, reason, reported_by as reportedBy, notes FROM kitchen_wastage_logs WHERE property_id = ? ORDER BY created_at DESC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -150,9 +162,10 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO kitchen_wastage_logs (id, date, item_name, wasted_qty, unit, reason, reported_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO kitchen_wastage_logs (id, property_id, date, item_name, wasted_qty, unit, reason, reported_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['id'],
+                        $propertyId,
                         $input['date'] ?? date('Y-m-d'),
                         $input['itemName'],
                         $input['wastedQty'],
@@ -172,6 +185,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_purchases_log` (
                     `id` VARCHAR(50) PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `purchase_date` VARCHAR(50) NOT NULL,
                     `item_name` VARCHAR(255) NOT NULL,
                     `specification` VARCHAR(255) DEFAULT 'N/A',
@@ -189,6 +203,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
 
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `inventory_price_history` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `item_name` VARCHAR(255) NOT NULL,
                     `unit_cost` DECIMAL(10,2) NOT NULL,
                     `purchase_date` VARCHAR(50) NOT NULL,
@@ -197,6 +212,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
 
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_advances` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `staff_name` VARCHAR(100) NOT NULL,
                     `amount` DECIMAL(10,2) NOT NULL,
                     `reason` TEXT,
@@ -204,7 +220,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->query("SELECT id, purchase_date as purchaseDate, item_name as itemName, specification, quantity, unit, total_price as totalPrice, unit_cost as unitCost, recorded_by as recordedBy, vendor_name as vendorName, settlement_status as settlementStatus, settlement_method as settlementMethod, paid_by_staff as paidByStaff FROM kitchen_purchases_log ORDER BY created_at DESC");
+                $stmt = $pdo->prepare("SELECT id, purchase_date as purchaseDate, item_name as itemName, specification, quantity, unit, total_price as totalPrice, unit_cost as unitCost, recorded_by as recordedBy, vendor_name as vendorName, settlement_status as settlementStatus, settlement_method as settlementMethod, paid_by_staff as paidByStaff FROM kitchen_purchases_log WHERE property_id = ? ORDER BY created_at DESC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -217,6 +234,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_purchases_log` (
                         `id` VARCHAR(50) PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `purchase_date` VARCHAR(50) NOT NULL,
                         `item_name` VARCHAR(255) NOT NULL,
                         `specification` VARCHAR(255) DEFAULT 'N/A',
@@ -234,15 +252,17 @@ function handleInventoryRequests($pdo, $request_method, $action) {
 
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `inventory_price_history` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `item_name` VARCHAR(255) NOT NULL,
                         `unit_cost` DECIMAL(10,2) NOT NULL,
                         `purchase_date` VARCHAR(50) NOT NULL,
                         `recorded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $stmt = $pdo->prepare("INSERT INTO kitchen_purchases_log (id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, paid_by_staff) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO kitchen_purchases_log (id, property_id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, paid_by_staff) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['id'],
+                        $propertyId,
                         $input['purchaseDate'],
                         $input['itemName'],
                         $input['specification'] ?? 'N/A',
@@ -259,14 +279,14 @@ function handleInventoryRequests($pdo, $request_method, $action) {
 
                     // Sync Master Catalog unit_cost in req_catalog if exists
                     try {
-                        $stmtCat = $pdo->prepare("UPDATE req_catalog SET current_stock = current_stock + ? WHERE LOWER(item_name) = LOWER(?)");
-                        $stmtCat->execute([$input['quantity'], $input['itemName']]);
+                        $stmtCat = $pdo->prepare("UPDATE req_catalog SET current_stock = current_stock + ? WHERE LOWER(item_name) = LOWER(?) AND property_id = ?");
+                        $stmtCat->execute([$input['quantity'], $input['itemName'], $propertyId]);
                     } catch (PDOException $e2) {}
 
                     // Historical record in inventory_price_history
                     try {
-                        $stmtHist = $pdo->prepare("INSERT INTO inventory_price_history (item_name, unit_cost, purchase_date) VALUES (?, ?, ?)");
-                        $stmtHist->execute([$input['itemName'], $input['unitCost'], $input['purchaseDate']]);
+                        $stmtHist = $pdo->prepare("INSERT INTO inventory_price_history (item_name, unit_cost, purchase_date, property_id) VALUES (?, ?, ?, ?)");
+                        $stmtHist->execute([$input['itemName'], $input['unitCost'], $input['purchaseDate'], $propertyId]);
                     } catch (PDOException $eHist) {}
 
                     echo json_encode(['status' => 'success', 'message' => 'Kitchen purchase logged & synced with Master Catalog']);
@@ -283,25 +303,26 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     if (!empty($input['vendorName']) && !empty($ids)) {
                         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                        $stmt = $pdo->prepare("UPDATE kitchen_purchases_log SET vendor_name = ? WHERE id IN ($placeholders)");
-                        $stmt->execute(array_merge([$input['vendorName']], $ids));
+                        $stmt = $pdo->prepare("UPDATE kitchen_purchases_log SET vendor_name = ? WHERE id IN ($placeholders) AND property_id = ?");
+                        $stmt->execute(array_merge([$input['vendorName']], $ids, [$propertyId]));
                     }
 
                     if (!empty($input['markPaid']) && !empty($ids)) {
                         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                        $stmt = $pdo->prepare("UPDATE kitchen_purchases_log SET settlement_status = 'Paid', settlement_method = ?, paid_by_staff = ? WHERE id IN ($placeholders)");
-                        $stmt->execute(array_merge([$input['settlementMethod'] ?? 'Farm Cash', $input['paidByStaff'] ?? ''], $ids));
+                        $stmt = $pdo->prepare("UPDATE kitchen_purchases_log SET settlement_status = 'Paid', settlement_method = ?, paid_by_staff = ? WHERE id IN ($placeholders) AND property_id = ?");
+                        $stmt->execute(array_merge([$input['settlementMethod'] ?? 'Farm Cash', $input['paidByStaff'] ?? ''], $ids, [$propertyId]));
 
-                        // If Out of Pocket by Staff -> insert negative advance entry in staff_advances (reimbursement math credit)
-                        if (($input['settlementMethod'] ?? '') === 'Paid Out of Pocket' && !empty($input['paidByStaff'])) {
-                            $stmtAdv = $pdo->prepare("INSERT INTO staff_advances (staff_name, amount, reason, date) VALUES (?, ?, ?, ?)");
-                            $stmtAdv->execute([
-                                $input['paidByStaff'],
-                                -abs($input['totalAmount'] ?? 0),
-                                "Reimbursement credit for Out-of-Pocket kitchen purchase (" . count($ids) . " items)",
-                                date('Y-m-d')
-                            ]);
-                        }
+                            // If Out of Pocket by Staff -> insert negative advance entry in staff_advances (reimbursement math credit)
+                            if (($input['settlementMethod'] ?? '') === 'Paid Out of Pocket' && !empty($input['paidByStaff'])) {
+                                $stmtAdv = $pdo->prepare("INSERT INTO staff_advances (staff_name, amount, reason, date, property_id) VALUES (?, ?, ?, ?, ?)");
+                                $stmtAdv->execute([
+                                    $input['paidByStaff'],
+                                    -abs($input['totalAmount'] ?? 0),
+                                    "Reimbursement credit for Out-of-Pocket kitchen purchase (" . count($ids) . " items)",
+                                    date('Y-m-d'),
+                                    $propertyId
+                                ]);
+                            }
                     }
 
                     echo json_encode(['status' => 'success', 'message' => 'Purchases bulk updated']);
@@ -315,8 +336,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmtDel = $pdo->prepare("DELETE FROM kitchen_purchases_log WHERE id = ?");
-                    $stmtDel->execute([$input['id']]);
+                    $stmtDel = $pdo->prepare("DELETE FROM kitchen_purchases_log WHERE id = ? AND property_id = ?");
+                    $stmtDel->execute([$input['id'], $propertyId]);
 
                     // Immutable Audit Log trace
                     try {
@@ -339,6 +360,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `name` VARCHAR(100) NOT NULL,
                     `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0,
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -353,8 +375,9 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 $pdo->exec("DELETE t1 FROM material_categories t1 INNER JOIN material_categories t2 WHERE t1.name = t2.name AND t1.id > t2.id");
 
                 // Seed only if table is empty
-                $count = $pdo->query("SELECT COUNT(*) FROM material_categories")->fetchColumn();
-                if ((int)$count === 0) {
+                $count = $pdo->prepare("SELECT COUNT(*) FROM material_categories WHERE property_id = ?");
+                $count->execute([$propertyId]);
+                if ((int)$count->fetchColumn() === 0) {
                     $seed = [
                         'Bakery','Beverages & Breakfast','Chinese & Continental Sauces','Crockery & Cutlery',
                         'Dairy','Flours & Grains','Frozen / Cold','Fruits & Desserts',
@@ -362,13 +385,14 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                         'Non Veg','Oils & Dairy Staples','Sauce','Spices & Seasonings',
                         'Vegetables & Fresh Produce'
                     ];
-                    $ins = $pdo->prepare("INSERT IGNORE INTO material_categories (name) VALUES (?)");
+                    $ins = $pdo->prepare("INSERT IGNORE INTO material_categories (name, property_id) VALUES (?, ?)");
                     foreach ($seed as $name) {
-                        $ins->execute([$name]);
+                        $ins->execute([$name, $propertyId]);
                     }
                 }
 
-                $stmt = $pdo->query("SELECT id, name, is_ingredient FROM material_categories ORDER BY name ASC");
+                $stmt = $pdo->prepare("SELECT id, name, is_ingredient FROM material_categories WHERE property_id = ? ORDER BY name ASC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -385,8 +409,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     break;
                 }
                 try {
-                    $stmt = $pdo->prepare("UPDATE material_categories SET name = ? WHERE id = ?");
-                    $stmt->execute([$newName, $id]);
+                    $stmt = $pdo->prepare("UPDATE material_categories SET name = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$newName, $id, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Category renamed']);
                 } catch (PDOException $e) {
                     if ($e->getCode() == 23000) {
@@ -402,8 +426,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM material_categories WHERE id = ?");
-                    $stmt->execute([$input['id']]);
+                    $stmt = $pdo->prepare("DELETE FROM material_categories WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['id'], $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Category deleted']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -422,11 +446,12 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `name` VARCHAR(100) NOT NULL UNIQUE,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                    $stmt = $pdo->prepare("INSERT INTO material_categories (name) VALUES (?)");
-                    $stmt->execute([$name]);
+                    $stmt = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
+                    $stmt->execute([$name, $propertyId]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Category added']);
                 } catch (PDOException $e) {
                     if ($e->getCode() == 23000) {
@@ -448,8 +473,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     break;
                 }
                 try {
-                    $stmt = $pdo->prepare("UPDATE material_categories SET is_ingredient = ? WHERE id = ?");
-                    $stmt->execute([$isIngredient, $id]);
+                    $stmt = $pdo->prepare("UPDATE material_categories SET is_ingredient = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$isIngredient, $id, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Category updated']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -472,6 +497,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `item_name` VARCHAR(255) NOT NULL,
                         `category_id` INT DEFAULT 1,
                         `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -485,21 +511,21 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     // Resolve category_id from material_categories
                     $catId = 1;
                     if ($categoryName && $categoryName !== 'General') {
-                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ?");
-                        $stmtCat->execute([$categoryName]);
+                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ?");
+                        $stmtCat->execute([$categoryName, $propertyId]);
                         $rowCat = $stmtCat->fetch(PDO::FETCH_ASSOC);
                         if ($rowCat) {
                             $catId = $rowCat['id'];
                         } else {
-                            $insCat = $pdo->prepare("INSERT INTO material_categories (name) VALUES (?)");
-                            $insCat->execute([$categoryName]);
+                            $insCat = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
+                            $insCat->execute([$categoryName, $propertyId]);
                             $catId = $pdo->lastInsertId();
                         }
                     }
 
                     $imagePath = trim($input['imagePath'] ?? '');
-                    $stmtIns = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label, image_path) VALUES (?, ?, ?, ?, ?)");
-                    $stmtIns->execute([$name, $catId, 0, $unit, $imagePath ?: null]);
+                    $stmtIns = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label, image_path, property_id) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmtIns->execute([$name, $catId, 0, $unit, $imagePath ?: null, $propertyId]);
 
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Catalog item registered']);
                 } catch (PDOException $e) {
@@ -517,8 +543,8 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     break;
                 }
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM req_catalog WHERE id = ?");
-                    $stmt->execute([$id]);
+                    $stmt = $pdo->prepare("DELETE FROM req_catalog WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$id, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Catalog item deleted']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -541,19 +567,19 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $catId = 1;
                     if ($categoryName && $categoryName !== 'General') {
-                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ?");
-                        $stmtCat->execute([$categoryName]);
+                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ?");
+                        $stmtCat->execute([$categoryName, $propertyId]);
                         $rowCat = $stmtCat->fetch(PDO::FETCH_ASSOC);
                         if ($rowCat) {
                             $catId = $rowCat['id'];
                         } else {
-                            $insCat = $pdo->prepare("INSERT INTO material_categories (name) VALUES (?)");
-                            $insCat->execute([$categoryName]);
+                            $insCat = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
+                            $insCat->execute([$categoryName, $propertyId]);
                             $catId = $pdo->lastInsertId();
                         }
                     }
-                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET item_name = ?, category_id = ?, unit_label = ?, image_path = COALESCE(?, image_path) WHERE id = ?");
-                    $stmtUp->execute([$name, $catId, $unit, !empty($input['imagePath']) ? $input['imagePath'] : null, $id]);
+                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET item_name = ?, category_id = ?, unit_label = ?, image_path = COALESCE(?, image_path) WHERE id = ? AND property_id = ?");
+                    $stmtUp->execute([$name, $catId, $unit, !empty($input['imagePath']) ? $input['imagePath'] : null, $id, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Catalog item updated']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -573,20 +599,20 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 try {
                     $catId = 1;
                     if ($categoryName && $categoryName !== 'General') {
-                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ?");
-                        $stmtCat->execute([$categoryName]);
+                        $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ?");
+                        $stmtCat->execute([$categoryName, $propertyId]);
                         $rowCat = $stmtCat->fetch(PDO::FETCH_ASSOC);
                         if ($rowCat) {
                             $catId = $rowCat['id'];
                         } else {
-                            $insCat = $pdo->prepare("INSERT INTO material_categories (name) VALUES (?)");
-                            $insCat->execute([$categoryName]);
+                            $insCat = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
+                            $insCat->execute([$categoryName, $propertyId]);
                             $catId = $pdo->lastInsertId();
                         }
                     }
                     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE id IN ($placeholders)");
-                    $stmtUp->execute(array_merge([$catId], $ids));
+                    $stmtUp = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE id IN ($placeholders) AND property_id = ?");
+                    $stmtUp->execute(array_merge([$catId], $ids, [$propertyId]));
                     echo json_encode(['status' => 'success', 'message' => 'Categories updated successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -598,6 +624,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `item_name` VARCHAR(255) NOT NULL,
                     `category_id` INT DEFAULT 1,
                     `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -605,6 +632,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `name` VARCHAR(100) NOT NULL,
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -633,23 +661,23 @@ function handleInventoryRequests($pdo, $request_method, $action) {
 
                 $catNameToId = [];
                 foreach ($desiredCategories as $desiredId => $catName) {
-                    $byName = $pdo->prepare("SELECT id FROM material_categories WHERE name = ?");
-                    $byName->execute([$catName]);
+                    $byName = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ?");
+                    $byName->execute([$catName, $propertyId]);
                     $existingByName = $byName->fetch(PDO::FETCH_ASSOC);
                     if ($existingByName) {
                         $catNameToId[$catName] = $existingByName['id'];
                         continue;
                     }
-                    $byId = $pdo->prepare("SELECT id FROM material_categories WHERE id = ?");
-                    $byId->execute([$desiredId]);
+                    $byId = $pdo->prepare("SELECT id FROM material_categories WHERE id = ? AND property_id = ?");
+                    $byId->execute([$desiredId, $propertyId]);
                     $existingById = $byId->fetch(PDO::FETCH_ASSOC);
                     if ($existingById) {
-                        $ins = $pdo->prepare("INSERT INTO material_categories (name) VALUES (?)");
-                        $ins->execute([$catName]);
+                        $ins = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
+                        $ins->execute([$catName, $propertyId]);
                         $catNameToId[$catName] = $pdo->lastInsertId();
                     } else {
-                        $ins = $pdo->prepare("INSERT INTO material_categories (id, name) VALUES (?, ?)");
-                        $ins->execute([$desiredId, $catName]);
+                        $ins = $pdo->prepare("INSERT INTO material_categories (id, name, property_id) VALUES (?, ?, ?)");
+                        $ins->execute([$desiredId, $catName, $propertyId]);
                         $catNameToId[$catName] = $desiredId;
                     }
                 }
@@ -723,19 +751,19 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                     ['Sandwich Maker', 'Kitchen Appliance Repairs', 'Pcs']
                 ];
 
-                $insItem = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label) SELECT ?, ?, 0.00, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM req_catalog WHERE LOWER(item_name) = LOWER(?))");
+                $insItem = $pdo->prepare("INSERT INTO req_catalog (item_name, category_id, current_stock, unit_label, property_id) SELECT ?, ?, 0.00, ?, ? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM req_catalog WHERE LOWER(item_name) = LOWER(?) AND property_id = ?)");
                 $inserted = 0;
                 $skipped = 0;
                 $updated = 0;
                 foreach ($catalogItems as [$name, $catName, $unit]) {
                     $resolvedCatId = $catNameToId[$catName] ?? 1;
-                    $insItem->execute([$name, $resolvedCatId, $unit, $name]);
+                    $insItem->execute([$name, $resolvedCatId, $unit, $propertyId, $name, $propertyId]);
                     if ($insItem->rowCount() > 0) {
                         $inserted++;
                     } else {
                         $skipped++;
-                        $upd = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?) AND category_id != ?");
-                        $upd->execute([$resolvedCatId, $name, $resolvedCatId]);
+                        $upd = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?) AND category_id != ? AND property_id = ?");
+                        $upd->execute([$resolvedCatId, $name, $resolvedCatId, $propertyId]);
                         if ($upd->rowCount() > 0) $updated++;
                     }
                 }
@@ -748,7 +776,7 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 ];
                 foreach ($orphanMap as $itemName => $catName) {
                     if (isset($catNameToId[$catName])) {
-                        $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?)")->execute([$catNameToId[$catName], $itemName]);
+                        $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?) AND property_id = ?")->execute([$catNameToId[$catName], $itemName, $propertyId]);
                     }
                 }
 
@@ -768,12 +796,12 @@ function handleInventoryRequests($pdo, $request_method, $action) {
                 ];
                 $fixed = 0;
                 foreach ($orphanMap as $itemName => $catName) {
-                    $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ?");
-                    $stmtCat->execute([$catName]);
+                    $stmtCat = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ?");
+                    $stmtCat->execute([$catName, $propertyId]);
                     $rowCat = $stmtCat->fetch(PDO::FETCH_ASSOC);
                     if ($rowCat) {
-                        $stmtUp = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?)");
-                        $stmtUp->execute([$rowCat['id'], $itemName]);
+                        $stmtUp = $pdo->prepare("UPDATE req_catalog SET category_id = ? WHERE LOWER(item_name) = LOWER(?) AND property_id = ?");
+                        $stmtUp->execute([$rowCat['id'], $itemName, $propertyId]);
                         if ($stmtUp->rowCount() > 0) $fixed++;
                     }
                 }

@@ -26,6 +26,7 @@ interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
   guests?: any[];
   activeMenuItemKey?: string;
+  kitchenModuleEnabled?: boolean;
 }
 
 type DateFilter = 'all' | 'day' | 'week' | 'month' | 'year';
@@ -34,12 +35,24 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   receipts = [],
   guests = [],
   activeMenuItemKey,
+  kitchenModuleEnabled = true,
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
+
+  // Properties with no food service have nothing to show on the Food POS /
+  // Kitchen sub-tabs (kitchen orders + kitchen purchases are both blocked at
+  // the API layer when the 'kitchen' module is off, so these would only ever
+  // render empty states) — bounce back to Overview if the module gets
+  // disabled while one of those tabs is active.
+  useEffect(() => {
+    if (!kitchenModuleEnabled && (activeTab === 'food' || activeTab === 'kitchen')) {
+      setActiveTab('overview');
+    }
+  }, [kitchenModuleEnabled, activeTab]);
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
   const [priceSearch, setPriceSearch] = useState('');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
@@ -187,19 +200,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   const overviewPieOptions: any = {
     chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-    labels: ['Room Revenue', 'Kitchen Revenue', 'Expenses'],
-    colors: [brandColor, brandSecondary, dangerColor],
+    labels: kitchenModuleEnabled ? ['Room Revenue', 'Kitchen Revenue', 'Expenses'] : ['Room Revenue', 'Expenses'],
+    colors: kitchenModuleEnabled ? [brandColor, brandSecondary, dangerColor] : [brandColor, dangerColor],
     plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total' } } } } },
     dataLabels: { enabled: false },
     legend: { position: 'bottom' },
     stroke: { show: false },
   };
 
-  const overviewPieSeries = [
-    roomRevenue || 0,
-    kitchenRevenue || 0,
-    totalOutflowExpenses || 0,
-  ];
+  const overviewPieSeries = kitchenModuleEnabled
+    ? [roomRevenue || 0, kitchenRevenue || 0, totalOutflowExpenses || 0]
+    : [roomRevenue || 0, totalOutflowExpenses || 0];
 
   const bookingsBarOptions: any = {
     chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
@@ -307,14 +318,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       </div>
 
       {/* Summary KPI Cards (Always Visible) */}
-      <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 ${kitchenModuleEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gross Total Revenue</p>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
             <IndianRupee className="w-5 h-5 text-emerald-600" />
             {totalGrossRevenue.toLocaleString('en-IN')}
           </p>
-          <p className="text-[10px] text-emerald-600 font-semibold mt-1">Room Accommodations + Kitchen Orders</p>
+          <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+            {kitchenModuleEnabled ? 'Room Accommodations + Kitchen Orders' : 'Room Accommodations'}
+          </p>
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
@@ -326,14 +339,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <p className="text-[10px] text-slate-500 mt-1">{filteredReceipts.length} Settled Billing Receipts</p>
         </div>
 
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kitchen POS Sales</p>
-          <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
-            <IndianRupee className="w-4 h-4 text-cyan-600" />
-            {kitchenRevenue.toLocaleString('en-IN')}
-          </p>
-          <p className="text-[10px] text-cyan-600 font-semibold mt-1">{filteredOrders.length} Kitchen Orders</p>
-        </div>
+        {kitchenModuleEnabled && (
+          <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kitchen POS Sales</p>
+            <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
+              <IndianRupee className="w-4 h-4 text-cyan-600" />
+              {kitchenRevenue.toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-cyan-600 font-semibold mt-1">{filteredOrders.length} Kitchen Orders</p>
+          </div>
+        )}
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Net Operating Margin</p>
@@ -367,26 +382,30 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         >
           🏨 Bookings
         </button>
-        <button
-          onClick={() => setActiveTab('food')}
-          className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-            activeTab === 'food'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          🍽️ Food POS
-        </button>
-        <button
-          onClick={() => setActiveTab('kitchen')}
-          className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
-            activeTab === 'kitchen'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          🍳 Kitchen
-        </button>
+        {kitchenModuleEnabled && (
+          <button
+            onClick={() => setActiveTab('food')}
+            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+              activeTab === 'food'
+                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            🍽️ Food POS
+          </button>
+        )}
+        {kitchenModuleEnabled && (
+          <button
+            onClick={() => setActiveTab('kitchen')}
+            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+              activeTab === 'kitchen'
+                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            🍳 Kitchen
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('expenses')}
           className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
@@ -456,18 +475,20 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    <span>Kitchen & Dining POS Revenue</span>
-                    <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
+                {kitchenModuleEnabled && (
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      <span>Kitchen & Dining POS Revenue</span>
+                      <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-cyan-500 rounded-full transition-all duration-500"
+                        style={{ width: `${totalGrossRevenue > 0 ? (kitchenRevenue / totalGrossRevenue) * 100 : 50}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-500 rounded-full transition-all duration-500"
-                      style={{ width: `${totalGrossRevenue > 0 ? (kitchenRevenue / totalGrossRevenue) * 100 : 50}%` }}
-                    />
-                  </div>
-                </div>
+                )}
 
                 <div>
                   <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">

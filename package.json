@@ -16,6 +16,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@heyputer/puter.js": "^2.6.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.4",
     "apexcharts": "^6.6.1",

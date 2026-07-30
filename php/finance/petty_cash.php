@@ -4,15 +4,17 @@
  * Function: Petty cash outflows, operational expenses, vendor payments, and desk cash drawer reconciliation.
  */
 
-function handleFinanceRequests($pdo, $request_method, $action) {
+function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_petty_cash':
             try {
-                $stmt = $pdo->query("SELECT id, expense_date as date, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses ORDER BY expense_date DESC");
+                $stmt = $pdo->prepare("SELECT id, expense_date as date, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses WHERE property_id = ? ORDER BY expense_date DESC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
-                    $stmt = $pdo->query("SELECT id, date, category, amount, description, vendor_name as vendor FROM petty_cash ORDER BY date DESC");
+                    $stmt = $pdo->prepare("SELECT id, date, category, amount, description, vendor_name as vendor FROM petty_cash WHERE property_id = ? ORDER BY date DESC");
+                    $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);
@@ -24,26 +26,28 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO farm_utility_expenses (expense_date, category, description, amount, payment_mode, vendor_name) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO farm_utility_expenses (expense_date, category, description, amount, payment_mode, vendor_name, property_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['date'] ?? date('Y-m-d'),
                         $input['category'] ?? 'Other',
                         $input['description'] ?? '',
                         $input['amount'] ?? 0,
                         $input['payment_mode'] ?? 'Cash',
-                        $input['vendor'] ?? $input['vendor_name'] ?? 'Manager'
+                        $input['vendor'] ?? $input['vendor_name'] ?? 'Manager',
+                        $propertyId
                     ]);
                     $id = $pdo->lastInsertId();
                 } catch (PDOException $e) {
                     $id = 'EXP-' . time();
-                    $stmt = $pdo->prepare("INSERT INTO petty_cash (id, date, category, amount, description, vendor_name, approved_by) VALUES (?, ?, ?, ?, ?, ?, 'Manager')");
+                    $stmt = $pdo->prepare("INSERT INTO petty_cash (id, date, category, amount, description, vendor_name, approved_by, property_id) VALUES (?, ?, ?, ?, ?, ?, 'Manager', ?)");
                     $stmt->execute([
                         $id,
                         $input['date'] ?? date('Y-m-d'),
                         $input['category'] ?? 'Other',
                         $input['amount'] ?? 0,
                         $input['description'] ?? '',
-                        $input['vendor'] ?? $input['vendor_name'] ?? 'Manager'
+                        $input['vendor'] ?? $input['vendor_name'] ?? 'Manager',
+                        $propertyId
                     ]);
                 }
                 // Save/update latest price for this item
@@ -51,11 +55,12 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     try {
                         $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
                             `item_name` VARCHAR(255) PRIMARY KEY,
+                            `property_id` INT NOT NULL DEFAULT 1,
                             `last_price` DECIMAL(10,2) NOT NULL,
                             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                        $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, last_price) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
-                        $stmtPrice->execute([trim($input['description']), $input['amount']]);
+                        $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, property_id, last_price) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
+                        $stmtPrice->execute([trim($input['description']), $propertyId, $input['amount']]);
                     } catch (PDOException $ePrice) {
                         // ignore price table error
                     }
@@ -87,7 +92,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 // posting, then add the corrected value after the source update.
                 reverseFinancialSource($pdo, 'expense', (string)$input['id'], 'Expense corrected');
                 try {
-                    $stmt = $pdo->prepare("UPDATE farm_utility_expenses SET expense_date = ?, category = ?, description = ?, amount = ?, payment_mode = ?, vendor_name = ? WHERE id = ?");
+                    $stmt = $pdo->prepare("UPDATE farm_utility_expenses SET expense_date = ?, category = ?, description = ?, amount = ?, payment_mode = ?, vendor_name = ? WHERE id = ? AND property_id = ?");
                     $stmt->execute([
                         $input['date'] ?? date('Y-m-d'),
                         $input['category'] ?? 'Other',
@@ -95,17 +100,19 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         $input['amount'] ?? 0,
                         $input['paymentMode'] ?? $input['payment_mode'] ?? 'Online / UPI / QR',
                         $input['paidBy'] ?? $input['vendor'] ?? 'Manager',
-                        $input['id']
+                        $input['id'],
+                        $propertyId
                     ]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE petty_cash SET date = ?, category = ?, description = ?, amount = ?, vendor_name = ? WHERE id = ?");
+                    $stmt = $pdo->prepare("UPDATE petty_cash SET date = ?, category = ?, description = ?, amount = ?, vendor_name = ? WHERE id = ? AND property_id = ?");
                     $stmt->execute([
                         $input['date'] ?? date('Y-m-d'),
                         $input['category'] ?? 'Other',
                         $input['description'] ?? '',
                         $input['amount'] ?? 0,
                         $input['paidBy'] ?? $input['vendor'] ?? 'Manager',
-                        $input['id']
+                        $input['id'],
+                        $propertyId
                     ]);
                 }
 
@@ -113,11 +120,12 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 if (!empty($input['description']) && !empty($input['amount'])) {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
                         `item_name` VARCHAR(255) PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `last_price` DECIMAL(10,2) NOT NULL,
                         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                    $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, last_price) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
-                    $stmtPrice->execute([trim($input['description']), $input['amount']]);
+                    $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, property_id, last_price) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
+                    $stmtPrice->execute([trim($input['description']), $propertyId, $input['amount']]);
                 }
 
                 postFinancialLedger($pdo, [
@@ -147,11 +155,11 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 }
                 reverseFinancialSource($pdo, 'expense', (string)$id, 'Expense deleted');
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE id = ?");
-                    $stmt->execute([$id]);
+                    $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$id, $propertyId]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE id = ?");
-                    $stmt->execute([$id]);
+                    $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$id, $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Expense entry deleted']);
             }
@@ -161,11 +169,13 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
                     `item_name` VARCHAR(255) PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `last_price` DECIMAL(10,2) NOT NULL,
                     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->query("SELECT item_name, last_price FROM expense_item_prices");
+                $stmt = $pdo->prepare("SELECT item_name, last_price FROM expense_item_prices WHERE property_id = ?");
+                $stmt->execute([$propertyId]);
                 $prices = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
                 echo json_encode(['status' => 'success', 'data' => $prices]);
             } catch (PDOException $e) {
@@ -177,6 +187,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_items` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `item_name` VARCHAR(255) NOT NULL UNIQUE,
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -193,13 +204,14 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         'Tap','Thinner','Toilet Brush','Toilet cleaner','Toilet Paper','Towels','Tube',
                         'Tube Light','Vacum','Wash basin','Washing Machine','Water Bill','Water Tank','Wiper','Wire'
                     ];
-                    $ins = $pdo->prepare("INSERT IGNORE INTO expense_items (item_name) VALUES (?)");
+                    $ins = $pdo->prepare("INSERT IGNORE INTO expense_items (item_name, property_id) VALUES (?, ?)");
                     foreach ($seed as $name) {
-                        $ins->execute([$name]);
+                        $ins->execute([$name, $propertyId]);
                     }
                 }
 
-                $stmt = $pdo->query("SELECT id, item_name, created_at FROM expense_items ORDER BY item_name ASC");
+                $stmt = $pdo->prepare("SELECT id, item_name, created_at FROM expense_items WHERE property_id = ? ORDER BY item_name ASC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -217,11 +229,12 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_items` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `item_name` VARCHAR(255) NOT NULL UNIQUE,
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                    $stmt = $pdo->prepare("INSERT INTO expense_items (item_name) VALUES (?)");
-                    $stmt->execute([$name]);
+                    $stmt = $pdo->prepare("INSERT INTO expense_items (item_name, property_id) VALUES (?, ?)");
+                    $stmt->execute([$name, $propertyId]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Item added']);
                 } catch (PDOException $e) {
                     if ($e->getCode() == 23000) {
@@ -237,8 +250,8 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM expense_items WHERE id = ? OR item_name = ?");
-                    $stmt->execute([$input['id'] ?? null, $input['item_name'] ?? $input['name'] ?? null]);
+                    $stmt = $pdo->prepare("DELETE FROM expense_items WHERE (id = ? OR item_name = ?) AND property_id = ?");
+                    $stmt->execute([$input['id'] ?? null, $input['item_name'] ?? $input['name'] ?? null, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Item deleted']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -250,6 +263,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `label` VARCHAR(255) NOT NULL UNIQUE,
                     `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                     `category` VARCHAR(100) NOT NULL DEFAULT 'Incidentals',
@@ -269,13 +283,14 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         ['Mini Bar Restock', 350.00, 'Incidentals', 'Restocking of mini bar items'],
                         ['Misc', 0.00, 'Incidentals', 'Miscellaneous charges'],
                     ];
-                    $ins = $pdo->prepare("INSERT IGNORE INTO miscellaneous_catalog (label, default_amount, category, description) VALUES (?, ?, ?, ?)");
+                    $ins = $pdo->prepare("INSERT IGNORE INTO miscellaneous_catalog (label, default_amount, category, description, property_id) VALUES (?, ?, ?, ?, ?)");
                     foreach ($seed as $row) {
-                        $ins->execute($row);
+                        $ins->execute([...$row, $propertyId]);
                     }
                 }
 
-                $stmt = $pdo->query("SELECT id, label, default_amount, category, description FROM miscellaneous_catalog ORDER BY label ASC");
+                $stmt = $pdo->prepare("SELECT id, label, default_amount, category, description FROM miscellaneous_catalog WHERE property_id = ? ORDER BY label ASC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -288,6 +303,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `label` VARCHAR(255) NOT NULL UNIQUE,
                         `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                         `category` VARCHAR(100) NOT NULL DEFAULT 'Incidentals',
@@ -295,12 +311,13 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $stmt = $pdo->prepare("INSERT INTO miscellaneous_catalog (label, default_amount, category, description) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description)");
+                    $stmt = $pdo->prepare("INSERT INTO miscellaneous_catalog (label, default_amount, category, description, property_id) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description)");
                     $stmt->execute([
                         trim($input['label']),
                         $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00,
                         $input['category'] ?? 'Incidentals',
-                        $input['description'] ?? ''
+                        $input['description'] ?? '',
+                        $propertyId
                     ]);
                     echo json_encode(['status' => 'success', 'message' => 'Charge template saved successfully']);
                 } catch (PDOException $e) {
@@ -313,8 +330,8 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM miscellaneous_catalog WHERE id = ? OR label = ?");
-                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    $stmt = $pdo->prepare("DELETE FROM miscellaneous_catalog WHERE (id = ? OR label = ?) AND property_id = ?");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -331,6 +348,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 // Auto-create the cash_drawer_entries table if it doesn't exist
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `staff_id` VARCHAR(50) NOT NULL,
                     `staff_name` VARCHAR(150) NOT NULL,
                     `type` ENUM('handover','manual_adjustment') NOT NULL,
@@ -356,17 +374,17 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                             COALESCE(SUM(CASE WHEN advance_received_by = :name THEN advance_paid ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN pending_received_by = :name2 THEN pending_amount ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN food_received_by = :name3 THEN total_food ELSE 0 END), 0) as total_cash_in
-                            FROM guests WHERE status = 'CheckedOut'";
+                            FROM guests WHERE status = 'CheckedOut' AND property_id = :property_id";
                         $stmtIn = $pdo->prepare($sqlIn);
-                        $stmtIn->execute([':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName]);
+                        $stmtIn->execute([':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName, ':property_id' => $propertyId]);
                         $cashIn = (float)$stmtIn->fetchColumn();
                     } catch (PDOException $e) {}
 
                     // Step 3: Cash expenses paid by this staff member
                     $cashOut = 0;
                     try {
-                        $stmtOut = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM farm_utility_expenses WHERE vendor_name = ? AND payment_mode = 'Cash'");
-                        $stmtOut->execute([$staffName]);
+                        $stmtOut = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM farm_utility_expenses WHERE vendor_name = ? AND payment_mode = 'Cash' AND property_id = ?");
+                        $stmtOut->execute([$staffName, $propertyId]);
                         $cashOut = (float)$stmtOut->fetchColumn();
                     } catch (PDOException $e) {}
 
@@ -374,8 +392,8 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     $handoverTotal = 0;
                     $adjustmentTotal = 0;
                     try {
-                        $stmtHand = $pdo->prepare("SELECT type, COALESCE(SUM(amount), 0) as total FROM cash_drawer_entries WHERE staff_id = ? GROUP BY type");
-                        $stmtHand->execute([$staffId]);
+                        $stmtHand = $pdo->prepare("SELECT type, COALESCE(SUM(amount), 0) as total FROM cash_drawer_entries WHERE staff_id = ? AND property_id = ? GROUP BY type");
+                        $stmtHand->execute([$staffId, $propertyId]);
                         $rows = $stmtHand->fetchAll(PDO::FETCH_ASSOC);
                         foreach ($rows as $r) {
                             if ($r['type'] === 'handover') $handoverTotal = (float)$r['total'];
@@ -383,13 +401,17 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         }
                     } catch (PDOException $e) {}
 
-                    // Step 5: Out-of-pocket kitchen purchases
+                    // Step 5: Out-of-pocket kitchen purchases — only a thing for
+                    // properties with the kitchen module enabled; a property with
+                    // no food service has no kitchen_purchases_log activity to surface.
                     $outOfPocketTotal = 0;
-                    try {
-                        $stmtOop = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM kitchen_purchases_log WHERE paid_by_staff = ? AND settlement_method = 'Paid Out of Pocket'");
-                        $stmtOop->execute([$staffName]);
-                        $outOfPocketTotal = (float)$stmtOop->fetchColumn();
-                    } catch (PDOException $e) {}
+                    if (isModuleEnabledForProperty($pdo, $propertyId, 'kitchen')) {
+                        try {
+                            $stmtOop = $pdo->prepare("SELECT COALESCE(SUM(total_price), 0) FROM kitchen_purchases_log WHERE paid_by_staff = ? AND settlement_method = 'Paid Out of Pocket' AND property_id = ?");
+                            $stmtOop->execute([$staffName, $propertyId]);
+                            $outOfPocketTotal = (float)$stmtOop->fetchColumn();
+                        } catch (PDOException $e) {}
+                    }
 
                     $netBalance = $cashIn - $cashOut - $handoverTotal + $adjustmentTotal;
 
@@ -419,6 +441,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                 try {
                     $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
                         `id` INT AUTO_INCREMENT PRIMARY KEY,
+                        `property_id` INT NOT NULL DEFAULT 1,
                         `staff_id` VARCHAR(50) NOT NULL,
                         `staff_name` VARCHAR(150) NOT NULL,
                         `type` ENUM('handover','manual_adjustment') NOT NULL,
@@ -428,7 +451,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $stmt = $pdo->prepare("INSERT INTO cash_drawer_entries (staff_id, staff_name, type, amount, handed_to, notes) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO cash_drawer_entries (staff_id, staff_name, type, amount, handed_to, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['staff_id'] ?? '',
                         $input['staff_name'] ?? '',
@@ -436,6 +459,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                         $input['amount'] ?? 0,
                         $input['handed_to'] ?? null,
                         $input['notes'] ?? null,
+                        $propertyId
                     ]);
                     $newId = $pdo->lastInsertId();
                     $drawerType = $input['type'] ?? 'handover';
@@ -464,6 +488,7 @@ function handleFinanceRequests($pdo, $request_method, $action) {
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
                     `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
                     `staff_id` VARCHAR(50) NOT NULL,
                     `staff_name` VARCHAR(150) NOT NULL,
                     `type` ENUM('handover','manual_adjustment') NOT NULL,
@@ -473,7 +498,8 @@ function handleFinanceRequests($pdo, $request_method, $action) {
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->query("SELECT * FROM cash_drawer_entries ORDER BY created_at DESC");
+                $stmt = $pdo->prepare("SELECT * FROM cash_drawer_entries WHERE property_id = ? ORDER BY created_at DESC");
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);

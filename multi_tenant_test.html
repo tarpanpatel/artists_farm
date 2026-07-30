@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Artists Farm - Multi-Tenant Testing</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        .card { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px; margin: 5px; }
+        .btn:hover { background: #45a049; }
+        .btn.goa { background: #2196F3; }
+        .btn.goa:hover { background: #0b7dda; }
+        .test-result { background: white; padding: 15px; border-left: 4px solid #4CAF50; margin: 10px 0; }
+        code { background: #eee; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Artists Farm Multi-Tenant System</h1>
+        
+        <div class="card">
+            <h2>🚀 How to Test Multi-Tenancy</h2>
+            <p>The system now supports multiple properties (Jaipur, Goa) with automatic data isolation.</p>
+            
+            <h3>Option 1: Subdirectory URLs (Recommended)</h3>
+            <p>
+                <a class="btn" href="/artists_farm/">Default (Jaipur)</a>
+                <a class="btn goa" href="/artists_farm/goa/">Goa Property</a>
+                <a class="btn" href="/artists_farm/jaipur/">Jaipur Property</a>
+            </p>
+            <p><code>.htaccess</code> rewrites these to add <code>?property_slug=</code> parameter.</p>
+            
+            <h3>Option 2: Query Parameter</h3>
+            <p>
+                <a class="btn" href="/artists_farm/?property_slug=jaipur">?property_slug=jaipur</a>
+                <a class="btn goa" href="/artists_farm/?property_slug=goa">?property_slug=goa</a>
+            </p>
+            
+            <h3>Option 3: Subdomain (for production)</h3>
+            <p>In production, use subdomains:</p>
+            <ul>
+                <li><code>artistsfarmjaipur.com</code> → Jaipur property</li>
+                <li><code>goa.artistsfarmjaipur.com</code> → Goa property</li>
+                <li><code>jaipur.artistsfarmjaipur.com</code> → Jaipur property</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <h2>🔧 Technical Implementation</h2>
+            <h3>Database Changes:</h3>
+            <ul>
+                <li>Added <code>properties</code> table with default Jaipur/Goa properties</li>
+                <li>Added <code>property_id</code> column to all data tables</li>
+                <li>All API queries now filter by <code>property_id</code></li>
+            </ul>
+            
+            <h3>Property Detection Logic (<code>property_resolver.php</code>):</h3>
+            <ol>
+                <li><strong>Priority 1:</strong> URL path segment (e.g., <code>/goa/api/router.php</code>)</li>
+                <li><strong>Priority 2:</strong> Query parameter (<code>?property_slug=goa</code>)</li>
+                <li><strong>Priority 3:</strong> HTTP header (<code>X-PROPERTY-SLUG: goa</code>)</li>
+                <li><strong>Priority 4:</strong> Subdomain detection</li>
+                <li><strong>Priority 5:</strong> Default to 'jaipur'</li>
+            </ol>
+        </div>
+        
+        <div class="card">
+            <h2>🧪 Test API Endpoints</h2>
+            <p>Test the API with different properties:</p>
+            
+            <h3>Test Guests API:</h3>
+            <p>
+                <a class="btn" href="/artists_farm/php/api/router.php?action=get_guests" target="_blank">Default Guests</a>
+                <a class="btn goa" href="/artists_farm/php/api/router.php?action=get_guests&property_slug=goa" target="_blank">Goa Guests</a>
+                <a class="btn" href="/artists_farm/jaipur/php/api/router.php?action=get_guests" target="_blank">Jaipur via Path</a>
+            </p>
+            
+            <h3>Test Property Detection:</h3>
+            <div id="test-result" class="test-result">
+                Click buttons above to test API responses.
+            </div>
+            
+            <button onclick="testPropertyDetection()" class="btn">Run Property Detection Test</button>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Deployment Steps</h2>
+            <ol>
+                <li>Run migration: <code>php php/schema/migrate_property_id.php</code></li>
+                <li>Update DNS: Add subdomains (goa.*, jaipur.*)</li>
+                <li>Test with query parameters first</li>
+                <li>Verify data isolation works correctly</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        async function testPropertyDetection() {
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            const tests = [
+                { url: '/artists_farm/php/api/router.php?action=get_guests', label: 'Default (Jaipur)' },
+                { url: '/artists_farm/php/api/router.php?action=get_guests&property_slug=goa', label: 'With ?property_slug=goa' },
+                { url: '/artists_farm/goa/php/api/router.php?action=get_guests', label: 'Path /goa/' },
+                { url: '/artists_farm/jaipur/php/api/router.php?action=get_guests', label: 'Path /jaipur/' }
+            ];
+            
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    const data = await response.json();
+                    const count = data.data ? data.data.length : 0;
+                    results.push(`✓ ${test.label}: ${count} guests returned`);
+                } catch (error) {
+                    results.push(`✗ ${test.label}: Error - ${error.message}`);
+                }
+            }
+            
+            resultDiv.innerHTML = results.join('<br>');
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testPropertyDetection, 1000);
+        });
+    </script>
+</body>
+</html>

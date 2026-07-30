@@ -4,7 +4,7 @@
  * Function: Food incidentals logging, manual adjustments, split distribution matrix, and checkout settlement.
  */
 
-function handleBillingRequests($pdo, $request_method, $action) {
+function handleBillingRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'add_direct_food_incidentals':
             if ($request_method === 'POST') {
@@ -44,12 +44,13 @@ function handleBillingRequests($pdo, $request_method, $action) {
                 $id = 'REC-' . date('Y') . '-' . rand(100, 999);
                 
                 // Store in audit logs
-                $logStmt = $pdo->prepare("INSERT INTO audit_logs (id, timestamp, user, action) VALUES (?, ?, ?, ?)");
+                $logStmt = $pdo->prepare("INSERT INTO audit_logs (id, timestamp, user, action, property_id) VALUES (?, ?, ?, ?, ?)");
                 $logStmt->execute([
                     'LOG-' . time(),
                     date('Y-m-d H:i:s'),
                     $input['food_received_by_staff'] ?? 'Tarpan',
-                    'Completed Split Checkout for Guest ' . ($input['guest_id'] ?? 'Room') . ' Amount: ₹' . ($input['post_food_bill_total'] ?? 0)
+                    'Completed Split Checkout for Guest ' . ($input['guest_id'] ?? 'Room') . ' Amount: ₹' . ($input['post_food_bill_total'] ?? 0),
+                    $propertyId
                 ]);
 
                 echo json_encode([

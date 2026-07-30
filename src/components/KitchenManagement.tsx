@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   UtensilsCrossed,
@@ -39,7 +38,7 @@ interface KitchenManagementProps {
   menu: MenuItem[];
   onAddMenuItem: (item: MenuItem) => void;
   onRequestMaterial: (req: Requisition) => void;
-  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
   activeMenuItemKey?: string;
   isTestingMode?: boolean;
 }
@@ -136,7 +135,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       };
 
       const fallbackMsg = `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`;
-      onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard);
+      onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard, 'kitchen_single_dish_ready');
     }
 
     recordTelescopeLog({
@@ -201,7 +200,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       };
       const resolved = await resolveTelegramTemplate('item_served', servedVars);
       const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>Cosmic (Service Staff)</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
-      onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen');
+      onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen', undefined, 'item_served');
     }
 
     recordTelescopeLog({
@@ -1342,7 +1341,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             };
                             const resolved = await resolveTelegramTemplate('kitchen_requisition_approved', reqApprVars);
                             const reqMsg = resolved || `✅ <b>MATERIAL REQUISITION APPROVED #${req.id}</b>\n• Material: <b>${req.itemName}</b> (${req.requestedQty} ${req.unit})\n• Requested By: <b>${req.requestedBy}</b>\n• Status: Released & Fulfilled from Store ✓`;
-                            onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen');
+                            onDispatchTelegram('Requisition Approved', reqMsg, 'kitchen', undefined, 'kitchen_requisition_approved');
                           })();
                         }
                         recordTelescopeLog({

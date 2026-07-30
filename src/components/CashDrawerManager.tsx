@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
-  onDispatchTelegram?: (eventType: string, message: string, category?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, category?: string, replyMarkup?: any, templateKey?: string) => void;
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
 }
 
@@ -85,7 +85,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           remarks: notes || (activeForm === 'handover' ? `Handed to ${handedTo}` : ''),
         };
         const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
-        onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance');
+        onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance', undefined, 'finance_drawer_adjustment');
       }
 
       setAmount('');

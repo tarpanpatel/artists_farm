@@ -4,7 +4,7 @@
  * Function: Take food orders, manage KOT tickets, update order status, and staff meals.
  */
 
-function handleKitchenRequests($pdo, $request_method, $action) {
+function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_orders':
             $count = 0;
@@ -12,19 +12,19 @@ function handleKitchenRequests($pdo, $request_method, $action) {
             if ($count == 0) {
                 // Seed orders
                 $seedOrders = [
-                    ['1','7','2026-07-16 09:00:00','Served'],
-                    ['2','7','2026-07-16 10:00:00','Served'],
-                    ['3','7','2026-07-16 12:00:00','Served'],
-                    ['4','6','2026-07-15 20:00:00','Served'],
-                    ['5','6','2026-07-15 21:00:00','Cancelled'],
-                    ['6','8','2026-07-17 08:00:00','Served'],
-                    ['7','8','2026-07-17 12:30:00','Served'],
-                    ['8','8','2026-07-17 19:00:00','Served'],
-                    ['9','9','2026-07-16 10:00:00','Served'],
-                    ['10','5','2026-07-14 18:00:00','Served'],
-                    ['11','5','2026-07-14 20:00:00','Cancelled'],
+                    ['1',1,'7','2026-07-16 09:00:00','Served'],
+                    ['2',1,'7','2026-07-16 10:00:00','Served'],
+                    ['3',1,'7','2026-07-16 12:00:00','Served'],
+                    ['4',1,'6','2026-07-15 20:00:00','Served'],
+                    ['5',1,'6','2026-07-15 21:00:00','Cancelled'],
+                    ['6',1,'8','2026-07-17 08:00:00','Served'],
+                    ['7',1,'8','2026-07-17 12:30:00','Served'],
+                    ['8',1,'8','2026-07-17 19:00:00','Served'],
+                    ['9',1,'9','2026-07-16 10:00:00','Served'],
+                    ['10',1,'5','2026-07-14 18:00:00','Served'],
+                    ['11',1,'5','2026-07-14 20:00:00','Cancelled'],
                 ];
-                $stmt = $pdo->prepare("INSERT INTO orders (id, guest_id, order_time, status) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE status=VALUES(status)");
+                $stmt = $pdo->prepare("INSERT INTO orders (id, property_id, guest_id, order_time, status) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status=VALUES(status)");
                 foreach ($seedOrders as $o) {
                     try { $stmt->execute($o); } catch (PDOException $e) {}
                 }
@@ -47,11 +47,13 @@ function handleKitchenRequests($pdo, $request_method, $action) {
             }
             try {
                 // Try orders + order_items first
-                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, COALESCE(g.guest_name, 'Walk-in') as guest_name, g.room_number
+                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, COALESCE(g.guest_name, 'Walk-in') as guest_name
                         FROM orders o 
                         LEFT JOIN guests g ON o.guest_id = g.id 
+                        WHERE o.property_id = ?
                         ORDER BY o.order_time DESC";
-                $stmt = $pdo->query($sql);
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$propertyId]);
                 $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($orders as &$order) {
@@ -75,8 +77,9 @@ function handleKitchenRequests($pdo, $request_method, $action) {
             } catch (PDOException $e) {
                 try {
                     // Fallback to kitchen_orders table
-                    $sql = "SELECT id, guest_id, room_number, items_json, total_amount, status, order_time FROM kitchen_orders ORDER BY order_time DESC";
-                    $stmt = $pdo->query($sql);
+                    $sql = "SELECT id, guest_id, room_number, items_json, total_amount, status, order_time FROM kitchen_orders WHERE property_id = ? ORDER BY order_time DESC";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$propertyId]);
                     $raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     foreach ($raw as &$r) {
                         $r['items'] = json_decode($r['items_json'] ?? '[]', true);
@@ -93,8 +96,8 @@ function handleKitchenRequests($pdo, $request_method, $action) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $guest_id = $input['guest_id'] ?? null;
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO orders (guest_id, order_time, status) VALUES (?, NOW(), 'Pending')");
-                    $stmt->execute([$guest_id]);
+                    $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, order_time, status) VALUES (?, ?, NOW(), 'Pending')");
+                    $stmt->execute([$propertyId, $guest_id]);
                     $order_id = $pdo->lastInsertId();
 
                     if (!empty($input['items']) && is_array($input['items'])) {
@@ -116,12 +119,12 @@ function handleKitchenRequests($pdo, $request_method, $action) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $id = str_replace('KOT-', '', $input['id']);
                 try {
-                    $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-                    $stmt->execute([$input['status'], $id]);
+                    $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['status'], $id, $propertyId]);
                 } catch (PDOException $e) {
                     try {
-                        $stmt = $pdo->prepare("UPDATE kitchen_orders SET status = ? WHERE id = ?");
-                        $stmt->execute([$input['status'], $input['id']]);
+                        $stmt = $pdo->prepare("UPDATE kitchen_orders SET status = ? WHERE id = ? AND property_id = ?");
+                        $stmt->execute([$input['status'], $input['id'], $propertyId]);
                     } catch (PDOException $e2) {}
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Order status updated to ' . $input['status']]);
@@ -130,7 +133,8 @@ function handleKitchenRequests($pdo, $request_method, $action) {
 
         case 'get_served_logs':
             try {
-                $stmt = $pdo->query("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at FROM served_logs ORDER BY id DESC LIMIT 200");
+                $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at FROM served_logs WHERE property_id = ? ORDER BY id DESC LIMIT 200");
+                $stmt->execute([$propertyId]);
                 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode(['status' => 'success', 'data' => $logs]);
             } catch (PDOException $e) {
@@ -145,6 +149,7 @@ function handleKitchenRequests($pdo, $request_method, $action) {
                     // Ensure table exists
                     $pdo->exec("CREATE TABLE IF NOT EXISTS served_logs (
                         id INT AUTO_INCREMENT PRIMARY KEY,
+                        property_id INT NOT NULL DEFAULT 1,
                         order_id VARCHAR(50),
                         item_name VARCHAR(255),
                         quantity INT DEFAULT 1,
@@ -153,8 +158,9 @@ function handleKitchenRequests($pdo, $request_method, $action) {
                         room_number VARCHAR(50),
                         served_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )");
-                    $stmt = $pdo->prepare("INSERT INTO served_logs (order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                    $stmt = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
                     $stmt->execute([
+                        $propertyId,
                         $input['order_id'] ?? '',
                         $input['item_name'] ?? '',
                         $input['quantity'] ?? 1,

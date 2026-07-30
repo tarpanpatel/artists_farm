@@ -4,7 +4,7 @@
  * Function: Audit logs, past receipts logs, staff activity trails, login logs, and error logs.
  */
 
-function handleAuditRequests($pdo, $request_method, $action) {
+function handleAuditRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-extend audit_logs table with client info columns
     try {
         $alterCols = [
@@ -50,9 +50,9 @@ function handleAuditRequests($pdo, $request_method, $action) {
                     ['Stock Requisition Filed for Green Pea & Hari Mirchi', '2026-07-21 22:21:00', 'Kamlesh', 'Staff Supervisor', '103.21.124.9', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0.0.0', 'Chrome', 'Android', 'mobile', 'Success', 'inventory'],
                     ['Petty Cash Outflow: Petrol ₹500', '2026-07-21 22:30:00', 'Tarpan', 'Super Admin', '103.21.124.8', 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/126.0.0.0', 'Chrome', 'macOS', 'desktop', 'Success', 'finance'],
                 ];
-                $stmt = $pdo->prepare("INSERT INTO audit_logs (action, timestamp, user, ip_address, user_agent, browser, os, device_type, status, module) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, browser, os, device_type, status, module) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 foreach ($seedLogs as $log) {
-                    try { $stmt->execute($log); } catch (PDOException $e) {}
+                    try { $stmt->execute(array_merge([$propertyId], $log)); } catch (PDOException $e) {}
                 }
             }
             try {
@@ -66,8 +66,10 @@ function handleAuditRequests($pdo, $request_method, $action) {
                         COALESCE(a.user_agent, '') as user_agent
                         FROM audit_logs a 
                         LEFT JOIN staff_users u ON a.user_id = u.id 
+                        WHERE a.property_id = ?
                         ORDER BY a.timestamp DESC LIMIT 300";
-                $stmt = $pdo->query($sql);
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
@@ -79,8 +81,9 @@ function handleAuditRequests($pdo, $request_method, $action) {
                             COALESCE(status, 'Success') as status,
                             COALESCE(module, '') as module,
                             COALESCE(user_agent, '') as user_agent
-                            FROM audit_logs ORDER BY timestamp DESC LIMIT 300";
-                    $stmt = $pdo->query($sql);
+                            FROM audit_logs WHERE property_id = ? ORDER BY timestamp DESC LIMIT 300";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);
@@ -100,8 +103,9 @@ function handleAuditRequests($pdo, $request_method, $action) {
                 $module = $input['module'] ?? '';
                 $userName = $input['user'] ?? 'System';
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, timestamp, ip_address, user_agent, browser, os, device_type, status, module, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO audit_logs (property_id, user_id, action, timestamp, ip_address, user_agent, browser, os, device_type, status, module, user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
+                        $propertyId,
                         $input['user_id'] ?? 7,
                         $input['action'] ?? 'System Event',
                         $input['timestamp'] ?? date('Y-m-d H:i:s'),
@@ -118,9 +122,10 @@ function handleAuditRequests($pdo, $request_method, $action) {
                 } catch (PDOException $e) {
                     $id = 'AUD-' . time();
                     try {
-                        $stmt = $pdo->prepare("INSERT INTO audit_logs (id, timestamp, user, action, ip_address, browser, os, device_type, status, module) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO audit_logs (id, property_id, timestamp, user, action, ip_address, browser, os, device_type, status, module) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
                             $id,
+                            $propertyId,
                             $input['timestamp'] ?? date('Y-m-d H:i:s'),
                             $userName,
                             $input['action'] ?? 'System Event',
