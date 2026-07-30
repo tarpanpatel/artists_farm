@@ -2,6 +2,15 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { StaffMember } from '../types';
 import { getPropertySlug } from '../services/api';
 
+// Normalize role string from backend (e.g., 'super_admin' -> 'Super Admin')
+function normalizeRole(role: string): string {
+  if (!role) return 'Super Admin';
+  return role
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 interface AuthContextValue {
   currentUser: StaffMember | null;
   activeRole: string;
@@ -49,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.role) return parsed.role;
+          if (parsed && parsed.role) return normalizeRole(parsed.role);
         } catch (e) {}
       }
     }
@@ -59,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback((staff: StaffMember) => {
     setIsAuthenticated(true);
     setCurrentUser(staff);
-    setActiveRole(staff.role || 'Staff');
+    setActiveRole(normalizeRole(staff.role || 'Staff'));
     localStorage.setItem(authKey(), 'true');
     localStorage.setItem(userKey(), JSON.stringify(staff));
   }, []);
