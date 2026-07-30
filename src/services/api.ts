@@ -75,7 +75,11 @@ export function getTestingHeaders(customHeaders: Record<string, string> = {}): R
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const customHeaders = (init?.headers as Record<string, string>) || {};
-  return fetch(url, {
+  // Add property_slug to query params to ensure backend resolves correct property
+  // (headers don't reliably pass through Vite proxy)
+  const urlObj = new URL(url, window.location.origin);
+  urlObj.searchParams.set('property_slug', getPropertySlug());
+  return fetch(urlObj.toString(), {
     ...init,
     credentials: 'include',
     headers: getTestingHeaders(customHeaders),
