@@ -1265,19 +1265,7 @@ export function App() {
     default_tenant_id?: number;
   }) => {
     setUserSession(session);
-    // Redirect will happen via useEffect watching userSession
   };
-
-  // Handle redirects after session is set
-  useEffect(() => {
-    if (!userSession) return;
-
-    if (userSession.is_platform_admin) {
-      window.location.href = '/artists_farm/platform_property_management/';
-    } else if (userSession.default_tenant_id) {
-      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${userSession.default_tenant_id}`;
-    }
-  }, [userSession]);
 
   // Tenant dashboard path
   if (isTenantDashboardPath) {
@@ -1338,16 +1326,33 @@ export function App() {
 
   // Login path - show unified login for all users
   if (isLoginPath) {
-    if (!userSession) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    // Show dashboard if already logged in
+    if (userSession) {
+      if (userSession.is_platform_admin) {
+        return (
+          <PlatformPropertyManagement
+            username={userSession.username}
+            onLogout={() => {
+              setUserSession(null);
+              localStorage.removeItem('artists_farm_user_session');
+            }}
+          />
+        );
+      } else if (userSession.default_tenant_id) {
+        return (
+          <TenantDashboard
+            username={userSession.username}
+            tenantId={userSession.default_tenant_id}
+            onLogout={() => {
+              setUserSession(null);
+              localStorage.removeItem('artists_farm_user_session');
+            }}
+          />
+        );
+      }
     }
-    // If already logged in, redirect to appropriate dashboard
-    if (userSession.is_platform_admin) {
-      return <LoadingScreen message="Redirecting to platform admin dashboard..." />;
-    } else if (userSession.default_tenant_id) {
-      return <LoadingScreen message="Redirecting to tenant dashboard..." />;
-    }
-    return <LoadingScreen message="Redirecting..." />;
+    // Show login form if not logged in
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Root path - show login or platform management
