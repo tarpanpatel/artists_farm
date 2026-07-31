@@ -36,9 +36,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [error, setError] = useState<string | null>(null);
   const [expandedTenant, setExpandedTenant] = useState<number | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditTenantModal, setShowEditTenantModal] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [showPropertyModal, setShowPropertyModal] = useState<'add' | 'edit' | null>(null);
+  const [showDeletePropertyModal, setShowDeletePropertyModal] = useState<number | null>(null);
   const [moduleToggleLoading, setModuleToggleLoading] = useState<string | null>(null);
   const [propertyModules, setPropertyModules] = useState<Record<number, { kitchen: boolean }>>({});
+  const [selectedTenantForProperty, setSelectedTenantForProperty] = useState<number | null>(null);
+  const [operationLoading, setOperationLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -103,7 +108,115 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
   const handleManageTenant = (tenant: Tenant) => {
     setEditingTenant(tenant);
-    setShowEditModal(true);
+    setShowEditTenantModal(true);
+  };
+
+  const handleAddProperty = async () => {
+    if (!editingProperty || !selectedTenantForProperty) return;
+
+    setOperationLoading(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=create_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'artists-farm-secure-key-2026',
+        },
+        body: JSON.stringify({
+          tenant_id: selectedTenantForProperty,
+          name: editingProperty.name,
+          slug: editingProperty.slug,
+          color_scheme: editingProperty.tailwind_color_scheme,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProperties((prev) => [...prev, {
+          ...editingProperty,
+          id: data.property_id,
+          tenant_id: selectedTenantForProperty,
+          status: 'active',
+        }]);
+        setShowPropertyModal(null);
+        setEditingProperty(null);
+      } else {
+        setError(data.message || 'Failed to create property');
+      }
+    } catch (err) {
+      console.error('Failed to create property:', err);
+      setError('Failed to create property');
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleEditProperty = async () => {
+    if (!editingProperty) return;
+
+    setOperationLoading(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=edit_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'artists-farm-secure-key-2026',
+        },
+        body: JSON.stringify({
+          property_id: editingProperty.id,
+          name: editingProperty.name,
+          slug: editingProperty.slug,
+          color_scheme: editingProperty.tailwind_color_scheme,
+          status: editingProperty.status,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProperties((prev) =>
+          prev.map((p) => (p.id === editingProperty.id ? editingProperty : p))
+        );
+        setShowPropertyModal(null);
+        setEditingProperty(null);
+      } else {
+        setError(data.message || 'Failed to update property');
+      }
+    } catch (err) {
+      console.error('Failed to update property:', err);
+      setError('Failed to update property');
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleDeleteProperty = async (propertyId: number) => {
+    setOperationLoading(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=delete_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'artists-farm-secure-key-2026',
+        },
+        body: JSON.stringify({ property_id: propertyId }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProperties((prev) => prev.filter((p) => p.id !== propertyId));
+        setShowDeletePropertyModal(null);
+      } else {
+        setError(data.message || 'Failed to delete property');
+      }
+    } catch (err) {
+      console.error('Failed to delete property:', err);
+      setError('Failed to delete property');
+    } finally {
+      setOperationLoading(false);
+    }
   };
 
   const handleSaveTenant = async () => {
@@ -132,7 +245,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         setTenants((prev) =>
           prev.map((t) => (t.id === editingTenant.id ? editingTenant : t))
         );
-        setShowEditModal(false);
+        setShowEditTenantModal(false);
         setEditingTenant(null);
       } else {
         setError(data.message || 'Failed to update tenant');
@@ -368,9 +481,22 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                       {/* Properties List */}
                       <div>
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
-                          Properties ({tenantProperties.length})
-                        </h4>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                            Properties ({tenantProperties.length})
+                          </h4>
+                          <button
+                            onClick={() => {
+                              setSelectedTenantForProperty(tenant.id);
+                              setEditingProperty({ id: 0, name: '', slug: '', tenant_id: tenant.id, status: 'active', tailwind_color_scheme: 'blue' });
+                              setShowPropertyModal('add');
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add
+                          </button>
+                        </div>
                         {tenantProperties.length === 0 ? (
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             No properties yet
@@ -394,25 +520,43 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       Slug: {prop.slug}
                                     </p>
                                   </div>
-                                  <button
-                                    onClick={() => toggleKitchenModule(prop.id, kitchenEnabled)}
-                                    disabled={isTogglingModule}
-                                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                                      kitchenEnabled
-                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50'
-                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800/50'
-                                    } ${isTogglingModule ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={kitchenEnabled ? 'Disable Kitchen Module' : 'Enable Kitchen Module'}
-                                  >
-                                    {isTogglingModule ? (
-                                      <Loader className="w-3 h-3 animate-spin" />
-                                    ) : kitchenEnabled ? (
-                                      <Zap className="w-3 h-3" />
-                                    ) : (
-                                      <ZapOff className="w-3 h-3" />
-                                    )}
-                                    {kitchenEnabled ? 'Kitchen On' : 'Kitchen Off'}
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => toggleKitchenModule(prop.id, kitchenEnabled)}
+                                      disabled={isTogglingModule}
+                                      className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                                        kitchenEnabled
+                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800/50'
+                                      } ${isTogglingModule ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                      title={kitchenEnabled ? 'Disable Kitchen Module' : 'Enable Kitchen Module'}
+                                    >
+                                      {isTogglingModule ? (
+                                        <Loader className="w-3 h-3 animate-spin" />
+                                      ) : kitchenEnabled ? (
+                                        <Zap className="w-3 h-3" />
+                                      ) : (
+                                        <ZapOff className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingProperty(prop);
+                                        setShowPropertyModal('edit');
+                                      }}
+                                      className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-950/30 rounded text-blue-600 dark:text-blue-400 transition-colors text-xs"
+                                      title="Edit Property"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setShowDeletePropertyModal(prop.id)}
+                                      className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors text-xs"
+                                      title="Delete Property"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
                                 </div>
                               );
                             })}
@@ -429,7 +573,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       </main>
 
       {/* Edit Tenant Modal */}
-      {showEditModal && editingTenant && (
+      {showEditTenantModal && editingTenant && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -521,7 +665,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
             <div className="flex gap-3">
               <button
-                onClick={() => setShowEditModal(false)}
+                onClick={() => setShowEditTenantModal(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
@@ -531,6 +675,129 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Property Add/Edit Modal */}
+      {showPropertyModal && editingProperty && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              {showPropertyModal === 'add' ? 'Add Property' : 'Edit Property'}
+            </h3>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Property Name
+                </label>
+                <input
+                  type="text"
+                  value={editingProperty.name}
+                  onChange={(e) =>
+                    setEditingProperty({ ...editingProperty, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Slug
+                </label>
+                <input
+                  type="text"
+                  value={editingProperty.slug}
+                  onChange={(e) =>
+                    setEditingProperty({ ...editingProperty, slug: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Color Scheme
+                </label>
+                <select
+                  value={editingProperty.tailwind_color_scheme}
+                  onChange={(e) =>
+                    setEditingProperty({ ...editingProperty, tailwind_color_scheme: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                >
+                  <option value="blue">Blue</option>
+                  <option value="green">Green</option>
+                  <option value="red">Red</option>
+                  <option value="purple">Purple</option>
+                  <option value="amber">Amber</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPropertyModal(null);
+                  setEditingProperty(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
+                disabled={operationLoading}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {operationLoading ? (
+                  <>
+                    <Loader className="w-3 h-3 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  showPropertyModal === 'add' ? 'Add' : 'Update'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Property Confirmation */}
+      {showDeletePropertyModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Delete Property?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              This action cannot be undone. All property data will be permanently deleted.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeletePropertyModal(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteProperty(showDeletePropertyModal)}
+                disabled={operationLoading}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {operationLoading ? (
+                  <>
+                    <Loader className="w-3 h-3 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>

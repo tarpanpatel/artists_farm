@@ -201,20 +201,119 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("
                 UPDATE property_modules
-                SET enabled = ?
-                WHERE property_id = ? AND module_name = ?
+                SET is_enabled = ?
+                WHERE property_id = ? AND module_slug = ?
             ");
             $stmt->execute([$enabled ? 1 : 0, $property_id, $module_name]);
 
             if ($stmt->rowCount() === 0) {
                 $insert = $pdo->prepare("
-                    INSERT INTO property_modules (property_id, module_name, enabled)
+                    INSERT INTO property_modules (property_id, module_slug, is_enabled)
                     VALUES (?, ?, ?)
                 ");
                 $insert->execute([$property_id, $module_name, $enabled ? 1 : 0]);
             }
 
             echo json_encode(['success' => true, 'message' => 'Module toggled successfully']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'create_property':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $tenant_id = $input['tenant_id'] ?? '';
+        $name = $input['name'] ?? '';
+        $slug = $input['slug'] ?? '';
+
+        if (!$tenant_id || !$name || !$slug) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id, name, and slug required']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO properties (name, slug, tenant_id, status, tailwind_color_scheme)
+                VALUES (?, ?, ?, 'active', ?)
+            ");
+            $stmt->execute([$name, $slug, $tenant_id, $input['color_scheme'] ?? 'blue']);
+            $property_id = $pdo->lastInsertId();
+
+            // Add default modules
+            $pdo->prepare("INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, 'kitchen', 1)")
+                ->execute([$property_id]);
+
+            echo json_encode(['success' => true, 'message' => 'Property created', 'property_id' => $property_id]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'edit_property':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $property_id = $input['property_id'] ?? '';
+        if (!$property_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_id required']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE properties
+                SET name = ?, slug = ?, tailwind_color_scheme = ?, status = ?
+                WHERE id = ?
+            ");
+            $ok = $stmt->execute([
+                $input['name'] ?? '',
+                $input['slug'] ?? '',
+                $input['color_scheme'] ?? 'blue',
+                $input['status'] ?? 'active',
+                $property_id
+            ]);
+            echo json_encode(['success' => $ok, 'message' => $ok ? 'Property updated' : 'Failed']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'delete_property':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $property_id = $input['property_id'] ?? '';
+        if (!$property_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_id required']);
+            exit;
+        }
+
+        try {
+            $pdo->beginTransaction();
+            // Delete all related data
+            $tables = ['guests', 'financial_ledger', 'kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'cash_drawer', 'petty_cash', 'misc_charges', 'telegram_settings', 'property_modules'];
+            foreach ($tables as $table) {
+                try {
+                    $pdo->prepare("DELETE FROM `$table` WHERE property_id = ?")->execute([$property_id]);
+                } catch (Exception $e) {}
+            }
+            $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
+            $pdo->commit();
+            echo json_encode(['success' => true, 'message' => 'Property deleted']);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'reset_staff_passcodes':
+        try {
+            $stmt = $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE 1");
+            $ok = $stmt->execute(['123456']);
+            echo json_encode(['success' => $ok, 'message' => $ok ? 'All staff passcodes reset to 123456' : 'Failed']);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -230,7 +329,7 @@ switch ($action) {
         }
         try {
             $stmt = $pdo->prepare("
-                SELECT module_name, enabled FROM property_modules
+                SELECT module_slug, is_enabled FROM property_modules
                 WHERE property_id = ?
             ");
             $stmt->execute([$property_id]);
@@ -238,8 +337,8 @@ switch ($action) {
 
             $moduleData = ['kitchen_enabled' => false];
             foreach ($modules as $mod) {
-                if ($mod['module_name'] === 'kitchen') {
-                    $moduleData['kitchen_enabled'] = (bool)$mod['enabled'];
+                if ($mod['module_slug'] === 'kitchen') {
+                    $moduleData['kitchen_enabled'] = (bool)$mod['is_enabled'];
                 }
             }
 
