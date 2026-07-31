@@ -25,13 +25,14 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug } from '../services/api';
 import { SearchableSelect } from './SearchableSelect';
 import { useToast } from './ToastContext';
 import DataTable from 'react-data-table-component';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface KitchenManagementProps {
   guests: Guest[];
@@ -54,7 +55,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 }) => {
   const { orders, addOrder } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
+
+  const getCurrentUserName = () => {
+    if (currentUser?.name) return currentUser.name;
+    if (currentUser?.username) return currentUser.username;
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser);
+          return user.name || user.username || 'Service Staff';
+        } catch (e) {}
+      }
+    }
+    return 'Service Staff';
+  };
   const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({});
   const [servedItemKeys, setServedItemKeys] = useState<Record<string, boolean>>({});
   const [itemReadyTimes, setItemReadyTimes] = useState<Record<string, string>>({});
@@ -160,12 +177,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setServedItemKeys((prev) => ({ ...prev, [key]: true }));
 
     // Add to Current Guest Served Dishes
+    const servedByUser = getCurrentUserName();
     const newLog = {
       id: Date.now().toString(),
       orderId: cleanTicketId,
       itemName: item.name,
       quantity: item.quantity,
-      servedBy: 'Cosmic',
+      servedBy: servedByUser,
       guestName: ord.guestName,
       roomNumber: ord.roomNumber,
       servedAt: `${new Date().toLocaleDateString()} ${nowTime}`,
@@ -175,7 +193,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       order_id: cleanTicketId,
       item_name: item.name,
       quantity: item.quantity,
-      served_by: 'Cosmic',
+      served_by: servedByUser,
       guest_name: ord.guestName,
       room_number: ord.roomNumber,
     });
@@ -195,11 +213,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         quantity: String(item.quantity),
         guest_name: ord.guestName,
         table_no: ord.roomNumber,
-        served_by: 'Cosmic (Service Staff)',
+        served_by: servedByUser,
         remaining_items: '0',
       };
       const resolved = await resolveTelegramTemplate('item_served', servedVars);
-      const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>Cosmic (Service Staff)</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
+      const singleItemServedMsg = resolved || `✅ <b>DISH SERVED TO RESIDENT</b>\n• Ticket: <b>#${cleanTicketId}</b> (${ord.guestName} - ${ord.roomNumber})\n• Served Dish: <b>${item.quantity}x ${item.name}</b>\n• Delivered By: <b>${servedByUser}</b>\n• Served At: <b>${nowTime}</b>\n• Status: <b>Delivered & Served 🍽️</b>`;
       onDispatchTelegram('Dish Served', singleItemServedMsg, 'kitchen', undefined, 'item_served');
     }
 
