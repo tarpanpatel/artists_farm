@@ -89,6 +89,7 @@ switch ($action) {
                 $is_platform_admin = (bool)$user['is_platform_admin'];
                 $has_default_tenant = !empty($user['default_tenant_id']);
 
+
                 // Map role:
                 // - platform admin (is_platform_admin=true) -> root_admin
                 // - has default_tenant (is_platform_admin=false, default_tenant_id set) -> super_admin

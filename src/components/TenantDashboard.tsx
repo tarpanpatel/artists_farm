@@ -28,7 +28,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     const loadProperties = async () => {
       try {
         setLoading(true);
-        console.log('[TenantDashboard] Fetching properties for tenant:', tenantId);
 
         // Fetch with timeout
         const controller = new AbortController();
