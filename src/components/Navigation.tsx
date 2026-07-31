@@ -106,8 +106,10 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   const isVisible = useCallback((allowedRoles?: string[]) => {
     if (!allowedRoles || allowedRoles.length === 0) return true;
-    if (activeRole === 'Super Admin') return true;
-    return allowedRoles.includes(activeRole);
+    // Case-insensitive role comparison
+    const normalizedActiveRole = activeRole.toLowerCase().trim();
+    if (normalizedActiveRole === 'super admin') return true;
+    return allowedRoles.some(role => role.toLowerCase().trim() === normalizedActiveRole);
   }, [activeRole]);
 
   const { pendingOrdersCount } = useKitchenContext();

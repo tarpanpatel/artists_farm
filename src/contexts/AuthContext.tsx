@@ -70,19 +70,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuthState = () => {
       const key = authKey();
-      console.debug('[AuthContext] Checking auth state. Key:', key);
 
       // Check property-specific auth key first
       let authValue = localStorage.getItem(key);
       let isAuth = authValue === 'true';
-      console.debug('[AuthContext] Auth value:', authValue, 'Is authenticated:', isAuth);
 
       // Fallback to generic session if property-specific auth not found
       // (for users coming from LoginPage redirect)
       if (!isAuth) {
         const genericSession = localStorage.getItem('artists_farm_user_session');
-        console.debug('[AuthContext] No property-specific auth. Checking generic session:', !!genericSession);
-
         if (genericSession) {
           try {
             const session = JSON.parse(genericSession);
@@ -101,16 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(true);
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role || 'Staff'));
-            console.debug('[AuthContext] Migrated generic session to property-specific auth');
             return;
           } catch (e) {
-            console.error('[AuthContext] Failed to parse generic session:', e);
+            console.error('Failed to parse generic session:', e);
           }
         }
       }
 
       setIsAuthenticated(isAuth);
-      console.debug('[AuthContext] Set isAuthenticated:', isAuth);
 
       if (isAuth) {
         const savedUser = localStorage.getItem(userKey());
@@ -119,13 +113,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const user = JSON.parse(savedUser);
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role || 'Staff'));
-            console.debug('[AuthContext] Loaded user:', user.name);
           } catch (e) {}
         }
       }
     };
 
-    console.debug('[AuthContext] useEffect mounted');
     checkAuthState();
 
     // Listen for storage changes (e.g., from other tabs)
