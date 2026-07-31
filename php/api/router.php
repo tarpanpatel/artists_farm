@@ -321,12 +321,20 @@ switch ($action) {
         exit;
 
     case 'get_property_modules':
+        // First check if property_id was explicitly passed (for platform admin use)
         $property_id = $_GET['property_id'] ?? '';
+
+        // If not provided, use the current property context (for staff/tenant access)
         if (!$property_id) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'property_id required']);
+            $property_id = $propertyId;
+        }
+
+        if (!$property_id) {
+            // Return empty/default modules if no property context
+            echo json_encode(['status' => 'success', 'data' => []]);
             exit;
         }
+
         try {
             $stmt = $pdo->prepare("
                 SELECT module_slug, is_enabled FROM property_modules
@@ -335,6 +343,7 @@ switch ($action) {
             $stmt->execute([$property_id]);
             $modules = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Return both the raw modules and parsed kitchen status
             $moduleData = ['kitchen_enabled' => false];
             foreach ($modules as $mod) {
                 if ($mod['module_slug'] === 'kitchen') {
@@ -342,10 +351,11 @@ switch ($action) {
                 }
             }
 
-            echo json_encode(['success' => true, 'data' => $moduleData]);
+            // Return in both formats for compatibility
+            echo json_encode(['success' => true, 'status' => 'success', 'data' => $modules ?: $moduleData]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'status' => 'error', 'message' => $e->getMessage()]);
         }
         exit;
 
