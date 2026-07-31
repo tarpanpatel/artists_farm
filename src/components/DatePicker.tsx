@@ -23,7 +23,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const today = new Date();
   const [startMonth, setStartMonth] = useState(
-    value ? new Date(value) : new Date(today.getFullYear(), today.getMonth(), 1)
+    new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
   const getDaysInMonth = (date: Date) => {
