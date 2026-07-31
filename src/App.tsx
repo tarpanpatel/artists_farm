@@ -15,7 +15,6 @@ import { DataExportCenter } from './components/DataExportCenter';
 import { MenuManager } from './components/MenuManager';
 import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
-import { CustomCSSOverride } from './components/CustomCSSOverride';
 import { GlobalModal } from './components/GlobalModal';
 import { ToastProvider } from './components/ToastContext';
 import { LoginModal } from './components/LoginModal';
@@ -26,6 +25,7 @@ import { InventoryProvider, useInventoryContext } from './contexts/InventoryCont
 import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
+import { trackDeadEnd, trackSessionLoss, trackAPIError, trackPropertyIssue } from './utils/userFlowTracker';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
@@ -35,6 +35,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
 import { TenantDashboard } from './components/TenantDashboard';
+import { RootAdminDashboard } from './components/RootAdminDashboard';
 
 
 
@@ -94,8 +95,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
-        custom_css: { tab: 'custom_css', key: 'custom_css' },
-        css_override: { tab: 'custom_css', key: 'custom_css' },
       };
 
       if (hash && routeMap[hash]) {
@@ -152,18 +151,47 @@ function AppBody({ preloadedData }: AppBodyProps) {
   }, []);
 
 
-  // Apply saved custom CSS on app startup
+  // Load global system CSS on app startup from API
   useEffect(() => {
-    const savedCSS = localStorage.getItem('artists_farm_custom_css');
-    if (savedCSS && savedCSS.trim()) {
-      let el = document.getElementById('artists-farm-custom-css-override') as HTMLStyleElement | null;
-      if (!el) {
-        el = document.createElement('style');
-        el.id = 'artists-farm-custom-css-override';
-        document.head.appendChild(el);
+    const loadGlobalCSS = async () => {
+      try {
+        const response = await fetch(`/php/api/router.php?action=get_system_settings`, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data?.custom_css) {
+          const savedCSS = data.data.custom_css;
+          let el = document.getElementById('artists-farm-custom-css-override') as HTMLStyleElement | null;
+          if (!el) {
+            el = document.createElement('style');
+            el.id = 'artists-farm-custom-css-override';
+            document.head.appendChild(el);
+          }
+          el.textContent = savedCSS;
+        }
+
+        // Also load Lucide settings
+        if (data.data?.lucide_settings) {
+          try {
+            const lucide = JSON.parse(data.data.lucide_settings);
+            let el = document.getElementById('artists-farm-lucide-global') as HTMLStyleElement | null;
+            if (!el) {
+              el = document.createElement('style');
+              el.id = 'artists-farm-lucide-global';
+              document.head.appendChild(el);
+            }
+            el.textContent = `.lucide { width: ${lucide.size}px; height: ${lucide.size}px; stroke-width: ${lucide.strokeWidth}; color: ${lucide.color}; }`;
+          } catch (e) {
+            console.error('Failed to parse lucide settings:', e);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load global CSS settings:', err);
       }
-      el.textContent = savedCSS;
-    }
+    };
+
+    loadGlobalCSS();
   }, []);
 
   const handleNavigateTab = (tab: TabType, menuItemKey?: string) => {
@@ -184,7 +212,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         menu_manager: 'edit_food_menu',
         telegram: 'telegram',
         misc_charges: 'misc_charges',
-        custom_css: 'custom_css',
       };
       setActiveMenuItemKey(defaults[tab] || tab);
     }
@@ -241,22 +268,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
   };
 
   // Telegram Notifications State
-  const TELEGRAM_BOT_TOKEN = '8999394059:AAHGKM4gFvH6IIQtOEiuiKEL7ewflHSa6DU';
+  // NOTE: Bot token moved to backend .env file - DO NOT hardcode in frontend
+  const TELEGRAM_BOT_TOKEN = null; // Backend will handle token securely
 
   const getTelegramChannelIds = () => {
-    const isLocal = typeof window !== 'undefined' &&
-      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-    if (isLocal) {
-      return {
-        kitchen: '-5511705268',
-        admin: '-5362212071',
-        finance: '-5511705268',
-      };
-    }
+    // NOTE: Group IDs now fetched from backend config
+    // DO NOT hardcode group IDs in frontend source code - security risk!
     return {
-      kitchen: '-5456387701',
-      admin: '-5415746187',
-      finance: '-5303969309',
+      kitchen: null,
+      admin: null,
+      finance: null,
     };
   };
 
@@ -534,8 +555,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         data_export_center: { tab: 'export', key: 'data_export_center' },
         telegram: { tab: 'telegram', key: 'telegram' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
-        custom_css: { tab: 'custom_css', key: 'custom_css' },
-        css_override: { tab: 'custom_css', key: 'custom_css' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then fallback to dashboard
@@ -1186,10 +1205,6 @@ ${itemsStr}
                   onLogAudit={logAudit}
                 />
               )}
-
-              {activeTab === 'custom_css' && (
-                <CustomCSSOverride />
-              )}
             </main>
           </div>
         )}
@@ -1242,6 +1257,7 @@ export function App() {
   const isLoginPath = propertySlug === 'login';
   const isTenantDashboardPath = propertySlug === 'tenant_dashboard';
   const isPlatformPropertyManagementPath = propertySlug === 'platform_property_management';
+  const isRootDashboardPath = propertySlug === 'root_dashboard';
   const isRootPath = propertySlug === 'default' || !propertySlug;
 
   // Check for existing session on mount
@@ -1265,6 +1281,13 @@ export function App() {
     default_tenant_id?: number;
   }) => {
     setUserSession(session);
+
+    // Redirect based on role
+    if (session.is_platform_admin) {
+      window.location.href = '/artists_farm/root_dashboard/';
+    } else if (session.default_tenant_id) {
+      window.location.href = '/artists_farm/tenant_dashboard/';
+    }
   };
 
   // Tenant dashboard path
@@ -1286,6 +1309,29 @@ export function App() {
           setUserSession(null);
           localStorage.removeItem('artists_farm_user_session');
         }}
+      />
+    );
+  }
+
+  // Root admin dashboard path
+  if (isRootDashboardPath) {
+    // Wait for session to load before checking
+    if (!isSessionLoaded) {
+      return <LoadingScreen message="Loading session..." />;
+    }
+
+    if (!userSession || !userSession.is_platform_admin) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
+
+    return (
+      <RootAdminDashboard
+        username={userSession.username}
+        onLogout={() => {
+          setUserSession(null);
+          localStorage.removeItem('artists_farm_user_session');
+        }}
+        activeRole="Root Admin"
       />
     );
   }
@@ -1319,18 +1365,12 @@ export function App() {
       return <LoadingScreen message="Loading..." />;
     }
 
-    // Show dashboard if already logged in
+    // Redirect to appropriate dashboard if already logged in
     if (userSession) {
       if (userSession.is_platform_admin) {
-        return (
-          <PlatformPropertyManagement
-            username={userSession.username}
-            onLogout={() => {
-              setUserSession(null);
-              localStorage.removeItem('artists_farm_user_session');
-            }}
-          />
-        );
+        // Redirect root admin to root dashboard
+        window.location.href = '/artists_farm/root_dashboard/';
+        return <LoadingScreen message="Redirecting to root admin dashboard..." />;
       } else if (userSession.default_tenant_id) {
         return (
           <TenantDashboard
