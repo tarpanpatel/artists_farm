@@ -8,7 +8,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
-import { saveNavMenuDB, apiFetch } from '../services/api';
+import { saveNavMenuDB } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 
 interface NavMenuEditorProps {
