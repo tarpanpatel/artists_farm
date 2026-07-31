@@ -163,17 +163,24 @@ if (!class_exists('TelescopeLogger')) {
 
     // Set global error and exception handlers to catch PHP failures without database dependency
     set_exception_handler(function ($exception) {
-        TelescopeLogger::log('php', 'Exception', $exception->getMessage(), 'PHP Exception Handler', [
-            'file' => $exception->getFile(),
-            'line' => $exception->getLine(),
-            'trace' => $exception->getTraceAsString()
-        ]);
+        // Only log REAL errors, not expected/recoverable ones
+        if (strpos($exception->getMessage(), 'Expected') === false) {
+            TelescopeLogger::log('php', 'Exception', $exception->getMessage(), 'PHP Exception Handler', [
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => $exception->getTraceAsString()
+            ]);
+        }
     });
 
     set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+        // Skip notices and warnings in production - only log actual errors
+        if ($errno === E_NOTICE || $errno === E_USER_NOTICE || $errno === E_WARNING || $errno === E_USER_WARNING) {
+            return false; // Don't log development warnings
+        }
+
         $severity = 'Warning';
         if ($errno === E_ERROR || $errno === E_USER_ERROR) $severity = 'Fatal Error';
-        elseif ($errno === E_NOTICE || $errno === E_USER_NOTICE) $severity = 'Notice';
 
         TelescopeLogger::log('php', $severity, $errstr, 'PHP Error Handler', [
             'file' => $errfile,
