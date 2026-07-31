@@ -125,6 +125,26 @@ export interface InventoryItem {
   imagePath?: string;
 }
 
+export interface CatalogItem {
+  id: number;
+  name: string;
+  category: string;
+  categoryId: number;
+  price: number;
+  packSize: number;
+  packUnit: string;
+  unitLabel: string;
+  is_verified?: boolean;
+  imagePath?: string;
+  specification?: string;
+  unit_cost?: number;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+}
+
 export interface Requisition {
   id: string;
   itemName: string;

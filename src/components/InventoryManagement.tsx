@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins } from 'lucide-react';
-import { InventoryItem, StaffMember } from '../types';
+import { InventoryItem, StaffMember, CatalogItem } from '../types';
 import { SearchableSelect } from './SearchableSelect';
-import { CatalogItem } from '../data/initialData';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
