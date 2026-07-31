@@ -69,9 +69,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync auth state with localStorage on mount and whenever it changes
   useEffect(() => {
     const checkAuthState = () => {
-      const authValue = localStorage.getItem(authKey());
-      const isAuth = authValue === 'true';
+      const key = authKey();
+      console.debug('[AuthContext] Checking auth state. Key:', key);
+
+      // Check property-specific auth key first
+      let authValue = localStorage.getItem(key);
+      let isAuth = authValue === 'true';
+      console.debug('[AuthContext] Auth value:', authValue, 'Is authenticated:', isAuth);
+
+      // Fallback to generic session if property-specific auth not found
+      // (for users coming from LoginPage redirect)
+      if (!isAuth) {
+        const genericSession = localStorage.getItem('artists_farm_user_session');
+        console.debug('[AuthContext] No property-specific auth. Checking generic session:', !!genericSession);
+
+        if (genericSession) {
+          try {
+            const session = JSON.parse(genericSession);
+            // Mark as authenticated in the property-specific storage
+            localStorage.setItem(key, 'true');
+            isAuth = true;
+
+            // Convert generic session to StaffMember format
+            const user: StaffMember = {
+              id: session.username, // Use username as ID fallback
+              name: session.username,
+              username: session.username,
+              role: session.role || 'Staff',
+            };
+            localStorage.setItem(userKey(), JSON.stringify(user));
+            setIsAuthenticated(true);
+            setCurrentUser(user);
+            setActiveRole(normalizeRole(user.role || 'Staff'));
+            console.debug('[AuthContext] Migrated generic session to property-specific auth');
+            return;
+          } catch (e) {
+            console.error('[AuthContext] Failed to parse generic session:', e);
+          }
+        }
+      }
+
       setIsAuthenticated(isAuth);
+      console.debug('[AuthContext] Set isAuthenticated:', isAuth);
 
       if (isAuth) {
         const savedUser = localStorage.getItem(userKey());
@@ -80,11 +119,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const user = JSON.parse(savedUser);
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role || 'Staff'));
+            console.debug('[AuthContext] Loaded user:', user.name);
           } catch (e) {}
         }
       }
     };
 
+    console.debug('[AuthContext] useEffect mounted');
     checkAuthState();
 
     // Listen for storage changes (e.g., from other tabs)
@@ -105,6 +146,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     localStorage.removeItem(authKey());
     localStorage.removeItem(userKey());
+    // Also clear generic session for consistency
+    localStorage.removeItem('artists_farm_user_session');
   }, []);
   return (
     <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, setActiveRole, login, logout }}>
