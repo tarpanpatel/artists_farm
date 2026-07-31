@@ -56,12 +56,30 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     const date = new Date(month.getFullYear(), month.getMonth(), day);
     const dateStr = formatDate(date);
 
-    if (!isDateBlocked(dateStr) && !isDateBeforeToday(dateStr)) {
-      onChange(dateStr);
-      // Only auto-close for checkout date selection
-      if (isCheckout) {
-        setTimeout(() => setIsOpen(false), 100);
+    // Check if date is blocked or in the past
+    if (isDateBlocked(dateStr) || isDateBeforeToday(dateStr)) {
+      return;
+    }
+
+    // For checkout date: must be after check-in date
+    if (isCheckout && otherDate) {
+      if (dateStr <= otherDate) {
+        return; // Checkout must be after check-in
       }
+    }
+
+    // For check-in date: cannot be same as checkout
+    if (!isCheckout && otherDate) {
+      if (dateStr >= otherDate) {
+        return; // Check-in must be before checkout
+      }
+    }
+
+    onChange(dateStr);
+
+    // Close calendar after checkout date selection
+    if (isCheckout) {
+      setIsOpen(false);
     }
   };
 
@@ -88,7 +106,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       const dateStr = formatDate(new Date(month.getFullYear(), month.getMonth(), day));
       const blocked = isDateBlocked(dateStr);
       const beforeToday = isDateBeforeToday(dateStr);
-      const isDisabled = blocked || beforeToday;
+
+      // Check if date is invalid for this picker
+      let invalidForPicker = false;
+      if (isCheckout && otherDate && dateStr <= otherDate) {
+        invalidForPicker = true; // Checkout must be after check-in
+      }
+      if (!isCheckout && otherDate && dateStr >= otherDate) {
+        invalidForPicker = true; // Check-in must be before checkout
+      }
+
+      const isDisabled = blocked || beforeToday || invalidForPicker;
       const selected = value === dateStr;
       const inRange = isDateInRange(dateStr);
       const isOtherDate = otherDate === dateStr;
