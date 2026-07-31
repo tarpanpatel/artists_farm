@@ -58,10 +58,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
     if (!isDateBlocked(dateStr)) {
       onChange(dateStr);
-      // Auto-close if this is checkout date and both dates are selected
-      if (isCheckout && otherDate) {
-        setTimeout(() => setIsOpen(false), 100);
-      }
+      // Auto-close calendar after date selection
+      setTimeout(() => setIsOpen(false), 100);
     }
   };
 
