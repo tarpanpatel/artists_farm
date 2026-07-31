@@ -273,51 +273,8 @@ function AppBody() {
     },
   ]);
 
-  // Navigation Items State (All Main Menu items across the application in exact sidebar tree hierarchy)
-  const [navItems, setNavItems] = useState<NavMenuItem[]>([
-    // 1. Top Flat Navigation Links — all root level
-    { id: 'nav-1', title: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard', category: 'Main Sections', iconName: 'LayoutDashboard', order: 1, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-2', title: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration', category: 'Residents & Billing', iconName: 'Users', order: 2, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-3', title: 'Billing & Checkout', tabKey: 'guests', uniqueKey: 'billing_checkout', category: 'Residents & Billing', iconName: 'CreditCard', order: 3, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-4', title: 'Take Food Order', tabKey: 'kitchen', uniqueKey: 'take_food_order', category: 'Kitchen & Food', iconName: 'ShoppingCart', order: 4, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-5', title: 'Kitchen Orders', tabKey: 'kitchen', uniqueKey: 'kitchen_orders', category: 'Kitchen & Food', iconName: 'UtensilsCrossed', order: 5, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-6', title: 'Stock Requests', tabKey: 'inventory', uniqueKey: 'stock_requests', category: 'Stock & Inventory', iconName: 'ClipboardList', order: 6, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen'], isVisible: true, parentId: null },
-    { id: 'nav-7', title: 'Fulfill Stock Req.', tabKey: 'inventory', uniqueKey: 'fulfill_stock_req', category: 'Stock & Inventory', iconName: 'Truck', order: 7, roles: ['Super Admin', 'Admin', 'Staff Supervisor'], isVisible: true, parentId: null },
-    { id: 'nav-8', title: 'Staff Meals', tabKey: 'kitchen', uniqueKey: 'staff_meals', category: 'Kitchen & Food', iconName: 'CookingPot', order: 8, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen'], isVisible: true, parentId: null },
-    { id: 'nav-9', title: 'Staff & Payees Control', tabKey: 'staff', uniqueKey: 'staff_payees_control', category: 'Staff & HR', iconName: 'ShieldCheck', order: 9, roles: ['Super Admin', 'Admin', 'Staff Supervisor'], isVisible: true, parentId: null },
-    { id: 'nav-10', title: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar', category: 'Staff & HR', iconName: 'Calendar', order: 10, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff'], isVisible: true, parentId: null },
-    { id: 'nav-11', title: 'Staff Directory & Salaries', tabKey: 'staff', uniqueKey: 'staff_directory_salaries', category: 'Staff & HR', iconName: 'Users', order: 11, roles: ['Super Admin', 'Admin', 'Staff Supervisor'], isVisible: true, parentId: null },
-    { id: 'nav-12', title: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses', category: 'Financials', iconName: 'Receipt', order: 12, roles: ['Super Admin', 'Admin', 'Staff Supervisor'], isVisible: true, parentId: null },
-    { id: 'nav-13', title: 'Deficit Shortfalls Log', tabKey: 'inventory', uniqueKey: 'deficit_shortfalls_log', category: 'Stock & Inventory', iconName: 'TrendingDown', order: 13, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen'], isVisible: true, parentId: null },
-    { id: 'nav-14', title: 'Stock Log', tabKey: 'inventory', uniqueKey: 'stock_log', category: 'Stock & Inventory', iconName: 'Package', order: 14, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen'], isVisible: true, parentId: null },
-    { id: 'nav-15', title: 'Kitchen Purchases', tabKey: 'inventory', uniqueKey: 'kitchen_purchases', category: 'Stock & Inventory', iconName: 'ShoppingBag', order: 15, roles: ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen'], isVisible: true, parentId: null },
-
-    // 2. Admin Control Dropdown Group Header (root level dropdown container)
-    { id: 'nav-header-admin', title: 'Admin Control', tabKey: 'analytics', uniqueKey: 'admin_control_group', category: 'Admin Control', iconName: 'Sliders', order: 16, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: null },
-    // Admin Control → Tier 2 children
-    { id: 'nav-16', title: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 17, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-16b', title: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics', category: 'Admin Control', iconName: 'BarChart3', order: 18, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-17', title: 'Past Receipts Log', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log', category: 'Admin Control', iconName: 'BookOpen', order: 19, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-
-    // 3. Edit Items Sub-Dropdown (child of nav-header-admin)
-    { id: 'nav-header-edit', title: 'Edit Items', tabKey: 'menu_manager', uniqueKey: 'edit_items_group', category: 'Edit Items', iconName: 'Boxes', order: 20, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    // Edit Items → Tier 3 children
-    { id: 'nav-19', title: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu', category: 'Edit Items', iconName: 'Sliders', order: 21, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-edit' },
-    { id: 'nav-20', title: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock', category: 'Edit Items', iconName: 'Boxes', order: 22, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-edit' },
-    { id: 'nav-21', title: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items', category: 'Edit Items', iconName: 'Layers', order: 23, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-edit' },
-    { id: 'nav-22', title: 'Edit Main Menu & RBAC', tabKey: 'menu_manager', uniqueKey: 'edit_main_menu', category: 'Edit Items', iconName: 'Link', order: 24, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-edit' },
-
-    // 4. Admin Post-Edit Items (children of nav-header-admin)
-    { id: 'nav-23', title: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions', category: 'System Controls', iconName: 'ShieldCheck', order: 25, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-24', title: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges', category: 'System Controls', iconName: 'DollarSign', order: 26, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-25', title: 'Data Export Center', tabKey: 'export', uniqueKey: 'data_export_center', category: 'System Controls', iconName: 'FileSpreadsheet', order: 27, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-26', title: 'Telegram Notification Bot', tabKey: 'telegram', uniqueKey: 'telegram', category: 'System Controls', iconName: 'Send', order: 28, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-28', title: 'Beta Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder', category: 'System Controls', iconName: 'CookingPot', order: 30, roles: ['Super Admin', 'Admin', 'Staff Kitchen'], isVisible: true, parentId: 'nav-header-admin' },
-    { id: 'nav-30', title: 'Custom CSS Override', tabKey: 'custom_css', uniqueKey: 'custom_css', category: 'System Controls', iconName: 'Paintbrush', order: 31, roles: ['Super Admin', 'Admin'], isVisible: true, parentId: 'nav-header-admin' },
-
-    // 5. Cash Drawer (root level)
-    { id: 'nav-29', title: 'Cash Drawer', tabKey: 'petty_cash', uniqueKey: 'cash_drawer', category: 'Main Sections', iconName: 'Wallet', order: 32, roles: ['Super Admin', 'Admin', 'Staff Supervisor'], isVisible: true, parentId: null },
-  ]);
+  // Navigation Items State - fetched from database instead of hardcoded
+  const [navItems, setNavItems] = useState<NavMenuItem[]>([]);
 
   // Application Data States
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -468,6 +425,15 @@ function AppBody() {
     fetchPropertyModulesFromDB().then((modules) => {
       const kitchen = modules.find((m) => m.slug === 'kitchen');
       if (kitchen) setKitchenModuleEnabled(!!kitchen.is_enabled);
+    });
+  }, []);
+
+  // Fetch navigation items from database
+  useEffect(() => {
+    fetchNavMenuFromDB().then((items) => {
+      if (items && items.length > 0) {
+        setNavItems(items);
+      }
     });
   }, []);
 
