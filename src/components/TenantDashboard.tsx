@@ -161,7 +161,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               {properties.map((property) => (
                 <a
                   key={property.id}
-                  href={`/artists_farm/${property.slug}/`}
+                  href={`/artists_farm/vrikshawan/${property.slug}/`}
                   className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all"
                 >
                   <div className="flex items-start justify-between mb-4">

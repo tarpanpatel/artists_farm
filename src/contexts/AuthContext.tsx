@@ -37,7 +37,8 @@ const userKey = () => `artists_farm_user_${getPropertySlug()}`;
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(authKey()) === 'true';
+      const value = localStorage.getItem(authKey());
+      return value === 'true';
     }
     return false;
   });
@@ -64,6 +65,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return 'Super Admin';
   });
+
+  // Sync auth state with localStorage on mount and whenever it changes
+  useEffect(() => {
+    const checkAuthState = () => {
+      const authValue = localStorage.getItem(authKey());
+      const isAuth = authValue === 'true';
+      setIsAuthenticated(isAuth);
+
+      if (isAuth) {
+        const savedUser = localStorage.getItem(userKey());
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            setCurrentUser(user);
+            setActiveRole(normalizeRole(user.role || 'Staff'));
+          } catch (e) {}
+        }
+      }
+    };
+
+    checkAuthState();
+
+    // Listen for storage changes (e.g., from other tabs)
+    window.addEventListener('storage', checkAuthState);
+    return () => window.removeEventListener('storage', checkAuthState);
+  }, []);
 
   const login = useCallback((staff: StaffMember) => {
     setIsAuthenticated(true);
