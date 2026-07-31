@@ -1274,14 +1274,8 @@ export function App() {
       return <LoadingScreen message="Loading session..." />;
     }
 
-    if (!userSession) {
-      window.location.href = '/artists_farm/login/';
-      return <LoadingScreen message="Redirecting to login..." />;
-    }
-
-    if (userSession.is_platform_admin || !userSession.default_tenant_id) {
-      window.location.href = '/artists_farm/login/';
-      return <LoadingScreen message="Unauthorized..." />;
+    if (!userSession || userSession.is_platform_admin || !userSession.default_tenant_id) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
     }
 
     return (
@@ -1303,14 +1297,8 @@ export function App() {
       return <LoadingScreen message="Loading session..." />;
     }
 
-    if (!userSession) {
-      window.location.href = '/artists_farm/login/';
-      return <LoadingScreen message="Redirecting to login..." />;
-    }
-
-    if (!userSession.is_platform_admin) {
-      window.location.href = '/artists_farm/login/';
-      return <LoadingScreen message="Unauthorized..." />;
+    if (!userSession || !userSession.is_platform_admin) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
     }
 
     return (
@@ -1376,10 +1364,18 @@ export function App() {
       );
     }
 
-    // Tenant manager - redirect to tenant dashboard
+    // Tenant manager - render dashboard directly
     if (userSession.default_tenant_id) {
-      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${userSession.default_tenant_id}`;
-      return <LoadingScreen message="Redirecting to tenant dashboard..." />;
+      return (
+        <TenantDashboard
+          username={userSession.username}
+          tenantId={userSession.default_tenant_id}
+          onLogout={() => {
+            setUserSession(null);
+            localStorage.removeItem('artists_farm_user_session');
+          }}
+        />
+      );
     }
 
     // No access
