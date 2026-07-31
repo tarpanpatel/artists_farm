@@ -19,12 +19,13 @@ require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../telegram/telegram.php';
 require_once __DIR__ . '/../modules/module_manager.php';
+require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/configuration.php';
 
 // Simple API Key Authentication (from environment only, no fallback)
 $api_key = getenv('API_KEY');
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'login_user'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_licenses', 'check_expiring_licenses', 'login_user'];
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -593,6 +594,15 @@ switch ($action) {
     // --- MODULES ---
     case 'get_property_modules':
         echo json_encode(['status' => 'success', 'data' => getPropertyModules($pdo, $propertyId)]);
+        break;
+
+    // --- LICENSES ---
+    case 'get_licenses':
+    case 'add_license':
+    case 'update_license':
+    case 'delete_license':
+    case 'check_expiring_licenses':
+        handleLicenseRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- PROPERTY ---
