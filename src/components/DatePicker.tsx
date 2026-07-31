@@ -61,18 +61,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       return;
     }
 
-    // For checkout date: must be after check-in date
-    if (isCheckout && otherDate) {
-      if (dateStr <= otherDate) {
-        return; // Checkout must be after check-in
-      }
-    }
-
-    // For check-in date: cannot be same as checkout
-    if (!isCheckout && otherDate) {
-      if (dateStr >= otherDate) {
-        return; // Check-in must be before checkout
-      }
+    // For checkout date: must be after check-in date (if check-in is set)
+    if (isCheckout && otherDate && dateStr <= otherDate) {
+      return; // Checkout must be strictly after check-in
     }
 
     onChange(dateStr);
@@ -107,13 +98,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       const blocked = isDateBlocked(dateStr);
       const beforeToday = isDateBeforeToday(dateStr);
 
-      // Check if date is invalid for this picker
+      // For checkout: disable dates that are not after check-in
       let invalidForPicker = false;
       if (isCheckout && otherDate && dateStr <= otherDate) {
-        invalidForPicker = true; // Checkout must be after check-in
-      }
-      if (!isCheckout && otherDate && dateStr >= otherDate) {
-        invalidForPicker = true; // Check-in must be before checkout
+        invalidForPicker = true;
       }
 
       const isDisabled = blocked || beforeToday || invalidForPicker;
