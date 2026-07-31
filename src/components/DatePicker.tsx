@@ -133,14 +133,22 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl p-6 w-full max-w-2xl">
-          {/* Close button */}
-          <button
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setIsOpen(false)}
-            className="absolute top-4 right-4 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-          >
-            <X size={20} />
-          </button>
+          />
+
+          {/* Modal */}
+          <div className="fixed z-50 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-screen overflow-y-auto">
+            {/* Close button */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-4 right-4 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+            >
+              <X size={20} />
+            </button>
 
           {/* Two month calendars */}
           <div className="grid grid-cols-2 gap-6">
@@ -194,7 +202,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               <ChevronRight size={20} />
             </button>
           </div>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
