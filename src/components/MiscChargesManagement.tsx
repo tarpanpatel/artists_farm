@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
 import DataTable from 'react-data-table-component';
-import { getPropertySlug, apiFetch } from '../services/api';
+import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 
 interface MiscChargeTemplate {

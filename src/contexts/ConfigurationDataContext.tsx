@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiFetch } from '../services/api';
+import { fetchMiscCatalogFromDB, fetchMaterialCategoriesFromDB } from '../services/api';
 
 export interface MiscChargeTemplate {
-  id: number;
-  name: string;
-  price: number;
+  id: string | number;
+  label: string;
+  default_amount: number;
   category: string;
+  description?: string;
 }
 
 export interface MaterialCategory {
@@ -40,9 +41,9 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
   const fetchMiscCharges = async () => {
     setIsLoadingMisc(true);
     try {
-      const res = await apiFetch('/artists_farm/php/api/router.php?action=get_misc_catalog');
-      if (res.status === 'success' && Array.isArray(res.data)) {
-        setMiscCharges(res.data);
+      const data = await fetchMiscCatalogFromDB();
+      if (Array.isArray(data)) {
+        setMiscCharges(data);
       }
     } catch (error) {
       console.error('Failed to fetch misc charges:', error);
@@ -54,9 +55,9 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
   const fetchMaterialCategories = async () => {
     setIsLoadingCategories(true);
     try {
-      const res = await apiFetch('/artists_farm/php/api/router.php?action=get_material_categories');
-      if (res.status === 'success' && Array.isArray(res.data)) {
-        setMaterialCategories(res.data);
+      const data = await fetchMaterialCategoriesFromDB();
+      if (Array.isArray(data)) {
+        setMaterialCategories(data);
       }
     } catch (error) {
       console.error('Failed to fetch material categories:', error);
