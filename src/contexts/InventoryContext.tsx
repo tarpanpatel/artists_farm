@@ -5,6 +5,7 @@ import {
   updateInventoryStockInDB,
 } from '../services/api';
 import { useAuth } from './AuthContext';
+import { useModules } from './ModulesContext';
 
 interface InventoryContextValue {
   inventory: InventoryItem[];
@@ -37,6 +38,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   currentUser,
 }) => {
   const { isAuthenticated } = useAuth();
+  const { isEnabled } = useModules();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const currentUserName = currentUser?.name || 'Admin';
@@ -49,10 +51,10 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isEnabled('kitchen')) {
       refreshInventory();
     }
-  }, [refreshInventory, isAuthenticated]);
+  }, [refreshInventory, isAuthenticated, isEnabled]);
 
   const updateStock = (itemId: string, newStock: number) => {
     const item = inventory.find((i) => i.id === itemId);

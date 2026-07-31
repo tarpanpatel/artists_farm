@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchMiscCatalogFromDB, fetchMaterialCategoriesFromDB } from '../services/api';
+import { useModules } from './ModulesContext';
 
 export interface MiscChargeTemplate {
   id: string | number;
@@ -33,6 +34,7 @@ export const useConfigurationData = (): ConfigurationDataContextValue => {
 };
 
 export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isEnabled } = useModules();
   const [miscCharges, setMiscCharges] = useState<MiscChargeTemplate[]>([]);
   const [materialCategories, setMaterialCategories] = useState<MaterialCategory[]>([]);
   const [isLoadingMisc, setIsLoadingMisc] = useState(false);
@@ -68,8 +70,10 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
 
   useEffect(() => {
     fetchMiscCharges();
-    fetchMaterialCategories();
-  }, []);
+    if (isEnabled('kitchen')) {
+      fetchMaterialCategories();
+    }
+  }, [isEnabled]);
 
   return (
     <ConfigurationDataContext.Provider

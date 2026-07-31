@@ -22,7 +22,7 @@ require_once __DIR__ . '/configuration.php';
 // Simple API Key Authentication
 $api_key = getenv('API_KEY') ?: 'artists-farm-secure-key-2026';
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties'];
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -61,6 +61,102 @@ if (in_array($action, $kitchen_module_actions, true)) {
 }
 
 switch ($action) {
+    // --- UNIFIED LOGIN ---
+    case 'login_user':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $username = $input['username'] ?? '';
+        $password = $input['password'] ?? '';
+
+        if (!$username || !$password) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Username and password required']);
+            exit;
+        }
+
+        try {
+            // Check users table for credentials
+            $stmt = $pdo->prepare("
+                SELECT id, username, password, role, is_platform_admin, default_tenant_id
+                FROM users
+                WHERE username = ?
+            ");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                // Password is correct
+                // Set session
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['is_platform_admin'] = (bool)$user['is_platform_admin'];
+                $_SESSION['default_tenant_id'] = $user['default_tenant_id'];
+
+                // Set cookie
+                setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Login successful',
+                    'user' => [
+                        'id' => $user['id'],
+                        'username' => $user['username'],
+                        'role' => $user['role'],
+                        'is_platform_admin' => (bool)$user['is_platform_admin'],
+                        'default_tenant_id' => $user['default_tenant_id'],
+                    ]
+                ]);
+            } else {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Login error: ' . $e->getMessage()]);
+        }
+        exit;
+
+    // --- PLATFORM ADMIN ENDPOINTS ---
+    case 'get_all_tenants':
+        try {
+            $stmt = $pdo->query("SELECT * FROM tenants ORDER BY name ASC");
+            $tenants = $stmt->fetchAll();
+            echo json_encode(['success' => true, 'data' => $tenants]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'get_all_properties':
+        try {
+            $stmt = $pdo->query("SELECT * FROM properties ORDER BY name ASC");
+            $properties = $stmt->fetchAll();
+            echo json_encode(['success' => true, 'data' => $properties]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'get_tenant_properties':
+        $tenant_id = $_GET['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM properties WHERE tenant_id = ? ORDER BY name ASC");
+            $stmt->execute([$tenant_id]);
+            $properties = $stmt->fetchAll();
+            echo json_encode(['success' => true, 'data' => $properties]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     // --- GUESTS ---
     case 'get_guests':
     case 'add_guest':

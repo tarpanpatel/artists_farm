@@ -18,7 +18,7 @@ const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 const API_KEY = 'artists-farm-secure-key-2026';
 
 // Path segments that are real app directories/routes, never a property slug.
-const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm']);
+const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm', 'login', 'platform_property_management', 'tenant_dashboard']);
 
 /**
  * Identifies which property (e.g. "goa", "jaipur") this browser tab is on, mirroring the

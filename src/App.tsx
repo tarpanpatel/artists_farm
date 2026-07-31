@@ -29,6 +29,12 @@ import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
+import { ModulesProvider, useModules } from './contexts/ModulesContext';
+import { DataLoader, PreloadedData } from './components/DataLoader';
+import { LoadingScreen } from './components/LoadingScreen';
+import { LoginPage } from './components/LoginPage';
+import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
+import { TenantDashboard } from './components/TenantDashboard';
 
 
 
@@ -46,7 +52,13 @@ import {
   NavMenuItem,
 } from './types';
 
-function AppBody() {
+interface AppBodyProps {
+  preloadedData: PreloadedData;
+}
+
+function AppBody({ preloadedData }: AppBodyProps) {
+  const { isEnabled: isModuleEnabled } = useModules();
+
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').trim();
@@ -102,12 +114,12 @@ function AppBody() {
   const initialActive = getInitialActiveState();
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
-  const [propertyName, setPropertyName] = useState<string>(() => {
-    // Initialize with property slug instead of hardcoded default to avoid flash
-    const slug = getPropertySlug();
-    return slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
-  });
-  const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>('blue'); // Default color scheme
+  const [propertyName, setPropertyName] = useState<string>(
+    preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
+  );
+  const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>(
+    preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
+  );
 
   useEffect(() => {
     localStorage.setItem('artists_farm_active_tab', activeTab);
@@ -251,31 +263,27 @@ function AppBody() {
   const activeChannelIds = getTelegramChannelIds();
 
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
-  const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>({
-    botToken: '[Secured in PHP Backend Proxy]',
-    chatId: `Admin: ${activeChannelIds.admin} | Kitchen: ${activeChannelIds.kitchen} | Finance: ${activeChannelIds.finance}`,
-    botUsername: 'ArtistsFarmBot',
-    enabledEvents: {
-      kotOrders: true,
-      guestCheckout: true,
-      materialRequisitions: true,
-      lowStockAlerts: true,
-      pettyCashExpenses: true,
-    },
-  });
+  const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(
+    preloadedData.telegramConfig || {
+      botToken: '',
+      chatId: '',
+      botUsername: 'ArtistsFarmBot',
+      enabledEvents: {
+        kotOrders: false,
+        guestCheckout: false,
+        materialRequisitions: false,
+        lowStockAlerts: false,
+        pettyCashExpenses: false,
+      },
+    }
+  );
 
-  const [telegramLogs, setTelegramLogs] = useState<TelegramDispatchLog[]>([
-    {
-      id: 'tg-1092',
-      timestamp: '2026-07-25 18:00:00',
-      eventType: 'Low Stock',
-      message: '⚠️ Low Stock Alert: Amul Butter (600 Gms remaining, Threshold: 1000 Gms)',
-      status: 'Delivered',
-    },
-  ]);
+  const [telegramLogs, setTelegramLogs] = useState<TelegramDispatchLog[]>([]);
 
-  // Navigation Items State - fetched from database instead of hardcoded
-  const [navItems, setNavItems] = useState<NavMenuItem[]>([]);
+  // Navigation Items State - initialized with preloaded data
+  const [navItems, setNavItems] = useState<NavMenuItem[]>(
+    preloadedData.navItems || []
+  );
 
   // Application Data States
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -321,9 +329,11 @@ function AppBody() {
     fetchGuestsFromDB().then((data) => {
       if (data && data.length > 0) setGuests(data); else setGuests([]);
     });
-    fetchMenuFromDB().then((data) => {
-      if (data && data.length > 0) setMenu(data); else setMenu([]);
-    });
+    if (isModuleEnabled('kitchen')) {
+      fetchMenuFromDB().then((data) => {
+        if (data && data.length > 0) setMenu(data); else setMenu([]);
+      });
+    }
     refreshStaff();
     refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
@@ -332,7 +342,7 @@ function AppBody() {
     fetchReceiptsFromDB().then((data) => {
       if (data && data.length > 0) setReceipts(data); else setReceipts([]);
     });
-  }, [isTestingMode]);
+  }, [isTestingMode, isModuleEnabled]);
 
   const handleResetTestDatabase = async () => {
     if (window.confirm("Are you sure you want to reset the Sandbox Database? This will overwrite all test data with a fresh snapshot from the live production database.")) {
@@ -404,63 +414,32 @@ function AppBody() {
     document.documentElement.setAttribute('data-color-scheme', currentPropertyColorScheme);
   }, [currentPropertyColorScheme]);
 
-
-  // Fetch current property name on startup
-  useEffect(() => {
-    fetchCurrentProperty().then((property) => {
-      if (property && property.name) {
-        setPropertyName(property.name);
-      }
-    });
-    fetchCurrentProperty().then((property) => {
-      if (property && property.tailwind_color_scheme) setCurrentPropertyColorScheme(property.tailwind_color_scheme);
-    });
-  }, []);
-
-  // Hydrate this property's module toggles (kitchen module gates the Kitchen &
-  // Food nav items — but not "Edit Main Menu & RBAC" itself, that editor stays
-  // reachable regardless; it just hides kitchen items from its own list, see
-  // NavMenuEditor's hideKitchenItems prop below)
-  const [kitchenModuleEnabled, setKitchenModuleEnabled] = useState(true);
-  useEffect(() => {
-    fetchPropertyModulesFromDB().then((modules) => {
-      const kitchen = modules.find((m) => m.slug === 'kitchen');
-      if (kitchen) setKitchenModuleEnabled(!!kitchen.is_enabled);
-    });
-  }, []);
-
-  // Fetch navigation items from database
-  useEffect(() => {
-    fetchNavMenuFromDB().then((items) => {
-      if (items && items.length > 0) {
-        setNavItems(items);
-      }
-    });
-  }, []);
-
   // Nav items filtered by this property's module toggles. Used for rendering and
   // route guards; NavMenuEditor still edits the unfiltered `navItems` config.
+  const kitchenEnabled = isModuleEnabled('kitchen');
   const visibleNavItems = useMemo(() => {
-    if (kitchenModuleEnabled) return navItems;
+    if (kitchenEnabled) return navItems;
     return navItems.filter((item) => !isKitchenModuleNavItem(item));
-  }, [navItems, kitchenModuleEnabled]);
+  }, [navItems, kitchenEnabled]);
 
   // Hydrate guests, menu, orders, inventory, attendance, and audit logs from DB on startup
   useEffect(() => {
     fetchGuestsFromDB().then((data) => {
       if (data && data.length > 0) setGuests(data);
     });
-    fetchMenuFromDB().then((data) => {
-      if (data && data.length > 75) {
-        dedupMenuDB().then(() => {
-          fetchMenuFromDB().then((clean) => {
-            if (clean && clean.length > 0) setMenu(clean);
+    if (isModuleEnabled('kitchen')) {
+      fetchMenuFromDB().then((data) => {
+        if (data && data.length > 75) {
+          dedupMenuDB().then(() => {
+            fetchMenuFromDB().then((clean) => {
+              if (clean && clean.length > 0) setMenu(clean);
+            });
           });
-        });
-      } else if (data && data.length > 0) {
-        setMenu(data);
-      }
-    });
+        } else if (data && data.length > 0) {
+          setMenu(data);
+        }
+      });
+    }
     refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
       if (data && data.length > 0) setAuditLogs(data);
@@ -468,7 +447,7 @@ function AppBody() {
     fetchReceiptsFromDB().then((data) => {
       if (data && data.length > 0) setReceipts(data);
     });
-  }, []);
+  }, [isModuleEnabled]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
@@ -1087,7 +1066,7 @@ ${itemsStr}
                   guests={guests}
                   onNavigate={(tab) => handleNavigateTab(tab)}
                   onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
-                  kitchenModuleEnabled={kitchenModuleEnabled}
+                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
                 />
               )}
 
@@ -1157,7 +1136,7 @@ ${itemsStr}
                   receipts={receipts}
                   guests={guests}
                   activeMenuItemKey={activeMenuItemKey}
-                  kitchenModuleEnabled={kitchenModuleEnabled}
+                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
                 />
               )}
 
@@ -1171,7 +1150,7 @@ ${itemsStr}
                   receipts={receipts}
                   menu={menu}
                   auditLogs={auditLogs}
-                  kitchenModuleEnabled={kitchenModuleEnabled}
+                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
                 />
               )}
 
@@ -1184,7 +1163,7 @@ ${itemsStr}
                   navItems={navItems}
                   onUpdateNavItems={handleUpdateNavItems}
                   activeMenuItemKey={activeMenuItemKey}
-                  kitchenModuleEnabled={kitchenModuleEnabled}
+                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
                 />
               )}
 
@@ -1223,20 +1202,175 @@ ${itemsStr}
   );
 }
 
-export function App() {
+function AppWithProviders({ preloadedData }: { preloadedData: PreloadedData }) {
   return (
-    <AuthProvider>
+    <ModulesProvider initialData={preloadedData.modules}>
       <StaffProvider>
         <FinanceProvider>
           <InventoryProvider>
             <KitchenProvider>
               <ConfigurationDataProvider>
-                <AppBody />
+                <AppBodyWithData preloadedData={preloadedData} />
               </ConfigurationDataProvider>
             </KitchenProvider>
           </InventoryProvider>
         </FinanceProvider>
       </StaffProvider>
+    </ModulesProvider>
+  );
+}
+
+function AppBodyWithData({ preloadedData }: { preloadedData: PreloadedData }) {
+  // Wrap AppBody to accept and use preloaded data
+  // This prevents fetching data in useEffect
+  return <AppBody preloadedData={preloadedData} />;
+}
+
+export function App() {
+  const [userSession, setUserSession] = useState<{
+    username: string;
+    role: string;
+    is_platform_admin: boolean;
+    default_tenant_id?: number;
+  } | null>(null);
+
+  const propertySlug = getPropertySlug();
+  const isLoginPath = propertySlug === 'login';
+  const isTenantDashboardPath = propertySlug === 'tenant_dashboard';
+  const isPlatformPropertyManagementPath = propertySlug === 'platform_property_management';
+  const isRootPath = propertySlug === 'default' || !propertySlug;
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('artists_farm_user_session');
+    if (stored) {
+      try {
+        setUserSession(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to restore session:', e);
+        localStorage.removeItem('artists_farm_user_session');
+      }
+    }
+  }, []);
+
+  const handleLoginSuccess = (session: {
+    username: string;
+    role: string;
+    is_platform_admin: boolean;
+    default_tenant_id?: number;
+  }) => {
+    setUserSession(session);
+    // Redirect based on role
+    if (session.is_platform_admin) {
+      window.location.href = '/artists_farm/platform_property_management/';
+    } else if (session.default_tenant_id) {
+      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${session.default_tenant_id}`;
+    } else {
+      // Staff member - stay at login or redirect to property
+      window.location.href = '/artists_farm/login/';
+    }
+  };
+
+  // Tenant dashboard path
+  if (isTenantDashboardPath) {
+    if (!userSession) {
+      window.location.href = '/artists_farm/login/';
+      return <LoadingScreen message="Redirecting to login..." />;
+    }
+
+    if (userSession.is_platform_admin || !userSession.default_tenant_id) {
+      window.location.href = '/artists_farm/login/';
+      return <LoadingScreen message="Unauthorized..." />;
+    }
+
+    return (
+      <TenantDashboard
+        username={userSession.username}
+        tenantId={userSession.default_tenant_id}
+        onLogout={() => setUserSession(null)}
+      />
+    );
+  }
+
+  // Platform property management path
+  if (isPlatformPropertyManagementPath) {
+    if (!userSession) {
+      window.location.href = '/artists_farm/login/';
+      return <LoadingScreen message="Redirecting to login..." />;
+    }
+
+    if (!userSession.is_platform_admin) {
+      window.location.href = '/artists_farm/login/';
+      return <LoadingScreen message="Unauthorized..." />;
+    }
+
+    return (
+      <PlatformPropertyManagement
+        username={userSession.username}
+        onLogout={() => setUserSession(null)}
+      />
+    );
+  }
+
+  // Login path - show unified login for all users
+  if (isLoginPath) {
+    if (!userSession) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
+    // If already logged in, redirect to appropriate dashboard
+    if (userSession.is_platform_admin) {
+      return <LoadingScreen message="Redirecting to platform admin dashboard..." />;
+    } else if (userSession.default_tenant_id) {
+      return <LoadingScreen message="Redirecting to tenant dashboard..." />;
+    }
+    return <LoadingScreen message="Redirecting..." />;
+  }
+
+  // Root path - show login or platform management
+  if (isRootPath) {
+    if (!userSession) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
+
+    // User is logged in at root
+    if (userSession.is_platform_admin) {
+      return (
+        <PlatformPropertyManagement
+          username={userSession.username}
+          onLogout={() => setUserSession(null)}
+        />
+      );
+    }
+
+    // Tenant manager - redirect to their first property or selector
+    // For now, redirect to default tenant's first property
+    if (userSession.default_tenant_id) {
+      window.location.href = `/artists_farm/artists-farm-platform/${userSession.default_tenant_id}/`;
+      return <LoadingScreen message="Redirecting to property..." />;
+    }
+
+    // No access
+    return (
+      <div className="min-h-screen bg-red-50 dark:bg-red-950 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-800 dark:text-red-300 font-medium">Access Denied</p>
+          <button
+            onClick={() => setUserSession(null)}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Property path - show staff login (existing flow)
+  return (
+    <AuthProvider>
+      <DataLoader>
+        {(data) => <AppWithProviders preloadedData={data} />}
+      </DataLoader>
     </AuthProvider>
   );
 }
