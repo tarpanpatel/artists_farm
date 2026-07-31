@@ -22,7 +22,7 @@ require_once __DIR__ . '/configuration.php';
 // Simple API Key Authentication
 $api_key = getenv('API_KEY') ?: 'artists-farm-secure-key-2026';
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'login_user'];
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -151,6 +151,99 @@ switch ($action) {
             $stmt->execute([$tenant_id]);
             $properties = $stmt->fetchAll();
             echo json_encode(['success' => true, 'data' => $properties]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'update_tenant':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = $input['id'] ?? '';
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE tenants
+                SET name = ?, owner_name = ?, owner_email = ?, subscription_status = ?, is_active = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $input['name'] ?? '',
+                $input['owner_name'] ?? '',
+                $input['owner_email'] ?? '',
+                $input['subscription_status'] ?? 'trial',
+                $input['is_active'] ?? 0,
+                $id
+            ]);
+            echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'toggle_property_module':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $property_id = $input['property_id'] ?? '';
+        $module_name = $input['module_name'] ?? '';
+        $enabled = $input['enabled'] ?? false;
+
+        if (!$property_id || !$module_name) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_id and module_name required']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE property_modules
+                SET enabled = ?
+                WHERE property_id = ? AND module_name = ?
+            ");
+            $stmt->execute([$enabled ? 1 : 0, $property_id, $module_name]);
+
+            if ($stmt->rowCount() === 0) {
+                $insert = $pdo->prepare("
+                    INSERT INTO property_modules (property_id, module_name, enabled)
+                    VALUES (?, ?, ?)
+                ");
+                $insert->execute([$property_id, $module_name, $enabled ? 1 : 0]);
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Module toggled successfully']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'get_property_modules':
+        $property_id = $_GET['property_id'] ?? '';
+        if (!$property_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                SELECT module_name, enabled FROM property_modules
+                WHERE property_id = ?
+            ");
+            $stmt->execute([$property_id]);
+            $modules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $moduleData = ['kitchen_enabled' => false];
+            foreach ($modules as $mod) {
+                if ($mod['module_name'] === 'kitchen') {
+                    $moduleData['kitchen_enabled'] = (bool)$mod['enabled'];
+                }
+            }
+
+            echo json_encode(['success' => true, 'data' => $moduleData]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
