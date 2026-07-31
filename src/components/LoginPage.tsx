@@ -26,7 +26,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': 'artists-farm-secure-key-2026',
         },
         credentials: 'include',
         body: JSON.stringify({ username, password }),
@@ -154,6 +153,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-6">
           © 2026 Artists Farm Resort & Kitchen Management System
         </p>
+
+        {/* Back Button */}
+        <div className="mt-6 text-center">
+          <a
+            href="/artists_farm/"
+            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            ← Back to Home
+          </a>
+        </div>
       </div>
     </div>
   );
