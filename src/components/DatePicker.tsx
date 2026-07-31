@@ -58,20 +58,32 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     const date = new Date(month.getFullYear(), month.getMonth(), day);
     const dateStr = formatDate(date);
 
+    console.log('Selecting date:', dateStr, 'isCheckout:', isCheckout, 'otherDate:', otherDate);
+
     // Check if date is blocked or in the past
-    if (isDateBlocked(dateStr) || isDateBeforeToday(dateStr)) {
+    if (isDateBlocked(dateStr)) {
+      console.log('Date is blocked');
+      return;
+    }
+    if (isDateBeforeToday(dateStr)) {
+      console.log('Date is before today');
       return;
     }
 
     // For checkout date: must be after check-in date (if check-in is set)
-    if (isCheckout && otherDate && dateStr <= otherDate) {
-      return; // Checkout must be strictly after check-in
+    if (isCheckout && otherDate) {
+      if (dateStr <= otherDate) {
+        console.log('Checkout date must be after check-in');
+        return;
+      }
     }
 
+    console.log('Date selected successfully');
     onChange(dateStr);
 
     // Close calendar after checkout date selection
     if (isCheckout) {
+      console.log('Closing calendar after checkout selection');
       setIsOpen(false);
     }
   };
