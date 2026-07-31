@@ -459,7 +459,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const item = items.find((i) => (i.uniqueKey || i.tabKey) === routeKey);
     if (!item) return false;
     if (!item.isVisible) return false;
-    return item.roles.includes(role);
+    // Case-insensitive role comparison
+    const normalizedRole = role.toLowerCase().trim();
+    return item.roles.some(r => r.toLowerCase().trim() === normalizedRole);
   };
 
   // Guard Effect 1: Trigger whenever activeRole, activeMenuItemKey, or visibleNavItems update
@@ -470,8 +472,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const currentKey = activeMenuItemKey;
     const allowed = isRouteAllowed(currentKey, activeRole, visibleNavItems);
     if (!allowed) {
-      // Find first permitted route for current user role
-      const firstPermitted = visibleNavItems.find((i) => i.isVisible && i.roles.includes(activeRole));
+      // Find first permitted route for current user role (case-insensitive)
+      const normalizedRole = activeRole.toLowerCase().trim();
+      const firstPermitted = visibleNavItems.find((i) => i.isVisible && i.roles.some(r => r.toLowerCase().trim() === normalizedRole));
       const fallbackTab = firstPermitted ? (firstPermitted.tabKey as TabType) : 'dashboard';
       const fallbackKey = firstPermitted ? (firstPermitted.uniqueKey || firstPermitted.tabKey) : 'dashboard';
 
