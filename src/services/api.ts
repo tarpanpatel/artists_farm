@@ -33,18 +33,28 @@ export function getPropertySlug(): string {
   if (typeof window === 'undefined') return 'default';
 
   const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
-  if (fromQuery) return fromQuery.toLowerCase();
+  if (fromQuery && fromQuery !== 'paddle') return fromQuery.toLowerCase();
 
-  const segments = window.location.pathname
-    .replace(/#.*$/, '')
-    .split('/')
-    .filter(Boolean)
-    .filter((seg) => !seg.includes('.'));
+  const pathname = window.location.pathname.replace(/#.*$/, '');
+  const segments = pathname.split('/').filter(Boolean).filter((seg) => !seg.includes('.'));
 
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const seg = segments[i].toLowerCase();
-    if (!RESERVED_PATH_SEGMENTS.has(seg) && /^[a-z0-9-]+$/.test(seg)) return seg;
+  // For URLs like /artists_farm/vrikshawan/resort-hut/ or /vrikshawan/resort-hut/
+  // Property slug is the LAST valid segment (resort-hut)
+  // Iterate backwards, skip reserved segments and tenant slug
+  const validSegments: string[] = [];
+  for (const seg of segments) {
+    const lower = seg.toLowerCase();
+    if (!RESERVED_PATH_SEGMENTS.has(lower) && /^[a-z0-9-]+$/.test(lower)) {
+      validSegments.push(lower);
+    }
   }
+
+  // If we have 2 valid segments: [tenant, property] - return the property (last one)
+  // If we have 1 valid segment: [property] - return it
+  if (validSegments.length >= 1) {
+    return validSegments[validSegments.length - 1];
+  }
+
   return 'default';
 }
 
