@@ -27,7 +27,7 @@ import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 
 
 
@@ -101,7 +101,11 @@ function AppBody() {
   const initialActive = getInitialActiveState();
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
-  const [propertyName, setPropertyName] = useState<string>('Artists Farm');
+  const [propertyName, setPropertyName] = useState<string>(() => {
+    // Initialize with property slug instead of hardcoded default to avoid flash
+    const slug = getPropertySlug();
+    return slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
+  });
   const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>('blue'); // Default color scheme
 
   useEffect(() => {
