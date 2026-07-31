@@ -19,7 +19,8 @@ import {
   Share2,
   Printer,
   Trash2,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate, MenuItem } from '../types';
@@ -27,6 +28,8 @@ import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
+import { getPropertySlug } from '../services/api';
+import { DatePicker } from './DatePicker';
 
 interface GuestManagementProps {
   guests: Guest[];
@@ -96,10 +99,62 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingPending, setBookingPending] = useState<number>(0);
   const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
+  const [blockedDates, setBlockedDates] = useState<Array<{
+    event_start: string;
+    event_end: string;
+    event_title: string;
+    reservation_url?: string;
+    source?: string;
+  }>>([]);
 
   useEffect(() => {
     setMiscChargesList(miscCharges as MiscChargeTemplate[]);
   }, [miscCharges]);
+
+  // Fetch blocked dates from iCal
+  useEffect(() => {
+    const fetchBlockedDates = async () => {
+      try {
+        const propertySlug = getPropertySlug();
+        const response = await fetch('/artists_farm/php/api/ical_sync.php?action=get_blocked_dates', {
+          headers: { 'X-Property-Slug': propertySlug },
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          setBlockedDates(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blocked dates:', error);
+      }
+    };
+    fetchBlockedDates();
+  }, []);
+
+  // Check if a date is blocked
+  const isDateBlocked = (dateStr: string): boolean => {
+    return blockedDates.some(
+      (bd) => dateStr >= bd.event_start.split(' ')[0] && dateStr < bd.event_end.split(' ')[0]
+    );
+  };
+
+  // Get all blocked date strings for DatePicker
+  const getBlockedDateStrings = (): string[] => {
+    const blocked: string[] = [];
+    blockedDates.forEach((bd) => {
+      const start = new Date(bd.event_start.split(' ')[0]);
+      const end = new Date(bd.event_end.split(' ')[0]);
+      let current = new Date(start);
+      while (current < end) {
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
+        blocked.push(`${year}-${month}-${day}`);
+        current = new Date(current.getTime() + 86400000);
+      }
+    });
+    return blocked;
+  };
 
   const handleTariffChange = (val: number) => {
     setBookingRoomTariff(val);
@@ -575,14 +630,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block mb-1">Check-In Date *</label>
-                <input type="date" value={checkinDate} onChange={e => { setCheckinDate(e.target.value); if (expectedCheckout && e.target.value > expectedCheckout) setExpectedCheckout(e.target.value); }} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
-              </div>
-              <div>
-                <label className="block mb-1">Check-Out Date *</label>
-                <input type="date" value={expectedCheckout} min={checkinDate} onChange={e => setExpectedCheckout(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
-              </div>
+              <DatePicker
+                value={checkinDate}
+                onChange={(date) => {
+                  setCheckinDate(date);
+                  if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
+                }}
+                blockedDates={getBlockedDateStrings()}
+                label="Check-In Date *"
+              />
+              <DatePicker
+                value={expectedCheckout}
+                onChange={setExpectedCheckout}
+                blockedDates={getBlockedDateStrings()}
+                label="Check-Out Date *"
+              />
             </div>
 
             <div>
@@ -697,21 +759,58 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </div>
           
           <div className="grid grid-cols-7 gap-3 auto-rows-[100px]">
-            {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }).map((_, i) => (
-              <div key={i} className="border border-slate-200 rounded-xl p-2 relative">
-                <span className={`text-xs font-bold ${i === new Date().getDate() - 1 ? 'text-blue-600' : 'text-slate-500'}`}>{i + 1}</span>
-                {/* Mock overlays based on guests */}
-                {guests.filter(g => {
-                    const start = new Date(g.checkinDate).getDate();
-                    const end = new Date(g.expectedCheckout).getDate();
-                    return (i + 1) >= start && (i + 1) < end;
-                }).map((g, idx) => (
-                  <div key={idx} className={`absolute bottom-2 left-2 right-2 rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold text-white truncate shadow-xs ${g.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-                    👤 {g.guestName.split(' ')[0]} ({g.phoneNumber.slice(-4)})
-                  </div>
-                ))}
-              </div>
-            ))}
+            {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }).map((_, i) => {
+              const today = new Date();
+              const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+              const blockedDate = blockedDates.find(
+                (bd) => dateStr >= bd.event_start.split(' ')[0] && dateStr < bd.event_end.split(' ')[0]
+              );
+              const isAirbnb = blockedDate?.source === 'airbnb';
+
+              return (
+                <div key={i} className={`border rounded-xl p-2 relative ${
+                  i === new Date().getDate() - 1
+                    ? 'border-blue-400 bg-blue-50'
+                    : isAirbnb
+                    ? 'border-orange-300 bg-orange-50'
+                    : 'border-slate-200'
+                }`}>
+                  <span className={`text-xs font-bold ${i === new Date().getDate() - 1 ? 'text-blue-600' : isAirbnb ? 'text-orange-600' : 'text-slate-500'}`}>{i + 1}</span>
+
+                  {/* Airbnb blocked dates */}
+                  {isAirbnb && (
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[7px] font-bold bg-orange-500 text-white px-1 py-0.5 rounded">
+                        AIRBNB
+                      </span>
+                      {blockedDate?.reservation_url && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(blockedDate.reservation_url, '_blank');
+                          }}
+                          className="p-0.5 hover:bg-orange-200 rounded transition group"
+                          title="Open Airbnb reservation details"
+                        >
+                          <ExternalLink size={12} className="text-orange-600 group-hover:text-orange-700" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Guest overlays */}
+                  {guests.filter(g => {
+                      const start = new Date(g.checkinDate).getDate();
+                      const end = new Date(g.expectedCheckout).getDate();
+                      return (i + 1) >= start && (i + 1) < end;
+                  }).map((g, idx) => (
+                    <div key={idx} className={`absolute bottom-2 left-2 right-2 rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold text-white truncate shadow-xs ${g.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                      👤 {g.guestName.split(' ')[0]} ({g.phoneNumber.slice(-4)})
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1370,26 +1469,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Check-in Date</label>
-                  <input
-                    type="date"
-                    value={checkinDate}
-                    onChange={(e) => { setCheckinDate(e.target.value); if (expectedCheckout && e.target.value > expectedCheckout) setExpectedCheckout(e.target.value); }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Expected Checkout</label>
-                  <input
-                    type="date"
-                    value={expectedCheckout}
-                    min={checkinDate}
-                    onChange={(e) => setExpectedCheckout(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+                <DatePicker
+                  value={checkinDate}
+                  onChange={(date) => {
+                    setCheckinDate(date);
+                    if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
+                  }}
+                  blockedDates={getBlockedDateStrings()}
+                  label="Check-in Date"
+                />
+                <DatePicker
+                  value={expectedCheckout}
+                  onChange={setExpectedCheckout}
+                  blockedDates={getBlockedDateStrings()}
+                  label="Expected Checkout"
+                />
               </div>
 
               <div>
