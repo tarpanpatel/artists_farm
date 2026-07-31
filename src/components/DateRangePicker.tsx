@@ -94,7 +94,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     // Days
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDate(new Date(month.getFullYear(), month.getMonth(), day));
+      // Create date at noon to avoid timezone issues
+      const date = new Date(month.getFullYear(), month.getMonth(), day, 12, 0, 0);
+      const dateStr = formatDate(date);
       const blocked = isDateBlocked(dateStr);
       const beforeToday = isDateBeforeToday(dateStr);
 
@@ -105,8 +107,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
 
       const isDisabled = blocked || beforeToday || invalidForCheckout;
-      const isCheckinSelected = checkinDate === dateStr;
-      const isCheckoutSelected = checkoutDate === dateStr;
+      const isCheckinSelected = checkinDate && checkinDate === dateStr;
+      const isCheckoutSelected = checkoutDate && checkoutDate === dateStr;
       const inRange = isDateInRange(dateStr);
 
       days.push(
