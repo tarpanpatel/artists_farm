@@ -26,6 +26,7 @@ import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate, MenuItem
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 
 interface GuestManagementProps {
   guests: Guest[];
@@ -72,6 +73,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
   const { staff } = useStaff();
+  const { miscCharges } = useConfigurationData();
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -87,7 +89,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
   );
   const [notes, setNotes] = useState('');
-  
+
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
@@ -95,18 +97,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
 
-  // TODO: miscChargesList should be fetched centrally (not here) and passed as a prop
   useEffect(() => {
-    const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
-    const API_BASE = `${_base}/php/api/router.php`;
-    fetch(`${API_BASE}?action=get_misc_catalog`)
-      .then(r => r.json())
-      .then(res => {
-        if (res?.status === 'success') {
-          setMiscChargesList(res.data);
-        }
-      }).catch(console.error);
-  }, []);
+    setMiscChargesList(miscCharges as MiscChargeTemplate[]);
+  }, [miscCharges]);
 
   const handleTariffChange = (val: number) => {
     setBookingRoomTariff(val);

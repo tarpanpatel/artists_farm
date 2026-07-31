@@ -28,6 +28,7 @@ import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
+import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 
 
 
@@ -1229,7 +1230,9 @@ export function App() {
         <FinanceProvider>
           <InventoryProvider>
             <KitchenProvider>
-              <AppBody />
+              <ConfigurationDataProvider>
+                <AppBody />
+              </ConfigurationDataProvider>
             </KitchenProvider>
           </InventoryProvider>
         </FinanceProvider>

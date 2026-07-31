@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
 import DataTable from 'react-data-table-component';
-import { getPropertySlug } from '../services/api';
+import { getPropertySlug, apiFetch } from '../services/api';
+import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 
 interface MiscChargeTemplate {
   id: string | number;
@@ -47,6 +48,7 @@ const customStyles = {
 };
 
 export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ onLogAudit }) => {
+  const { miscCharges, refreshMiscCharges } = useConfigurationData();
   const [charges, setCharges] = useState<MiscChargeTemplate[]>([]);
   const [isEditing, setIsEditing] = useState<string | number | null>(null);
   const [editForm, setEditForm] = useState<Partial<MiscChargeTemplate>>({});
@@ -68,17 +70,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
   };
 
   useEffect(() => {
-    fetch(`${API_BASE}?action=get_misc_catalog`)
-      .then(res => res.json())
-      .then(response => {
-        if (response && response.status === 'success' && response.data) {
-          setCharges(response.data);
-        } else {
-          setCharges([]);
-        }
-      })
-      .catch(() => setCharges([]));
-  }, []);
+    setCharges(miscCharges as MiscChargeTemplate[]);
+  }, [miscCharges]);
 
   const saveToDB = (action: string, payload: any) => {
     return fetch(`${API_BASE}?action=${action}`, {
@@ -100,11 +93,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         const currentUserName = getLoggedInUserName();
         onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
       }
-      fetch(`${API_BASE}?action=get_misc_catalog`)
-        .then(r => r.json())
-        .then(response => {
-          if (response && response.status === 'success' && response.data) setCharges(response.data);
-        });
+      refreshMiscCharges();
       setIsAddModalOpen(false);
       setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
     });
