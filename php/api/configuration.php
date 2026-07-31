@@ -194,14 +194,14 @@ function getNavPageOptions($pdo) {
         $stmt = $pdo->query("
             SELECT config_value
             FROM ui_configuration
-            WHERE config_key = 'available_roles' AND is_active = 1
+            WHERE config_key = 'nav_page_options' AND is_active = 1
             LIMIT 1
         ");
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
-            $roles = json_decode($result['config_value'], true);
-            echo json_encode(['status' => 'success', 'data' => $roles]);
+            $pages = json_decode($result['config_value'], true);
+            echo json_encode(['status' => 'success', 'data' => $pages]);
         } else {
             echo json_encode(['status' => 'success', 'data' => []]);
         }

@@ -8,7 +8,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
-import { saveNavMenuDB } from '../services/api';
+import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 
 interface NavMenuEditorProps {
@@ -24,41 +24,48 @@ interface NavMenuEditorProps {
   hideKitchenItems?: boolean;
 }
 
-const ALL_ROLES = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
+interface PageOption {
+  label: string;
+  tabKey: string;
+  uniqueKey: string;
+}
 
-const PAGE_OPTIONS = [
-  { label: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard' },
-  { label: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration' },
-  { label: 'Billing & Checkout', tabKey: 'guests', uniqueKey: 'billing_checkout' },
-  { label: 'Take Food Order', tabKey: 'kitchen', uniqueKey: 'take_food_order' },
-  { label: 'Kitchen Orders', tabKey: 'kitchen', uniqueKey: 'kitchen_orders' },
-  { label: 'Staff Meals', tabKey: 'kitchen', uniqueKey: 'staff_meals' },
-  { label: 'Stock Requests', tabKey: 'inventory', uniqueKey: 'stock_requests' },
-  { label: 'Fulfill Stock Req', tabKey: 'inventory', uniqueKey: 'fulfill_stock_req' },
-  { label: 'Kitchen Wastage', tabKey: 'inventory', uniqueKey: 'deficit_shortfalls_log' },
-  { label: 'Kitchen Purchases', tabKey: 'inventory', uniqueKey: 'kitchen_purchases' },
-  { label: 'Stock Log', tabKey: 'inventory', uniqueKey: 'stock_log' },
-  { label: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses' },
-  { label: 'Cash Drawer', tabKey: 'petty_cash', uniqueKey: 'cash_drawer' },
-  { label: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges' },
-  { label: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions' },
-  { label: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar' },
-  { label: 'Staff Directory', tabKey: 'staff', uniqueKey: 'staff_directory_salaries' },
-  { label: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
-  { label: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics' },
-  { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
-  { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
-  { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
-  { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
-  { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
-  { label: 'Edit Main Menu', tabKey: 'menu_manager', uniqueKey: 'edit_main_menu' },
-  { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
-  { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
-  { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
-  { label: 'Custom CSS', tabKey: 'custom_css', uniqueKey: 'custom_css' },
-  { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
-  { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
-];
+// Default page options (fallback if API fails)
+function getDefaultPageOptions(): PageOption[] {
+  return [
+    { label: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard' },
+    { label: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration' },
+    { label: 'Billing & Checkout', tabKey: 'guests', uniqueKey: 'billing_checkout' },
+    { label: 'Take Food Order', tabKey: 'kitchen', uniqueKey: 'take_food_order' },
+    { label: 'Kitchen Orders', tabKey: 'kitchen', uniqueKey: 'kitchen_orders' },
+    { label: 'Staff Meals', tabKey: 'kitchen', uniqueKey: 'staff_meals' },
+    { label: 'Stock Requests', tabKey: 'inventory', uniqueKey: 'stock_requests' },
+    { label: 'Fulfill Stock Req', tabKey: 'inventory', uniqueKey: 'fulfill_stock_req' },
+    { label: 'Kitchen Wastage', tabKey: 'inventory', uniqueKey: 'deficit_shortfalls_log' },
+    { label: 'Kitchen Purchases', tabKey: 'inventory', uniqueKey: 'kitchen_purchases' },
+    { label: 'Stock Log', tabKey: 'inventory', uniqueKey: 'stock_log' },
+    { label: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses' },
+    { label: 'Cash Drawer', tabKey: 'petty_cash', uniqueKey: 'cash_drawer' },
+    { label: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges' },
+    { label: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions' },
+    { label: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar' },
+    { label: 'Staff Directory', tabKey: 'staff', uniqueKey: 'staff_directory_salaries' },
+    { label: 'Dashboard Analytics', tabKey: 'analytics', uniqueKey: 'dashboard_analytics' },
+    { label: 'Purchase Analytics', tabKey: 'analytics', uniqueKey: 'purchase_analytics' },
+    { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
+    { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
+    { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
+    { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
+    { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
+    { label: 'Edit Main Menu', tabKey: 'menu_manager', uniqueKey: 'edit_main_menu' },
+    { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
+    { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
+    { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
+    { label: 'Custom CSS', tabKey: 'custom_css', uniqueKey: 'custom_css' },
+    { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
+    { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
+  ];
+}
 
 // Dynamic icon list extracted from lucide-react (all icons)
 const ALL_LUCIDE_ICON_NAMES: string[] = Object.keys(LucideIcons).filter(
@@ -116,6 +123,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const [showParentPickerFor, setShowParentPickerFor] = useState<string | null>(null);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [allRoles, setAllRoles] = useState<string[]>([]);
+  const [pageOptions, setPageOptions] = useState<PageOption[]>([]);
   const [newItem, setNewItem] = useState({
     title: '', tabKey: 'dashboard', uniqueKey: 'dashboard',
     iconName: 'LayoutDashboard', customUrl: '', roles: ['Super Admin'] as string[],
@@ -131,6 +140,33 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     const parentIds = navItems.filter(i => i.parentId).map(i => i.parentId!);
     setExpandedIds(new Set(parentIds));
   }, [navItems]);
+
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      try {
+        const rolesResponse = await apiFetch('/artists_farm/php/api/router.php?action=get_system_roles');
+        if (rolesResponse.status === 'success' && rolesResponse.data) {
+          const roleNames = rolesResponse.data.map((r: any) => r.name);
+          setAllRoles(roleNames);
+        } else {
+          setAllRoles(['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff']);
+        }
+
+        const pagesResponse = await apiFetch('/artists_farm/php/api/router.php?action=get_nav_page_options');
+        if (pagesResponse.status === 'success' && pagesResponse.data) {
+          setPageOptions(pagesResponse.data);
+        } else {
+          setPageOptions(getDefaultPageOptions());
+        }
+      } catch (error) {
+        console.error('Failed to fetch configuration:', error);
+        setAllRoles(['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff']);
+        setPageOptions(getDefaultPageOptions());
+      }
+    };
+
+    fetchConfiguration();
+  }, []);
 
   const markDirty = () => setHasUnsaved(true);
 
@@ -402,7 +438,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const filteredIcons = ALL_LUCIDE_ICON_NAMES.filter(name =>
     matchesSearch(name, iconSearch)
   );
-  const filteredTabs = PAGE_OPTIONS.filter(p =>
+  const filteredTabs = pageOptions.filter(p =>
     p.label.toLowerCase().includes(tabSearch.toLowerCase())
   );
 
@@ -414,7 +450,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     const IconComp = getIconComponent(item.iconName);
     const depthColors = ['border-l-blue-400', 'border-l-emerald-400', 'border-l-amber-400'];
     const depthBg = ['', 'bg-blue-50/30', 'bg-emerald-50/30'];
-    const currentPage = PAGE_OPTIONS.find(p => p.tabKey === item.tabKey && p.uniqueKey === item.uniqueKey);
+    const currentPage = pageOptions.find(p => p.tabKey === item.tabKey && p.uniqueKey === item.uniqueKey);
 
     return (
       <li key={item.id} data-id={item.id} className="nav-menu-item" style={{ paddingLeft: depth > 0 ? `${depth * 24}px` : '0px' }}>
@@ -551,7 +587,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {/* Roles Dropdown */}
         {showIconPickerFor === `roles-${item.id}` && (
           <div className="ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 flex flex-wrap gap-1">
-            {ALL_ROLES.map(role => {
+            {allRoles.map(role => {
               const has = item.roles.includes(role);
               return (
                 <button key={role} onClick={() => handleToggleRole(item.id, role)}
@@ -692,7 +728,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               const [tabKey, uniqueKey] = e.target.value.split('|');
               setNewItem(p => ({ ...p, tabKey, uniqueKey }));
             }} className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
-              {PAGE_OPTIONS.map(p => (
+              {pageOptions.map(p => (
                 <option key={`${p.tabKey}-${p.uniqueKey}`} value={`${p.tabKey}|${p.uniqueKey}`}>{p.label}</option>
               ))}
             </select>

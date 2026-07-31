@@ -76,6 +76,42 @@ try {
     $roleConfig = ['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
     $stmt->execute(['available_roles', json_encode($roleConfig), 'json', 'Available user roles']);
 
+    // Navigation page options
+    $pageOptions = [
+      ['label' => 'Dashboard', 'tabKey' => 'dashboard', 'uniqueKey' => 'dashboard'],
+      ['label' => 'Guest Registration', 'tabKey' => 'guests', 'uniqueKey' => 'guest_registration'],
+      ['label' => 'Billing & Checkout', 'tabKey' => 'guests', 'uniqueKey' => 'billing_checkout'],
+      ['label' => 'Take Food Order', 'tabKey' => 'kitchen', 'uniqueKey' => 'take_food_order'],
+      ['label' => 'Kitchen Orders', 'tabKey' => 'kitchen', 'uniqueKey' => 'kitchen_orders'],
+      ['label' => 'Staff Meals', 'tabKey' => 'kitchen', 'uniqueKey' => 'staff_meals'],
+      ['label' => 'Stock Requests', 'tabKey' => 'inventory', 'uniqueKey' => 'stock_requests'],
+      ['label' => 'Fulfill Stock Req', 'tabKey' => 'inventory', 'uniqueKey' => 'fulfill_stock_req'],
+      ['label' => 'Kitchen Wastage', 'tabKey' => 'inventory', 'uniqueKey' => 'deficit_shortfalls_log'],
+      ['label' => 'Kitchen Purchases', 'tabKey' => 'inventory', 'uniqueKey' => 'kitchen_purchases'],
+      ['label' => 'Stock Log', 'tabKey' => 'inventory', 'uniqueKey' => 'stock_log'],
+      ['label' => 'Expenses', 'tabKey' => 'petty_cash', 'uniqueKey' => 'expenses'],
+      ['label' => 'Cash Drawer', 'tabKey' => 'petty_cash', 'uniqueKey' => 'cash_drawer'],
+      ['label' => 'Misc Charges', 'tabKey' => 'petty_cash', 'uniqueKey' => 'misc_charges'],
+      ['label' => 'Staff & Permissions', 'tabKey' => 'staff', 'uniqueKey' => 'staff_permissions'],
+      ['label' => 'Attendance Calendar', 'tabKey' => 'staff', 'uniqueKey' => 'attendance_calendar'],
+      ['label' => 'Staff Directory', 'tabKey' => 'staff', 'uniqueKey' => 'staff_directory_salaries'],
+      ['label' => 'Dashboard Analytics', 'tabKey' => 'analytics', 'uniqueKey' => 'dashboard_analytics'],
+      ['label' => 'Purchase Analytics', 'tabKey' => 'analytics', 'uniqueKey' => 'purchase_analytics'],
+      ['label' => 'Past Receipts', 'tabKey' => 'audit_logs', 'uniqueKey' => 'past_receipts_log'],
+      ['label' => 'Login Logs', 'tabKey' => 'audit_logs', 'uniqueKey' => 'login_logs'],
+      ['label' => 'System Health', 'tabKey' => 'audit_logs', 'uniqueKey' => 'system_health'],
+      ['label' => 'Telegram Bot', 'tabKey' => 'telegram', 'uniqueKey' => 'telegram'],
+      ['label' => 'Edit Food Menu', 'tabKey' => 'menu_manager', 'uniqueKey' => 'edit_food_menu'],
+      ['label' => 'Edit Main Menu', 'tabKey' => 'menu_manager', 'uniqueKey' => 'edit_main_menu'],
+      ['label' => 'Edit Kitchen Stock', 'tabKey' => 'inventory', 'uniqueKey' => 'edit_kitchen_stock'],
+      ['label' => 'Edit Expense Items', 'tabKey' => 'petty_cash', 'uniqueKey' => 'edit_expense_items'],
+      ['label' => 'Data Export', 'tabKey' => 'export', 'uniqueKey' => 'data_export_center'],
+      ['label' => 'Custom CSS', 'tabKey' => 'custom_css', 'uniqueKey' => 'custom_css'],
+      ['label' => 'Recipe Builder', 'tabKey' => 'kitchen', 'uniqueKey' => 'beta_recipe_builder'],
+      ['label' => 'Custom URL', 'tabKey' => 'custom', 'uniqueKey' => '']
+    ];
+    $stmt->execute(['nav_page_options', json_encode($pageOptions), 'json', 'Available navigation page options']);
+
     // Icon search tags
     $iconTags = [
         ['money' => ['Receipt', 'DollarSign', 'Wallet', 'CreditCard']],
