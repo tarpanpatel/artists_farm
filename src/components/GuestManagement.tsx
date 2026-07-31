@@ -29,7 +29,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { getPropertySlug } from '../services/api';
-import { DatePicker } from './DatePicker';
+import { DateRangePicker } from './DateRangePicker';
 
 interface GuestManagementProps {
   guests: Guest[];
@@ -629,35 +629,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <DatePicker
-                value={checkinDate}
-                onChange={(date) => {
-                  setCheckinDate(date);
-                  if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
-                }}
-                onClear={() => {
-                  setCheckinDate('');
-                  setExpectedCheckout('');
-                }}
-                otherDate={expectedCheckout}
-                isCheckout={false}
-                blockedDates={getBlockedDateStrings()}
-                label="Check-In Date *"
-              />
-              <DatePicker
-                value={expectedCheckout}
-                onChange={setExpectedCheckout}
-                onClear={() => {
-                  setCheckinDate('');
-                  setExpectedCheckout('');
-                }}
-                otherDate={checkinDate}
-                isCheckout={true}
-                blockedDates={getBlockedDateStrings()}
-                label="Check-Out Date *"
-              />
-            </div>
+            <DateRangePicker
+              checkinDate={checkinDate}
+              checkoutDate={expectedCheckout}
+              onCheckinChange={(date) => {
+                setCheckinDate(date);
+                if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
+              }}
+              onCheckoutChange={setExpectedCheckout}
+              onClear={() => {
+                setCheckinDate('');
+                setExpectedCheckout('');
+              }}
+              blockedDates={getBlockedDateStrings()}
+            />
 
             <div>
               <label className="block mb-1">Total Room Tariff (₹)</label>
@@ -1480,35 +1465,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <DatePicker
-                  value={checkinDate}
-                  onChange={(date) => {
-                    setCheckinDate(date);
-                    if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
-                  }}
-                  onClear={() => {
-                    setCheckinDate('');
-                    setExpectedCheckout('');
-                  }}
-                  otherDate={expectedCheckout}
-                  isCheckout={false}
-                  blockedDates={getBlockedDateStrings()}
-                  label="Check-in Date"
-                />
-                <DatePicker
-                  value={expectedCheckout}
-                  onChange={setExpectedCheckout}
-                  onClear={() => {
-                    setCheckinDate('');
-                    setExpectedCheckout('');
-                  }}
-                  otherDate={checkinDate}
-                  isCheckout={true}
-                  blockedDates={getBlockedDateStrings()}
-                  label="Expected Checkout"
-                />
-              </div>
+              <DateRangePicker
+                checkinDate={checkinDate}
+                checkoutDate={expectedCheckout}
+                onCheckinChange={(date) => {
+                  setCheckinDate(date);
+                  if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
+                }}
+                onCheckoutChange={setExpectedCheckout}
+                onClear={() => {
+                  setCheckinDate('');
+                  setExpectedCheckout('');
+                }}
+                blockedDates={getBlockedDateStrings()}
+              />
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Special Preferences / Notes</label>
