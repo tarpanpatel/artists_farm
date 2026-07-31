@@ -1,6 +1,6 @@
 # 🚀 Deployment Guide - artistic-sthan.in
 
-**Domain:** artistic-sthan.in  
+**Domain:** artistic-sthan.com  
 **Database:** apartment_site  
 **Status:** Ready for Production
 

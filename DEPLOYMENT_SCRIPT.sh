@@ -18,7 +18,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DOMAIN="artistic-sthan.in"
+DOMAIN="artistic-sthan.com"
 DB_NAME="apartment_site"
 DB_USER="apartment_site"
 DB_PASSWORD="admin@1235"
