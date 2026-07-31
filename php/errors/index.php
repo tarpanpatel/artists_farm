@@ -308,6 +308,7 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
         const dateTo = document.getElementById('dateToInput').value;
         const tbody = document.getElementById('logsTableBody');
         let allLogs = getClientLogs();
+        let serverCounts = null;
 
         try {
             const params = new URLSearchParams({ action: 'fetch_logs', portal: 'all', search, timeframe });
@@ -316,10 +317,15 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
             const res = await fetch(`index.php?${params.toString()}`);
             const data = await res.json();
 
-            if (data.status === 'success' && Array.isArray(data.logs)) {
-                const existingIds = new Set(allLogs.map(l => l.id));
-                for (const sLog of data.logs) {
-                    if (!existingIds.has(sLog.id)) allLogs.push(sLog);
+            if (data.status === 'success') {
+                // Use server-calculated counts (respects timeframe filter)
+                serverCounts = data.counts;
+
+                if (Array.isArray(data.logs)) {
+                    const existingIds = new Set(allLogs.map(l => l.id));
+                    for (const sLog of data.logs) {
+                        if (!existingIds.has(sLog.id)) allLogs.push(sLog);
+                    }
                 }
             }
         } catch (e) {}
@@ -356,15 +362,24 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
             }
         } catch (e) {}
 
-        const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
-        allLogs.forEach(l => {
-            const p = (l.portal || '').toLowerCase();
-            if (counts[p] !== undefined) counts[p]++;
-            else counts.requests++;
-        });
-        for (const [key, count] of Object.entries(counts)) {
-            const badge = document.getElementById(`badge-${key}`);
-            if (badge) badge.innerText = count;
+        // Update badges with server counts (already filtered by timeframe)
+        if (serverCounts) {
+            for (const [key, count] of Object.entries(serverCounts)) {
+                const badge = document.getElementById(`badge-${key}`);
+                if (badge) badge.innerText = count;
+            }
+        } else {
+            // Fallback: count only if server didn't provide counts
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
+            allLogs.forEach(l => {
+                const p = (l.portal || '').toLowerCase();
+                if (counts[p] !== undefined) counts[p]++;
+                else counts.requests++;
+            });
+            for (const [key, count] of Object.entries(counts)) {
+                const badge = document.getElementById(`badge-${key}`);
+                if (badge) badge.innerText = count;
+            }
         }
 
         const unseenCounts = getUnseenCounts(allLogs);
