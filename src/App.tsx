@@ -1236,6 +1236,7 @@ export function App() {
     is_platform_admin: boolean;
     default_tenant_id?: number;
   } | null>(null);
+  const [isSessionLoaded, setIsSessionLoaded] = useState(false);
 
   const propertySlug = getPropertySlug();
   const isLoginPath = propertySlug === 'login';
@@ -1254,6 +1255,7 @@ export function App() {
         localStorage.removeItem('artists_farm_user_session');
       }
     }
+    setIsSessionLoaded(true);
   }, []);
 
   const handleLoginSuccess = (session: {
@@ -1263,19 +1265,27 @@ export function App() {
     default_tenant_id?: number;
   }) => {
     setUserSession(session);
-    // Redirect based on role
-    if (session.is_platform_admin) {
-      window.location.href = '/artists_farm/platform_property_management/';
-    } else if (session.default_tenant_id) {
-      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${session.default_tenant_id}`;
-    } else {
-      // Staff member - stay at login or redirect to property
-      window.location.href = '/artists_farm/login/';
-    }
+    // Redirect will happen via useEffect watching userSession
   };
+
+  // Handle redirects after session is set
+  useEffect(() => {
+    if (!userSession) return;
+
+    if (userSession.is_platform_admin) {
+      window.location.href = '/artists_farm/platform_property_management/';
+    } else if (userSession.default_tenant_id) {
+      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${userSession.default_tenant_id}`;
+    }
+  }, [userSession]);
 
   // Tenant dashboard path
   if (isTenantDashboardPath) {
+    // Wait for session to load before checking
+    if (!isSessionLoaded) {
+      return <LoadingScreen message="Loading session..." />;
+    }
+
     if (!userSession) {
       window.location.href = '/artists_farm/login/';
       return <LoadingScreen message="Redirecting to login..." />;
@@ -1290,13 +1300,21 @@ export function App() {
       <TenantDashboard
         username={userSession.username}
         tenantId={userSession.default_tenant_id}
-        onLogout={() => setUserSession(null)}
+        onLogout={() => {
+          setUserSession(null);
+          localStorage.removeItem('artists_farm_user_session');
+        }}
       />
     );
   }
 
   // Platform property management path
   if (isPlatformPropertyManagementPath) {
+    // Wait for session to load before checking
+    if (!isSessionLoaded) {
+      return <LoadingScreen message="Loading session..." />;
+    }
+
     if (!userSession) {
       window.location.href = '/artists_farm/login/';
       return <LoadingScreen message="Redirecting to login..." />;
@@ -1310,7 +1328,10 @@ export function App() {
     return (
       <PlatformPropertyManagement
         username={userSession.username}
-        onLogout={() => setUserSession(null)}
+        onLogout={() => {
+          setUserSession(null);
+          localStorage.removeItem('artists_farm_user_session');
+        }}
       />
     );
   }
