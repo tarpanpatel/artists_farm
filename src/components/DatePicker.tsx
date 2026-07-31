@@ -56,11 +56,20 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     const date = new Date(month.getFullYear(), month.getMonth(), day);
     const dateStr = formatDate(date);
 
-    if (!isDateBlocked(dateStr)) {
+    if (!isDateBlocked(dateStr) && !isDateBeforeToday(dateStr)) {
       onChange(dateStr);
-      // Auto-close calendar after date selection
-      setTimeout(() => setIsOpen(false), 100);
+      // Only auto-close for checkout date selection
+      if (isCheckout) {
+        setTimeout(() => setIsOpen(false), 100);
+      }
     }
+  };
+
+  const isDateBeforeToday = (dateStr: string): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(dateStr);
+    return checkDate < today;
   };
 
   const renderMonthCalendar = (monthOffset: number) => {
@@ -78,6 +87,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDate(new Date(month.getFullYear(), month.getMonth(), day));
       const blocked = isDateBlocked(dateStr);
+      const beforeToday = isDateBeforeToday(dateStr);
+      const isDisabled = blocked || beforeToday;
       const selected = value === dateStr;
       const inRange = isDateInRange(dateStr);
       const isOtherDate = otherDate === dateStr;
@@ -85,11 +96,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       days.push(
         <button
           key={`${monthOffset}-${day}`}
-          disabled={blocked}
+          disabled={isDisabled}
           onClick={() => handleSelectDate(day, monthOffset)}
           className={`
             p-2 text-center rounded-full text-sm font-medium transition relative
-            ${blocked
+            ${isDisabled
               ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
               : selected || isOtherDate
               ? 'bg-black dark:bg-white text-white dark:text-black font-bold'
