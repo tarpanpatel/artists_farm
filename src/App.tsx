@@ -1326,6 +1326,11 @@ export function App() {
 
   // Login path - show unified login for all users
   if (isLoginPath) {
+    // Wait for session to load first
+    if (!isSessionLoaded) {
+      return <LoadingScreen message="Loading..." />;
+    }
+
     // Show dashboard if already logged in
     if (userSession) {
       if (userSession.is_platform_admin) {

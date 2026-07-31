@@ -28,23 +28,34 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     const loadProperties = async () => {
       try {
         setLoading(true);
-        // Fetch tenant's properties
+        console.log('[TenantDashboard] Fetching properties for tenant:', tenantId);
+
+        // Fetch with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const response = await fetch(
           `/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`,
           {
             credentials: 'include',
             headers: { 'X-API-Key': 'artists-farm-secure-key-2026' },
+            signal: controller.signal,
           }
         );
+        clearTimeout(timeoutId);
+
+        console.log('[TenantDashboard] Response status:', response.status);
         const data = await response.json();
+        console.log('[TenantDashboard] Response data:', data);
+
         if (data.success) {
           setProperties(data.data || []);
         } else {
-          setError('Failed to load properties');
+          setError('Failed to load properties: ' + (data.message || 'Unknown error'));
         }
       } catch (err) {
-        console.error('Failed to load properties:', err);
-        setError('Unable to load properties. Please contact support.');
+        console.error('[TenantDashboard] Failed to load properties:', err);
+        setError('Unable to load properties. ' + (err?.message || 'Please contact support.'));
       } finally {
         setLoading(false);
       }
