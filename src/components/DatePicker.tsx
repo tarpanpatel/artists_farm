@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 interface DatePickerProps {
   value: string;
   onChange: (date: string) => void;
+  onClear?: () => void;
   otherDate?: string;
   isCheckout?: boolean;
   blockedDates?: string[];
@@ -14,6 +15,7 @@ interface DatePickerProps {
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
+  onClear,
   otherDate,
   isCheckout = false,
   blockedDates = [],
@@ -212,14 +214,33 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="flex justify-between mt-6">
+          {/* Navigation and Buttons */}
+          <div className="flex justify-between items-center mt-6">
             <button
               onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
             >
               <ChevronLeft size={20} />
             </button>
+            <div className="flex gap-2">
+              {onClear && (
+                <button
+                  onClick={() => {
+                    onClear();
+                    setIsOpen(false);
+                  }}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm font-medium"
+                >
+                  Clear dates
+                </button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-lg transition text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
             <button
               onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"

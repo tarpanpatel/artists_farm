@@ -636,6 +636,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   setCheckinDate(date);
                   if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
                 }}
+                onClear={() => {
+                  setCheckinDate('');
+                  setExpectedCheckout('');
+                }}
                 otherDate={expectedCheckout}
                 isCheckout={false}
                 blockedDates={getBlockedDateStrings()}
@@ -644,6 +648,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <DatePicker
                 value={expectedCheckout}
                 onChange={setExpectedCheckout}
+                onClear={() => {
+                  setCheckinDate('');
+                  setExpectedCheckout('');
+                }}
                 otherDate={checkinDate}
                 isCheckout={true}
                 blockedDates={getBlockedDateStrings()}
@@ -1479,6 +1487,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     setCheckinDate(date);
                     if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
                   }}
+                  onClear={() => {
+                    setCheckinDate('');
+                    setExpectedCheckout('');
+                  }}
                   otherDate={expectedCheckout}
                   isCheckout={false}
                   blockedDates={getBlockedDateStrings()}
@@ -1487,6 +1499,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <DatePicker
                   value={expectedCheckout}
                   onChange={setExpectedCheckout}
+                  onClear={() => {
+                    setCheckinDate('');
+                    setExpectedCheckout('');
+                  }}
                   otherDate={checkinDate}
                   isCheckout={true}
                   blockedDates={getBlockedDateStrings()}
