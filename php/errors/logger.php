@@ -72,6 +72,7 @@ if (!class_exists('TelescopeLogger')) {
             $content = @file_get_contents($file);
             $allLogs = !empty($content) ? (@json_decode($content, true) ?: []) : [];
 
+            $filteredLogs = [];
             $counts = [
                 'requests' => 0,
                 'php' => 0,
@@ -80,21 +81,21 @@ if (!class_exists('TelescopeLogger')) {
                 'telegram' => 0,
                 'security' => 0,
                 '404' => 0,
-                'audit' => 0
+                'audit' => 0,
+                'staff_activity' => 0,
+                'login_portal' => 0
             ];
 
-            $filteredLogs = [];
             $now = time();
 
+            // First pass: apply all filters
             foreach ($allLogs as $log) {
-                $p = $log['portal'] ?? 'requests';
-                if (isset($counts[$p])) {
-                    $counts[$p]++;
-                }
-
                 // Check portal filter
-                if ($portal !== 'all' && $p !== $portal) {
-                    continue;
+                if ($portal !== 'all') {
+                    $p = $log['portal'] ?? 'requests';
+                    if ($p !== $portal) {
+                        continue;
+                    }
                 }
 
                 // Check timeframe filter (quick presets)
@@ -127,7 +128,7 @@ if (!class_exists('TelescopeLogger')) {
                     $originLower = strtolower($log['origin'] ?? '');
                     $sevLower = strtolower($log['severity'] ?? '');
                     $ipLower = strtolower($log['ip'] ?? '');
-                    
+
                     if (
                         strpos($msgLower, $searchLower) === false &&
                         strpos($originLower, $searchLower) === false &&
@@ -138,7 +139,16 @@ if (!class_exists('TelescopeLogger')) {
                     }
                 }
 
+                // Log passed all filters - add to results
                 $filteredLogs[] = $log;
+            }
+
+            // Second pass: count filtered logs by portal
+            foreach ($filteredLogs as $log) {
+                $p = $log['portal'] ?? 'requests';
+                if (isset($counts[$p])) {
+                    $counts[$p]++;
+                }
             }
 
             return [
