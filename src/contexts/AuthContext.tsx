@@ -76,19 +76,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let isAuth = authValue === 'true';
 
       // Fallback to generic session if property-specific auth not found
-      // (for users coming from LoginPage redirect)
+      // (for users coming from LoginPage redirect or root admin auto-login)
       if (!isAuth) {
         const genericSession = localStorage.getItem('artists_farm_user_session');
         if (genericSession) {
           try {
             const session = JSON.parse(genericSession);
-            // Mark as authenticated in the property-specific storage
+
+            // Auto-login root admins to any property
+            if (session.is_platform_admin) {
+              localStorage.setItem(key, 'true');
+              isAuth = true;
+
+              // Create root admin session for this property
+              const user: StaffMember = {
+                id: session.username,
+                name: session.username,
+                username: session.username,
+                role: 'root_admin', // Root admin has full access to any property
+              };
+              localStorage.setItem(userKey(), JSON.stringify(user));
+              setIsAuthenticated(true);
+              setCurrentUser(user);
+              setActiveRole(normalizeRole('root_admin'));
+              return;
+            }
+
+            // Regular user login
             localStorage.setItem(key, 'true');
             isAuth = true;
 
-            // Convert generic session to StaffMember format
             const user: StaffMember = {
-              id: session.username, // Use username as ID fallback
+              id: session.username,
               name: session.username,
               username: session.username,
               role: session.role || 'Staff',

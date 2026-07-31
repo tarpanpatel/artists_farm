@@ -37,15 +37,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           `/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`,
           {
             credentials: 'include',
-            headers: { 'X-API-Key': 'artists-farm-secure-key-2026' },
             signal: controller.signal,
           }
         );
         clearTimeout(timeoutId);
 
-        console.log('[TenantDashboard] Response status:', response.status);
         const data = await response.json();
-        console.log('[TenantDashboard] Response data:', data);
 
         if (data.success) {
           setProperties(data.data || []);

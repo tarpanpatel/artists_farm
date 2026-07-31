@@ -203,7 +203,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     if (matchedMenuItem && allRecipes[matchedMenuItem.id]) {
       const depResult = await depleteStockForDish(matchedMenuItem.id, item.quantity);
       if (depResult.status !== 'success') {
-        console.warn('Stock depletion warning:', depResult.message);
+        // Stock depletion failed, but continue serving item
       }
     }
 
