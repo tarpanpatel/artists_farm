@@ -115,14 +115,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           disabled={isDisabled}
           onClick={() => handleSelectDate(day, monthOffset)}
           className={`
-            p-2 text-center rounded-full text-sm font-medium transition relative
+            p-2 text-center rounded-full text-sm font-bold transition relative w-full aspect-square flex items-center justify-center
             ${isDisabled
               ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
               : isCheckinSelected || isCheckoutSelected
-              ? 'bg-black dark:bg-white text-white dark:text-black font-bold'
+              ? 'bg-black dark:bg-white text-white dark:text-black ring-2 ring-black dark:ring-white'
               : inRange
-              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
-              : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-gray-900 dark:text-white'
+              : 'text-gray-900 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/20'
             }
           `}
         >
