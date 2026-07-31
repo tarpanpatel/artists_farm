@@ -119,10 +119,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             ${isDisabled
               ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
               : isCheckinSelected || isCheckoutSelected
-              ? 'bg-black dark:bg-white text-white dark:text-black ring-2 ring-black dark:ring-white'
+              ? 'bg-black dark:bg-white text-white dark:text-black ring-2 ring-white dark:ring-gray-800'
               : inRange
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-gray-900 dark:text-white'
-              : 'text-gray-900 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/20'
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+              : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'
             }
           `}
         >
