@@ -1345,11 +1345,10 @@ export function App() {
       );
     }
 
-    // Tenant manager - redirect to their first property or selector
-    // For now, redirect to default tenant's first property
+    // Tenant manager - redirect to tenant dashboard
     if (userSession.default_tenant_id) {
-      window.location.href = `/artists_farm/artists-farm-platform/${userSession.default_tenant_id}/`;
-      return <LoadingScreen message="Redirecting to property..." />;
+      window.location.href = `/artists_farm/tenant_dashboard/?tenant_id=${userSession.default_tenant_id}`;
+      return <LoadingScreen message="Redirecting to tenant dashboard..." />;
     }
 
     // No access
