@@ -85,11 +85,26 @@ switch ($action) {
 
             if ($user && password_verify($password, $user['password'])) {
                 // Password is correct
+                // Determine correct role based on user type
+                $is_platform_admin = (bool)$user['is_platform_admin'];
+                $has_default_tenant = !empty($user['default_tenant_id']);
+
+                // Map role:
+                // - platform admin (is_platform_admin=true) -> root_admin
+                // - has default_tenant (is_platform_admin=false, default_tenant_id set) -> super_admin
+                // - property/staff (no default_tenant) -> keep actual role (admin, staff, etc)
+                $role = $user['role'];
+                if ($is_platform_admin) {
+                    $role = 'root_admin';
+                } elseif ($has_default_tenant) {
+                    $role = 'super_admin';
+                }
+
                 // Set session
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['is_platform_admin'] = (bool)$user['is_platform_admin'];
+                $_SESSION['role'] = $role;
+                $_SESSION['is_platform_admin'] = $is_platform_admin;
                 $_SESSION['default_tenant_id'] = $user['default_tenant_id'];
 
                 // Set cookie
@@ -101,8 +116,8 @@ switch ($action) {
                     'user' => [
                         'id' => $user['id'],
                         'username' => $user['username'],
-                        'role' => $user['role'],
-                        'is_platform_admin' => (bool)$user['is_platform_admin'],
+                        'role' => $role,
+                        'is_platform_admin' => $is_platform_admin,
                         'default_tenant_id' => $user['default_tenant_id'],
                     ]
                 ]);

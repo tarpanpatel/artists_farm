@@ -108,7 +108,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (!allowedRoles || allowedRoles.length === 0) return true;
     // Case-insensitive role comparison
     const normalizedActiveRole = activeRole.toLowerCase().trim();
-    if (normalizedActiveRole === 'super admin') return true;
+    // Super admin and root admin have access to all menu items
+    if (normalizedActiveRole === 'super admin' || normalizedActiveRole === 'root admin') return true;
     return allowedRoles.some(role => role.toLowerCase().trim() === normalizedActiveRole);
   }, [activeRole]);
 
