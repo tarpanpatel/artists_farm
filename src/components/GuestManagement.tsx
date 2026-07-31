@@ -636,12 +636,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   setCheckinDate(date);
                   if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
                 }}
+                otherDate={expectedCheckout}
+                isCheckout={false}
                 blockedDates={getBlockedDateStrings()}
                 label="Check-In Date *"
               />
               <DatePicker
                 value={expectedCheckout}
                 onChange={setExpectedCheckout}
+                otherDate={checkinDate}
+                isCheckout={true}
                 blockedDates={getBlockedDateStrings()}
                 label="Check-Out Date *"
               />
@@ -1475,12 +1479,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     setCheckinDate(date);
                     if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
                   }}
+                  otherDate={expectedCheckout}
+                  isCheckout={false}
                   blockedDates={getBlockedDateStrings()}
                   label="Check-in Date"
                 />
                 <DatePicker
                   value={expectedCheckout}
                   onChange={setExpectedCheckout}
+                  otherDate={checkinDate}
+                  isCheckout={true}
                   blockedDates={getBlockedDateStrings()}
                   label="Expected Checkout"
                 />

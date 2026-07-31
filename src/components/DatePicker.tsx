@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface DatePickerProps {
   value: string;
   onChange: (date: string) => void;
+  otherDate?: string;
+  isCheckout?: boolean;
   blockedDates?: string[];
   placeholder?: string;
   label?: string;
@@ -12,13 +14,16 @@ interface DatePickerProps {
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
+  otherDate,
+  isCheckout = false,
   blockedDates = [],
   placeholder = 'Select date',
   label,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(
-    value ? new Date(value) : new Date()
+  const today = new Date();
+  const [startMonth, setStartMonth] = useState(
+    value ? new Date(value) : new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
   const getDaysInMonth = (date: Date) => {
@@ -29,8 +34,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
   };
 
-  const isDateBlocked = (date: string) => {
-    return blockedDates.includes(date);
+  const isDateBlocked = (dateStr: string) => {
+    return blockedDates.includes(dateStr);
   };
 
   const formatDate = (date: Date) => {
@@ -40,50 +45,58 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     return `${year}-${month}-${day}`;
   };
 
-  const handleSelectDate = (day: number) => {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+  const isDateInRange = (dateStr: string) => {
+    if (!value || !otherDate) return false;
+    const [minDate, maxDate] = [value, otherDate].sort();
+    return dateStr > minDate && dateStr < maxDate;
+  };
+
+  const handleSelectDate = (day: number, monthOffset: number) => {
+    const month = new Date(startMonth.getFullYear(), startMonth.getMonth() + monthOffset, 1);
+    const date = new Date(month.getFullYear(), month.getMonth(), day);
     const dateStr = formatDate(date);
+
     if (!isDateBlocked(dateStr)) {
       onChange(dateStr);
-      setIsOpen(false);
+      // Auto-close if this is checkout date and both dates are selected
+      if (isCheckout && otherDate) {
+        setTimeout(() => setIsOpen(false), 100);
+      }
     }
   };
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
-
-  const renderCalendarDays = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
+  const renderMonthCalendar = (monthOffset: number) => {
+    const month = new Date(startMonth.getFullYear(), startMonth.getMonth() + monthOffset, 1);
+    const daysInMonth = getDaysInMonth(month);
+    const firstDay = getFirstDayOfMonth(month);
     const days = [];
 
-    // Empty cells for days before month starts
+    // Empty cells
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} />);
+      days.push(<div key={`empty-${monthOffset}-${i}`} />);
     }
 
-    // Days of the month
+    // Days
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+      const dateStr = formatDate(new Date(month.getFullYear(), month.getMonth(), day));
       const blocked = isDateBlocked(dateStr);
       const selected = value === dateStr;
+      const inRange = isDateInRange(dateStr);
+      const isOtherDate = otherDate === dateStr;
 
       days.push(
         <button
-          key={day}
+          key={`${monthOffset}-${day}`}
           disabled={blocked}
-          onClick={() => handleSelectDate(day)}
+          onClick={() => handleSelectDate(day, monthOffset)}
           className={`
-            p-2 text-center rounded text-sm font-medium transition
+            p-2 text-center rounded-full text-sm font-medium transition relative
             ${blocked
-              ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50'
-              : selected
-              ? 'bg-blue-600 dark:bg-blue-500 text-white'
+              ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
+              : selected || isOtherDate
+              ? 'bg-black dark:bg-white text-white dark:text-black font-bold'
+              : inRange
+              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
               : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
             }
           `}
@@ -101,6 +114,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const month1 = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+  const month2 = new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1);
+
   return (
     <div className="relative">
       {label && (
@@ -113,51 +129,71 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        {value ? new Date(value).toLocaleDateString() : placeholder}
+        {value ? new Date(value).toLocaleDateString('en-GB') : placeholder}
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4 w-full max-w-sm">
-          {/* Header with month/year and navigation */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={handlePrevMonth}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </h3>
-            <button
-              onClick={handleNextMonth}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-
-          {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 p-2">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {renderCalendarDays()}
-          </div>
-
+        <div className="absolute z-50 mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl p-6 w-full max-w-2xl">
           {/* Close button */}
           <button
             onClick={() => setIsOpen(false)}
-            className="w-full mt-4 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+            className="absolute top-4 right-4 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
           >
-            Close
+            <X size={20} />
           </button>
+
+          {/* Two month calendars */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Month 1 */}
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
+                {monthNames[month1.getMonth()]} {month1.getFullYear()}
+              </h3>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
+                  <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {renderMonthCalendar(0)}
+              </div>
+            </div>
+
+            {/* Month 2 */}
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
+                {monthNames[month2.getMonth()]} {month2.getFullYear()}
+              </h3>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
+                  <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {renderMonthCalendar(1)}
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </div>
       )}
     </div>
