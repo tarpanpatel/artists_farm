@@ -21,6 +21,7 @@ interface BillingCheckoutProps {
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
+  onNavigateToGuestRegistration?: () => void;
 }
 
 interface GroupedRoomBooking {
@@ -37,6 +38,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   isMultiKeyProperty = false,
   rooms = [],
   onCheckoutClick,
+  onNavigateToGuestRegistration,
 }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,11 +180,29 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">
           No Active Bookings
         </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
           {isMultiKeyProperty
             ? 'No guests are currently checked in across all rooms.'
             : 'No guests are currently checked in. Register a new guest to begin billing.'}
         </p>
+        <div className="inline-block bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
+          <p className="font-semibold mb-2">📝 Next Step: Register a Guest</p>
+          <p className="text-xs mb-3">
+            Go to <span className="font-mono bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">Guest Registration</span> to check in guests.
+            Once guests are checked in, checkout options will appear here.
+          </p>
+          <p className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-4">
+            Checkout options include: Proceed to Billing, Complete Checkout, Edit & Checkout
+          </p>
+          {onNavigateToGuestRegistration && (
+            <button
+              onClick={onNavigateToGuestRegistration}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-xs cursor-pointer"
+            >
+              ➜ Go to Guest Registration
+            </button>
+          )}
+        </div>
       </div>
     );
   }

@@ -1271,6 +1271,7 @@ ${itemsStr}
                     menu={menu}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     rooms={preloadedData.currentProperty?.rooms}
+                    onSetActiveMenuItemKey={setActiveMenuItemKey}
                     selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
                   />
                 </ErrorBoundary>

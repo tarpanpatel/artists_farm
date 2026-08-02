@@ -51,6 +51,7 @@ interface GuestManagementProps {
   isMultiKeyProperty?: boolean;
   rooms?: Room[];
   onNavigateToBilling?: (guestId: string) => void;
+  onSetActiveMenuItemKey?: (key: string) => void;
   selectedRoomSlug?: string | null;
 }
 
@@ -88,6 +89,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   isMultiKeyProperty = false,
   rooms = [],
   onNavigateToBilling,
+  onSetActiveMenuItemKey,
   selectedRoomSlug,
 }) => {
   const { orders } = useKitchenContext();
@@ -847,6 +849,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         isMultiKeyProperty={true}
         rooms={rooms}
         onCheckoutClick={onNavigateToBilling}
+        onNavigateToGuestRegistration={() => onSetActiveMenuItemKey?.('guest_registration')}
       />
     );
   }
