@@ -1109,9 +1109,7 @@ ${itemsStr}
             isDarkMode={isDarkMode}
             currentPropertyColorScheme={currentPropertyColorScheme}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            isTestingMode={isTestingMode}
             propertyName={propertyName}
-            onToggleTestingMode={handleToggleTestingMode}
           />
         )}
 

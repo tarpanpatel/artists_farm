@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2, LogOut, FlaskConical } from 'lucide-react';
+import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -14,10 +14,8 @@ interface HeaderProps {
   onToggleIconOnly: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
-  currentPropertyColorScheme: string; // Add this prop
-  isTestingMode?: boolean;
-  onToggleTestingMode?: () => void;
-  propertyName: string; // Add this prop
+  currentPropertyColorScheme: string;
+  propertyName: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,9 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   isDarkMode,
   onToggleDarkMode,
   currentPropertyColorScheme,
-  isTestingMode = false,
-  onToggleTestingMode,
-  propertyName, // Destructure the prop here
+  propertyName,
 }) => {
   const { activeRole, setActiveRole, currentUser, isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
@@ -154,27 +150,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
-
-          {/* Sandbox / Testing Mode Toggle Button — Admin / Super Admin only */}
-          {onToggleTestingMode && (activeRole === 'Super Admin' || activeRole === 'Admin') && (
-            <button
-              onClick={onToggleTestingMode}
-              title={isTestingMode ? 'Exit Testing Sandbox Mode (Return to Live Database)' : 'Enter Testing Sandbox Mode (Safely test without affecting Live DB)'}
-              aria-label="Toggle Testing Mode"
-              className={`btn-toggle-testingmode px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${isTestingMode
-                ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 animate-pulse ring-2 ring-amber-400/50'
-                : 'bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-            >
-              <FlaskConical className={`w-4 h-4 ${isTestingMode ? 'text-slate-950' : 'text-amber-500 dark:text-amber-400'}`} />
-              <span className="hidden sm:inline">
-                {isTestingMode ? '🧪 Testing Mode (ACTIVE)' : '🧪 Testing Mode'}
-              </span>
-              <span className="sm:hidden">
-                {isTestingMode ? '🧪 TEST' : '🧪 Test'}
-              </span>
-            </button>
-          )}
 
           {/* Test Data Button */}
           {onOpenDemoModal && (
