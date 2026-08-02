@@ -7,6 +7,8 @@ import {
   fetchNavMenuFromDB,
   fetchTelegramConfigDB,
   getPropertySlug,
+  getPropertyAndRoomSlugs,
+  getRoomSlugFromHash,
 } from '../services/api';
 
 export interface PreloadedData {
@@ -14,6 +16,9 @@ export interface PreloadedData {
   modules: Array<{ slug: string; is_enabled: boolean }>;
   navItems: any[];
   telegramConfig: any;
+  isMultiKeyProperty?: boolean;
+  currentRoomSlug?: string | null;
+  parentPropertyId?: number;
 }
 
 interface DataLoaderProps {
@@ -24,6 +29,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const [data, setData] = useState<PreloadedData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentRoomSlug, setCurrentRoomSlug] = useState<string | null>(null);
 
   const [invalidProperty, setInvalidProperty] = useState<string | null>(null);
 
@@ -35,6 +41,8 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
         // Check if property slug is present in URL
         const propertySlug = getPropertySlug();
+        const { propertySlug: slugFromPath, roomSlug } = getPropertyAndRoomSlugs();
+
         if (!propertySlug || propertySlug === 'default') {
           setInvalidProperty(propertySlug);
           setIsLoading(false);
@@ -46,13 +54,30 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           setTimeout(() => resolve(null), 3000);
         });
 
-        // Fetch all data in parallel with timeout fallback
+        // First, fetch the basic property data
+        let property = await fetchCurrentProperty().catch(err => {
+          console.error('Failed to fetch current property:', err);
+          return null;
+        });
+
+        // If it's a MultiKey property, fetch full data with rooms
+        if (property && property.property_type === 'MULTI_KEY') {
+          try {
+            const response = await fetch(`/php/api/router.php?action=get_multikey_property&property_id=${property.id}`, {
+              credentials: 'include',
+            });
+            const data = await response.json();
+            if (data.success) {
+              property = data.data;
+            }
+          } catch (err) {
+            console.error('Failed to fetch MultiKey property details:', err);
+          }
+        }
+
+        // Fetch all other data in parallel with timeout fallback
         const results = await Promise.race([
           Promise.all([
-            fetchCurrentProperty().catch(err => {
-              console.error('Failed to fetch current property:', err);
-              return null;
-            }),
             fetchPropertyModulesFromDB().catch(err => {
               console.error('Failed to fetch modules:', err);
               return [];
@@ -66,16 +91,36 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               return null;
             }),
           ]),
-          timeoutPromise.then(() => [null, [], [], null]), // Default values on timeout
+          timeoutPromise.then(() => [[], [], null]), // Default values on timeout
         ]);
 
-        const [property, modules, navItems, telegramConfig] = results as any[];
+        const [modules, navItems, telegramConfig] = results as any[];
+
+        // If property doesn't exist (was deleted), show invalid property page
+        // Check if property is null, undefined, or empty object/array
+        if (!property || (typeof property === 'object' && Object.keys(property).length === 0)) {
+          setInvalidProperty(propertySlug);
+          setIsLoading(false);
+          return;
+        }
+
+        // Detect if this is a MultiKey property
+        const isMultiKeyProperty = property.property_type === 'MULTI_KEY';
+
+        // For MultiKey properties, use hash-based room selection (#room-101)
+        const validRoomSlugs = isMultiKeyProperty ? (property.rooms || []).map((r: any) => r.slug) : [];
+        const selectedRoomSlug = isMultiKeyProperty ? getRoomSlugFromHash(validRoomSlugs) : null;
+
+        setCurrentRoomSlug(selectedRoomSlug);
 
         setData({
           currentProperty: property,
           modules: Array.isArray(modules) ? modules : [],
           navItems: Array.isArray(navItems) ? navItems : [],
           telegramConfig: telegramConfig,
+          isMultiKeyProperty,
+          currentRoomSlug: selectedRoomSlug,
+          parentPropertyId: undefined,
         });
       } catch (err) {
         console.error('Critical error loading app data:', err);
@@ -93,6 +138,9 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
     loadAllData();
   }, []);
+
+  // Don't listen for hash changes - they interfere with menu navigation
+  // Room navigation uses state (selectedRoomSlugOverride) instead of hash
 
   if (invalidProperty !== null) {
     return <InvalidPropertyPage propertySlug={invalidProperty} />;

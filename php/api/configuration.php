@@ -32,6 +32,14 @@ function handleConfigurationRequests($pdo, $request_method, $action, $propertyId
             getNavPageOptions($pdo);
             break;
 
+        case 'get_system_settings':
+            getSystemSettings($pdo);
+            break;
+
+        case 'save_system_settings':
+            saveSystemSettings($pdo);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Unknown configuration action']);
@@ -205,6 +213,106 @@ function getNavPageOptions($pdo) {
         } else {
             echo json_encode(['status' => 'success', 'data' => []]);
         }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Get system settings (custom CSS, icon settings, etc.)
+ */
+function getSystemSettings($pdo) {
+    try {
+        // Ensure table exists
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `system_settings` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `setting_key` VARCHAR(100) NOT NULL UNIQUE,
+                `setting_value` LONGTEXT NOT NULL,
+                `updated_by` VARCHAR(255) DEFAULT NULL,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $stmt = $pdo->query("
+            SELECT setting_key, setting_value
+            FROM system_settings
+            ORDER BY setting_key ASC
+        ");
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $settings = [];
+
+        foreach ($results as $row) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+
+        echo json_encode(['status' => 'success', 'data' => $settings]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Save system settings (requires root_admin role)
+ */
+function saveSystemSettings($pdo) {
+    try {
+        // Check if user is root_admin (only they can modify system settings)
+        $isRootAdmin = false;
+
+        // Check session first (if available)
+        if (isset($_SESSION['role']) && $_SESSION['role'] === 'root_admin') {
+            $isRootAdmin = true;
+        }
+        // Alternative: check if user is platform admin via header
+        elseif (isset($_SERVER['HTTP_X_USER_ROLE']) && $_SERVER['HTTP_X_USER_ROLE'] === 'root_admin') {
+            $isRootAdmin = true;
+        }
+
+        if (!$isRootAdmin) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Only root administrators can modify system settings']);
+            return;
+        }
+
+        // Ensure table exists
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `system_settings` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `setting_key` VARCHAR(100) NOT NULL UNIQUE,
+                `setting_value` LONGTEXT NOT NULL,
+                `updated_by` VARCHAR(255) DEFAULT NULL,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['setting_key']) || !isset($input['setting_value'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing setting_key or setting_value']);
+            return;
+        }
+
+        $setting_key = $input['setting_key'];
+        $setting_value = $input['setting_value'];
+        $updated_by = $_SESSION['username'] ?? 'root_admin';
+
+        // Use INSERT ... ON DUPLICATE KEY UPDATE to create or update
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = ?,
+                updated_by = ?,
+                updated_at = CURRENT_TIMESTAMP
+        ");
+
+        $stmt->execute([$setting_key, $setting_value, $updated_by, $setting_value, $updated_by]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Setting saved successfully']);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);

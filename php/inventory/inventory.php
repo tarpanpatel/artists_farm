@@ -66,16 +66,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                // Seed default data if empty
-                $count = $pdo->prepare("SELECT COUNT(*) FROM stock_requisitions WHERE property_id = ?");
-                $count->execute([$propertyId]);
-                if ((int)$count->fetchColumn() == 0) {
-                    $pdo->exec("INSERT INTO `stock_requisitions` (`id`, `property_id`, `status`, `date`, `items`) VALUES
-                        ('1166', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 10:21 PM', '[\"Green Pea (x1 Kg)\", \"Hari Mirchi (x1 Kg)\"]'),
-                        ('1165', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 09:05 PM', '[\"Black Pepper (x1 Pcs)\", \"Basmati Rice (x1 Pc)\"]'),
-                        ('1164', " . intval($propertyId) . ", 'PENDING', '21 Jul 2026 - 08:53 PM', '[\"Ajino Moto (x1 Gm)\"]')");
-                }
-
                 $stmt = $pdo->prepare("SELECT id, status, date, items FROM stock_requisitions WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) DESC, created_at DESC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

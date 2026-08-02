@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
 import { GuestManagement } from './components/GuestManagement';
 import { KitchenManagement } from './components/KitchenManagement';
@@ -14,7 +15,9 @@ import { AuditLogsView } from './components/AuditLogsView';
 import { DataExportCenter } from './components/DataExportCenter';
 import { MenuManager } from './components/MenuManager';
 import { MiscChargesManagement } from './components/MiscChargesManagement';
+import { ICalSyncManager } from './components/ICalSyncManager';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
+import { DemoDataModal } from './components/DemoDataModal';
 import { GlobalModal } from './components/GlobalModal';
 import { ToastProvider } from './components/ToastContext';
 import { LoginModal } from './components/LoginModal';
@@ -27,6 +30,7 @@ import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { trackDeadEnd, trackSessionLoss, trackAPIError, trackPropertyIssue } from './utils/userFlowTracker';
 import { isKitchenModuleNavItem } from './data/appConfig';
+import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
 import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
@@ -36,6 +40,10 @@ import { LoginPage } from './components/LoginPage';
 import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
 import { TenantDashboard } from './components/TenantDashboard';
 import { RootAdminDashboard } from './components/RootAdminDashboard';
+import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
+import { MultiKeyRoomDrawer } from './components/MultiKeyRoomDrawer';
+import { RoomSelectorModal } from './components/RoomSelectorModal';
+import { getPropertyAndRoomSlugs } from './services/api';
 
 
 
@@ -59,6 +67,15 @@ interface AppBodyProps {
 
 function AppBody({ preloadedData }: AppBodyProps) {
   const { isEnabled: isModuleEnabled } = useModules();
+  const [showMultiKeyOverview, setShowMultiKeyOverview] = useState(
+    preloadedData.isMultiKeyProperty && !preloadedData.currentRoomSlug
+  );
+  const [selectedRoomSlugOverride, setSelectedRoomSlugOverride] = useState<string | null>(null);
+  const [selectedRoomForGuestRegistration, setSelectedRoomForGuestRegistration] = useState<string | null>(null);
+  const selectedRoomSlugOverrideRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedRoomSlugOverrideRef.current = selectedRoomSlugOverride;
+  }, [selectedRoomSlugOverride]);
 
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
@@ -120,10 +137,26 @@ function AppBody({ preloadedData }: AppBodyProps) {
     preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
   );
 
+  // MultiKey room navigation handlers
+  const { propertySlug: multiKeyPropertySlug, tenantSlug } = getPropertyAndRoomSlugs();
+
+  const handleNavigateToMultiKeyOverview = () => {
+    setSelectedRoomSlugOverride(null);
+    setActiveMenuItemKey('multikey_property_overview');
+  };
+
+  const handleNavigateToRoom = (roomSlug: string) => {
+    setActiveTab('dashboard');
+    setActiveMenuItemKey(roomSlug);
+    setSelectedRoomSlugOverride(roomSlug);
+  };
+
+
   useEffect(() => {
     localStorage.setItem('artists_farm_active_tab', activeTab);
     localStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
-    if (typeof window !== 'undefined' && activeMenuItemKey) {
+    // Only update hash for menu items, NOT for room slugs (which start with "room-")
+    if (typeof window !== 'undefined' && activeMenuItemKey && !activeMenuItemKey.startsWith('room-')) {
       const targetHash = `#${activeMenuItemKey}`;
       if (window.location.hash !== targetHash) {
         window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
@@ -194,7 +227,32 @@ function AppBody({ preloadedData }: AppBodyProps) {
     loadGlobalCSS();
   }, []);
 
-  const handleNavigateTab = (tab: TabType, menuItemKey?: string) => {
+  // Load and apply theme settings on app startup
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const themeSettings = await fetchThemeSettings();
+        applyThemeSettings(themeSettings);
+      } catch (err) {
+        console.error('Failed to load theme settings:', err);
+      }
+    };
+
+    loadTheme();
+  }, []);
+
+  const handleNavigateTab = (tab: TabType, menuItemKey?: string, roomSlug?: string | null) => {
+    // Save room slug for guest registration if provided
+    if (menuItemKey === 'guest_registration' && roomSlug) {
+      setSelectedRoomForGuestRegistration(roomSlug);
+    } else if (menuItemKey !== 'guest_registration') {
+      setSelectedRoomForGuestRegistration(null);
+    }
+
+    // When navigating to a menu tab, clear room selection
+    if (selectedRoomSlugOverride) {
+      setSelectedRoomSlugOverride(null);
+    }
     setActiveTab(tab);
     if (menuItemKey) {
       setActiveMenuItemKey(menuItemKey);
@@ -284,6 +342,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const activeChannelIds = getTelegramChannelIds();
 
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(
     preloadedData.telegramConfig || {
       botToken: '',
@@ -482,6 +541,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (!item.isVisible) return false;
     // Case-insensitive role comparison
     const normalizedRole = role.toLowerCase().trim();
+    // Root Admin and Super Admin have access to everything
+    if (normalizedRole === 'root admin' || normalizedRole === 'super admin') return true;
     return item.roles.some(r => r.toLowerCase().trim() === normalizedRole);
   };
 
@@ -489,6 +550,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   useEffect(() => {
     if (!isAuthenticated) return;
     if (visibleNavItems.length === 0) return;
+    // Skip RBAC check if viewing a room or property overview
+    if (selectedRoomSlugOverride || activeMenuItemKey === 'multikey_property_overview') return;
 
     const currentKey = activeMenuItemKey;
     const allowed = isRouteAllowed(currentKey, activeRole, visibleNavItems);
@@ -503,7 +566,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setActiveMenuItemKey(fallbackKey);
       window.location.hash = `#${fallbackKey}`;
     }
-  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated]);
+  }, [activeRole, activeMenuItemKey, visibleNavItems, isAuthenticated, selectedRoomSlugOverride]);
 
   // Guard Effect 2: Trigger whenever user types a URL hash in the browser bar
   useEffect(() => {
@@ -513,6 +576,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
       const hash = window.location.hash.replace('#', '').trim();
       if (!hash) return;
+
+      // If hash is a menu item (not a room), clear room override
+      const reserved = new Set([
+        'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
+        'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
+        'guest_registration', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
+        'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
+        'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'staff_payees_control',
+        'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
+        'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
+        'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group'
+      ]);
+
+      if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
+        setSelectedRoomSlugOverride(null);
+      }
 
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
@@ -555,6 +634,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         data_export_center: { tab: 'export', key: 'data_export_center' },
         telegram: { tab: 'telegram', key: 'telegram' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
+        ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
+        ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then fallback to dashboard
@@ -576,11 +657,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const allowed = isRouteAllowed(targetRoute.key, activeRole, visibleNavItems);
       if (allowed) {
         setActiveTab(targetRoute.tab);
-        setActiveMenuItemKey(targetRoute.key);
+        // Only update activeMenuItemKey if NOT viewing a room
+        // If viewing a room, keep the room slug as the active menu item
+        if (!selectedRoomSlugOverrideRef.current) {
+          setActiveMenuItemKey(targetRoute.key);
+        }
       } else {
         // Forbidden route attempt -> Redirect to homepage #dashboard
         setActiveTab('dashboard');
-        setActiveMenuItemKey('dashboard');
+        // Only update activeMenuItemKey if NOT viewing a room
+        if (!selectedRoomSlugOverrideRef.current) {
+          setActiveMenuItemKey('dashboard');
+        }
         window.location.hash = '#dashboard';
       }
     };
@@ -1013,6 +1101,7 @@ ${itemsStr}
           <Header
             onLogout={handleLogout}
             onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
+            onOpenDemoModal={() => setIsDemoModalOpen(true)}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isIconOnly={isIconOnly}
@@ -1066,6 +1155,22 @@ ${itemsStr}
             isIconOnly={isIconOnly}
             onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
             navItems={visibleNavItems}
+            isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+            multiKeyPropertyId={preloadedData.currentProperty?.id}
+            multiKeyPropertyName={preloadedData.currentProperty?.name}
+            multiKeyPropertySlug={multiKeyPropertySlug}
+            currentRoomSlug={selectedRoomSlugOverride || preloadedData.currentRoomSlug}
+            onNavigateToMultiKeyOverview={handleNavigateToMultiKeyOverview}
+            onNavigateToRoom={handleNavigateToRoom}
+            multiKeyRooms={preloadedData.currentProperty?.rooms}
+            kitchenModuleEnabled={(() => {
+              console.log('[App] All modules:', preloadedData.modules);
+              const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
+              console.log('[App] Kitchen module found:', kitchenModule);
+              const isEnabled = kitchenModule?.is_enabled ?? true;
+              console.log('[App] Kitchen enabled:', isEnabled);
+              return isEnabled;
+            })()}
           />
         )}
 
@@ -1078,122 +1183,214 @@ ${itemsStr}
           onSendTestNotification={handleSendTestNotification}
         />
 
+        <DemoDataModal
+          isOpen={isDemoModalOpen}
+          onClose={() => setIsDemoModalOpen(false)}
+          propertyId={preloadedData.currentProperty?.id}
+        />
+
         {/* Main Flowbite Dashboard Container */}
         {isAuthenticated && (
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
 
-              {activeTab === 'dashboard' && (
-                <OperationalDashboard
+              {/* MultiKey room view - takes priority over everything */}
+              {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
+                <ErrorBoundary section="Multi-Key Property Overview">
+                  <MultiKeyPropertyOverview
+                  propertyId={preloadedData.currentProperty?.id}
+                  propertySlug={multiKeyPropertySlug}
+                  selectedRoomSlug={selectedRoomSlugOverride}
+                  onNavigateToRoom={handleNavigateToRoom}
+                  onBackToOverview={handleNavigateToMultiKeyOverview}
+                  activeTab={activeTab}
+                  setActiveTab={handleNavigateTab}
                   guests={guests}
-                  onNavigate={(tab) => handleNavigateTab(tab)}
-                  onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
-                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                />
-              )}
-
-              {activeTab === 'guests' && (
-                <GuestManagement
-                  guests={guests}
+                  menu={menu}
                   receipts={receipts}
                   onAddGuest={handleAddGuest}
                   onCheckoutGuest={handleCheckoutGuest}
-                  activeMenuItemKey={activeMenuItemKey}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                  menu={menu}
-                />
-              )}
-
-              {activeTab === 'kitchen' && (
-                <KitchenManagement
-                  guests={guests}
-                  menu={menu}
                   onAddMenuItem={handleAddMenuItem}
-                  onRequestMaterial={handleRequestMaterial}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                  activeMenuItemKey={activeMenuItemKey}
-                  isTestingMode={isTestingMode}
-                />
-              )}
-
-              {activeTab === 'inventory' && (
-                <InventoryManagement
                   onUpdateStock={handleUpdateStock}
                   onAddInventoryItem={handleAddInventoryItem}
                   onUpdateItemImage={handleUpdateInventoryItemImage}
+                  onDispatchTelegram={dispatchTelegramAlert}
                   activeMenuItemKey={activeMenuItemKey}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                  onLogAudit={logAudit}
-                />
-              )}
-
-              {activeTab === 'petty_cash' && activeMenuItemKey === 'edit_expense_items' && (
-                <ExpenseItemsManagement />
-              )}
-
-              {activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
-                <CashDrawerManager
-                  onLogAudit={logAudit}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                />
-              )}
-
-              {activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
-                <PettyCashManagement
-                  onDispatchTelegram={dispatchTelegramAlert}
-                />
-              )}
-
-              {activeTab === 'staff' && (
-                <StaffManagement
-                  activeMenuItemKey={activeMenuItemKey}
-                  auditLogs={auditLogs}
-                  onLogAudit={logAudit}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                />
-              )}
-
-              {activeTab === 'analytics' && (
-                <AnalyticsDashboard
-                  receipts={receipts}
-                  guests={guests}
-                  activeMenuItemKey={activeMenuItemKey}
+                  onSetActiveMenuItemKey={setActiveMenuItemKey}
+                  isTestingMode={isTestingMode}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                />
-              )}
+                  />
+                </ErrorBoundary>
+              ) : null}
 
-              {activeTab === 'audit_logs' && (
-                <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
-              )}
-
-              {activeTab === 'export' && (
-                <DataExportCenter
+              {/* Dashboard tab - MultiKey Property Overview (when Overview button clicked) */}
+              {!selectedRoomSlugOverride && activeMenuItemKey === 'multikey_property_overview' && preloadedData.isMultiKeyProperty ? (
+                <ErrorBoundary section="Multi-Key Property Overview">
+                  <MultiKeyPropertyOverview
+                  propertyId={preloadedData.currentProperty?.id}
+                  propertySlug={multiKeyPropertySlug}
+                  selectedRoomSlug={null}
+                  onNavigateToRoom={handleNavigateToRoom}
+                  onBackToOverview={handleNavigateToMultiKeyOverview}
+                  activeTab={activeTab}
+                  setActiveTab={handleNavigateTab}
                   guests={guests}
-                  receipts={receipts}
                   menu={menu}
-                  auditLogs={auditLogs}
-                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                />
-              )}
-
-              {activeTab === 'menu_manager' && (
-                <MenuManager
-                  foodMenu={menu}
-                  onAddFoodItem={handleAddMenuItem}
-                  onUpdateFoodItem={handleUpdateMenuItem}
-                  onDeleteFoodItem={handleDeleteMenuItem}
-                  navItems={navItems}
-                  onUpdateNavItems={handleUpdateNavItems}
+                  receipts={receipts}
+                  onAddGuest={handleAddGuest}
+                  onCheckoutGuest={handleCheckoutGuest}
+                  onAddMenuItem={handleAddMenuItem}
+                  onUpdateStock={handleUpdateStock}
+                  onAddInventoryItem={handleAddInventoryItem}
+                  onUpdateItemImage={handleUpdateInventoryItemImage}
+                  onDispatchTelegram={dispatchTelegramAlert}
                   activeMenuItemKey={activeMenuItemKey}
+                  onSetActiveMenuItemKey={setActiveMenuItemKey}
+                  isTestingMode={isTestingMode}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                />
+                  />
+                </ErrorBoundary>
+              ) : !selectedRoomSlugOverride && activeTab === 'dashboard' ? (
+                <ErrorBoundary section="Operational Dashboard">
+                  <OperationalDashboard
+                    guests={guests}
+                    onNavigate={(tab) => handleNavigateTab(tab)}
+                    onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  />
+                </ErrorBoundary>
+              ) : null}
+
+              {!selectedRoomSlugOverride && activeTab === 'guests' && (
+                <ErrorBoundary section="Guest Management">
+                  <GuestManagement
+                    guests={guests}
+                    receipts={receipts}
+                    onAddGuest={handleAddGuest}
+                    onCheckoutGuest={handleCheckoutGuest}
+                    activeMenuItemKey={activeMenuItemKey}
+                    onDispatchTelegram={dispatchTelegramAlert}
+                    menu={menu}
+                    isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                    rooms={preloadedData.currentProperty?.rooms}
+                    selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                  />
+                </ErrorBoundary>
               )}
 
-              {activeTab === 'petty_cash' && activeMenuItemKey === 'misc_charges' && (
-                <MiscChargesManagement onLogAudit={logAudit} />
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (
+                <ErrorBoundary section="Kitchen Management">
+                  <KitchenManagement
+                    guests={guests}
+                    menu={menu}
+                    onAddMenuItem={handleAddMenuItem}
+                    onRequestMaterial={handleRequestMaterial}
+                    onDispatchTelegram={dispatchTelegramAlert}
+                    activeMenuItemKey={activeMenuItemKey}
+                    isTestingMode={isTestingMode}
+                  />
+                </ErrorBoundary>
               )}
 
-              {activeTab === 'telegram' && (
+              {!selectedRoomSlugOverride && activeTab === 'inventory' && (
+                <ErrorBoundary section="Inventory Management">
+                  <InventoryManagement
+                    onUpdateStock={handleUpdateStock}
+                    onAddInventoryItem={handleAddInventoryItem}
+                    onUpdateItemImage={handleUpdateInventoryItemImage}
+                    activeMenuItemKey={activeMenuItemKey}
+                    onDispatchTelegram={dispatchTelegramAlert}
+                    onLogAudit={logAudit}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey === 'edit_expense_items' && (
+                <ErrorBoundary section="Expense Items Management">
+                  <ExpenseItemsManagement />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
+                <ErrorBoundary section="Cash Drawer Manager">
+                  <CashDrawerManager
+                    onLogAudit={logAudit}
+                    onDispatchTelegram={dispatchTelegramAlert}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
+                <ErrorBoundary section="Petty Cash Management">
+                  <PettyCashManagement
+                    onDispatchTelegram={dispatchTelegramAlert}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'staff' && (
+                <ErrorBoundary section="Staff Management">
+                  <StaffManagement
+                    activeMenuItemKey={activeMenuItemKey}
+                    auditLogs={auditLogs}
+                    onLogAudit={logAudit}
+                    onDispatchTelegram={dispatchTelegramAlert}
+                    tenantId={preloadedData.currentProperty?.tenant_id}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'analytics' && (
+                <ErrorBoundary section="Analytics Dashboard">
+                  <AnalyticsDashboard
+                    receipts={receipts}
+                    guests={guests}
+                    activeMenuItemKey={activeMenuItemKey}
+                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'audit_logs' && (
+                <ErrorBoundary section="Audit Logs">
+                  <AuditLogsView logs={auditLogs} receipts={receipts} activeMenuItemKey={activeMenuItemKey} />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'export' && (
+                <ErrorBoundary section="Data Export">
+                  <DataExportCenter
+                    guests={guests}
+                    receipts={receipts}
+                    menu={menu}
+                    auditLogs={auditLogs}
+                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'menu_manager' && (
+                <ErrorBoundary section="Menu Manager">
+                  <MenuManager
+                    foodMenu={menu}
+                    onAddFoodItem={handleAddMenuItem}
+                    onUpdateFoodItem={handleUpdateMenuItem}
+                    onDeleteFoodItem={handleDeleteMenuItem}
+                    navItems={navItems}
+                    onUpdateNavItems={handleUpdateNavItems}
+                    activeMenuItemKey={activeMenuItemKey}
+                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey === 'misc_charges' && (
+                <ErrorBoundary section="Misc Charges Management">
+                  <MiscChargesManagement onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'telegram' && (
                 <TelegramNotificationModal
                   isOpen={true}
                   onClose={() => setIsTelegramModalOpen(false)}
@@ -1204,6 +1401,12 @@ ${itemsStr}
                   isEmbedded={true}
                   onLogAudit={logAudit}
                 />
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'ical_sync' && (
+                <ErrorBoundary section="iCal Sync Manager">
+                  <ICalSyncManager propertyId={preloadedData.currentProperty?.id} />
+                </ErrorBoundary>
               )}
             </main>
           </div>
@@ -1245,6 +1448,11 @@ function AppBodyWithData({ preloadedData }: { preloadedData: PreloadedData }) {
 }
 
 export function App() {
+  // Apply default theme immediately to prevent white button flash on load
+  React.useMemo(() => {
+    applyThemeSettings(getDefaultTheme());
+  }, []);
+
   const [userSession, setUserSession] = useState<{
     username: string;
     role: string;

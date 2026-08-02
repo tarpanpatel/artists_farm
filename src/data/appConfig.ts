@@ -28,6 +28,7 @@ export const KITCHEN_MODULE_NAV_KEYS = new Set([
   'kitchen_purchases',
   'edit_food_menu',
   'edit_kitchen_stock',
+  'purchase_analytics',
 ]);
 
 export function isKitchenModuleNavItem(item: { tabKey: string; uniqueKey?: string }): boolean {

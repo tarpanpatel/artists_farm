@@ -7,6 +7,7 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 interface HeaderProps {
   onLogout?: () => void;
   onOpenTelegramModal: () => void;
+  onOpenDemoModal?: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   isIconOnly: boolean;
@@ -22,6 +23,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenTelegramModal,
+  onOpenDemoModal,
   isSidebarOpen,
   onToggleSidebar,
   isIconOnly,
@@ -171,6 +173,19 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="sm:hidden">
                 {isTestingMode ? '🧪 TEST' : '🧪 Test'}
               </span>
+            </button>
+          )}
+
+          {/* Test Data Button */}
+          {onOpenDemoModal && (
+            <button
+              onClick={onOpenDemoModal}
+              title="Open Test Data Center - Generate demo data for testing"
+              aria-label="Test Data Center"
+              className="btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-950/50"
+            >
+              <span className="text-lg">⚗️</span>
+              <span className="hidden sm:inline">Test</span>
             </button>
           )}
 

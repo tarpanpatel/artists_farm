@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . "/testing_sandbox.php";
 require_once __DIR__ . "/property_resolver.php";
+require_once __DIR__ . "/../database/migrations.php";
 
 $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
@@ -31,8 +32,8 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
 } else {
     // Online Production Credentials
     $db_host = 'localhost';
-    $live_db = 'artists_farm';
-    $db_user = 'artist_farm';
+    $live_db = 'apartment_site';
+    $db_user = 'apartment_site';
     $db_pass = getenv('DB_PASSWORD') ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : null);
     if ($db_pass === null) {
         http_response_code(500);
@@ -82,6 +83,9 @@ try {
     $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
       ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
       ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
+
+    // Initialize all required database tables
+    initializeDatabaseTables($pdo);
 
 } catch (PDOException $e) {
     if ($is_testing_mode) {

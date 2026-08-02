@@ -52,8 +52,22 @@ function getAllModules($pdo) {
 
 /**
  * Get a property's modules with their enabled state
+ * For MULTI_KEY_ROOM properties, resolves to parent property modules
  */
 function getPropertyModules($pdo, $propertyId) {
+    // Check if this is a MULTI_KEY_ROOM - if so, resolve to parent property
+    $stmt = $pdo->prepare("
+        SELECT property_type, parent_property_id FROM properties
+        WHERE id = ?
+    ");
+    $stmt->execute([$propertyId]);
+    $property = $stmt->fetch();
+
+    // If this is a room, use parent property's modules instead
+    if ($property && $property['property_type'] === 'MULTI_KEY_ROOM' && $property['parent_property_id']) {
+        $propertyId = $property['parent_property_id'];
+    }
+
     $stmt = $pdo->prepare("
         SELECT sm.*, COALESCE(pm.is_enabled, sm.default_enabled) as is_enabled, pm.config
         FROM system_modules sm
@@ -62,6 +76,35 @@ function getPropertyModules($pdo, $propertyId) {
     ");
     $stmt->execute([$propertyId]);
     return $stmt->fetchAll();
+}
+
+/**
+ * Get modules for ALL properties at once (batch query - much faster than individual calls)
+ */
+function getAllPropertyModules($pdo) {
+    $stmt = $pdo->query("
+        SELECT
+            p.id as property_id,
+            p.slug as property_slug,
+            sm.slug as module_slug,
+            COALESCE(pm.is_enabled, sm.default_enabled) as is_enabled
+        FROM properties p
+        CROSS JOIN system_modules sm
+        LEFT JOIN property_modules pm ON sm.slug = pm.module_slug AND pm.property_id = p.id
+        ORDER BY p.id, sm.category, sm.name
+    ");
+
+    $result = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if (!isset($result[$row['property_id']])) {
+            $result[$row['property_id']] = [];
+        }
+        $result[$row['property_id']][] = [
+            'module_slug' => $row['module_slug'],
+            'is_enabled' => (bool)$row['is_enabled']
+        ];
+    }
+    return $result;
 }
 
 /**

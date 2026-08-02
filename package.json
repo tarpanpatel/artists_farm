@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3000"
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "monitor": "node browser-monitor.js"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.2",
@@ -20,6 +21,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.4",
     "apexcharts": "^6.6.1",
+    "chrome-remote-interface": "^0.34.0",
     "clsx": "^2.1.1",
     "flowbite-react": "^0.12.17",
     "html-to-image": "^1.11.13",

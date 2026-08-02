@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye } from 'lucide-react';
-import { CustomCSSOverride } from './CustomCSSOverride';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign } from 'lucide-react';
+import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
+import { DefaultExpensesManager } from './DefaultExpensesManager';
 
 interface RootAdminDashboardProps {
   username: string;
@@ -10,7 +11,7 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'css_override' | 'edit_main_menu';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses';
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -68,22 +69,27 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       section: 'tenants_properties' as SectionType,
     },
     {
+      id: 'default_expenses',
+      label: 'Default Expenses (MK)',
+      icon: DollarSign,
+      section: 'default_expenses' as SectionType,
+    },
+    {
       id: 'edit_main_menu',
       label: 'Edit Main Menu',
       icon: Menu,
       section: 'edit_main_menu' as SectionType,
     },
     {
-      id: 'css_override',
-      label: 'CSS Override',
-      icon: Paintbrush,
-      section: 'css_override' as SectionType,
+      id: 'appearance',
+      label: 'Appearance',
+      icon: Palette,
+      section: 'appearance' as SectionType,
     },
   ];
 
   const handleTelescopeOpen = () => {
-    const baseUrl = window.location.pathname.replace(/\/[^/]*$/, '');
-    window.open(`${baseUrl}/php/errors/`, '_blank');
+    window.open('/php/errors/', '_blank');
   };
 
   return (
@@ -154,13 +160,15 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               {activeSection === 'dashboard' && 'Dashboard'}
               {activeSection === 'tenants_properties' && 'Tenants & Properties'}
               {activeSection === 'edit_main_menu' && 'Edit Main Menu'}
-              {activeSection === 'css_override' && 'Custom CSS Override'}
+              {activeSection === 'default_expenses' && 'Default Expenses (MultiKey)'}
+              {activeSection === 'appearance' && 'Appearance Settings'}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               {activeSection === 'dashboard' && 'System overview and analytics'}
               {activeSection === 'tenants_properties' && 'Manage all tenants and their properties'}
               {activeSection === 'edit_main_menu' && 'Global navigation menu for all properties'}
-              {activeSection === 'css_override' && 'System-wide styling configuration'}
+              {activeSection === 'default_expenses' && 'System expense categories and defaults'}
+              {activeSection === 'appearance' && 'Customize theme colors and CSS styling'}
             </p>
           </div>
         </header>
@@ -233,6 +241,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             <PlatformPropertyManagement />
           )}
 
+          {/* Default Expenses Section */}
+          {activeSection === 'default_expenses' && (
+            <DefaultExpensesManager />
+          )}
+
           {/* Edit Main Menu Section */}
           {activeSection === 'edit_main_menu' && (
             <NavMenuEditor
@@ -243,9 +256,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             />
           )}
 
-          {/* CSS Override Section */}
-          {activeSection === 'css_override' && (
-            <CustomCSSOverride activeRole={activeRole} />
+          {/* Appearance Settings Section */}
+          {activeSection === 'appearance' && (
+            <AppearanceSettings activeRole={activeRole} />
           )}
         </div>
       </main>

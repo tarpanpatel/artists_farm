@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, ArrowDown, X } from 'lucide-react';
+import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, ArrowDown, X, Lock } from 'lucide-react';
 
 const STORAGE_KEY = 'artists_farm_custom_css';
 const STYLE_ID = 'artists-farm-custom-css-override';
@@ -7,6 +7,10 @@ const LUCIDE_STORAGE_KEY = 'artists_farm_lucide_settings';
 const LUCIDE_STYLE_ID = 'artists-farm-lucide-global';
 
 const DEFAULT_LUCIDE = { size: 24, strokeWidth: 2, color: '#334155' };
+
+interface CustomCSSOverrideProps {
+  activeRole?: string;
+}
 
 function injectCSS(css: string) {
   let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
@@ -71,12 +75,15 @@ interface IconEntry {
   Component: React.ComponentType<any>;
 }
 
-export const CustomCSSOverride: React.FC = () => {
+export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole = '' }) => {
+  const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
+
   const [css, setCss] = useState<string>('');
   const [savedCss, setSavedCss] = useState<string>('');
   const [isApplied, setIsApplied] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [lastSaved, setLastSaved] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,16 +103,58 @@ export const CustomCSSOverride: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const iconBrowserRef = useRef<HTMLDivElement>(null);
 
+  // Load system settings from API on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) || DEFAULT_CSS;
-    setCss(stored);
-    setSavedCss(stored);
-    if (stored !== DEFAULT_CSS) {
-      injectCSS(stored);
-      setIsApplied(true);
-      setLastSaved(new Date().toLocaleTimeString());
+    if (!isRootAdmin) {
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    const loadSettings = async () => {
+      try {
+        const response = await fetch(`/php/api/router.php?action=get_system_settings`, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data) {
+          const settings = data.data;
+          if (settings.custom_css && settings.custom_css !== DEFAULT_CSS) {
+            setCss(settings.custom_css);
+            setSavedCss(settings.custom_css);
+            injectCSS(settings.custom_css);
+            setIsApplied(true);
+            setLastSaved(new Date().toLocaleTimeString());
+          } else {
+            setCss(DEFAULT_CSS);
+            setSavedCss(DEFAULT_CSS);
+          }
+
+          if (settings.lucide_settings) {
+            try {
+              const lucide = JSON.parse(settings.lucide_settings);
+              setIconSize(lucide.size ?? DEFAULT_LUCIDE.size);
+              setIconStroke(lucide.strokeWidth ?? DEFAULT_LUCIDE.strokeWidth);
+              setIconColor(lucide.color ?? DEFAULT_LUCIDE.color);
+              setCustomColor(lucide.color ?? DEFAULT_LUCIDE.color);
+              setLucideSaved(true);
+              injectLucideGlobal(lucide.size, lucide.strokeWidth, lucide.color);
+            } catch (e) {
+              console.error('Failed to parse lucide settings:', e);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load system settings:', err);
+        setCss(DEFAULT_CSS);
+        setSavedCss(DEFAULT_CSS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [isRootAdmin]);
 
   // Load saved Lucide icon settings on mount
   useEffect(() => {
@@ -170,21 +219,64 @@ export const CustomCSSOverride: React.FC = () => {
     setIsApplied(true);
   };
 
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, css);
-    injectCSS(css);
-    setSavedCss(css);
-    setIsApplied(true);
-    setLastSaved(new Date().toLocaleTimeString());
+  const handleSave = async () => {
+    if (!isRootAdmin) return;
+    try {
+      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'root_admin',
+        },
+        body: JSON.stringify({ setting_key: 'custom_css', setting_value: css }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        injectCSS(css);
+        setSavedCss(css);
+        setIsApplied(true);
+        setLastSaved(new Date().toLocaleTimeString());
+        setToast('CSS saved successfully to all properties');
+        setTimeout(() => setToast(null), 2500);
+      } else {
+        setToast('Failed to save CSS');
+        setTimeout(() => setToast(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to save CSS:', err);
+      setToast('Error saving CSS');
+      setTimeout(() => setToast(null), 2500);
+    }
   };
 
-  const handleReset = () => {
-    setCss(DEFAULT_CSS);
-    localStorage.removeItem(STORAGE_KEY);
-    removeCSS();
-    setSavedCss(DEFAULT_CSS);
-    setIsApplied(false);
-    setLastSaved('');
+  const handleReset = async () => {
+    if (!isRootAdmin) return;
+    try {
+      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'root_admin',
+        },
+        body: JSON.stringify({ setting_key: 'custom_css', setting_value: DEFAULT_CSS }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setCss(DEFAULT_CSS);
+        removeCSS();
+        setSavedCss(DEFAULT_CSS);
+        setIsApplied(false);
+        setLastSaved('');
+        setToast('CSS reset to default for all properties');
+        setTimeout(() => setToast(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to reset CSS:', err);
+      setToast('Error resetting CSS');
+      setTimeout(() => setToast(null), 2500);
+    }
   };
 
   const handleCopy = () => {
@@ -215,25 +307,61 @@ export const CustomCSSOverride: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleLucideSave = () => {
-    const data = { size: iconSize, strokeWidth: iconStroke, color: iconColor };
-    localStorage.setItem(LUCIDE_STORAGE_KEY, JSON.stringify(data));
-    injectLucideGlobal(iconSize, iconStroke, iconColor);
-    setLucideSaved(true);
-    setToast('Icon settings applied site-wide');
-    setTimeout(() => setToast(null), 2500);
+  const handleLucideSave = async () => {
+    if (!isRootAdmin) return;
+    try {
+      const data = { size: iconSize, strokeWidth: iconStroke, color: iconColor };
+      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'root_admin',
+        },
+        body: JSON.stringify({ setting_key: 'lucide_settings', setting_value: JSON.stringify(data) }),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        injectLucideGlobal(iconSize, iconStroke, iconColor);
+        setLucideSaved(true);
+        setToast('Icon settings applied to all properties');
+        setTimeout(() => setToast(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to save icon settings:', err);
+      setToast('Error saving icon settings');
+      setTimeout(() => setToast(null), 2500);
+    }
   };
 
-  const handleLucideReset = () => {
-    setIconSize(DEFAULT_LUCIDE.size);
-    setIconStroke(DEFAULT_LUCIDE.strokeWidth);
-    setIconColor(DEFAULT_LUCIDE.color);
-    setCustomColor(DEFAULT_LUCIDE.color);
-    localStorage.removeItem(LUCIDE_STORAGE_KEY);
-    removeLucideGlobal();
-    setLucideSaved(false);
-    setToast('Icon settings reset to defaults');
-    setTimeout(() => setToast(null), 2500);
+  const handleLucideReset = async () => {
+    if (!isRootAdmin) return;
+    try {
+      const response = await fetch(`/php/api/router.php?action=save_system_settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'root_admin',
+        },
+        body: JSON.stringify({ setting_key: 'lucide_settings', setting_value: JSON.stringify(DEFAULT_LUCIDE) }),
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        setIconSize(DEFAULT_LUCIDE.size);
+        setIconStroke(DEFAULT_LUCIDE.strokeWidth);
+        setIconColor(DEFAULT_LUCIDE.color);
+        setCustomColor(DEFAULT_LUCIDE.color);
+        removeLucideGlobal();
+        setLucideSaved(false);
+        setToast('Icon settings reset for all properties');
+        setTimeout(() => setToast(null), 2500);
+      }
+    } catch (err) {
+      console.error('Failed to reset icon settings:', err);
+      setToast('Error resetting icon settings');
+      setTimeout(() => setToast(null), 2500);
+    }
   };
 
   const handleCopyIconImport = useCallback((name: string) => {
@@ -251,6 +379,34 @@ export const CustomCSSOverride: React.FC = () => {
   }, [iconSize]);
 
   const hasChanges = css !== savedCss;
+
+  // Only root admins can access this feature
+  if (!isRootAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4">
+          <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-red-900 dark:text-red-100 mb-1">Access Restricted</h3>
+            <p className="text-sm text-red-800 dark:text-red-300">
+              Only root administrators can modify system-wide settings like custom CSS and icon configurations.
+              These changes apply to all properties under all tenants.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <p className="text-slate-600 dark:text-slate-400">Loading system settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

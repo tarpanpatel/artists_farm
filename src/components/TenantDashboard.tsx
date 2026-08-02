@@ -7,6 +7,8 @@ interface Property {
   slug: string;
   status: string;
   tailwind_color_scheme: string;
+  property_type?: string;
+  parent_property_id?: number;
 }
 
 interface TenantDashboardProps {
@@ -137,7 +139,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Active Properties</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {properties.filter((p) => p.status === 'active').length}
+                  {properties.filter((p) => p.status === 'active' && p.property_type !== 'MULTI_KEY_ROOM').length}
                 </p>
               </div>
               <Users className="w-8 h-8 text-green-600 dark:text-green-400 opacity-20" />
@@ -165,7 +167,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {properties.map((property) => (
+              {properties.filter((p) => p.property_type !== 'MULTI_KEY_ROOM').map((property) => (
                 <a
                   key={property.id}
                   href={`/artists_farm/vrikshawan/${property.slug}/`}

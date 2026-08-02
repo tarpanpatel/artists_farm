@@ -4,7 +4,7 @@ import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
-import { fetchExpenseItemPricesFromDB, fetchExpenseItemsFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -100,6 +100,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Expense items list from database (replaces hardcoded array)
   const [expenseItems, setExpenseItems] = useState<string[]>([]);
 
+  interface ExpenseItem {
+    id: number;
+    label: string;
+    category: string;
+    default_amount: number;
+    is_system_default: boolean;
+  }
+
+  interface CategoryGroup {
+    [key: string]: ExpenseItem[];
+  }
+
+  // Structured expense data from get_misc_catalog
+  const [expensesByCategory, setExpensesByCategory] = useState<CategoryGroup>({});
+
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
   const [editingCell, setEditingCell] = useState<{ id: string; field: 'date' | 'amount' } | null>(null);
@@ -118,11 +133,30 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         setItemPrices(prices);
       }
     });
-    fetchExpenseItemsFromDB().then((items) => {
-      if (items && items.length > 0) {
-        setExpenseItems(items);
-      }
-    });
+
+    // Fetch from get_misc_catalog endpoint
+    fetch('/php/api/router.php?action=get_misc_catalog', {
+      credentials: 'include',
+    })
+      .then(res => res.json())
+      .then(data => {
+        if ((data.success || data.status === 'success') && data.data) {
+          setExpensesByCategory(data.data);
+          // Flatten to get all item labels for autocomplete
+          const allItems = Object.values(data.data)
+            .flat()
+            .map((item: any) => item.label)
+            .sort();
+          setExpenseItems(allItems);
+          // Build price map
+          const prices: Record<string, number> = {};
+          Object.values(data.data).flat().forEach((item: any) => {
+            prices[item.label] = item.default_amount;
+          });
+          setItemPrices(prev => ({ ...prev, ...prices }));
+        }
+      })
+      .catch(err => console.error('Failed to fetch expense categories:', err));
   }, []);
 
   // Derive list of unique months in entries for dropdown

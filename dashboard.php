@@ -12,7 +12,7 @@ require_once __DIR__ . '/php/config/property_resolver.php';
 
 // Check if tenant is logged in
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['tenant_id'])) {
-    header('Location: /artists_farm/tenant_login.php');
+    header('Location: /artists_farm/', true, 302);
     exit;
 }
 
@@ -29,7 +29,7 @@ if ($propertySlug) {
     $stmt->execute([$propertySlug, $tenantId]);
     if (!$stmt->fetch()) {
         session_destroy();
-        header('Location: /artists_farm/tenant_login.php?error=access_denied');
+        header('Location: /artists_farm/?error=access_denied', true, 302);
         exit;
     }
 }
@@ -41,7 +41,7 @@ $tenant = $stmt->fetch();
 
 if (!$tenant) {
     session_destroy();
-    header('Location: /artists_farm/tenant_login.php');
+    header('Location: /artists_farm/', true, 302);
     exit;
 }
 

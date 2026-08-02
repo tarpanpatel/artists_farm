@@ -5,6 +5,7 @@ import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { MultiKeyRoomDrawer } from './MultiKeyRoomDrawer';
 
 export type TabType =
   | 'dashboard'
@@ -19,7 +20,8 @@ export type TabType =
   | 'export'
   | 'telegram'
   | 'misc_charges'
-  | 'custom_css';
+  | 'custom_css'
+  | 'ical_sync';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -33,6 +35,15 @@ interface NavigationProps {
   onToggleIconOnly: () => void;
   navItems?: NavMenuItem[];
   guests?: import('../types').Guest[];
+  isMultiKeyProperty?: boolean;
+  multiKeyPropertyId?: number;
+  multiKeyPropertyName?: string;
+  multiKeyPropertySlug?: string;
+  currentRoomSlug?: string | null;
+  onNavigateToMultiKeyOverview?: () => void;
+  onNavigateToRoom?: (roomSlug: string) => void;
+  multiKeyRooms?: any[];
+  kitchenModuleEnabled?: boolean;
 }
 
 type TreeNode = NavMenuItem & { children: TreeNode[] };
@@ -62,6 +73,15 @@ export const Navigation: React.FC<NavigationProps> = ({
   onToggleIconOnly,
   navItems,
   guests,
+  isMultiKeyProperty = false,
+  multiKeyPropertyId,
+  multiKeyPropertyName,
+  multiKeyPropertySlug,
+  currentRoomSlug,
+  onNavigateToMultiKeyOverview,
+  onNavigateToRoom,
+  multiKeyRooms,
+  kitchenModuleEnabled = true,
 }) => {
   const { activeRole, logout } = useAuth();
   const { lowStockCount, requisitions } = useInventoryContext();
@@ -104,14 +124,27 @@ export const Navigation: React.FC<NavigationProps> = ({
     return () => clearTimeout(timer);
   }, [activeMenuItemKey]);
 
-  const isVisible = useCallback((allowedRoles?: string[]) => {
+  const isVisible = useCallback((allowedRoles?: string[], itemTabKey?: string) => {
+    // Telegram is only visible to root admin
+    if (itemTabKey === 'telegram') {
+      const normalizedActiveRole = activeRole.toLowerCase().trim();
+      return normalizedActiveRole === 'root admin';
+    }
+
+    // Hide kitchen items if kitchen module is disabled
+    const kitchenItems = new Set(['kitchen', 'take_food_order', 'kitchen_orders', 'staff_meals']);
+    if (kitchenItems.has(itemTabKey || '') && !kitchenModuleEnabled) {
+      console.log(`[Navigation] Hiding kitchen item: ${itemTabKey} (kitchenModuleEnabled: ${kitchenModuleEnabled})`);
+      return false;
+    }
+
     if (!allowedRoles || allowedRoles.length === 0) return true;
     // Case-insensitive role comparison
     const normalizedActiveRole = activeRole.toLowerCase().trim();
     // Super admin and root admin have access to all menu items
     if (normalizedActiveRole === 'super admin' || normalizedActiveRole === 'root admin') return true;
     return allowedRoles.some(role => role.toLowerCase().trim() === normalizedActiveRole);
-  }, [activeRole]);
+  }, [activeRole, kitchenModuleEnabled]);
 
   const { pendingOrdersCount } = useKitchenContext();
 
@@ -128,7 +161,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const buildTree = useCallback((flat: NavMenuItem[]): TreeNode[] => {
     const map = new Map<string, TreeNode>();
     const roots: TreeNode[] = [];
-    const visible = flat.filter(i => i.isVisible && isVisible(i.roles));
+    const visible = flat.filter(i => i.isVisible && isVisible(i.roles, i.tabKey));
 
     visible.forEach(item => map.set(item.id, { ...item, children: [] }));
     visible.forEach(item => {
@@ -147,11 +180,23 @@ export const Navigation: React.FC<NavigationProps> = ({
     return roots;
   }, [navItems, isVisible]);
 
-  const tree = useMemo(() => buildTree(navItems), [buildTree, navItems]);
+  // Filter out staff and expenses items when viewing a MultiKey room (not the parent)
+  const filteredNavItems = useMemo(() => {
+    if (!isMultiKeyProperty || !currentRoomSlug) {
+      return navItems; // Show all items for single properties or MultiKey parent
+    }
+
+    // Hide staff and expenses items in room views
+    const staffExpenseTabKeys = new Set(['staff_payees_control', 'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions', 'staff', 'expenses', 'petty_cash', 'misc_charges', 'cash_drawer']);
+
+    return navItems.filter(item => !staffExpenseTabKeys.has(item.tabKey));
+  }, [navItems, isMultiKeyProperty, currentRoomSlug]);
+
+  const tree = useMemo(() => buildTree(filteredNavItems), [buildTree, filteredNavItems]);
 
   const customUrlRootItems = useMemo(() => {
-    return navItems.filter(i => i.isVisible && i.customUrl && !i.parentId && isVisible(i.roles));
-  }, [navItems, isVisible]);
+    return filteredNavItems.filter(i => i.isVisible && i.customUrl && !i.parentId && isVisible(i.roles, i.tabKey));
+  }, [filteredNavItems, isVisible]);
 
   const handleTabClick = useCallback((item: { tabKey: string; uniqueKey: string; customUrl?: string; openInNewTab?: boolean }) => {
     if (item.customUrl) {
@@ -212,7 +257,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     return result;
   }, [getBadge]);
 
-  const allFlatItems = useMemo(() => flattenAllItems(tree), [flattenAllItems, tree]);
+  const allFlatItems = useMemo(() => flattenAllItems(tree), [flattenAllItems, tree, filteredNavItems]);
 
   const renderNode = (node: TreeNode, depth: number = 0): React.ReactNode => {
     const hasChildren = node.children.length > 0;
@@ -383,6 +428,62 @@ export const Navigation: React.FC<NavigationProps> = ({
               <div className="px-3 pb-2 mb-2 border-b border-gray-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
                 Hello, Tarpan
               </div>
+
+              {/* MultiKey Property Rooms as Menu Items */}
+              {isMultiKeyProperty && multiKeyPropertyId && multiKeyPropertyName && multiKeyPropertySlug && onNavigateToMultiKeyOverview && onNavigateToRoom && multiKeyRooms && multiKeyRooms.length > 0 && (
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-slate-700">
+                  <div className="px-3 pb-2 mb-2 text-xs font-bold text-slate-600 dark:text-slate-400">
+                    🏠 Rooms ({multiKeyRooms.length})
+                  </div>
+
+                  {/* Property Overview Button */}
+                  <button
+                    onClick={() => {
+                      onNavigateToMultiKeyOverview();
+                      setActiveMenuItemKey('multikey_overview');
+                      if (window.innerWidth < 768) onCloseSidebar();
+                    }}
+                    className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer mb-2 ${
+                      activeMenuItemKey === 'multikey_overview'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <span className="text-lg">🏢</span>
+                    <span className="truncate">Overview</span>
+                  </button>
+
+                  {/* Room List */}
+                  <div className="space-y-1">
+                    {multiKeyRooms.map((room) => {
+                      const isRoomActive = currentRoomSlug === room.slug;
+                      return (
+                        <button
+                          key={room.id}
+                          onClick={() => {
+                            onNavigateToRoom(room.slug);
+                            setActiveMenuItemKey(room.slug);
+                            if (window.innerWidth < 768) onCloseSidebar();
+                          }}
+                          className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                            isRoomActive
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          <span className="text-lg">🚪</span>
+                          <div className="flex-1 text-left">
+                            <span className="truncate block text-xs font-semibold">{room.name || `Room ${room.room_number}`}</span>
+                            <span className={`text-[10px] ${isRoomActive ? 'text-blue-100' : 'text-gray-500'}`}>
+                              {room.room_number}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {tree.map(node => renderNode(node, 0))}
 

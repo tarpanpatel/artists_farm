@@ -102,3 +102,12 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
     `action` TEXT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. System Settings Table (global settings for all properties/tenants)
+CREATE TABLE IF NOT EXISTS `system_settings` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `setting_key` VARCHAR(100) NOT NULL UNIQUE,
+    `setting_value` LONGTEXT NOT NULL,
+    `updated_by` VARCHAR(255) DEFAULT NULL,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

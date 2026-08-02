@@ -143,27 +143,35 @@ function getDefaultRedirect($accessInfo) {
 
 require_once __DIR__ . '/../config/database.php';
 
-// login.php, saas_admin.php, tenant_dashboard.php all live at the project root,
-// as siblings of this file's grandparent dir — relative redirects (no leading
-// slash) resolve correctly whether deployed at domain root or under a subfolder.
+/**
+ * Authentication check for legacy PHP pages
+ * Redirects to React app login if not authenticated
+ */
 function requireAuth($pdo, $requiredRole = 'property_user') {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
     if (!isset($_SESSION['user_id'])) {
-        header('Location: login.php');
+        header('Location: /artists_farm/', true, 302);
         exit;
     }
+
     $accessInfo = getUserAccessInfo($pdo, $_SESSION['user_id']);
     if (!$accessInfo) {
         session_destroy();
-        header('Location: login.php');
+        header('Location: /artists_farm/', true, 302);
         exit;
     }
+
     $roleHierarchy = ['property_user' => 1, 'tenant_admin' => 2, 'platform_admin' => 3];
     $userRoleLevel = $roleHierarchy[$accessInfo['role']] ?? 0;
     $requiredLevel = $roleHierarchy[$requiredRole] ?? 0;
+
     if ($userRoleLevel < $requiredLevel) {
-        header('Location: login.php?error=unauthorized');
+        header('Location: /artists_farm/?error=unauthorized', true, 302);
         exit;
     }
+
     return $accessInfo;
 }

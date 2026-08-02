@@ -186,6 +186,7 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
+
                 // Navigation structure is shared across every property/tenant (unlike
                 // property_modules, which controls per-property feature visibility on
                 // top of this shared structure) — intentionally not property_id-scoped.

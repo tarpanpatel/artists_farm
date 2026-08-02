@@ -8,7 +8,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
-import { saveNavMenuDB } from '../services/api';
+import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 
 interface NavMenuEditorProps {
@@ -55,13 +55,12 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
     { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
     { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
+    { label: 'iCal Sync', tabKey: 'ical_sync', uniqueKey: 'ical_sync_manager' },
     { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
     { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
-    { label: 'Edit Main Menu', tabKey: 'menu_manager', uniqueKey: 'edit_main_menu' },
     { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
     { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
     { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
-    { label: 'Custom CSS', tabKey: 'custom_css', uniqueKey: 'custom_css' },
     { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
     { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
   ];

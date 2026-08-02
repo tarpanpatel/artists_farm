@@ -33,6 +33,7 @@ interface StaffManagementProps {
   onLogAudit?: (actionText: string) => void;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
+  tenantId?: number;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -41,6 +42,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   onLogAudit,
   onDispatchTelegram,
   onAddDrawerEntry,
+  tenantId,
 }) => {
   const { showToast } = useToast();
   const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
@@ -57,7 +59,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [payees, setPayees] = useState<PayeeEntity[]>([]);
-  const roleOptions = Array.from(new Set(staff.map((member) => member.role).filter(Boolean))).sort();
+  // Available roles from site architecture (independent of staff members)
+  const roleOptions = ['Admin', 'Staff', 'Staff Kitchen', 'Staff Supervisor', 'Super Admin'];
 
   // Form States
   // 1. Create User
@@ -453,16 +456,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   return (
     <div className="space-y-6">
       {/* Navigation Sub-Tabs Header */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <span>👥</span> Property Payroll & Payee Control Center
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isAttendancePage
-              ? 'Track staff attendance and manage salary details.'
-              : 'Manage login staff credentials, core operational suppliers, and pass-through third parties.'}
-          </p>
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>👥</span> Property Payroll & Payee Control Center
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isAttendancePage
+                ? 'Track staff attendance and manage salary details.'
+                : 'Manage login staff credentials, core operational suppliers, and pass-through third parties.'}
+            </p>
+          </div>
         </div>
 
         {isAttendancePage && (
@@ -492,7 +497,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-indigo-600 pl-2.5">
                   Active System Users & Staff
                 </h3>
-                <span className="text-xs text-slate-400 font-mono">{users.length} Registered</span>
+                <div className="flex items-center gap-3">
+                  {tenantId && (
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 px-3 py-1.5 rounded-lg shadow-md">
+                      <p className="text-xs text-white font-bold">Tenant ID: <span className="font-mono text-sm">{tenantId}</span></p>
+                    </div>
+                  )}
+                  <span className="text-xs text-slate-400 font-mono">{users.length} Registered</span>
+                </div>
               </div>
 
               <DataTable

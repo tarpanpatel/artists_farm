@@ -56,6 +56,22 @@ interface TelegramNotificationModalProps {
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
 }
 
+// Identifies which templates are kitchen-related (hidden if kitchen module disabled)
+const KITCHEN_TEMPLATE_KEYS = new Set([
+  'kitchen_single_dish_ready',
+  'kitchen_new_order',
+  'kitchen_order_status',
+  'kitchen_staff_meal',
+  'kitchen_requisition_approved',
+  'item_served',
+  'staff_meal_request',
+  'material_requisition_single',
+  'requisition_material_request',
+  'requisition_stock_fulfilled',
+  'webhook_dish_served_edit',
+  'webhook_order_completed',
+]);
+
 // Fallback templates used only when DB fetch returns empty
 const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
   {
@@ -347,6 +363,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [testSent, setTestSent] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
+  const [kitchenEnabled, setKitchenEnabled] = useState(true);
 
   // Per-property Telegram connection settings (bot token, groups, per-template
   // routing) — shared between the Connection Settings drawer and the per-template
@@ -355,6 +372,40 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [tgSaving, setTgSaving] = useState(false);
   const [tgSaved, setTgSaved] = useState(false);
   const [tgRoutingSaving, setTgRoutingSaving] = useState(false);
+
+  // Fetch property modules to check if kitchen is enabled
+  const fetchPropertyModules = async () => {
+    try {
+      const propertySlug = getPropertySlug();
+      const response = await fetch(`/php/api/router.php?action=get_property_modules&property_slug=${propertySlug}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success || data.status === 'success') {
+        const modules = data.data || [];
+        const kitchen = modules.find((m: any) => m.module_slug === 'kitchen');
+        setKitchenEnabled(kitchen ? kitchen.is_enabled : true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch property modules:', err);
+      setKitchenEnabled(true); // Default to enabled on error
+    }
+  };
+
+  useEffect(() => {
+    fetchPropertyModules();
+  }, [isOpen]);
+
+  // Filter templates based on enabled modules
+  useEffect(() => {
+    const filtered = FALLBACK_TEMPLATES.filter(
+      (tpl) => !(!kitchenEnabled && KITCHEN_TEMPLATE_KEYS.has(tpl.dbKey))
+    );
+    setTemplatesList(filtered);
+    if (filtered.length > 0 && !filtered.find((t) => t.id === activeTemplateId)) {
+      setActiveTemplateId(filtered[0].id);
+    }
+  }, [kitchenEnabled, activeTemplateId]);
 
   useEffect(() => {
     fetchTelegramConfigDB().then(setTgSettings);

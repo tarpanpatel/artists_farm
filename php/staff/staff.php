@@ -44,41 +44,39 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-        // Seed staff for current property if empty - each property gets its own set
+        // Seed staff only if testing mode is enabled - production databases should start clean
         $check = $pdo->prepare("SELECT COUNT(*) FROM staff_users WHERE property_id = ?");
         $check->execute([$propertyId]);
         if ($check->fetchColumn() == 0) {
-            $seedUsers = [
-                ['7',  'Tarpan',       'Tarpan',       'Super Admin',  '+91 98281 36850', 50000, 'Active', 1, '1234', 'assets/img/qrs/qr_1784184027_6a587cdb702ba.png'],
-                ['8',  'Kamlesh',      'Kamlesh',      'Staff Supervisor', '+91 98281 12020', 25000, 'Active', 1, '1234', ''],
-                ['11', 'Rohit',        'Rohit',        'Admin',        '+91 98281 11111', 35000, 'Active', 0, '1234', ''],
-                ['12', 'Abhijeet',     'Abhijeet',     'Staff Kitchen','+91 98281 12121', 22000, 'Active', 0, '1234', ''],
-                ['13', 'Subrata',      'Subrata',      'Admin',        '+91 98281 13131', 30000, 'Active', 0, '1234', ''],
-                ['15', 'Rana Das',     'Rana Das',     'Staff',        '+91 98281 22222', 20000, 'Active', 0, '1234', ''],
-                ['16', 'Samar Sil',    'Samar Sil',    'Staff',        '+91 98281 23232', 18000, 'Active', 0, '1234', ''],
-                ['17', 'Ashish Mandal','Ashish Mandal','Staff',        '+91 98281 14141', 32000, 'Active', 0, '1234', ''],
-                ['18', 'Kinkar Sarkar','Kinkar Sarkar','Staff',        '+91 98281 19191', 18000, 'Active', 0, '1234', ''],
-                ['19', 'Ramesh',       'Ramesh',       'Staff',        '+91 98281 21212', 18000, 'Active', 0, '1234', ''],
-                ['20', 'Pranay',       'Pranay',       'Staff',        '+91 98281 20202', 18000, 'Active', 0, '1234', ''],
-            ];
-            $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            foreach ($seedUsers as $u) {
-                $stmt->execute([$u[0], $propertyId, $u[1], $u[2], $u[3], $u[4], $u[5], $u[6], $u[7], $u[8], $u[9]]);
+            $isTestingMode = isset($_COOKIE['artists_farm_testing_mode']) && $_COOKIE['artists_farm_testing_mode'] === '1';
+            if ($isTestingMode) {
+                // Only seed test data in testing mode
+                $seedUsers = [
+                    ['1',  'Staff A',      'staff_a',      'Super Admin',  '+91 98000 00001', 50000, 'Active', 1, '1234', ''],
+                    ['2',  'Staff B',      'staff_b',      'Manager',      '+91 98000 00002', 25000, 'Active', 1, '1234', ''],
+                    ['3',  'Staff C',      'staff_c',      'Admin',        '+91 98000 00003', 35000, 'Active', 0, '1234', ''],
+                ];
+                $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                foreach ($seedUsers as $u) {
+                    $stmt->execute([$u[0], $propertyId, $u[1], $u[2], $u[3], $u[4], $u[5], $u[6], $u[7], $u[8], $u[9]]);
+                }
             }
         }
 
-        // Seed default initial payees for current property if empty
+        // Seed payees only if testing mode is enabled
         $checkPayees = $pdo->prepare("SELECT COUNT(*) FROM payee_entities WHERE property_id = ?");
         $checkPayees->execute([$propertyId]);
         if ($checkPayees->fetchColumn() == 0) {
-            $seedPayees = [
-                ['1', 'Nandkishore', 'Third Party', 'assets/img/qrs/qr_1784183993_6a587cb9bcfe4.png'],
-                ['2', 'Raju', 'Vendor', ''],
-                ['3', 'Disposable Shop', 'Vendor', '']
-            ];
-            $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, type, qr_code_url) VALUES (?, ?, ?, ?, ?)");
-            foreach ($seedPayees as $p) {
-                $stmt->execute([$p[0], $propertyId, $p[1], $p[2], $p[3]]);
+            $isTestingMode = isset($_COOKIE['artists_farm_testing_mode']) && $_COOKIE['artists_farm_testing_mode'] === '1';
+            if ($isTestingMode) {
+                $seedPayees = [
+                    ['1', 'Test Vendor A', 'Vendor', ''],
+                    ['2', 'Test Vendor B', 'Vendor', ''],
+                ];
+                $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, type, qr_code_url) VALUES (?, ?, ?, ?, ?)");
+                foreach ($seedPayees as $p) {
+                    $stmt->execute([$p[0], $propertyId, $p[1], $p[2], $p[3]]);
+                }
             }
         }
     } catch (PDOException $e) {}

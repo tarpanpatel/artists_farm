@@ -25,3 +25,26 @@ php/config/db_pass.php
 .env
 .env.local
 .env.*.local
+
+# CRITICAL: Never commit private keys or credentials
+id_rsa
+id_rsa.pub
+*.pem
+*.key
+*.pfx
+
+# IDE & Build artifacts
+.sftpignore
+build/
+*.phar
+scratchpad/
+
+# Documentation summaries (optional - use git to track only working docs)
+PHASE_*_*.md
+PRE_LAUNCH_*.md
+QUICK_START_*.md
+BILLING_*.md
+
+# Temp directories
+deploylite/
+php/database/

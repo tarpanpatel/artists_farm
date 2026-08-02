@@ -39,32 +39,12 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
 
         {/* Error Message */}
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-          Invalid Property
+          Access Denied
         </h1>
         <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-          {propertySlug ? (
-            <>
-              The property <span className="font-mono font-bold">"{propertySlug}"</span> does not exist or you don't have access to it.
-            </>
-          ) : (
-            <>
-              Please access the application through a valid property URL.
-            </>
-          )}
+          You don't have access to this resource. Please contact your administrator if you believe this is an error.
         </p>
 
-        {/* Instructions */}
-        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-900 dark:text-blue-300">
-            <strong>Valid URL format:</strong>
-          </p>
-          <p className="text-xs font-mono text-blue-800 dark:text-blue-400 mt-2">
-            /artists_farm/tenant-name/property-name/
-          </p>
-          <p className="text-xs text-blue-800 dark:text-blue-400 mt-2">
-            Example: <span className="font-mono">/artists_farm/artists-farm-platform/jaipur/</span>
-          </p>
-        </div>
 
         {/* Action Button */}
         <a

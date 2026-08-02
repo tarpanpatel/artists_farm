@@ -45,11 +45,9 @@ import {
   Layers,
   Link as LinkIcon,
   Info,
-  Paintbrush
 } from 'lucide-react';
 import { MenuItem, NavMenuItem, StaffMember } from '../types';
 import { uploadImageDB } from '../services/api';
-import { CustomCSSOverride } from './CustomCSSOverride';
 import { NavMenuEditor } from './NavMenuEditor';
 import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
 import { useStaff } from '../contexts/StaffContext';
@@ -103,15 +101,13 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 }) => {
   const { staff } = useStaff();
   const { activeRole } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu' | 'custom_css'>('food_menu');
+  const [activeSubTab, setActiveSubTab] = useState<'food_menu' | 'nav_menu'>('food_menu');
 
   useEffect(() => {
     if (activeMenuItemKey === 'edit_main_menu') {
       setActiveSubTab('nav_menu');
     } else if (activeMenuItemKey === 'edit_food_menu') {
       setActiveSubTab('food_menu');
-    } else if (activeMenuItemKey === 'custom_css') {
-      setActiveSubTab('custom_css');
     }
   }, [activeMenuItemKey]);
 
@@ -522,17 +518,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <Utensils className="w-4 h-4" />
               <span>Food Catalog ({foodMenu.length})</span>
             </button>
-            <button
-              onClick={() => setActiveSubTab('custom_css')}
-              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                activeSubTab === 'custom_css'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Paintbrush className="w-4 h-4" />
-              <span>CSS Override</span>
-            </button>
           </div>
         </div>
       )}
@@ -696,11 +681,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             ))}
           </div>
         </div>
-      )}
-
-      {/* SUB-TAB 3: CUSTOM CSS OVERRIDE */}
-      {activeSubTab === 'custom_css' && (
-        <CustomCSSOverride />
       )}
 
       {/* ICON PICKER MODAL */}

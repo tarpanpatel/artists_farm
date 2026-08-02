@@ -182,3 +182,52 @@ CREATE TABLE IF NOT EXISTS `system_telegram_templates` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 11. PLATFORM THEME SETTINGS (Customizable from Root Admin Dashboard)
+CREATE TABLE IF NOT EXISTS `platform_theme_settings` (
+  `id` INT PRIMARY KEY DEFAULT 1,
+  `settings_json` LONGTEXT NOT NULL COMMENT 'JSON object containing all theme customizations',
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updated_by` VARCHAR(100) DEFAULT 'system'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert default theme settings
+INSERT IGNORE INTO `platform_theme_settings` (`id`, `settings_json`, `updated_by`) VALUES (
+  1,
+  '{
+    "colors": {
+      "primary": "#3b82f6",
+      "secondary": "#1e293b",
+      "accent": "#06b6d4",
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#ef4444",
+      "info": "#0284c7"
+    },
+    "darkMode": {
+      "background": "#0f172a",
+      "surface": "#1e293b",
+      "text": "#f1f5f9",
+      "textMuted": "#94a3b8"
+    },
+    "typography": {
+      "fontFamily": "system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto",
+      "baseFontSize": "16px",
+      "headingScale": 1.2
+    },
+    "spacing": {
+      "baseUnit": "4px"
+    },
+    "borderRadius": {
+      "small": "0.375rem",
+      "medium": "0.5rem",
+      "large": "1rem"
+    },
+    "shadows": {
+      "small": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+      "medium": "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+      "large": "0 10px 15px -3px rgb(0 0 0 / 0.1)"
+    }
+  }',
+  'system'
+);
+

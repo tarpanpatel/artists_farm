@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../errors/logger.php';
 
 /**
  * Read a property's Telegram connection settings, stored as JSON in
@@ -164,8 +165,23 @@ if (!function_exists('sendRawTelegramMessage')) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $start_time = microtime(true);
         $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
+
+        // Log Telegram API call
+        $status = ($http_code == 200) ? 'SUCCESS' : 'WARNING';
+        $preview = substr($message, 0, 60) . (strlen($message) > 60 ? '...' : '');
+        TelescopeLogger::log(
+            'telegram',
+            $status,
+            "📨 Telegram API: sendMessage to chat {$chatId} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['chat_id' => $chatId, 'message_preview' => $preview, 'http_code' => $http_code, 'error' => $error]
+        );
+
         return $response;
     }
 }

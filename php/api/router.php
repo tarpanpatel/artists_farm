@@ -7,6 +7,7 @@
 session_start();
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../errors/logger.php';
 require_once __DIR__ . '/../guests/guests.php';
 require_once __DIR__ . '/../billing/billing.php';
 require_once __DIR__ . '/../billing/receipts.php';
@@ -20,22 +21,111 @@ require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../telegram/telegram.php';
 require_once __DIR__ . '/../modules/module_manager.php';
 require_once __DIR__ . '/../licenses/licenses.php';
+require_once __DIR__ . '/../theme/theme_settings.php';
 require_once __DIR__ . '/configuration.php';
+require_once __DIR__ . '/multikey_properties.php';
 
-// Simple API Key Authentication (from environment only, no fallback)
+// === Global Error & Exception Handlers ===
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (error_reporting() & $errno) {
+        $level = 'ERROR';
+        if ($errno == E_ERROR || $errno == E_PARSE) $level = 'FATAL';
+        elseif ($errno == E_WARNING || $errno == E_CORE_WARNING || $errno == E_COMPILE_WARNING) $level = 'WARNING';
+        elseif ($errno == E_NOTICE || $errno == E_CORE_NOTICE || $errno == E_COMPILE_NOTICE) $level = 'NOTICE';
+        elseif ($errno == E_DEPRECATED) $level = 'DEPRECATED';
+
+        $shortfile = basename($errfile);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log(
+                'php',
+                $level,
+                "{$errstr} in {$shortfile}:{$errline}",
+                "PHP Error Handler",
+                ['file' => $errfile, 'line' => $errline, 'type' => $errno]
+            );
+        }
+    }
+    return false;
+});
+
+set_exception_handler(function($exception) {
+    if (class_exists('TelescopeLogger')) {
+        TelescopeLogger::log(
+            'php',
+            'FATAL',
+            "🔴 Exception: {$exception->getMessage()}",
+            "Exception Handler [{$exception->getFile()}:{$exception->getLine()}]",
+            ['message' => $exception->getMessage(), 'file' => $exception->getFile(), 'line' => $exception->getLine()]
+        );
+    }
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Server error']);
+    exit;
+});
+
+// === Simple API Key Authentication (from environment only, no fallback) ===
 $api_key = getenv('API_KEY');
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_licenses', 'check_expiring_licenses', 'login_user'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings'];
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
-// Require API key for write/delete actions
+// Require API key for write/delete actions, unless user is authenticated via session
 $is_write_action = in_array($request_method, ['POST', 'PUT', 'DELETE']);
-if ($is_write_action && $provided_key !== $api_key) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key required for write operations.']);
-    exit;
+$is_authenticated_user = isset($_SESSION['username']);
+$is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
+
+// Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
+$platform_admin_actions = ['toggle_property_module', 'update_property', 'delete_property', 'create_tenant'];
+$is_platform_admin_action = in_array($action, $platform_admin_actions);
+$is_public_action = in_array($action, $public_actions);
+
+if ($is_write_action && $provided_key !== $api_key && !$is_authenticated_user && !$is_public_action) {
+    // Special case: allow platform admins to use certain actions without API key
+    if (!($is_platform_admin && $is_platform_admin_action)) {
+        // Log security event: unauthorized API call
+        $reason = $provided_key ? 'invalid_api_key' : 'missing_api_key';
+        TelescopeLogger::log(
+            'security',
+            'WARNING',
+            "🔒 Unauthorized API call attempt: {$action} [{$reason}]",
+            "Security Middleware [Authentication Failed]",
+            ['action' => $action, 'method' => $request_method, 'reason' => $reason, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+        );
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key required for write operations.']);
+        exit;
+    }
+}
+
+// Log all API requests to Telescope
+$request_user = $_SESSION['username'] ?? 'Anonymous';
+$request_origin = "{$request_method} /{$action}";
+$auth_status = $is_authenticated_user ? 'Authenticated' : 'Unauthenticated';
+
+// Track login attempts specifically
+if ($action === 'login_user') {
+    $login_username = $_POST['username'] ?? 'unknown';
+    $login_status = isset($_POST['password']) && !empty($_POST['password']) ? 'Attempting' : 'No Password Provided';
+    TelescopeLogger::log(
+        'login',
+        'INFO',
+        "Login attempt for user: {$login_username}",
+        "LoginController [{$login_status}]",
+        ['username' => $login_username, 'auth_status' => $auth_status, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+    );
+}
+
+// Log all API requests
+if (!in_array($action, ['get_audit_logs', 'fetch_logs'])) { // Skip verbose get requests
+    TelescopeLogger::log(
+        'requests',
+        'INFO',
+        "{$request_method} /api/router.php?action={$action}",
+        $request_origin,
+        ['user' => $request_user, 'method' => $request_method, 'auth' => $auth_status, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+    );
 }
 
 $propertyId = getCurrentPropertyId($pdo);
@@ -71,6 +161,13 @@ switch ($action) {
         $password = $input['password'] ?? '';
 
         if (!$username || !$password) {
+            TelescopeLogger::log(
+                'login',
+                'WARNING',
+                "❌ Login rejected: Missing credentials",
+                "LoginController [Validation Failed]",
+                ['has_username' => !empty($username), 'has_password' => !empty($password), 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+            );
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Username and password required']);
             exit;
@@ -114,6 +211,15 @@ switch ($action) {
                 // Set cookie
                 setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
 
+                // Log successful login
+                TelescopeLogger::log(
+                    'login',
+                    'SUCCESS',
+                    "✅ Login successful for user: {$username} [Role: {$role}]",
+                    "LoginController [Authenticated]",
+                    ['username' => $username, 'role' => $role, 'is_platform_admin' => $is_platform_admin, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+                );
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'Login successful',
@@ -126,10 +232,25 @@ switch ($action) {
                     ]
                 ]);
             } else {
+                // Log failed login
+                TelescopeLogger::log(
+                    'login',
+                    'WARNING',
+                    "❌ Login failed for user: {$username} [Invalid credentials]",
+                    "LoginController [Authentication Failed]",
+                    ['username' => $username, 'reason' => 'invalid_credentials', 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+                );
                 http_response_code(401);
                 echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
             }
         } catch (Exception $e) {
+            TelescopeLogger::log(
+                'php',
+                'FATAL',
+                "🔴 Login error: {$e->getMessage()}",
+                "LoginController [Exception]",
+                ['username' => $username, 'error' => $e->getMessage(), 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+            );
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Login error: ' . $e->getMessage()]);
         }
@@ -426,6 +547,23 @@ switch ($action) {
         }
         exit;
 
+    // === MULTI KEY PROPERTIES ===
+    case 'create_multikey_property':
+    case 'add_multikey_room':
+    case 'delete_multikey_room':
+    case 'update_room_order':
+    case 'restore_multikey_room':
+    case 'get_multikey_property':
+    case 'get_multikey_overview':
+    case 'get_room_grouped_active_bookings':
+    case 'populate_default_expenses':
+    case 'sync_all_default_expenses':
+    case 'create_multikey_property':
+    case 'add_tenant_user_to_property':
+    case 'backfill_tenant_users':
+        handleMultiKeyPropertyRequests($pdo, $request_method, $action);
+        exit;
+
     case 'reset_staff_passcodes':
         try {
             $stmt = $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE 1");
@@ -453,6 +591,19 @@ switch ($action) {
         }
 
         try {
+            // Check if this is a MULTI_KEY_ROOM - if so, resolve to parent property
+            $stmt = $pdo->prepare("
+                SELECT property_type, parent_property_id FROM properties
+                WHERE id = ?
+            ");
+            $stmt->execute([$property_id]);
+            $property = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // If this is a room, use parent property's modules instead
+            if ($property && $property['property_type'] === 'MULTI_KEY_ROOM' && $property['parent_property_id']) {
+                $property_id = $property['parent_property_id'];
+            }
+
             $stmt = $pdo->prepare("
                 SELECT module_slug, is_enabled FROM property_modules
                 WHERE property_id = ?
@@ -596,6 +747,11 @@ switch ($action) {
         echo json_encode(['status' => 'success', 'data' => getPropertyModules($pdo, $propertyId)]);
         break;
 
+    case 'get_all_property_modules':
+        // Batch endpoint: fetch modules for ALL properties in one query (much faster than individual calls)
+        echo json_encode(['status' => 'success', 'data' => getAllPropertyModules($pdo)]);
+        break;
+
     // --- LICENSES ---
     case 'get_licenses':
     case 'add_license':
@@ -607,7 +763,13 @@ switch ($action) {
 
     // --- PROPERTY ---
     case 'get_current_property':
-        echo json_encode(['status' => 'success', 'data' => $currentProperty]);
+        // SECURITY: Ensure property exists and is active
+        if (empty($currentProperty) || !isset($currentProperty['id'])) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Property not found or deleted', 'data' => null]);
+        } else {
+            echo json_encode(['status' => 'success', 'data' => $currentProperty]);
+        }
         break;
 
     // --- CONFIGURATION ---
@@ -620,6 +782,12 @@ switch ($action) {
     case 'get_system_settings':
     case 'save_system_settings':
         handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- THEME SETTINGS ---
+    case 'get_theme_settings':
+    case 'save_theme_settings':
+        handleThemeRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- SANDBOX / TESTING ---

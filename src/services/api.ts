@@ -15,7 +15,7 @@ const _base = _isDev ? '' : (() => {
 })();
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
-const API_KEY = 'artists-farm-secure-key-2026';
+// NOTE: API_KEY removed from frontend - use session auth instead (cookies)
 
 // Path segments that are real app directories/routes, never a property slug.
 const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm', 'login', 'platform_property_management', 'tenant_dashboard']);
@@ -33,7 +33,7 @@ export function getPropertySlug(): string {
   if (typeof window === 'undefined') return 'default';
 
   const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
-  if (fromQuery && fromQuery !== 'paddle') return fromQuery.toLowerCase();
+  if (fromQuery) return fromQuery.toLowerCase();
 
   const pathname = window.location.pathname.replace(/#.*$/, '');
   const segments = pathname.split('/').filter(Boolean).filter((seg) => !seg.includes('.'));
@@ -44,7 +44,7 @@ export function getPropertySlug(): string {
   const validSegments: string[] = [];
   for (const seg of segments) {
     const lower = seg.toLowerCase();
-    if (!RESERVED_PATH_SEGMENTS.has(lower) && /^[a-z0-9-]+$/.test(lower)) {
+    if (!RESERVED_PATH_SEGMENTS.has(lower) && /^[a-z0-9_-]+$/.test(lower)) {
       validSegments.push(lower);
     }
   }
@@ -56,6 +56,108 @@ export function getPropertySlug(): string {
   }
 
   return 'default';
+}
+
+/**
+ * For MultiKey properties: get both property slug and optional room slug
+ * URL: /artists_farm/{tenant}/{property}/{room_optional}
+ * Returns: { propertySlug: "goa-home", roomSlug: "room101" or null }
+ */
+export function getPropertyAndRoomSlugs(): { propertySlug: string; roomSlug: string | null; tenantSlug: string | null } {
+  if (typeof window === 'undefined') return { propertySlug: 'default', roomSlug: null, tenantSlug: null };
+
+  const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
+  if (fromQuery) return { propertySlug: fromQuery.toLowerCase(), roomSlug: null, tenantSlug: null };
+
+  const pathname = window.location.pathname.replace(/#.*$/, '');
+  const segments = pathname.split('/').filter(Boolean).filter((seg) => !seg.includes('.'));
+
+  const validSegments: string[] = [];
+  for (const seg of segments) {
+    const lower = seg.toLowerCase();
+    if (!RESERVED_PATH_SEGMENTS.has(lower) && /^[a-z0-9_-]+$/.test(lower)) {
+      validSegments.push(lower);
+    }
+  }
+
+  // validSegments format: [tenant, property] or [tenant, property, room] or [property] or [property, room]
+  // We need to detect if last segment is a room or property
+  // For now, assume: if we have 3+ segments, last is room, second-to-last is property
+  // If we have 2 segments, could be [tenant, property] or [property, room]
+  // If we have 1 segment, it's [property]
+
+  if (validSegments.length >= 3) {
+    // [tenant, property, room]
+    return {
+      tenantSlug: validSegments[validSegments.length - 3],
+      propertySlug: validSegments[validSegments.length - 2],
+      roomSlug: validSegments[validSegments.length - 1],
+    };
+  } else if (validSegments.length === 2) {
+    // [tenant, property] - can't have [property, room] without at least 3 segments
+    return {
+      tenantSlug: validSegments[0],
+      propertySlug: validSegments[1],
+      roomSlug: null,
+    };
+  } else if (validSegments.length === 1) {
+    return {
+      tenantSlug: null,
+      propertySlug: validSegments[0],
+      roomSlug: null,
+    };
+  }
+
+  return { propertySlug: 'default', roomSlug: null, tenantSlug: null };
+}
+
+/**
+ * Get the selected room slug from URL hash (e.g., #room-101)
+ * Used for hash-based routing within MultiKey property pages
+ * Only returns room slugs, NOT tab names (dashboard, guests, etc.)
+ * Returns null if no hash or hash is a reserved tab name
+ */
+export function getRoomSlugFromHash(validRoomSlugs?: string[]): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const hash = window.location.hash.substring(1); // Remove leading #
+  if (!hash || hash === 'overview') return null;
+
+  // Reserved names that are NOT room slugs (tab names, etc.)
+  const reserved = new Set([
+    'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
+    'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync'
+  ]);
+
+  if (reserved.has(hash.toLowerCase())) {
+    return null;
+  }
+
+  // If validRoomSlugs provided, only accept hashes that match actual room slugs
+  if (validRoomSlugs) {
+    return validRoomSlugs.includes(hash) ? hash : null;
+  }
+
+  // Basic validation: room slugs are alphanumeric with hyphens
+  if (/^[a-z0-9_-]+$/.test(hash)) {
+    return hash;
+  }
+
+  return null;
+}
+
+/**
+ * Navigate to a room in the current MultiKey property using hash routing
+ * Usage: navigateToRoomHash('room-101') → sets URL hash to #room-101
+ */
+export function navigateToRoomHash(roomSlug: string | null): void {
+  if (typeof window === 'undefined') return;
+
+  if (roomSlug) {
+    window.location.hash = roomSlug;
+  } else {
+    window.location.hash = '';
+  }
 }
 
 export function isTestingModeActive(): boolean {
@@ -77,13 +179,13 @@ export function getTestingHeaders(customHeaders: Record<string, string> = {}): R
   if (isTestingModeActive()) {
     headers['X-Testing-Mode'] = '1';
   }
-  headers['X-API-Key'] = API_KEY;
+  // NOTE: Removed API-Key header - use session auth (cookies) instead
   // Add X-Property-Slug header for multi-tenancy resolution on the backend
   headers['X-Property-Slug'] = getPropertySlug();
   return headers;
 }
 
-async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const customHeaders = (init?.headers as Record<string, string>) || {};
   // Add property_slug to query params to ensure backend resolves correct property
   // (headers don't reliably pass through Vite proxy)
@@ -902,7 +1004,11 @@ export async function fetchPropertyModulesFromDB(): Promise<{ slug: string; is_e
     const res = await apiFetch(`${API_BASE}?action=get_property_modules`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data;
+      // Map API response to expected format (module_slug → slug, convert is_enabled to boolean)
+      return json.data.map((mod: any) => ({
+        slug: mod.module_slug || mod.slug,
+        is_enabled: Boolean(mod.is_enabled),
+      }));
     }
   } catch (err) {
     console.error('Failed to fetch property modules from DB:', err);

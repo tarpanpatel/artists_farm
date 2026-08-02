@@ -1,0 +1,154 @@
+/**
+ * Theme Color Overrides
+ * Maps hardcoded Tailwind colors to CSS variables for dynamic theming
+ * Allows Theme Settings to control platform colors universally
+ */
+
+/* ============================================================================
+   PRIMARY COLOR (Blue) - Maps to --color-primary
+   ========================================================================== */
+.bg-blue-50 { background-color: color-mix(in srgb, var(--color-primary) 10%, white) !important; }
+.bg-blue-100 { background-color: color-mix(in srgb, var(--color-primary) 20%, white) !important; }
+.bg-blue-200 { background-color: color-mix(in srgb, var(--color-primary) 30%, white) !important; }
+.bg-blue-300 { background-color: color-mix(in srgb, var(--color-primary) 40%, white) !important; }
+.bg-blue-400 { background-color: color-mix(in srgb, var(--color-primary) 60%, white) !important; }
+.bg-blue-500 { background-color: var(--color-primary) !important; }
+.bg-blue-600 { background-color: var(--color-primary) !important; }
+.bg-blue-700 { background-color: color-mix(in srgb, var(--color-primary) 85%, black) !important; }
+.bg-blue-800 { background-color: color-mix(in srgb, var(--color-primary) 70%, black) !important; }
+.bg-blue-900 { background-color: color-mix(in srgb, var(--color-primary) 50%, black) !important; }
+
+.text-blue-50 { color: color-mix(in srgb, var(--color-primary) 10%, white) !important; }
+.text-blue-100 { color: color-mix(in srgb, var(--color-primary) 20%, white) !important; }
+.text-blue-200 { color: color-mix(in srgb, var(--color-primary) 30%, white) !important; }
+.text-blue-300 { color: color-mix(in srgb, var(--color-primary) 40%, white) !important; }
+.text-blue-400 { color: color-mix(in srgb, var(--color-primary) 60%, white) !important; }
+.text-blue-500 { color: var(--color-primary) !important; }
+.text-blue-600 { color: var(--color-primary) !important; }
+.text-blue-700 { color: color-mix(in srgb, var(--color-primary) 85%, black) !important; }
+.text-blue-800 { color: color-mix(in srgb, var(--color-primary) 70%, black) !important; }
+.text-blue-900 { color: color-mix(in srgb, var(--color-primary) 50%, black) !important; }
+
+.border-blue-100 { border-color: color-mix(in srgb, var(--color-primary) 20%, white) !important; }
+.border-blue-200 { border-color: color-mix(in srgb, var(--color-primary) 30%, white) !important; }
+.border-blue-300 { border-color: color-mix(in srgb, var(--color-primary) 40%, white) !important; }
+.border-blue-400 { border-color: color-mix(in srgb, var(--color-primary) 60%, white) !important; }
+.border-blue-500 { border-color: var(--color-primary) !important; }
+.border-blue-600 { border-color: var(--color-primary) !important; }
+
+.hover\:bg-blue-50:hover { background-color: color-mix(in srgb, var(--color-primary) 10%, white) !important; }
+.hover\:bg-blue-100:hover { background-color: color-mix(in srgb, var(--color-primary) 20%, white) !important; }
+.hover\:bg-blue-200:hover { background-color: color-mix(in srgb, var(--color-primary) 30%, white) !important; }
+.hover\:bg-blue-600:hover { background-color: var(--color-primary) !important; }
+.hover\:bg-blue-700:hover { background-color: color-mix(in srgb, var(--color-primary) 85%, black) !important; }
+.hover\:bg-blue-800:hover { background-color: color-mix(in srgb, var(--color-primary) 70%, black) !important; }
+
+.focus\:ring-blue-300:focus { --tw-ring-color: color-mix(in srgb, var(--color-primary) 40%, white) !important; }
+.focus\:ring-blue-500:focus { --tw-ring-color: var(--color-primary) !important; }
+
+/* ============================================================================
+   ERROR COLOR (Red) - Maps to --color-error
+   ========================================================================== */
+.bg-red-50 { background-color: color-mix(in srgb, var(--color-error) 10%, white) !important; }
+.bg-red-100 { background-color: color-mix(in srgb, var(--color-error) 20%, white) !important; }
+.bg-red-200 { background-color: color-mix(in srgb, var(--color-error) 30%, white) !important; }
+.bg-red-400 { background-color: color-mix(in srgb, var(--color-error) 60%, white) !important; }
+.bg-red-500 { background-color: var(--color-error) !important; }
+.bg-red-600 { background-color: var(--color-error) !important; }
+
+.text-red-500 { color: var(--color-error) !important; }
+.text-red-600 { color: var(--color-error) !important; }
+.text-red-700 { color: color-mix(in srgb, var(--color-error) 85%, black) !important; }
+.text-red-800 { color: color-mix(in srgb, var(--color-error) 70%, black) !important; }
+
+.border-red-200 { border-color: color-mix(in srgb, var(--color-error) 30%, white) !important; }
+.border-red-300 { border-color: color-mix(in srgb, var(--color-error) 40%, white) !important; }
+
+.hover\:bg-red-50:hover { background-color: color-mix(in srgb, var(--color-error) 10%, white) !important; }
+.hover\:bg-red-200:hover { background-color: color-mix(in srgb, var(--color-error) 30%, white) !important; }
+
+.focus\:ring-red-500:focus { --tw-ring-color: var(--color-error) !important; }
+
+/* ============================================================================
+   SUCCESS COLOR (Green) - Maps to --color-success
+   ========================================================================== */
+.bg-green-50 { background-color: color-mix(in srgb, var(--color-success) 10%, white) !important; }
+.bg-green-100 { background-color: color-mix(in srgb, var(--color-success) 20%, white) !important; }
+.bg-green-200 { background-color: color-mix(in srgb, var(--color-success) 30%, white) !important; }
+.bg-green-500 { background-color: var(--color-success) !important; }
+.bg-green-600 { background-color: var(--color-success) !important; }
+
+.text-green-600 { color: var(--color-success) !important; }
+.text-green-700 { color: color-mix(in srgb, var(--color-success) 85%, black) !important; }
+.text-green-800 { color: color-mix(in srgb, var(--color-success) 70%, black) !important; }
+
+.border-green-200 { border-color: color-mix(in srgb, var(--color-success) 30%, white) !important; }
+.border-green-300 { border-color: color-mix(in srgb, var(--color-success) 40%, white) !important; }
+
+.hover\:bg-green-50:hover { background-color: color-mix(in srgb, var(--color-success) 10%, white) !important; }
+.hover\:bg-green-200:hover { background-color: color-mix(in srgb, var(--color-success) 30%, white) !important; }
+
+.focus\:ring-emerald-500:focus { --tw-ring-color: var(--color-success) !important; }
+
+/* ============================================================================
+   WARNING COLOR (Amber) - Maps to --color-warning
+   ========================================================================== */
+.bg-amber-50 { background-color: color-mix(in srgb, var(--color-warning) 10%, white) !important; }
+.bg-amber-100 { background-color: color-mix(in srgb, var(--color-warning) 20%, white) !important; }
+.bg-amber-200 { background-color: color-mix(in srgb, var(--color-warning) 30%, white) !important; }
+.bg-amber-500 { background-color: var(--color-warning) !important; }
+.bg-amber-600 { background-color: var(--color-warning) !important; }
+
+.text-amber-600 { color: var(--color-warning) !important; }
+.text-amber-700 { color: color-mix(in srgb, var(--color-warning) 85%, black) !important; }
+.text-amber-800 { color: color-mix(in srgb, var(--color-warning) 70%, black) !important; }
+.text-amber-900 { color: color-mix(in srgb, var(--color-warning) 50%, black) !important; }
+
+.border-amber-200 { border-color: color-mix(in srgb, var(--color-warning) 30%, white) !important; }
+.border-amber-300 { border-color: color-mix(in srgb, var(--color-warning) 40%, white) !important; }
+
+.hover\:bg-amber-50:hover { background-color: color-mix(in srgb, var(--color-warning) 10%, white) !important; }
+
+.focus\:ring-amber-500:focus { --tw-ring-color: var(--color-warning) !important; }
+
+/* ============================================================================
+   ACCENT COLOR (Cyan) - Maps to --color-accent
+   ========================================================================== */
+.bg-cyan-50 { background-color: color-mix(in srgb, var(--color-accent) 10%, white) !important; }
+.bg-cyan-100 { background-color: color-mix(in srgb, var(--color-accent) 20%, white) !important; }
+.bg-cyan-200 { background-color: color-mix(in srgb, var(--color-accent) 30%, white) !important; }
+.bg-cyan-500 { background-color: var(--color-accent) !important; }
+.bg-cyan-600 { background-color: var(--color-accent) !important; }
+
+.text-cyan-600 { color: var(--color-accent) !important; }
+.text-cyan-700 { color: color-mix(in srgb, var(--color-accent) 85%, black) !important; }
+.text-cyan-800 { color: color-mix(in srgb, var(--color-accent) 70%, black) !important; }
+
+.border-cyan-200 { border-color: color-mix(in srgb, var(--color-accent) 30%, white) !important; }
+.border-cyan-300 { border-color: color-mix(in srgb, var(--color-accent) 40%, white) !important; }
+.border-cyan-400 { border-color: color-mix(in srgb, var(--color-accent) 60%, white) !important; }
+
+.hover\:bg-cyan-50:hover { background-color: color-mix(in srgb, var(--color-accent) 10%, white) !important; }
+.hover\:text-cyan-600:hover { color: var(--color-accent) !important; }
+.hover\:border-cyan-400:hover { border-color: color-mix(in srgb, var(--color-accent) 60%, white) !important; }
+
+.focus\:ring-cyan-500:focus { --tw-ring-color: var(--color-accent) !important; }
+
+/* ============================================================================
+   INFO COLOR (Sky) - Maps to --color-info
+   ========================================================================== */
+.bg-sky-50 { background-color: color-mix(in srgb, var(--color-info) 10%, white) !important; }
+
+.text-sky-600 { color: var(--color-info) !important; }
+
+.focus\:ring-sky-500:focus { --tw-ring-color: var(--color-info) !important; }
+
+/* ============================================================================
+   INDIGO (Can be secondary) - Maps to --color-secondary
+   ========================================================================== */
+.bg-indigo-50 { background-color: color-mix(in srgb, var(--color-secondary) 10%, white) !important; }
+.bg-indigo-100 { background-color: color-mix(in srgb, var(--color-secondary) 20%, white) !important; }
+
+.text-indigo-900 { color: var(--color-secondary) !important; }
+
+.focus\:ring-indigo-500:focus { --tw-ring-color: var(--color-secondary) !important; }

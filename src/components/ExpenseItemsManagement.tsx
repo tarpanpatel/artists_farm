@@ -1,266 +1,293 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Pencil, Trash2, RefreshCw, Check, X, Loader2, AlertTriangle } from 'lucide-react';
-import { fetchExpenseItemsFromDB, addExpenseItemToDB, deleteExpenseItemFromDB } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { useToast } from './ToastContext';
 
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    }
-  }
-  return dp[m][n];
+interface ExpenseItem {
+  id: number;
+  label: string;
+  category: string;
+  default_amount: number;
+  is_system_default: boolean;
+}
+
+interface CategoryGroup {
+  [key: string]: ExpenseItem[];
 }
 
 export const ExpenseItemsManagement: React.FC = () => {
-  const [items, setItems] = useState<string[]>([]);
+  const [expenses, setExpenses] = useState<CategoryGroup>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '' });
+  const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
 
-  const similarItems = useMemo(() => {
-    const trimmed = newItemName.trim().toLowerCase();
-    if (!trimmed || trimmed.length < 2) return [];
-    return items
-      .map(item => ({ item, dist: levenshtein(trimmed, item.toLowerCase()) }))
-      .filter(({ dist }) => dist <= 2 && dist > 0)
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, 3)
-      .map(({ item }) => item);
-  }, [newItemName, items]);
-
   const loadItems = async () => {
-    setLoading(true);
-    const fetched = await fetchExpenseItemsFromDB();
-    setItems(fetched);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const response = await fetch('/php/api/router.php?action=get_misc_catalog', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if ((data.success || data.status === 'success') && data.data) {
+        setExpenses(data.data);
+      }
+    } catch (err) {
+      showToast('Failed to load expense categories', { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadItems();
   }, []);
 
-  const handleAddItem = async () => {
-    const trimmed = newItemName.trim();
-    if (!trimmed) return;
-    if (items.some(item => item.toLowerCase() === trimmed.toLowerCase())) {
-      showToast('This item already exists in the registry.', { type: 'warning' });
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItem.label || !newItem.category || !newItem.default_amount) {
+      showToast('All fields are required', { type: 'error' });
       return;
     }
-    setAdding(true);
-    const ok = await addExpenseItemToDB(trimmed);
-    if (ok) {
-      setItems(prev => [...prev, trimmed].sort((a, b) => a.localeCompare(b)));
-      setNewItemName('');
-      setShowAddForm(false);
-      showToast(`"${trimmed}" added to registry`, { type: 'success' });
-    } else {
-      showToast('Failed to add item. It may already exist.', { type: 'error' });
-    }
-    setAdding(false);
-  };
 
-  const handleDeleteItem = (name: string) => {
-    (window as any).showConfirm(`Remove "${name}" from expense items?`, async () => {
-      const ok = await deleteExpenseItemFromDB(name);
-      if (ok) {
-        setItems(prev => prev.filter(i => i !== name));
+    try {
+      setSaving(true);
+      const response = await fetch('/php/api/router.php?action=add_misc_charge_template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          label: newItem.label,
+          category: newItem.category,
+          default_amount: parseFloat(newItem.default_amount),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success || data.status === 'success') {
+        showToast('Expense item added successfully!', { type: 'success' });
+        setNewItem({ label: '', category: '', default_amount: '' });
+        setIsAddingNew(false);
+        loadItems();
+      } else {
+        showToast(data.message || 'Failed to add item', { type: 'error' });
       }
-    });
+    } catch (err) {
+      showToast('Failed to add expense item', { type: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleStartEdit = (index: number, name: string) => {
-    setEditingIndex(index);
-    setEditValue(name);
+  const handleDeleteItem = async (itemId: number, itemLabel: string) => {
+    if (!window.confirm(`Delete "${itemLabel}"? This action cannot be undone.`)) return;
+
+    try {
+      setSaving(true);
+      const response = await fetch('/php/api/router.php?action=delete_misc_charge_template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: itemId }),
+      });
+
+      const data = await response.json();
+      if (data.success || data.status === 'success') {
+        showToast('Expense item deleted successfully!', { type: 'success' });
+        loadItems();
+      } else {
+        showToast(data.message || 'Failed to delete item', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Failed to delete expense item', { type: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveEdit = async (oldName: string) => {
-    const trimmed = editValue.trim();
-    if (!trimmed || trimmed === oldName) {
-      setEditingIndex(null);
-      return;
-    }
-    if (items.some(i => i.toLowerCase() === trimmed.toLowerCase())) {
-      showToast('An item with this name already exists.', { type: 'warning' });
-      return;
-    }
-    const deleted = await deleteExpenseItemFromDB(oldName);
-    const added = await addExpenseItemToDB(trimmed);
-    if (deleted && added) {
-      setItems(prev => prev.map(i => (i === oldName ? trimmed : i)).sort((a, b) => a.localeCompare(b)));
-    }
-    setEditingIndex(null);
-  };
-
-  const filtered = items.filter(item =>
-    item.toLowerCase().includes(searchQuery.toLowerCase().trim())
+  const allItems = Object.values(expenses).flat();
+  const filtered = allItems.filter(item =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase().trim())
   );
+  const categories = Object.keys(expenses).sort();
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
-      <div>
-        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          Predefined Expense Items
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          Manage the item names that appear in the expense description autocomplete on the Expenses page.
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            Predefined Expense Items
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+            System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.
+          </p>
+        </div>
       </div>
 
+      {/* Messages */}
+      {allItems.length === 0 && !loading && (
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-12 text-center">
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            No expense items loaded yet. Visit Root Admin → <strong>Default Expenses (MK)</strong> → click <strong>"⚡ Sync Defaults"</strong> to populate all 20 categories.
+          </p>
+        </div>
+      )}
+
       {/* Toolbar */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {!showAddForm ? (
+      {allItems.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAddForm(true)}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                onClick={() => setIsAddingNew(!isAddingNew)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Add New Item
+                <Plus className="w-4 h-4" />
+                Add Custom Item
               </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={newItemName}
-                    onChange={e => setNewItemName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleAddItem();
-                      if (e.key === 'Escape') { setShowAddForm(false); setNewItemName(''); }
-                    }}
-                    placeholder="Item name..."
-                    autoFocus
-                    className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {similarItems.length > 0 && (
-                    <p className="absolute top-full mt-1 text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1 whitespace-nowrap">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                      Similar: {similarItems.join(', ')}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={handleAddItem}
-                  disabled={adding || !newItemName.trim()}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
-                >
-                  {adding ? 'Adding...' : 'Add'}
-                </button>
-                <button
-                  onClick={() => { setShowAddForm(false); setNewItemName(''); }}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-            <button
-              onClick={loadItems}
-              className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <span className="text-[10px] bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded font-mono text-slate-500">
-              {items.length} Items
-            </span>
+              <button
+                onClick={loadItems}
+                className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search items..."
-              className="flex-1 sm:flex-none px-3 py-1.5 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search items or categories..."
+              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
             />
           </div>
-        </div>
-      </div>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center p-8 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold">
-          {items.length === 0 ? 'Registry is empty. Click "Add New Item" to get started.' : 'No items match your search.'}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filtered.map((name, idx) => {
-            const globalIdx = items.indexOf(name);
-            const isEditing = editingIndex === globalIdx;
-
-            if (isEditing) {
-              return (
-                <div key={name} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2 col-span-2 md:col-span-3 lg:col-span-1">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleSaveEdit(name);
-                        if (e.key === 'Escape') setEditingIndex(null);
-                      }}
-                      onBlur={() => handleSaveEdit(name)}
-                      autoFocus
-                      className="flex-1 p-1.5 border border-blue-500 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold text-xs"
-                    />
-                    <button onClick={() => handleSaveEdit(name)} className="text-emerald-600 hover:text-emerald-700 p-1 cursor-pointer">
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setEditingIndex(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
+          {/* Add New Item Form */}
+          {isAddingNew && (
+            <form onSubmit={handleAddItem} className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+              <h3 className="font-semibold text-slate-900 dark:text-white">Add Custom Expense Item</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newItem.label}
+                    onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
+                    placeholder="e.g., Floor Cleaner"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
                 </div>
-              );
-            }
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Category *
+                  </label>
+                  <select
+                    value={newItem.category}
+                    onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  >
+                    <option value="">-- Select Category --</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Default Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={newItem.default_amount}
+                    onChange={(e) => setNewItem({ ...newItem, default_amount: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Add Item'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingNew(false)}
+                  className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* Categories Display */}
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      ) : categories.length > 0 ? (
+        <div className="space-y-6">
+          {categories.map((category) => {
+            const categoryItems = expenses[category];
+            const filteredCategory = categoryItems.filter(item =>
+              item.label.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+              category.toLowerCase().includes(searchQuery.toLowerCase().trim())
+            );
+
+            if (filteredCategory.length === 0 && searchQuery) return null;
 
             return (
-              <div key={name} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between gap-2">
-                <span
-                  onClick={() => handleStartEdit(globalIdx, name)}
-                  className="font-bold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer select-none truncate"
-                  title="Click to edit"
-                >
-                  {name}
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => handleStartEdit(globalIdx, name)}
-                    className="text-slate-400 hover:text-blue-600 p-1 cursor-pointer"
-                    title="Edit"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(name)}
-                    className="text-red-400 hover:text-red-600 p-1 cursor-pointer"
-                    title="Remove"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+              <div key={category} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
+                  <h3 className="font-bold text-slate-900 dark:text-white">{category}</h3>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {(filteredCategory.length > 0 ? filteredCategory : categoryItems).map((item) => (
+                      <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-semibold text-slate-900 dark:text-white text-sm leading-tight flex-1">{item.label}</span>
+                            {item.is_system_default && (
+                              <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded whitespace-nowrap">
+                                🔒
+                              </span>
+                            )}
+                          </div>
+                          {!item.is_system_default && (
+                            <button
+                              onClick={() => handleDeleteItem(item.id, item.label)}
+                              disabled={saving}
+                              className="w-full p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 mt-2"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
-
+      ) : null}
     </div>
   );
 };

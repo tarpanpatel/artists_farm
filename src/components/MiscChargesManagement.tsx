@@ -9,6 +9,7 @@ interface MiscChargeTemplate {
   label: string;
   default_amount: number;
   category: string;
+  is_system_default?: boolean;
 }
 
 interface MiscChargesManagementProps {
@@ -103,6 +104,13 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     e.preventDefault();
     const updatedCharge = charges.find(c => c.id === isEditing);
     if (!updatedCharge) return;
+
+    // Prevent editing system defaults
+    if (updatedCharge.is_system_default) {
+      alert('System default expense items cannot be edited. Create a new custom item instead.');
+      return;
+    }
+
     const finalData = { ...updatedCharge, ...editForm };
 
     const changes: string[] = [];
@@ -128,6 +136,13 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
   const handleDelete = (id: string | number) => {
     const target = charges.find(c => c.id === id);
+
+    // Prevent deletion of system defaults
+    if (target?.is_system_default) {
+      alert('System default expense items cannot be deleted.');
+      return;
+    }
+
     (window as any).showConfirm('Are you sure you want to delete this charge template?', () => {
       saveToDB('delete_misc_charge_template', { id }).then(() => {
         if (onLogAudit && target) {
@@ -167,7 +182,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             className="w-full p-1.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
           />
         ) : (
-          <span className="font-bold text-gray-900 dark:text-white">{row.label}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-900 dark:text-white">{row.label}</span>
+            {row.is_system_default && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">
+                🔒 Default
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -212,6 +234,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       width: '120px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
+        const isSystemDefault = row.is_system_default;
         return editing ? (
           <div className="flex justify-end gap-2">
             <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">Save</button>
@@ -224,13 +247,25 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 setIsEditing(row.id);
                 setEditForm(row);
               }}
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+              disabled={isSystemDefault}
+              title={isSystemDefault ? 'System default items cannot be edited' : 'Edit'}
+              className={`p-1 rounded-full transition-colors ${
+                isSystemDefault
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer'
+              }`}
             >
               <Edit2 className="w-4 h-4" />
             </button>
             <button
               onClick={() => handleDelete(row.id)}
-              className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+              disabled={isSystemDefault}
+              title={isSystemDefault ? 'System default items cannot be deleted' : 'Delete'}
+              className={`p-1 rounded-full transition-colors ${
+                isSystemDefault
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer'
+              }`}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -247,10 +282,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-indigo-500" />
-              Miscellaneous Charges Master Library
+              Expense Categories & Items
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Manage standardized extra services (e.g. Pet Stay Fees, Decoration Costs) for consistent billing.
+              System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.
             </p>
           </div>
           <button

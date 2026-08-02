@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AlertTriangle,
   User,
@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   Clock,
   IndianRupee,
-  Plus
+  Plus,
+  ExternalLink
 } from 'lucide-react';
 import { Guest, Order } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { getPropertySlug } from '../services/api';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -31,6 +33,33 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 }) => {
   const { orders } = useKitchenContext();
   const { inventory } = useInventoryContext();
+  const [blockedDates, setBlockedDates] = useState<Array<{
+    event_start: string;
+    event_end: string;
+    event_title: string;
+    reservation_url?: string;
+    source?: string;
+  }>>([]);
+
+  // Fetch blocked dates from iCal sync
+  useEffect(() => {
+    const fetchBlockedDates = async () => {
+      try {
+        const propertySlug = getPropertySlug();
+        const response = await fetch('/artists_farm/php/api/ical_sync.php?action=get_blocked_dates', {
+          headers: { 'X-Property-Slug': propertySlug },
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          setBlockedDates(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blocked dates:', error);
+      }
+    };
+    fetchBlockedDates();
+  }, []);
   // Low stock alerts where currentStock <= minThreshold
   const stockAlerts = inventory.filter((item) => item.currentStock <= item.minThreshold);
 
@@ -295,15 +324,32 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 const booking = guests.find(
                   (g) => dateStr >= g.checkinDate && dateStr <= (g.checkoutDate || g.expectedCheckout)
                 );
+                const blockedDate = blockedDates.find(
+                  (bd) => dateStr >= bd.event_start.split(' ')[0] && dateStr < bd.event_end.split(' ')[0]
+                );
+                const isBlocked = !!blockedDate;
+                const isAirbnb = blockedDate?.source === 'airbnb';
+
+                const handleAirbnbClick = () => {
+                  if (blockedDate?.reservation_url) {
+                    window.open(blockedDate.reservation_url, '_blank');
+                  }
+                };
 
                 return (
                   <div
                     key={`day-${d}`}
-                    className={`h-9 rounded border p-0.5 flex flex-col justify-between text-gray-700 transition-all ${
+                    className={`h-9 rounded border p-0.5 flex flex-col justify-between text-gray-700 transition-all cursor-pointer ${
                       d === today.getDate()
                         ? 'bg-blue-50 border-blue-300 font-bold'
+                        : isAirbnb
+                        ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+                        : isBlocked
+                        ? 'bg-red-50 border-red-200'
                         : 'bg-white border-gray-200'
                     }`}
+                    title={blockedDate ? `${blockedDate.event_title}` : ''}
+                    onClick={isAirbnb ? handleAirbnbClick : undefined}
                   >
                     <span className="text-[10px] text-gray-500 font-medium leading-none">{d}</span>
                     {booking && (
@@ -318,20 +364,56 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         {booking.roomNumber.replace('Villa ', 'V').replace('Cottage ', 'C')}
                       </span>
                     )}
+                    {isAirbnb && !booking && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-orange-500 text-white truncate leading-none">
+                          AIRBNB
+                        </span>
+                        {blockedDate?.reservation_url && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAirbnbClick();
+                            }}
+                            className="p-0.5 hover:bg-orange-200 rounded transition"
+                            title="Open Airbnb reservation details"
+                          >
+                            <ExternalLink size={10} className="text-orange-600 hover:text-orange-700" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {isBlocked && !booking && !isAirbnb && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-red-100 text-red-700 truncate leading-none">
+                        Blocked
+                      </span>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
-              <span>Active Resident</span>
+          <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-300" />
+                <span>Active Resident</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded bg-gray-300" />
+                <span>Checked Out</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded bg-gray-300" />
-              <span>Checked Out</span>
+            <div className="flex items-center justify-between text-[11px] text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded bg-orange-500" />
+                <span>Airbnb Booking</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded bg-red-100 border border-red-200" />
+                <span>Blocked</span>
+              </div>
             </div>
           </div>
         </div>

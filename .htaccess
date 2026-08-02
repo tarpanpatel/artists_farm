@@ -8,12 +8,12 @@
     # /php/..., /dist/..., /assets/..., /api/... etc. are left untouched
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^([a-z0-9-]+)/([a-z0-9-]+)/(.*)$ index.php?tenant_slug=$1&property_slug=$2 [QSA,L]
+    RewriteRule ^([a-z0-9-_]+)/([a-z0-9-_]+)/?(.*)$ index.php?tenant_slug=$1&property_slug=$2 [QSA,L]
 
     # Fallback for single segment (tenant dashboard)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^([a-z0-9-]+)/(.*)$ $2?property_slug=$1 [QSA,L]
+    RewriteRule ^([a-z0-9-_]+)/?(.*)$ index.php?property_slug=$1 [QSA,L]
 
     # Keep existing rules
     RewriteRule ^food_menu/?$ food_menu.php [L]

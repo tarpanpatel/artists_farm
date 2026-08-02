@@ -30,6 +30,15 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
+import { BillingCheckout } from './BillingCheckout';
+
+interface Room {
+  id: number;
+  name: string;
+  slug: string;
+  room_order?: number;
+  is_active?: number;
+}
 
 interface GuestManagementProps {
   guests: Guest[];
@@ -39,6 +48,10 @@ interface GuestManagementProps {
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  isMultiKeyProperty?: boolean;
+  rooms?: Room[];
+  onNavigateToBilling?: (guestId: string) => void;
+  selectedRoomSlug?: string | null;
 }
 
 
@@ -72,6 +85,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onCheckoutGuest,
   activeMenuItemKey,
   onDispatchTelegram,
+  isMultiKeyProperty = false,
+  rooms = [],
+  onNavigateToBilling,
+  selectedRoomSlug,
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
@@ -80,8 +97,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Check-in Modal
-  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   // Form Checkin State
   const [guestName, setGuestName] = useState('');
@@ -92,6 +107,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
   );
   const [notes, setNotes] = useState('');
+
+  // Set default room for MultiKey properties on component mount
+  useEffect(() => {
+    if (isMultiKeyProperty && rooms && rooms.length > 0) {
+      if (selectedRoomSlug) {
+        // If coming from a specific room view, pre-select that room
+        const selectedRoom = rooms.find((r) => r.slug === selectedRoomSlug);
+        if (selectedRoom) {
+          setRoomNumber(selectedRoom.name);
+        }
+      } else if (roomNumber === 'Villa 101') {
+        // Otherwise, pre-select the first room
+        setRoomNumber(rooms[0].name);
+      }
+    }
+  }, [isMultiKeyProperty, rooms, selectedRoomSlug]);
 
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
@@ -547,29 +578,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
-  // Check-in Form Submission
-  const handleCheckinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guestName || !phoneNumber) return;
-
-    const newGuest: Guest = {
-      id: `g-${Date.now().toString().slice(-4)}`,
-      guestName,
-      phoneNumber,
-      roomNumber,
-      checkinDate,
-      expectedCheckout,
-      status: 'Active',
-      notes,
-    };
-
-    onAddGuest(newGuest);
-    setIsCheckinModalOpen(false);
-    setGuestName('');
-    setPhoneNumber('');
-    setRoomNumber('Villa 101');
-    setNotes('');
-  };
 
   const filteredGuests = guests.filter((g) => {
     const matchesStatus = filterStatus === 'All' || g.status === filterStatus;
@@ -585,16 +593,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       <div className="guest-management-container grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
         {/* Left Column: Form */}
         <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-            <h3 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
-              Add Guest Booking (Backdating Allowed)
+          <div className="border-b border-slate-100 dark:border-slate-700 pb-2">
+            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
+              <span className="font-normal">Add Guest Booking </span>
+              <span className="font-extrabold">
+                {isMultiKeyProperty && roomNumber ? `(${roomNumber})` : '(Backdating Allowed)'}
+              </span>
             </h3>
-            <button
-              onClick={() => setIsCheckinModalOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
-            >
-              <UserPlus className="w-3.5 h-3.5" /> Check-in Now
-            </button>
           </div>
           
           <form className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
@@ -628,6 +633,24 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <input type="number" min="1" defaultValue="1" className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
             </div>
+
+            {/* Room Selector for MultiKey Properties */}
+            {isMultiKeyProperty && rooms && rooms.length > 0 && (
+              <div>
+                <label className="block mb-1">Assigned Room / Villa *</label>
+                <select
+                  value={roomNumber}
+                  onChange={(e) => setRoomNumber(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {rooms.map((room) => (
+                    <option key={room.id} value={room.name}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <DateRangePicker
               checkinDate={checkinDate}
@@ -814,6 +837,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     );
   }
 
+  // For MultiKey properties, show the new room-grouped BillingCheckout view
+  if (activeMenuItemKey === 'billing_checkout' && isMultiKeyProperty) {
+    return (
+      <BillingCheckout
+        guests={guests}
+        receipts={receipts}
+        onCheckoutGuest={onCheckoutGuest}
+        isMultiKeyProperty={true}
+        rooms={rooms}
+        onCheckoutClick={onNavigateToBilling}
+      />
+    );
+  }
+
   return (
     <div className="guest-management-container space-y-6">
       {/* Top Banner Header for Billing */}
@@ -830,7 +867,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* BILLING & CHECKOUT WORKSPACE                                               */}
+      {/* BILLING & CHECKOUT WORKSPACE - FOR SINGLE-PROPERTY SYSTEMS                   */}
       {/* ========================================================================= */}
       {activeMenuItemKey === 'billing_checkout' && (
         <div className="space-y-6">
@@ -1404,112 +1441,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           )}
         </div>
       )}
-      {/* ========================================================================= */}
-      {/* CHECK-IN NEW RESIDENT MODAL                                               */}
-      {/* ========================================================================= */}
-      {isCheckinModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-emerald-600" />
-                Register New Resident Check-in
-              </h3>
-              <button
-                onClick={() => setIsCheckinModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleCheckinSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Guest Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="e.g. Rajesh Sharma"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Phone Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+91 98290 12345"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Assigned Room / Villa *</label>
-                  <select
-                    value={roomNumber}
-                    onChange={(e) => setRoomNumber(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="Villa 101">Villa 101 (Luxury Pool)</option>
-                    <option value="Villa 102">Villa 102 (Farm View)</option>
-                    <option value="Cottage 1">Cottage 1 (Garden)</option>
-                    <option value="Cottage 2">Cottage 2 (Garden)</option>
-                    <option value="Cottage 3">Cottage 3 (Hill View)</option>
-                  </select>
-                </div>
-              </div>
-
-              <DateRangePicker
-                checkinDate={checkinDate}
-                checkoutDate={expectedCheckout}
-                onCheckinChange={(date) => {
-                  setCheckinDate(date);
-                  if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
-                }}
-                onCheckoutChange={setExpectedCheckout}
-                onClear={() => {
-                  setCheckinDate('');
-                  setExpectedCheckout('');
-                }}
-                blockedDates={getBlockedDateStrings()}
-              />
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Special Preferences / Notes</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Breakfast preference, airport pickup details..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCheckinModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-600 font-semibold rounded-lg hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs cursor-pointer"
-                >
-                  Confirm Check-in
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* POPUP MODAL 1: HIGH CONTRAST UPI QR LIGHTBOX                             */}

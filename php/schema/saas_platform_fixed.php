@@ -61,17 +61,9 @@ try {
             echo "✓ Added default_tenant_id column\n";
         }
         
-        // Create platform admin user
-        if (!isset($columns['password_hash'])) {
-            // Use existing password column if different
-            $pdo->exec("INSERT IGNORE INTO users (username, password, email, full_name, role, is_platform_admin) VALUES 
-                       ('platform_admin', 'admin123', 'admin@artistsfarm.com', 'Platform Administrator', 'Super Admin', 1)");
-            echo "✓ Created platform_admin user with existing password column\n";
-        } else {
-            $pdo->exec("INSERT IGNORE INTO users (username, password_hash, email, full_name, role, is_platform_admin) VALUES 
-                       ('platform_admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'admin@artistsfarm.com', 'Platform Administrator', 'Super Admin', 1)");
-            echo "✓ Created platform_admin user with password_hash column\n";
-        }
+        // NOTE: Platform admin user must be created via manual installation process, not auto-generated
+        // DO NOT create admin with hardcoded credentials for security reasons
+        echo "⚠️ Platform admin must be manually created by deployment process\n";
     } else {
         echo "⚠️ users table doesn't exist - will be created by system\n";
     }

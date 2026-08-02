@@ -187,21 +187,10 @@ try {
     echo "✗ Error: " . $e->getMessage() . "\n";
 }
 
-// 7. Create platform admin user (if doesn't exist)
-echo "\n7. Creating platform admin user...\n";
-try {
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = 'platform_admin'");
-    $stmt->execute();
-    if (!$stmt->fetch()) {
-        $pdo->exec("INSERT INTO users (username, password_hash, email, full_name, role, is_platform_admin) VALUES 
-                   ('platform_admin', '" . password_hash('admin123', PASSWORD_DEFAULT) . "', 'admin@artistsfarm.com', 'Platform Administrator', 'Super Admin', 1)");
-        echo "✓ Created platform_admin user (password: admin123)\n";
-    } else {
-        echo "✓ platform_admin already exists\n";
-    }
-} catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
-}
+// 7. Platform admin user creation
+echo "\n7. Platform admin user setup...\n";
+echo "⚠️ Platform admin must be created via manual installation process, NOT auto-generated\n";
+echo "✓ Skipped auto-creation to prevent hardcoded credentials\n";
 
 // 8. Migrate existing data (example: assign existing properties to default tenant)
 echo "\n8. Migrating existing data...\n";

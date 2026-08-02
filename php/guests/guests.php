@@ -7,37 +7,6 @@
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
-            $count = 0;
-            try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM guests WHERE property_id = ?"); $stmt->execute([$propertyId]); $count = $stmt->fetchColumn(); } catch (PDOException $e) {}
-            if ($count == 0) {
-                $seedGuests = [
-                    ['10','Villa 101 Resident Group','8888888','2026-07-20','2026-07-21','2026-07-21','Villa 101','Active','Jain Food & Misc Arrangement (+₹200)'],
-                    ['8','Jain Group','8888888','2026-07-17','2026-07-18','2026-07-18','Villa 102','Booked','Jain Food requested - Advance ₹5000'],
-                    ['7','Current Active Guest','9777777777','2026-07-16','2026-07-17','2026-07-16','Royal Cottage 1','CheckedOut','Decoration Fees ₹1900, Discount Rebate ₹200'],
-                    ['9','Private Guest','333333333','2026-07-16','2026-07-17','2026-07-19','Villa 103','CheckedOut','Decoration Fees ₹500, Discount Rebate ₹6'],
-                    ['6','Joshi Group (15 Jul)','9666666666','2026-07-15','2026-07-16','2026-07-16','Villa 103','CheckedOut','Settled - Advance ₹5000 by Tarpan'],
-                    ['5','Singh Group (14 Jul)','9555555555','2026-07-14','2026-07-15','2026-07-15','Villa 104','CheckedOut','Settled - Advance ₹5000 by Tarpan'],
-                    ['4','Guest Rana','9444444444','2026-07-13','2026-07-14','2026-07-14','Villa 105','CheckedOut','Room Service +Petrol ₹500'],
-                    ['3','Guest Kinkar','9333333333','2026-07-12','2026-07-13','2026-07-13','Villa 106','CheckedOut','Room Service +Petrol ₹500'],
-                    ['2','Guest Ramesh','9222222222','2026-07-11','2026-07-12','2026-07-12','Villa 107','CheckedOut','Settled'],
-                    ['1','Guest Pranay','9111111111','2026-07-10','2026-07-11','2026-07-11','Villa 108','CheckedOut','Settled'],
-                ];
-                // Try modern schema first
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO guests (id, guest_name, phone_number, checkin_date, expected_checkout, checkout_date, room_number, status, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    foreach ($seedGuests as $g) {
-                        $stmt->execute([...$g, $propertyId]);
-                    }
-                } catch (PDOException $e) {
-                    // Fallback to old schema
-                    try {
-                        $stmt = $pdo->prepare("INSERT INTO guests (id, name, contact, check_in, expected_checkout, check_out, room_number, status, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                        foreach ($seedGuests as $g) {
-                            $stmt->execute([$g[0], $g[1], $g[2], $g[3], $g[4], $g[5], $g[6], $g[7], $g[8], $propertyId]);
-                        }
-                    } catch (PDOException $e2) {}
-                }
-            }
             try {
                 $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY checkin_date DESC");
                 $stmt->execute([$propertyId]);
@@ -89,6 +58,31 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'description' => 'Advance collected at guest registration',
                         ]);
                     }
+
+                    // Send Telegram notification for new guest booking
+                    require_once __DIR__ . '/../telegram/sender.php';
+                    $guestName = $input['guest_name'] ?? $input['name'] ?? 'Resident Guest';
+                    $checkinDate = $input['checkin_date'] ?? date('Y-m-d');
+                    $checkoutDate = $input['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day'));
+                    $totalCharge = floatval($input['total_charge'] ?? 0);
+                    $advancePaid = floatval($input['advance_paid'] ?? 0);
+                    $pendingAmount = floatval($input['pending_amount'] ?? 0);
+                    $noOfGuests = intval($input['no_of_guests'] ?? 1);
+                    $phone = $input['phone_number'] ?? $input['contact'] ?? 'N/A';
+
+                    $telegramMessage = "🏨 <b>NEW GUEST BOOKING</b>\n\n";
+                    $telegramMessage .= "👤 <b>Guest Name:</b> {$guestName}\n";
+                    $telegramMessage .= "📱 <b>Phone:</b> {$phone}\n";
+                    $telegramMessage .= "👥 <b>No. of Guests:</b> {$noOfGuests}\n\n";
+                    $telegramMessage .= "📅 <b>Check-in:</b> {$checkinDate}\n";
+                    $telegramMessage .= "📅 <b>Check-out:</b> {$checkoutDate}\n\n";
+                    $telegramMessage .= "💰 <b>Total Charge:</b> ₹{$totalCharge}\n";
+                    $telegramMessage .= "✅ <b>Advance Paid:</b> ₹{$advancePaid}\n";
+                    $telegramMessage .= "⏳ <b>Pending:</b> ₹{$pendingAmount}\n\n";
+                    $telegramMessage .= "🆔 <b>Booking ID:</b> {$newId}";
+
+                    sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage);
+
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully']);
                 } catch (PDOException $e) {
                     http_response_code(500);
