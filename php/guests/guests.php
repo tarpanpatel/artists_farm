@@ -17,7 +17,13 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
             try {
-                $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY checkin_date DESC");
+                $stmt = $pdo->prepare("
+                    SELECT g.*, COALESCE(r.name, r.slug, '') as roomNumber
+                    FROM guests g
+                    LEFT JOIN properties r ON g.room_id = r.id AND r.property_type = 'MULTI_KEY_ROOM'
+                    WHERE g.property_id = ?
+                    ORDER BY g.checkin_date DESC
+                ");
                 $stmt->execute([$propertyId]);
                 $guests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $guests = array_map(function($guest) {
