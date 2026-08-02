@@ -4,18 +4,35 @@
  * Function: Resident registration, stay breakdown, and check-out status.
  */
 
+function convertSnakeToCamel($array) {
+    $result = [];
+    foreach ($array as $key => $value) {
+        $camelKey = preg_replace_callback('/_([a-z])/', function($m) { return strtoupper($m[1]); }, $key);
+        $result[$camelKey] = $value;
+    }
+    return $result;
+}
+
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
             try {
                 $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY checkin_date DESC");
                 $stmt->execute([$propertyId]);
-                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+                $guests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $guests = array_map(function($guest) {
+                    return convertSnakeToCamel($guest);
+                }, $guests);
+                echo json_encode(['status' => 'success', 'data' => $guests]);
             } catch (PDOException $e) {
                 try {
                     $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY check_in DESC");
                     $stmt->execute([$propertyId]);
-                    echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+                    $guests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $guests = array_map(function($guest) {
+                        return convertSnakeToCamel($guest);
+                    }, $guests);
+                    echo json_encode(['status' => 'success', 'data' => $guests]);
                 } catch (PDOException $e2) {
                     echo json_encode(['status' => 'success', 'data' => []]);
                 }
