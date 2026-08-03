@@ -1600,6 +1600,26 @@ export function App() {
   const isRootDashboardPath = propertySlug === 'root_dashboard';
   const isRootPath = propertySlug === 'default' || !propertySlug;
 
+  const [resolvedTenant, setResolvedTenant] = useState<any | null>(null);
+  const [isCheckingTenant, setIsCheckingTenant] = useState(
+    !isRootPath && !isLoginPath && !isTenantDashboardPath && !isPlatformPropertyManagementPath && !isRootDashboardPath
+  );
+
+  // Check if current slug is actually a tenant dashboard
+  useEffect(() => {
+    if (isCheckingTenant) {
+      fetch(`/php/api/router.php?action=get_tenant_by_slug&slug=${propertySlug}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data) {
+            setResolvedTenant(data.data);
+          }
+        })
+        .catch(err => console.error("Error checking tenant slug:", err))
+        .finally(() => setIsCheckingTenant(false));
+    }
+  }, [isCheckingTenant, propertySlug]);
+
   // Check for existing session on mount
   useEffect(() => {
     const stored = localStorage.getItem('artists_farm_user_session');
@@ -1626,25 +1646,50 @@ export function App() {
     if (session.is_platform_admin) {
       window.location.href = '/artists_farm/root_dashboard/';
     } else if (session.default_tenant_id) {
-      window.location.href = '/artists_farm/tenant_dashboard/';
+      // If we are already on a valid tenant dashboard, just reload the page to refresh state
+      if (resolvedTenant) {
+        window.location.reload();
+      } else {
+        window.location.href = '/artists_farm/tenant_dashboard/';
+      }
     }
   };
 
-  // Tenant dashboard path
-  if (isTenantDashboardPath) {
+  if (isCheckingTenant) {
+    return <LoadingScreen message="Resolving route..." />;
+  }
+
+  // Tenant dashboard path (either explicitly /tenant_dashboard/ OR via tenant slug like /vrikshawan/)
+  if (isTenantDashboardPath || resolvedTenant) {
     // Wait for session to load before checking
     if (!isSessionLoaded) {
       return <LoadingScreen message="Loading session..." />;
     }
 
-    if (!userSession || userSession.is_platform_admin || !userSession.default_tenant_id) {
+    if (!userSession) {
       return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
+
+    // Determine which tenant ID to show: the one from the URL (resolvedTenant) or the user's default
+    const dashboardTenantId = resolvedTenant ? resolvedTenant.id : userSession.default_tenant_id;
+
+    // Security: Only root admin can view other tenants' dashboards
+    if (!userSession.is_platform_admin && dashboardTenantId !== userSession.default_tenant_id) {
+      return (
+        <div className="min-h-screen bg-red-50 dark:bg-red-950 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-800 dark:text-red-300 font-medium">Access Denied: You do not have permission to view this tenant.</p>
+            <button onClick={() => { setUserSession(null); localStorage.removeItem('artists_farm_user_session'); }} className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg">Logout</button>
+          </div>
+        </div>
+      );
     }
 
     return (
       <TenantDashboard
         username={userSession.username}
-        tenantId={userSession.default_tenant_id}
+        tenantId={dashboardTenantId}
+        tenantInfo={resolvedTenant}
         onLogout={() => {
           setUserSession(null);
           localStorage.removeItem('artists_farm_user_session');

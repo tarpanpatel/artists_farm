@@ -7,10 +7,11 @@ interface Tenant {
   id: number;
   name: string;
   slug: string;
-  owner_name: string;
-  owner_email?: string;
   subscription_status: string;
   max_properties: number;
+  slots_used?: number;
+  email?: string;
+  phone?: string;
   is_active: number;
 }
 
@@ -54,11 +55,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [selectedTenantForProperty, setSelectedTenantForProperty] = useState<number | null>(null);
   const [operationLoading, setOperationLoading] = useState(false);
   const [showAddTenantModal, setShowAddTenantModal] = useState(false);
-  const [newTenant, setNewTenant] = useState<{ name: string; slug: string; owner_name: string; owner_email: string }>({
+  const [newTenant, setNewTenant] = useState<{ name: string; slug: string; email: string; phone: string }>({
     name: '',
     slug: '',
-    owner_name: '',
-    owner_email: '',
+    email: '',
+    phone: '',
   });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
@@ -268,8 +269,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         body: JSON.stringify({
           id: editingTenant.id,
           name: editingTenant.name,
-          owner_name: editingTenant.owner_name,
-          owner_email: editingTenant.owner_email,
+          email: editingTenant.email,
+          phone: editingTenant.phone,
           subscription_status: editingTenant.subscription_status,
           is_active: editingTenant.is_active,
         }),
@@ -406,7 +407,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           is_active: 1,
         }]);
         setShowAddTenantModal(false);
-        setNewTenant({ name: '', slug: '', owner_name: '', owner_email: '' });
+        setNewTenant({ name: '', slug: '', email: '', phone: '' });
         // Show success toast
         setSuccessMessage(`Tenant "${newTenant.name}" created successfully!`);
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -567,7 +568,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                             {tenant.name}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Owner: {tenant.owner_name} • Properties: {tenantProperties.length}/{tenant.max_properties}
+                            Slots Used: {tenant.slots_used ?? tenantProperties.length}/{tenant.max_properties}
                           </p>
                         </div>
                       </div>
@@ -612,7 +613,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           <div>
                             <p className="text-gray-600 dark:text-gray-400">Email</p>
                             <p className="font-medium text-gray-900 dark:text-white">
-                              {tenant.owner_email || '-'}
+                              {tenant.email || '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600 dark:text-gray-400">Phone</p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {tenant.phone || '-'}
                             </p>
                           </div>
                           <div>
@@ -826,34 +833,35 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Owner Name
-                </label>
-                <input
-                  type="text"
-                  value={editingTenant.owner_name}
-                  onChange={(e) =>
-                    setEditingTenant({ ...editingTenant, owner_name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Owner Email
+                  Email
                 </label>
                 <input
                   type="email"
-                  value={editingTenant.owner_email || ''}
+                  value={editingTenant.email || ''}
                   onChange={(e) =>
-                    setEditingTenant({ ...editingTenant, owner_email: e.target.value })
+                    setEditingTenant({ ...editingTenant, email: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Phone
+                </label>
+                <input
+                  type="text"
+                  value={editingTenant.phone || ''}
+                  onChange={(e) =>
+                    setEditingTenant({ ...editingTenant, phone: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                />
+              </div>
+
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1216,31 +1224,31 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Owner Name
+                  Email
                 </label>
                 <input
-                  type="text"
-                  value={newTenant.owner_name}
+                  type="email"
+                  value={newTenant.email}
                   onChange={(e) =>
-                    setNewTenant({ ...newTenant, owner_name: e.target.value })
+                    setNewTenant({ ...newTenant, email: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="Owner's full name"
+                  placeholder="tenant@example.com"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Owner Email
+                  Phone
                 </label>
                 <input
-                  type="email"
-                  value={newTenant.owner_email}
+                  type="text"
+                  value={newTenant.phone}
                   onChange={(e) =>
-                    setNewTenant({ ...newTenant, owner_email: e.target.value })
+                    setNewTenant({ ...newTenant, phone: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="owner@example.com"
+                  placeholder="+91 9876543210"
                 />
               </div>
             </div>
@@ -1249,7 +1257,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <button
                 onClick={() => {
                   setShowAddTenantModal(false);
-                  setNewTenant({ name: '', slug: '', owner_name: '', owner_email: '' });
+                  setNewTenant({ name: '', slug: '', email: '', phone: '' });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
               >

@@ -66,7 +66,8 @@ set_exception_handler(function($exception) {
 // === Simple API Key Authentication (from environment only, no fallback) ===
 $api_key = getenv('API_KEY');
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_all_property_modules', 'toggle_property_module', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings', 'generate_demo_data', 'clear_demo_data'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_all_property_modules', 'toggle_property_module', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_tenant_by_slug', 'get_tenant_slot_usage', 'create_property_for_tenant', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings', 'generate_demo_data', 'clear_demo_data'];
+
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -318,8 +319,8 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $name = $input['name'] ?? '';
         $slug = $input['slug'] ?? '';
-        $owner_name = $input['owner_name'] ?? '';
-        $owner_email = $input['owner_email'] ?? '';
+        $email = $input['email'] ?? '';
+        $phone = $input['phone'] ?? '';
 
         if (!$name || !$slug) {
             http_response_code(400);
@@ -329,10 +330,10 @@ switch ($action) {
 
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO tenants (name, slug, owner_name, owner_email, subscription_plan, subscription_status, max_properties, is_active)
+                INSERT INTO tenants (name, slug, email, phone, subscription_plan, subscription_status, max_properties, is_active)
                 VALUES (?, ?, ?, ?, 'free', 'trial', 1, 1)
             ");
-            $stmt->execute([$name, $slug, $owner_name, $owner_email]);
+            $stmt->execute([$name, $slug, $email ?: null, $phone ?: null]);
             $tenant_id = $pdo->lastInsertId();
 
             echo json_encode(['success' => true, 'message' => 'Tenant created successfully', 'tenant_id' => $tenant_id]);
@@ -344,7 +345,18 @@ switch ($action) {
 
     case 'get_all_tenants':
         try {
-            $stmt = $pdo->query("SELECT * FROM tenants ORDER BY name ASC");
+            $stmt = $pdo->query("
+                SELECT t.*, 
+                (SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN p.property_type = 'MULTI_KEY' THEN 
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                        ELSE 1
+                    END
+                ), 0) FROM properties p WHERE p.tenant_id = t.id AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM') AND p.is_active = 1) AS slots_used
+                FROM tenants t 
+                ORDER BY t.name ASC
+            ");
             $tenants = $stmt->fetchAll();
             echo json_encode(['success' => true, 'data' => $tenants]);
         } catch (Exception $e) {
@@ -372,7 +384,14 @@ switch ($action) {
             exit;
         }
         try {
-            $stmt = $pdo->prepare("SELECT * FROM properties WHERE tenant_id = ? ORDER BY name ASC");
+            // Return only top-level properties (not MULTI_KEY_ROOM sub-rooms), include room count
+            $stmt = $pdo->prepare("
+                SELECT p.*,
+                    (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM') as room_count
+                FROM properties p
+                WHERE p.tenant_id = ? AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM')
+                ORDER BY p.name ASC
+            ");
             $stmt->execute([$tenant_id]);
             $properties = $stmt->fetchAll();
             echo json_encode(['success' => true, 'data' => $properties]);
@@ -381,6 +400,176 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
+
+    case 'get_tenant_by_slug':
+        $slug = strtolower(trim($_GET['slug'] ?? ''));
+        if (!$slug) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'slug required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id, name, slug, max_properties, subscription_plan, subscription_status, is_active
+                FROM tenants
+                WHERE (slug = ? OR REPLACE(slug, '_', '-') = ? OR REPLACE(slug, '-', '_') = ?)
+                  AND is_active = 1
+                LIMIT 1
+            ");
+            $stmt->execute([$slug, $slug, $slug]);
+            $tenant = $stmt->fetch();
+            if ($tenant) {
+                echo json_encode(['success' => true, 'data' => $tenant]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Tenant not found']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'get_tenant_slot_usage':
+        $tenant_id = $_GET['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                SELECT
+                    p.id, p.name, p.slug, p.property_type, p.is_active,
+                    CASE
+                        WHEN p.property_type = 'MULTI_KEY' THEN
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                        ELSE 1
+                    END AS slots_used
+                FROM properties p
+                WHERE p.tenant_id = ?
+                  AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM')
+                ORDER BY p.name ASC
+            ");
+            $stmt->execute([$tenant_id]);
+            $properties = $stmt->fetchAll();
+
+            $tenantStmt = $pdo->prepare("SELECT max_properties FROM tenants WHERE id = ?");
+            $tenantStmt->execute([$tenant_id]);
+            $tenant = $tenantStmt->fetch();
+
+            $totalSlots = $tenant ? (int)$tenant['max_properties'] : 0;
+            $usedSlots = 0;
+            $breakdown = [];
+            foreach ($properties as $p) {
+                $slots = (int)$p['slots_used'];
+                $usedSlots += $slots;
+                $breakdown[] = [
+                    'id'            => $p['id'],
+                    'name'          => $p['name'],
+                    'slug'          => $p['slug'],
+                    'property_type' => $p['property_type'] ?? 'SINGLE',
+                    'is_active'     => $p['is_active'],
+                    'slots_used'    => $slots,
+                ];
+            }
+
+            echo json_encode(['success' => true, 'data' => [
+                'total_slots'     => $totalSlots,
+                'used_slots'      => $usedSlots,
+                'remaining_slots' => max(0, $totalSlots - $usedSlots),
+                'breakdown'       => $breakdown,
+            ]]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    case 'create_property_for_tenant':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $tenant_id = $input['tenant_id'] ?? '';
+        $property_name = trim($input['name'] ?? '');
+        $property_slug = strtolower(trim($input['slug'] ?? ''));
+        $property_type = $input['property_type'] ?? 'SINGLE';
+        $room_count = max(1, (int)($input['room_count'] ?? 1));
+        $property_email = trim($input['email'] ?? '');
+        $property_phone = trim($input['phone'] ?? '');
+
+        if (!$tenant_id || !$property_name || !$property_slug) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id, name, and slug are required']);
+            exit;
+        }
+        try {
+            // Compute used slots with room-based formula
+            $usedStmt = $pdo->prepare("
+                SELECT COALESCE(SUM(
+                    CASE
+                        WHEN p.property_type = 'MULTI_KEY' THEN
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                        ELSE 1
+                    END
+                ), 0) as used_slots
+                FROM properties p
+                WHERE p.tenant_id = ?
+                  AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM')
+            ");
+            $usedStmt->execute([$tenant_id]);
+            $usedSlots = (int)$usedStmt->fetch()['used_slots'];
+
+            $maxStmt = $pdo->prepare("SELECT max_properties FROM tenants WHERE id = ?");
+            $maxStmt->execute([$tenant_id]);
+            $tenantRow = $maxStmt->fetch();
+            $maxSlots = $tenantRow ? (int)$tenantRow['max_properties'] : 0;
+
+            $slotsNeeded = ($property_type === 'MULTI_KEY') ? $room_count : 1;
+            $remaining = $maxSlots - $usedSlots;
+
+            if ($slotsNeeded > $remaining) {
+                echo json_encode([
+                    'success'         => false,
+                    'message'         => "Not enough slots. You need {$slotsNeeded} slot(s) but only {$remaining} remain.",
+                    'slots_needed'    => $slotsNeeded,
+                    'remaining_slots' => $remaining,
+                ]);
+                exit;
+            }
+
+            // Check slug uniqueness
+            $slugCheck = $pdo->prepare("SELECT id FROM properties WHERE slug = ?");
+            $slugCheck->execute([$property_slug]);
+            if ($slugCheck->fetch()) {
+                echo json_encode(['success' => false, 'message' => 'A property with this slug already exists. Please choose a different name.']);
+                exit;
+            }
+
+            $pdo->beginTransaction();
+            if ($property_type === 'MULTI_KEY') {
+                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'MULTI_KEY', 'active', 1, 'blue', ?, ?)");
+                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
+                $parentId = $pdo->lastInsertId();
+                for ($i = 1; $i <= $room_count; $i++) {
+                    $roomSlug = $property_slug . '-room-' . $i;
+                    $roomName = $property_name . ' - Room ' . $i;
+                    $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, status, is_active, tailwind_color_scheme) VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, 'active', 1, 'blue')")
+                        ->execute([$tenant_id, $roomName, $roomSlug, $parentId]);
+                }
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => "Multi-key property created with {$room_count} room(s)", 'property_id' => $parentId]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'SINGLE', 'active', 1, 'blue', ?, ?)");
+                $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
+                $propertyId = $pdo->lastInsertId();
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Property created successfully', 'property_id' => $propertyId]);
+            }
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
 
     case 'update_tenant':
         $input = json_decode(file_get_contents('php://input'), true);
@@ -393,13 +582,13 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("
                 UPDATE tenants
-                SET name = ?, owner_name = ?, owner_email = ?, subscription_status = ?, is_active = ?
+                SET name = ?, email = ?, phone = ?, subscription_status = ?, is_active = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $input['name'] ?? '',
-                $input['owner_name'] ?? '',
-                $input['owner_email'] ?? '',
+                $input['email'] ?? null,
+                $input['phone'] ?? null,
                 $input['subscription_status'] ?? 'trial',
                 $input['is_active'] ?? 0,
                 $id
@@ -503,27 +692,49 @@ switch ($action) {
     case 'update_property':
         $input = json_decode(file_get_contents('php://input'), true);
         $property_id = $input['property_id'] ?? '';
-        $status = $input['status'] ?? '';
 
-        if (!$property_id || !$status) {
+        if (!$property_id) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'property_id and status required']);
+            echo json_encode(['success' => false, 'message' => 'property_id required']);
             exit;
         }
 
         try {
-            $stmt = $pdo->prepare("
-                UPDATE properties
-                SET status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ");
-            $stmt->execute([$status, $property_id]);
+            $sets = [];
+            $params = [];
+
+            if (isset($input['status'])) {
+                $sets[] = 'status = ?';
+                $params[] = $input['status'];
+            }
+            if (isset($input['name'])) {
+                $sets[] = 'name = ?';
+                $params[] = trim($input['name']);
+            }
+            if (array_key_exists('email', $input)) {
+                $sets[] = 'email = ?';
+                $params[] = trim($input['email']) ?: null;
+            }
+            if (array_key_exists('phone', $input)) {
+                $sets[] = 'phone = ?';
+                $params[] = trim($input['phone']) ?: null;
+            }
+
+            if (empty($sets)) {
+                echo json_encode(['success' => false, 'message' => 'No fields to update']);
+                exit;
+            }
+
+            $sets[] = 'updated_at = CURRENT_TIMESTAMP';
+            $params[] = $property_id;
+
+            $stmt = $pdo->prepare("UPDATE properties SET " . implode(', ', $sets) . " WHERE id = ?");
+            $stmt->execute($params);
 
             if ($stmt->rowCount() > 0) {
                 echo json_encode(['success' => true, 'message' => 'Property updated successfully']);
             } else {
-                http_response_code(404);
-                echo json_encode(['success' => false, 'message' => 'Property not found']);
+                echo json_encode(['success' => true, 'message' => 'No changes made']);
             }
         } catch (Exception $e) {
             http_response_code(500);
