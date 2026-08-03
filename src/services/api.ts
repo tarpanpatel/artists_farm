@@ -1821,3 +1821,49 @@ export async function addStaffMealOptionToDB(name: string, cost: number): Promis
     return false;
   }
 }
+
+export interface StaffMealLog {
+  date: string;
+  staff: string;
+  food: string;
+  hasTag: boolean;
+}
+
+export async function fetchStaffMealLogsFromDB(): Promise<StaffMealLog[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_staff_meal_logs`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data.map((row: any) => {
+        const d = new Date((row.logged_at || '').replace(' ', 'T'));
+        const date = isNaN(d.getTime())
+          ? row.logged_at
+          : `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+        return {
+          date,
+          staff: row.staff_names,
+          food: row.food_description,
+          hasTag: !!Number(row.is_leftover_buffer),
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Failed to fetch staff meal logs:', err);
+  }
+  return [];
+}
+
+export async function addStaffMealLogToDB(staffNames: string, foodDescription: string, isLeftoverBuffer: boolean): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_staff_meal_log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_names: staffNames, food_description: foodDescription, is_leftover_buffer: isLeftoverBuffer }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to add staff meal log:', err);
+    return false;
+  }
+}

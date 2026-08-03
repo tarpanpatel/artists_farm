@@ -44,9 +44,9 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Phase 3: Enhancements & Platform Optimization
 
-- [ ] **Staff Meal Log Persistence (`KitchenManagement.tsx`)**
-  - **Problem:** Found while fixing the Staff Meal Options dropdown (Phase 2) — the "Monthly Tracking Log" (`smLogs`: who ate what, when) is entirely local React state, seeded from hardcoded demo rows. Every meal logged via "Record Consumption" is gone on the next page refresh; nothing is ever written to the database.
-  - **Action:** New `staff_meal_logs` table (property_id, staff_names, food_description, quantity, is_leftover_buffer, logged_at) + `get_staff_meal_logs`/`add_staff_meal_log` actions, matching the pattern just used for `staff_meal_options`. Replace the hardcoded initial `smLogs` array with a DB fetch on mount, and have `handleLogStaffMeal` persist instead of only calling `setSmLogs`.
+- [x] **Staff Meal Log Persistence (`KitchenManagement.tsx`)** — *Done 2026-08-04*
+  - **Was:** The "Monthly Tracking Log" (`smLogs`) was entirely local React state, seeded from hardcoded demo rows — every meal logged via "Record Consumption" vanished on the next page refresh.
+  - **Shipped as:** New `staff_meal_logs` table (property_id, staff_names, food_description, is_leftover_buffer, logged_at) + `get_staff_meal_logs`/`add_staff_meal_log` actions in `php/kitchen/menu.php`. Table now starts genuinely empty (no fake seed rows, unlike the options table — these are real logs) and fetches from DB on mount. Verified in-browser: logged a real meal, confirmed it appeared in the table, reloaded the page, confirmed the entry survived the reload.
 
 - [ ] **Automated iCal Sync Background Worker**
   - **Action:** Set up a scheduled cron task or server background worker to automatically trigger `ical_sync.php` at regular intervals (e.g. every 15 minutes) for all connected Airbnb/Booking.com calendars.

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -432,14 +432,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       setSmMealOptions(options.map((o) => ({ name: o.name, cost: o.cost })));
     });
   }, []);
-  const [smLogs, setSmLogs] = useState([
-    { date: '25 Jul, 11:30 AM', staff: 'Abhijeet, Kinkar Sarkar, Pranay, Ramesh', food: '4x Rice, daal and sabzi', hasTag: false },
-    { date: '25 Jul, 10:20 AM', staff: 'Kamlesh', food: '1x Rice, daal and sabzi', hasTag: false },
-    { date: '14 Jul, 04:00 PM', staff: 'Abhijeet, Kamlesh, Kinkar Sarkar, Ramesh, Saha Das, Samar Sil', food: '6x Rice, daal and sabzi', hasTag: false },
-    { date: '14 Jul, 02:00 PM', staff: 'Ashish Mandal, Subrata, Abhijeet, Bikas, Kamlesh, Subrata, Kinkar', food: '7x Chapati & Chicken Curry', hasTag: false },
-    { date: '14 Jul, 01:30 PM', staff: 'Subrata, Rohit, Vikas, Kamlesh', food: '4x Leftover Buffer items', hasTag: true },
-    { date: '14 Jul, 01:00 PM', staff: 'Kamlesh, Rohit, Bikas, Subrata, Abhijeet, Kinkar, Vikas, Subrata, Kinkar, Subrata, Abhijeet, Kinkar', food: '12x Evening Chai', hasTag: false },
-  ]);
+  const [smLogs, setSmLogs] = useState<{ date: string; staff: string; food: string; hasTag: boolean }[]>([]);
+  useEffect(() => {
+    fetchStaffMealLogsFromDB().then(setSmLogs);
+  }, []);
   const [smVisibleCount, setSmVisibleCount] = useState(10);
 
   const smStaffList = useMemo(() => guests.filter(g => g.status === 'Active').map(g => g.guestName), [guests]);
@@ -471,15 +467,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     
     const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x ${smConsumptionType}`;
     
+    const isLeftover = smConsumptionType === 'Leftover Buffer items';
     const newLog = {
       date: formattedDate,
       staff: smSelectedStaff.join(', '),
       food: foodStr,
-      hasTag: smConsumptionType === 'Leftover Buffer items'
+      hasTag: isLeftover
     };
-    
+
     setSmLogs(prev => [newLog, ...prev]);
-    
+    addStaffMealLogToDB(smSelectedStaff.join(', '), foodStr, isLeftover);
+
     // Reset Form
     setSmSelectedStaff([]);
     setSmQuantity(1);

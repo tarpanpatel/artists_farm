@@ -502,6 +502,55 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'get_staff_meal_logs':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    property_id INT NOT NULL DEFAULT 1,
+                    staff_names TEXT NOT NULL,
+                    food_description VARCHAR(255) NOT NULL,
+                    is_leftover_buffer TINYINT(1) DEFAULT 0,
+                    logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                $stmt = $pdo->prepare("SELECT id, staff_names, food_description, is_leftover_buffer, logged_at FROM staff_meal_logs WHERE property_id = ? ORDER BY logged_at DESC LIMIT 200");
+                $stmt->execute([$propertyId]);
+                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
+        case 'add_staff_meal_log':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $staffNames = trim($input['staff_names'] ?? '');
+                $foodDescription = trim($input['food_description'] ?? '');
+                $isLeftover = !empty($input['is_leftover_buffer']) ? 1 : 0;
+                if (!$staffNames || !$foodDescription) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'staff_names and food_description are required']);
+                    break;
+                }
+                try {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        property_id INT NOT NULL DEFAULT 1,
+                        staff_names TEXT NOT NULL,
+                        food_description VARCHAR(255) NOT NULL,
+                        is_leftover_buffer TINYINT(1) DEFAULT 0,
+                        logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    $stmt = $pdo->prepare("INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$propertyId, $staffNames, $foodDescription, $isLeftover]);
+                    echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid menu action']);

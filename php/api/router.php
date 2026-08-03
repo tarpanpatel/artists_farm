@@ -143,7 +143,7 @@ $kitchen_module_actions = [
     'update_order_item_status', 'update_item_reminder_timestamp', 'check_stale_reminders',
     'get_menu', 'add_menu_item', 'update_menu_item', 'delete_menu_item', 'dedup_menu',
     'get_recipes', 'save_recipe', 'delete_recipe', 'deplete_stock',
-    'get_staff_meal_options', 'add_staff_meal_option',
+    'get_staff_meal_options', 'add_staff_meal_option', 'get_staff_meal_logs', 'add_staff_meal_log',
     'get_inventory', 'update_stock',
     'get_stock_requests', 'create_stock_request', 'update_stock_request_status',
     'get_wastage_logs', 'create_wastage_log',
@@ -990,6 +990,8 @@ switch ($action) {
     case 'deplete_stock':
     case 'get_staff_meal_options':
     case 'add_staff_meal_option':
+    case 'get_staff_meal_logs':
+    case 'add_staff_meal_log':
         handleMenuRequests($pdo, $request_method, $action, $propertyId);
         break;
 
