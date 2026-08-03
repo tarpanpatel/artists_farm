@@ -1332,8 +1332,7 @@ let _templateCache: Record<string, string> | null = null;
 export async function resolveTelegramTemplate(dbKey: string, variables: Record<string, string>): Promise<string | null> {
   try {
     if (!_templateCache) {
-      const base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
-      const res = await apiFetch(`${base}/php/telegram/manager.php?action=get_templates`);
+      const res = await apiFetch(`${API_ROOT_BASE}/php/telegram/manager.php?action=get_templates`);
       const json = await res.json();
       if (json.success && json.templates) {
         _templateCache = {};

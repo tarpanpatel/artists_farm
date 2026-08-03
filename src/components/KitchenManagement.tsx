@@ -21,7 +21,8 @@ import {
   Pencil,
   Minus,
   Copy,
-  Scale
+  Scale,
+  Bell
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
@@ -230,6 +231,76 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       msg: `PATCH /api/kitchen/orders/${ord.id}/items/${itemIndex} - Dish Served (${item.name})`,
       origin: '/src/components/KitchenManagement.tsx -> handleMarkDishServed',
       details: { orderId: ord.id, itemIndex, item },
+    });
+  };
+
+  // Manual "Send Reminder" nudge for an order item still sitting in Pending/Cooking -
+  // a pure one-way notification to the Kitchen chat, always referencing the specific
+  // dish/table/elapsed time (never a generic nudge). Auto-nudge-every-N-minutes is a
+  // separate fast-follow (needs a persisted last-reminder timestamp + scheduler).
+  const handleSendKitchenReminder = async (ord: Order, itemIndex: number, item: OrderItem) => {
+    const cleanTicketId = ord.id.replace('#', '');
+    const elapsedMin = Math.max(0, Math.round((Date.now() - new Date(ord.orderTime).getTime()) / 60000));
+
+    if (onDispatchTelegram) {
+      const reminderVars: Record<string, string> = {
+        order_id: cleanTicketId,
+        qty: String(item.quantity),
+        dish_name: item.name,
+        table_no: ord.roomNumber,
+        elapsed_minutes: String(elapsedMin),
+      };
+      const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
+      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>`;
+      onDispatchTelegram('Kitchen Order Reminder', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
+    }
+
+    showToast(`Reminder sent to kitchen: ${item.quantity}x ${item.name}`, { type: 'success' });
+
+    recordTelescopeLog({
+      portal: 'telegram',
+      severity: 'INFO',
+      msg: `Kitchen reminder sent for order #${cleanTicketId} - ${item.quantity}x ${item.name} (pending ${elapsedMin} min)`,
+      origin: '/src/components/KitchenManagement.tsx -> handleSendKitchenReminder',
+      details: { orderId: ord.id, itemIndex, item, elapsedMin },
+    });
+  };
+
+  // Manual "Send Reminder" nudge for a dish already marked Ready but not yet collected/
+  // served - notifies the Admin chat (no separate floor-staff group) and re-sends the
+  // same "Tap when Served" button so staff can act directly from the reminder itself,
+  // reusing the existing serve_item_ webhook handler.
+  const handleSendPickupReminder = async (ord: Order, itemIndex: number, item: OrderItem) => {
+    const cleanTicketId = ord.id.replace('#', '');
+    const itemKey = `${ord.id}_${itemIndex}`;
+    const readySince = itemReadyTimes[itemKey] || '';
+
+    if (onDispatchTelegram) {
+      const reminderVars: Record<string, string> = {
+        order_id: cleanTicketId,
+        qty: String(item.quantity),
+        dish_name: item.name,
+        table_no: ord.roomNumber,
+        ready_since: readySince || 'a while ago',
+      };
+      const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
+      const inlineKeyboard = {
+        inline_keyboard: [
+          [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
+        ]
+      };
+      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>`;
+      onDispatchTelegram('Pickup Reminder', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
+    }
+
+    showToast(`Pickup reminder sent: ${item.quantity}x ${item.name}`, { type: 'success' });
+
+    recordTelescopeLog({
+      portal: 'telegram',
+      severity: 'INFO',
+      msg: `Pickup reminder sent for order #${cleanTicketId} - ${item.quantity}x ${item.name} (ready since ${readySince || 'unknown'})`,
+      origin: '/src/components/KitchenManagement.tsx -> handleSendPickupReminder',
+      details: { orderId: ord.id, itemIndex, item, readySince },
     });
   };
 
@@ -826,22 +897,42 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 ✓ Served
                               </span>
                             ) : isReady ? (
-                              <button
-                                type="button"
-                                onClick={() => handleMarkDishServed(ord, idx, item)}
-                                className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
-                                title="Click when served to resident"
-                              >
-                                <span>✓ Served</span>
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendPickupReminder(ord, idx, item)}
+                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  title="Send pickup reminder to Admin chat"
+                                >
+                                  <Bell className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkDishServed(ord, idx, item)}
+                                  className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  title="Click when served to resident"
+                                >
+                                  <span>✓ Served</span>
+                                </button>
+                              </>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleMarkDishReady(ord, idx, item)}
-                                className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
-                              >
-                                <span>✓ Ready</span>
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendKitchenReminder(ord, idx, item)}
+                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  title="Send reminder to Kitchen chat"
+                                >
+                                  <Bell className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkDishReady(ord, idx, item)}
+                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                >
+                                  <span>✓ Ready</span>
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>

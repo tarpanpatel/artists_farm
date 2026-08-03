@@ -177,6 +177,22 @@ $defaultTemplates = [
         'description' => 'Edit text applied to the original Telegram message when an entire order is marked completed via inline button callback.',
         'available_variables' => '{original_text},{staff_name},{serve_time}',
         'content' => "✅ <b>ORDER COMPLETED</b>\n\n{original_text}\n\n👨‍🍳 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {serve_time}"
+    ],
+    'kitchen_order_reminder' => [
+        'template_key' => 'kitchen_order_reminder',
+        'title' => 'Kitchen Order Reminder',
+        'category' => 'Kitchen & Ordering',
+        'description' => 'Manual nudge sent to the kitchen when an order item has been pending too long.',
+        'available_variables' => '{order_id},{qty},{dish_name},{table_no},{elapsed_minutes}',
+        'content' => "⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({table_no})\n⏱️ <b>Pending for:</b> {elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>"
+    ],
+    'kitchen_pickup_reminder' => [
+        'template_key' => 'kitchen_pickup_reminder',
+        'title' => 'Ready-for-Pickup Reminder',
+        'category' => 'Kitchen & Ordering',
+        'description' => 'Manual nudge sent to Admin when a ready dish has not been collected/served yet.',
+        'available_variables' => '{order_id},{qty},{dish_name},{table_no},{ready_since}',
+        'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({table_no})\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
     ]
 ];
 
