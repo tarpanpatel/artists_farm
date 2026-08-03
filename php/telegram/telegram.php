@@ -16,6 +16,7 @@
 
 require_once __DIR__ . '/sender.php';
 require_once __DIR__ . '/../modules/module_manager.php';
+require_once __DIR__ . '/pairing.php';
 
 function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
@@ -59,6 +60,83 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                 ];
                 $ok = updatePropertyModuleConfig($pdo, $propertyId, 'telegram', $config);
                 echo json_encode(['status' => $ok ? 'success' : 'error']);
+            }
+            break;
+
+        // --- ZERO-FRICTION SETUP WIZARD (pairing-code based group connection) ---
+        case 'get_bot_identity':
+            $token = pairingBotToken($pdo, $propertyId);
+            if (empty($token)) {
+                echo json_encode(['status' => 'success', 'data' => null]);
+                break;
+            }
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$token}/getMe");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+            $parsed = $raw ? json_decode($raw, true) : null;
+            $identity = (!empty($parsed['ok']) && !empty($parsed['result']['username']))
+                ? ['username' => $parsed['result']['username'], 'name' => $parsed['result']['first_name'] ?? null]
+                : null;
+            echo json_encode(['status' => 'success', 'data' => $identity]);
+            break;
+
+        case 'generate_pairing_code':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $groupKey = trim($input['groupKey'] ?? '');
+                $groupName = trim($input['groupName'] ?? '');
+                if (!$groupKey || !$groupName) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'groupKey and groupName are required']);
+                    break;
+                }
+                $code = generatePairingCode($pdo, $propertyId, $groupKey, $groupName);
+                echo json_encode(['status' => 'success', 'code' => $code]);
+            }
+            break;
+
+        case 'check_pairing_status':
+            $code = trim($_GET['code'] ?? '');
+            if (!$code) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'code is required']);
+                break;
+            }
+            pollAndMatchPairingCodes($pdo, pairingBotToken($pdo, $propertyId));
+            echo json_encode(['status' => 'success', 'data' => getPairingStatus($pdo, $code)]);
+            break;
+
+        case 'confirm_pairing':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $code = trim($input['code'] ?? '');
+                $result = confirmPairing($pdo, $propertyId, $code);
+                echo json_encode(array_merge(['status' => $result['success'] ? 'success' : 'error'], $result));
+            }
+            break;
+
+        case 'send_telegram_test':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $chatId = trim($input['chatId'] ?? '');
+                if (!$chatId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'chatId is required']);
+                    break;
+                }
+                $token = pairingBotToken($pdo, $propertyId);
+                if (empty($token)) {
+                    echo json_encode(['status' => 'error', 'message' => 'No Telegram bot token is configured on this server yet.']);
+                    break;
+                }
+                $raw = sendRawTelegramMessage("✅ <b>Test message from Artists Farm</b>\nThis group is now connected.", $token, $chatId);
+                $parsed = json_decode($raw, true);
+                $ok = !empty($parsed['ok']);
+                echo json_encode(['status' => $ok ? 'success' : 'error', 'message' => $ok ? null : ($parsed['description'] ?? 'Telegram API call failed')]);
             }
             break;
 

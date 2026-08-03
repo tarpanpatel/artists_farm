@@ -22,10 +22,12 @@ import {
   Eraser,
   ExternalLink,
   Loader2,
+  Rocket,
 } from 'lucide-react';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB } from '../services/api';
 import { TelegramConnectionSettings } from './TelegramConnectionSettings';
+import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
 
 export interface TelegramInlineButton {
@@ -363,6 +365,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [testSent, setTestSent] = useState(false);
   const [showBotSettings, setShowBotSettings] = useState(false);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [kitchenEnabled, setKitchenEnabled] = useState(true);
 
@@ -777,6 +780,13 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSetupWizard(true)}
+            className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <Rocket className="w-4 h-4" />
+            <span>Quick Setup Wizard</span>
+          </button>
           <button
             onClick={() => setShowBotSettings(!showBotSettings)}
             className="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
@@ -1217,13 +1227,27 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     </div>
   );
 
+  const setupWizard = (
+    <TelegramSetupWizard
+      isOpen={showSetupWizard}
+      onClose={() => setShowSetupWizard(false)}
+      onComplete={() => fetchTelegramConfigDB().then(setTgSettings)}
+    />
+  );
+
   if (isEmbedded) {
-    return contentBody;
+    return (
+      <>
+        {contentBody}
+        {setupWizard}
+      </>
+    );
   }
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50">
       {contentBody}
+      {setupWizard}
     </div>
   );
 };
