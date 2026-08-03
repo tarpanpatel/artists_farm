@@ -618,15 +618,17 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             <ArrowLeft className="w-3.5 h-3.5" /> Back
           </button>
           <div className="flex items-center gap-3">
-            <button
-              onClick={skipStep}
-              className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
-            >
-              Skip for now
-            </button>
+            {!isLastStep && (
+              <button
+                onClick={skipStep}
+                className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+              >
+                Skip for now
+              </button>
+            )}
             <button
               onClick={goNext}
-              disabled={!isConnected}
+              disabled={!isLastStep && !isConnected}
               className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
             >
               {isLastStep ? 'Finish' : 'Next'} <ArrowRight className="w-3.5 h-3.5" />
