@@ -1,103 +1,126 @@
 <?php
 
 function getCurrentPropertyId(PDO $pdo): int {
-    $explicitlyRequested = null;
     $candidates = [];
+    $explicitlyRequested = false;
 
-    // Priority 1: Tenant + Property slugs from URL (e.g., /tenant-slug/property-slug/)
-    // This comes from .htaccess rewrite rule for multi-tenant properties
+    // Priority 1: Explicit Tenant + Property slugs from query parameters or rewrite rules
     if (isset($_GET['tenant_slug']) && isset($_GET['property_slug'])) {
-        $tenantSlug = strtolower($_GET['tenant_slug']);
-        $propertySlug = strtolower($_GET['property_slug']);
-        $explicitlyRequested = $propertySlug;
+        $tenantSlug = strtolower(trim($_GET['tenant_slug']));
+        $propertySlug = strtolower(trim($_GET['property_slug']));
 
         $stmt = $pdo->prepare("
             SELECT p.id FROM properties p
             JOIN tenants t ON p.tenant_id = t.id
-            WHERE t.slug = ? AND p.slug = ? AND p.is_active = 1
+            WHERE (t.slug = ? OR REPLACE(t.slug, '_', '-') = ? OR REPLACE(t.slug, '-', '_') = ?)
+              AND (p.slug = ? OR REPLACE(p.slug, '_', '-') = ? OR REPLACE(p.slug, '-', '_') = ?)
+              AND p.is_active = 1
             LIMIT 1
         ");
-        $stmt->execute([$tenantSlug, $propertySlug]);
+        $stmt->execute([$tenantSlug, $tenantSlug, $tenantSlug, $propertySlug, $propertySlug, $propertySlug]);
         $row = $stmt->fetch();
         if ($row) {
             return (int)$row['id'];
         }
-        // If tenant+property was explicitly requested but not found, return 0 (property doesn't exist)
+        // Explicit tenant+property combo requested but not found - reject immediately rather
+        // than falling through to an unrelated property.
         return 0;
     }
 
     // Priority 2: Single property slug query parameter
-    if (isset($_GET['property_slug'])) {
-        $explicitlyRequested = strtolower($_GET['property_slug']);
-        $candidates[] = $explicitlyRequested;
+    if (isset($_GET['property_slug']) && !empty($_GET['property_slug'])) {
+        $explicitlyRequested = true;
+        $candidates[] = strtolower(trim($_GET['property_slug']));
     }
 
     // Priority 3: HTTP header
-    if (isset($_SERVER['HTTP_X_PROPERTY_SLUG'])) {
-        $slug = strtolower($_SERVER['HTTP_X_PROPERTY_SLUG']);
-        if (!$explicitlyRequested) $explicitlyRequested = $slug;
-        $candidates[] = $slug;
+    if (isset($_SERVER['HTTP_X_PROPERTY_SLUG']) && !empty($_SERVER['HTTP_X_PROPERTY_SLUG'])) {
+        $explicitlyRequested = true;
+        $candidates[] = strtolower(trim($_SERVER['HTTP_X_PROPERTY_SLUG']));
     }
 
-    // Priority 4: URL path segment - extract property slug from multi-tenant URL
-    // URLs like /artists_farm/vrikshawan/paddle/ => paddle is property slug
+    // Priority 4: URL path segments
     $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
     $path = parse_url($request_uri, PHP_URL_PATH) ?: '/';
     $segments = array_values(array_filter(explode('/', $path), fn($s) => $s !== ''));
 
-    // For URLs with 3+ segments, last meaningful segment is property slug
-    if (count($segments) >= 3) {
-        $propertySlug = strtolower($segments[count($segments) - 1]);
-        if ($propertySlug !== '') {
-            if (!$explicitlyRequested) $explicitlyRequested = $propertySlug;
-            $candidates[] = $propertySlug;
-        }
-    } elseif (count($segments) >= 1) {
-        // Single segment URLs
-        foreach (array_slice($segments, 0, 1) as $seg) {
-            if ($seg !== '') {
-                if (!$explicitlyRequested) $explicitlyRequested = strtolower($seg);
-                $candidates[] = strtolower($seg);
-            }
+    // Reserved non-property path segments
+    $reserved = ['artists_farm', 'php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'login'];
+
+    // Collect all valid path segments in reverse order (most specific segment first)
+    foreach (array_reverse($segments) as $seg) {
+        $clean = strtolower(trim($seg));
+        if ($clean !== '' && !in_array($clean, $reserved) && !str_contains($clean, '.')) {
+            $explicitlyRequested = true;
+            $candidates[] = $clean;
         }
     }
 
-    // Priority 5: Subdomain (for backward compatibility)
+    // Priority 5: Subdomain fallback (not treated as an "explicit" request on its own - a bare
+    // subdomain hit is ambiguous enough that it should still be eligible for the default fallback
+    // below rather than being rejected outright)
     $host = strtolower(trim($_SERVER['HTTP_HOST'] ?? 'localhost'));
     $hostParts = explode('.', $host);
-    if (count($hostParts) >= 3) {
+    if (count($hostParts) >= 3 && $hostParts[0] !== 'www') {
         $candidates[] = $hostParts[0];
     }
 
-    // If a property was explicitly requested but not found, reject immediately
-    if ($explicitlyRequested) {
-        foreach ($candidates as $slug) {
-            if ($slug === '') continue;
-            $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_active = 1 LIMIT 1");
-            $stmt->execute([$slug]);
-            $row = $stmt->fetch();
-            if ($row) {
-                return (int)$row['id'];
-            }
-        }
-        // Explicitly requested property not found - return 0 (don't fall back)
-        return 0;
-    }
+    // Deduplicate candidates preserving order
+    $candidates = array_unique($candidates);
 
-    // Priority 6: Default fallback only if no explicit request
-    $candidates[] = 'jaipur';
-
+    // Attempt resolution for candidates: match against property slug first, then tenant slug
+    // (a tenant-only URL like /artists_farm/vrikshawan/ resolves to that tenant's first active
+    // property, so e.g. Root Admin isn't locked out just because no property segment was given)
     foreach ($candidates as $slug) {
         if ($slug === '') continue;
-        $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_active = 1 LIMIT 1");
-        $stmt->execute([$slug]);
+
+        // A. Match against property slug (exact or hyphen/underscore variant)
+        $stmt = $pdo->prepare("
+            SELECT id FROM properties
+            WHERE (slug = ? OR REPLACE(slug, '_', '-') = ? OR REPLACE(slug, '-', '_') = ?)
+              AND is_active = 1
+            LIMIT 1
+        ");
+        $stmt->execute([$slug, $slug, $slug]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return (int)$row['id'];
+        }
+
+        // B. Match against tenant slug (returns first active property belonging to this tenant)
+        $stmt = $pdo->prepare("
+            SELECT p.id FROM properties p
+            JOIN tenants t ON p.tenant_id = t.id
+            WHERE (t.slug = ? OR REPLACE(t.slug, '_', '-') = ? OR REPLACE(t.slug, '-', '_') = ?)
+              AND p.is_active = 1
+            ORDER BY p.id ASC
+            LIMIT 1
+        ");
+        $stmt->execute([$slug, $slug, $slug]);
         $row = $stmt->fetch();
         if ($row) {
             return (int)$row['id'];
         }
     }
 
-    // Ultimate fallback: first active property (only if nothing else worked)
+    // A property/tenant was explicitly requested (via query param, header, or URL path) but none
+    // of the candidates matched a real property or tenant - reject rather than silently falling
+    // back to an unrelated property. This is a multi-tenant app; silently loading a different
+    // tenant's data for an unresolved request would be a data-isolation bug, not a convenience.
+    if ($explicitlyRequested) {
+        return 0;
+    }
+
+    // Priority 6: Default fallback - only reached when NO explicit signal was present at all
+    // (e.g. bare domain root access, or only an ambiguous subdomain).
+    $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = 'jaipur' AND is_active = 1 LIMIT 1");
+    $stmt->execute();
+    $row = $stmt->fetch();
+    if ($row) {
+        return (int)$row['id'];
+    }
+
+    // Ultimate fallback: return the first active property in the database
     $stmt = $pdo->query("SELECT id FROM properties WHERE is_active = 1 ORDER BY id ASC LIMIT 1");
     $row = $stmt->fetch();
     return $row ? (int)$row['id'] : 1;
