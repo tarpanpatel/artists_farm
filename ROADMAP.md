@@ -6,24 +6,16 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🔴 Phase 1: Critical Fixes & User Flow Integrity
 
-- [ ] **Logout & Login Redirect Flow**
-  - **Issue:** `logout.php` redirects to `/artists_farm/login.php` and `dashboard.php` redirects to `/artists_farm/tenant_login.php`, but neither `login.php` nor `tenant_login.php` exists at the root.
-  - **Action:** Create a unified `login.php` page or configure `.htaccess` rewrite rules to route `/login` cleanly to the React frontend auth route without 404 errors.
+*Re-verified 2026-08-04 — all three items below were already resolved by earlier work, unrelated to this note. Keeping them logged rather than deleting, in case the underlying fix ever regresses.*
 
-- [ ] **Icon Resolution Error (`Navigation.tsx`)**
-  - **Issue:** `lucide-react` does not export `Door` (causing ES module import failure and white-screen error in dev mode).
-  - **Action:** Update import in `Navigation.tsx` from `Door` to `DoorOpen` or `DoorClosed`.
+- [x] **Logout & Login Redirect Flow**
+  - **Verified:** `logout.php`/`dashboard.php` now redirect to `/artists_farm/` and `/artists_farm/root_dashboard` (the React app's own routes), not the nonexistent `login.php`/`tenant_login.php` this item originally described.
 
-- [ ] **Active Resident Date-Range & Status Validation**
-  - **Issue:** Room views display guests as active residents even if their checkout date has passed or if their status in DB defaulted to `Active`.
-  - **Action:** Enforce strict filtering in `OperationalDashboard.tsx` and `MultiKeyPropertyOverview.tsx`:
-    ```typescript
-    const activeResident = guests.find(g => 
-      g.status === 'Active' && 
-      checkinDate <= today && 
-      expectedCheckout >= today
-    );
-    ```
+- [x] **Icon Resolution Error (`Navigation.tsx`)**
+  - **Verified:** No `Door` import exists in `Navigation.tsx` anymore — already using a valid Lucide icon.
+
+- [x] **Active Resident Date-Range & Status Validation**
+  - **Verified:** `OperationalDashboard.tsx` already does the full check — `g.status === 'Active' && today >= checkinDate && today < checkoutDate`. `MultiKeyPropertyOverview.tsx` filters by `room_id` and delegates to the same `OperationalDashboard` logic, so it inherits the fix.
 
 ---
 
@@ -37,13 +29,12 @@ This document tracks identified bugs, pending backend API integrations, and upco
   - **Buttons:** `Update Booking` and `Delete Booking`.
   - **Action:** Implement `update_booking` and `delete_booking` PHP API handlers in `php/guests/guests.php` and replace stubs at lines 518 & 577 in `OperationalDashboard.tsx`.
 
-- [ ] **Telegram Notification Template Sync (`TelegramNotificationModal.tsx`)**
-  - **Button:** `Load Templates`.
-  - **Action:** Implement `fetchTemplatesFromDB()` in `src/services/api.ts` and connect it to `php/telegram/` API endpoints.
+- [x] **Telegram Notification Template Sync (`TelegramNotificationModal.tsx`)** — *Done 2026-08-04*
+  - **Was:** The Templates Catalog only ever displayed the hardcoded `FALLBACK_TEMPLATES` array — any template that existed only in the DB (like `kitchen_order_reminder`/`kitchen_pickup_reminder`, added earlier this session) was invisible in the editor even though it worked correctly at send time. An earlier note in this file claiming "no new UI needed" for those two templates was wrong.
+  - **Shipped as:** `fetchTemplatesFromDB()` in `src/services/api.ts` (full records, not just content) merged into the catalog on mount — DB content/metadata overrides a matching hardcoded entry (preserving its inline-button config, since `system_telegram_templates` has no buttons column), and any DB-only key is appended as a new catalog entry. Re-fetches after a save so edits don't get clobbered by a later kitchen-module-toggle re-merge.
 
-- [ ] **Recipe Builder Stock Depletion (`KitchenManagement.tsx`)**
-  - **Button:** `Deplete Stock`.
-  - **Action:** Create backend API action `deplete_recipe_stock` to reduce ingredient quantities in the `inventory` table based on dish recipe formulas.
+- [x] **Recipe Builder Stock Depletion (`KitchenManagement.tsx`)**
+  - **Verified:** Already implemented — `depleteStockForDish()` in `src/services/api.ts` calls a `deplete_stock` action (`php/kitchen/menu.php`), wired into `handleMarkDishServed` for automatic BOM-based ingredient depletion when a dish is served.
 
 - [ ] **Dynamic Staff Meal Options (`KitchenManagement.tsx`)**
   - **Dropdown:** Staff Meal Options.
@@ -91,7 +82,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 - [x] **Editable Message Templates for Reminders** — *Done 2026-08-04 (reminders only)*
   - **Problem:** Kitchen reminder, ready-for-pickup reminder, service-request-created, and service-request-fulfilled messages must not be hardcoded strings in code (see [no-hardcoding principle]) — tenants should be able to customize wording per property.
-  - **Shipped as:** `kitchen_order_reminder`/`kitchen_pickup_reminder` added to `system_telegram_templates` (seeded via `manager.php`'s default array for fresh installs) — they show up in the existing `TelegramNotificationModal.tsx` templates catalog/editor automatically, no new UI needed since that editor is already generic. **Still open:** service-request-created/fulfilled templates, blocked on that feature not existing yet.
+  - **Shipped as:** `kitchen_order_reminder`/`kitchen_pickup_reminder` added to `system_telegram_templates` (seeded via `manager.php`'s default array for fresh installs). Correction to an earlier note here claiming "no new UI needed" — that was wrong, the catalog only showed hardcoded templates at the time; it now correctly shows and lets you edit both (see the Phase 2 Template Sync fix below). **Still open:** service-request-created/fulfilled templates, blocked on that feature not existing yet.
 
 - [ ] **Webhook (production) / Polling (local) Receive Path — Environment-Conditional**
   - **Action:** Mirror the existing `database.php` dev-vs-production detection pattern. On `localhost`/`127.0.0.1`/XAMPP, poll Telegram's `getUpdates` (triggered on page load or a short interval — no public HTTPS endpoint needed, works everywhere). On the real domain, register a proper webhook (instant, no polling delay). Both paths feed the same internal "new Telegram message/button-tap received" handler so the rest of the system (pairing codes, Mark Fulfilled callbacks) doesn't need to know which mode is active.

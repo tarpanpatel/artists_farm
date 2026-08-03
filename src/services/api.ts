@@ -1488,6 +1488,46 @@ export function invalidateTemplateCache() {
   _templateCache = null;
 }
 
+export interface DbTelegramTemplate {
+  templateKey: string;
+  title: string;
+  category: string;
+  description: string;
+  content: string;
+  variables: string[];
+}
+
+// Full template records (not just content) for the Templates Catalog editor -
+// distinct from resolveTelegramTemplate's cached content-only lookup above,
+// since the editor needs title/category/description/variables to render the
+// catalog list and "Insert Available Variables" buttons, and must always hit
+// the DB fresh (not the send-time cache) so newly saved edits show immediately.
+export async function fetchTemplatesFromDB(): Promise<DbTelegramTemplate[]> {
+  try {
+    const res = await apiFetch(`${API_ROOT_BASE}/php/telegram/manager.php?action=get_templates`);
+    const json = await res.json();
+    if (json.success && json.templates) {
+      return Object.keys(json.templates).map((key) => {
+        const t = json.templates[key];
+        return {
+          templateKey: t.template_key || key,
+          title: t.title || key,
+          category: t.category || 'Uncategorized',
+          description: t.description || '',
+          content: t.content || '',
+          variables: (t.available_variables || '')
+            .split(',')
+            .map((v: string) => v.trim())
+            .filter((v: string) => v.length > 0),
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Failed to fetch Telegram templates from DB:', err);
+  }
+  return [];
+}
+
 // =========================================================================
 // CASH DRAWER API
 // =========================================================================

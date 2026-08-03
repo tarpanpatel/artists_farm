@@ -25,7 +25,7 @@ import {
   Rocket,
 } from 'lucide-react';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
-import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB } from '../services/api';
+import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, DbTelegramTemplate } from '../services/api';
 import { TelegramConnectionSettings } from './TelegramConnectionSettings';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
@@ -400,16 +400,55 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     fetchPropertyModules();
   }, [isOpen]);
 
-  // Filter templates based on enabled modules
+  // Live template content/metadata from system_telegram_templates - the catalog
+  // previously only ever showed the hardcoded FALLBACK_TEMPLATES below, so any
+  // template added directly to the DB (or edited by a tenant) never appeared
+  // here even though it worked correctly at send time via resolveTelegramTemplate.
+  const [dbTemplates, setDbTemplates] = useState<DbTelegramTemplate[]>([]);
   useEffect(() => {
-    const filtered = FALLBACK_TEMPLATES.filter(
+    fetchTemplatesFromDB().then(setDbTemplates);
+  }, []);
+
+  // Filter templates based on enabled modules, merged with live DB content/
+  // metadata. FALLBACK_TEMPLATES stays the source of truth for inline button
+  // configs (system_telegram_templates has no buttons column) - DB entries
+  // override title/category/description/template/variables for a matching key,
+  // and any DB-only key (no hardcoded counterpart) is appended with no buttons.
+  useEffect(() => {
+    const byKey = new Map(dbTemplates.map((t) => [t.templateKey, t]));
+    const merged: TelegramTemplateExtended[] = FALLBACK_TEMPLATES.map((tpl) => {
+      const db = byKey.get(tpl.dbKey);
+      if (!db) return tpl;
+      byKey.delete(tpl.dbKey);
+      return {
+        ...tpl,
+        eventName: db.title,
+        category: db.category,
+        description: db.description,
+        template: db.content,
+        variables: db.variables.length > 0 ? db.variables : tpl.variables,
+      };
+    });
+    for (const [key, db] of byKey) {
+      merged.push({
+        id: `db-${key}`,
+        dbKey: key,
+        eventName: db.title,
+        category: db.category,
+        description: db.description,
+        variables: db.variables,
+        template: db.content,
+      });
+    }
+    const filtered = merged.filter(
       (tpl) => !(!kitchenEnabled && KITCHEN_TEMPLATE_KEYS.has(tpl.dbKey))
     );
     setTemplatesList(filtered);
     if (filtered.length > 0 && !filtered.find((t) => t.id === activeTemplateId)) {
       setActiveTemplateId(filtered[0].id);
     }
-  }, [kitchenEnabled, activeTemplateId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kitchenEnabled, dbTemplates]);
 
   useEffect(() => {
     fetchTelegramConfigDB().then((cfg) => {
@@ -694,6 +733,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         if (resData.success || resData.status === 'ok') {
           setSaveStatus('✔ Saved to Database!');
           invalidateTemplateCache();
+          fetchTemplatesFromDB().then(setDbTemplates);
           if (onLogAudit) {
             const currentUserName = getLoggedInUserName();
             onLogAudit(`${currentUserName} updated Telegram template "${currentTpl.eventName}" (${currentTpl.dbKey}) — template content edited and saved to database`, { module: 'telegram_template', status: 'Success', user: currentUserName });
