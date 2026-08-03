@@ -1663,14 +1663,16 @@ export function App() {
     }
 
     return (
-      <RootAdminDashboard
-        username={userSession.username}
-        onLogout={() => {
-          setUserSession(null);
-          localStorage.removeItem('artists_farm_user_session');
-        }}
-        activeRole="Root Admin"
-      />
+      <ConfirmDialogProvider>
+        <RootAdminDashboard
+          username={userSession.username}
+          onLogout={() => {
+            setUserSession(null);
+            localStorage.removeItem('artists_farm_user_session');
+          }}
+          activeRole="Root Admin"
+        />
+      </ConfirmDialogProvider>
     );
   }
 
