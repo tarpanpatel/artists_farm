@@ -16,8 +16,6 @@ import {
   Bot,
   Key,
   ShieldOff,
-  CheckCheck,
-  Settings2,
 } from 'lucide-react';
 import {
   fetchTelegramBotIdentity,
@@ -25,6 +23,8 @@ import {
   checkTelegramPairingStatus,
   confirmTelegramPairing,
   sendTelegramTestMessage,
+  fetchTelegramConfigDB,
+  saveTelegramConfigDB,
 } from '../services/api';
 
 interface WizardStep {
@@ -91,7 +91,53 @@ const TelegramMockScreen: React.FC<{ children: React.ReactNode }> = ({ children 
   </div>
 );
 
-const BotFatherGuide: React.FC<{ onOpenConnectionSettings?: () => void }> = ({ onOpenConnectionSettings }) => (
+// Simple approximation of the Telegram app icon (blue circle + paper-plane mark) so
+// tenants recognize what to tap on their home screen — not the trademarked asset,
+// just a recognizable illustrative shape, same spirit as the chat-bubble mockups above.
+const TelegramAppIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" className="shrink-0">
+    <circle cx="20" cy="20" r="20" fill="#29A9EA" />
+    <path d="M9 20.5l19-7.5-3 17-6-4.5-3 3-1-5.5 11-9-14 6.5z" fill="white" opacity="0.95" />
+  </svg>
+);
+
+const BotFatherGuide: React.FC<{ onTokenSaved: () => void }> = ({ onTokenSaved }) => {
+  const [tokenInput, setTokenInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveToken = async () => {
+    const trimmed = tokenInput.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      const config = await fetchTelegramConfigDB();
+      const ok = await saveTelegramConfigDB({ ...config, botToken: trimmed });
+      if (!ok) {
+        setSaveError('Could not save the token — please try again.');
+        return;
+      }
+      // Verify the token actually works (Telegram's getMe) rather than just
+      // trusting it saved - a typo'd token would otherwise fail silently and
+      // just leave the tenant stuck back on this same screen with no reason why.
+      const identity = await fetchTelegramBotIdentity();
+      if (identity?.username) {
+        setSaveSuccess(true);
+        onTokenSaved();
+      } else {
+        setSaveError("Saved, but Telegram didn't recognize that token — double-check you copied the whole thing from BotFather.");
+      }
+    } catch {
+      setSaveError('Could not save the token — please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
   <div className="space-y-4">
     <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-bold">
       <Bot className="w-4 h-4" />
@@ -101,19 +147,24 @@ const BotFatherGuide: React.FC<{ onOpenConnectionSettings?: () => void }> = ({ o
     <div className="space-y-2">
       <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
         <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">1</span>
-        Search Telegram for <span className="font-mono">BotFather</span>
+        Open Telegram and start a chat with <span className="font-mono">BotFather</span>
       </div>
       <TelegramMockScreen>
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-300 dark:border-slate-600">
-          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">BotFather</span>
+        <div className="flex items-center gap-3 px-1 py-1">
+          <TelegramAppIcon />
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">That's the Telegram app icon — tap it, or use the button below.</span>
         </div>
-        <div className="flex items-center gap-2 px-1">
-          <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
-            <Bot className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">BotFather</span>
-          <CheckCheck className="w-3 h-3 text-sky-500" />
+        <a
+          href="https://t.me/BotFather?text=%2Fnewbot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] px-3 py-2 rounded-lg transition-all"
+        >
+          <Send className="w-3.5 h-3.5" /> Open Telegram → BotFather (with /newbot ready to send)
+        </a>
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-300 dark:border-slate-600 mt-1">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">Or search "BotFather" manually if the button doesn't open the app.</span>
         </div>
       </TelegramMockScreen>
     </div>
@@ -121,7 +172,7 @@ const BotFatherGuide: React.FC<{ onOpenConnectionSettings?: () => void }> = ({ o
     <div className="space-y-2">
       <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
         <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">2</span>
-        Send <span className="font-mono">/newbot</span> and follow the prompts
+        Tap send on <span className="font-mono">/newbot</span> (already typed for you), then answer the prompts
       </div>
       <TelegramMockScreen>
         <TelegramBubble outgoing mono text="/newbot" />
@@ -173,27 +224,47 @@ const BotFatherGuide: React.FC<{ onOpenConnectionSettings?: () => void }> = ({ o
       </p>
     </div>
 
-    <div className="pt-1">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 mb-2">
+    <div className="pt-1 space-y-2">
+      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
         <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">5</span>
-        Paste that token into Connection Settings
+        Paste that token here
       </div>
-      <button
-        onClick={onOpenConnectionSettings}
-        disabled={!onOpenConnectionSettings}
-        className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-      >
-        <Settings2 className="w-3.5 h-3.5" /> Open Connection Settings → Bot API Token
-      </button>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={tokenInput}
+          onChange={(e) => setTokenInput(e.target.value)}
+          placeholder="123456789:AAH..."
+          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+        />
+        <button
+          onClick={handleSaveToken}
+          disabled={saving || !tokenInput.trim()}
+          className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+        >
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+          Save
+        </button>
+      </div>
+      {saveSuccess && (
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Bot connected! Continuing…
+        </div>
+      )}
+      {saveError && (
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
+          <X className="w-3.5 h-3.5 shrink-0" /> {saveError}
+        </div>
+      )}
     </div>
   </div>
-);
+  );
+};
 
 interface TelegramSetupWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
-  onOpenConnectionSettings?: () => void;
   propertyName?: string;
 }
 
@@ -201,7 +272,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   isOpen,
   onClose,
   onComplete,
-  onOpenConnectionSettings,
   propertyName,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -227,14 +297,43 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   };
 
   // Fetch the shared bot's @username once, on open, so instructions never hardcode a bot name.
+  // Also re-run after a token is saved inline (see BotFatherGuide) so the wizard
+  // transitions straight into the normal flow without ever leaving the popup.
+  const refreshBotIdentity = () => {
+    fetchTelegramBotIdentity().then((identity) => setBotUsername(identity?.username ?? null));
+  };
   useEffect(() => {
     if (!isOpen) return;
-    fetchTelegramBotIdentity().then((identity) => setBotUsername(identity?.username ?? null));
+    refreshBotIdentity();
+  }, [isOpen]);
+
+  // Pre-mark any group already connected from a previous session (or the manual
+  // Connection Settings editor) as done, so the progress circles reflect reality
+  // the moment the wizard opens instead of looking unstarted until re-paired here.
+  // Gates the pairing-code effect below via configLoaded so it can't race this and
+  // clobber an already-connected step with a freshly generated (unnecessary) code.
+  const [configLoaded, setConfigLoaded] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    setConfigLoaded(false);
+    fetchTelegramConfigDB().then((config) => {
+      setStepStates((prev) => {
+        const next = { ...prev };
+        for (const step of STEPS) {
+          const existing = config.groups.find((g) => g.key === step.key && g.chatId);
+          if (existing && next[step.key]?.status !== 'connected') {
+            next[step.key] = { ...EMPTY_STEP_STATE, status: 'connected', chatId: existing.chatId };
+          }
+        }
+        return next;
+      });
+      setConfigLoaded(true);
+    });
   }, [isOpen]);
 
   // Auto-generate a pairing code the moment a step becomes active (if it doesn't have one yet).
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !configLoaded) return;
     clearPolling();
     const state = stepStates[currentStep.key];
     if (!state || state.status === 'idle') {
@@ -244,7 +343,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     }
     return clearPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentIndex]);
+  }, [isOpen, configLoaded, currentIndex]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -357,7 +456,12 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     }`}
                   />
                 )}
-                <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentIndex(idx)}
+                  className="flex flex-col items-center gap-1 cursor-pointer"
+                  title={`Go to ${step.label}`}
+                >
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
                       done
@@ -376,7 +480,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   >
                     {step.label}
                   </span>
-                </div>
+                </button>
               </React.Fragment>
             );
           })}
@@ -397,7 +501,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           </div>
 
           {!botUsername ? (
-            <BotFatherGuide onOpenConnectionSettings={onOpenConnectionSettings} />
+            <BotFatherGuide onTokenSaved={refreshBotIdentity} />
           ) : (
             <>
               <ol className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200 list-none">

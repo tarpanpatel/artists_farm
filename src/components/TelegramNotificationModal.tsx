@@ -1241,10 +1241,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       isOpen={showSetupWizard}
       onClose={() => setShowSetupWizard(false)}
       onComplete={() => fetchTelegramConfigDB().then(setTgSettings)}
-      onOpenConnectionSettings={() => {
-        setShowSetupWizard(false);
-        setShowBotSettings(true);
-      }}
     />
   );
 
