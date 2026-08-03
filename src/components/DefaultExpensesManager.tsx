@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { getExpenseItemIcon } from '../utils/expenseIcons';
 
 interface ExpenseItem {
   id: number;
@@ -342,10 +343,13 @@ export const DefaultExpensesManager: React.FC = () => {
             </div>
             <div className="p-2.5">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
-                {filteredExpenses[category].map((item) => (
+                {filteredExpenses[category].map((item) => {
+                  const ItemIcon = getExpenseItemIcon(item.label, category);
+                  return (
                   <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
+                        <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                         <span className="font-semibold text-slate-900 dark:text-white text-xs leading-tight flex-1 line-clamp-2">{item.label}</span>
                         <span className="text-[9px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-1 py-0.5 rounded whitespace-nowrap shrink-0">
                           #{item.id}
@@ -375,7 +379,8 @@ export const DefaultExpensesManager: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
