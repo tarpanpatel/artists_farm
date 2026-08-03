@@ -1,3 +1,5 @@
+import { API_ROOT_BASE } from '../services/api';
+
 export interface TelescopeLogEntry {
   id: string;
   portal: 'requests' | 'php' | 'sql' | 'js' | 'telegram' | 'security' | '404' | string;
@@ -32,61 +34,83 @@ export function getTelescopeLogs(): TelescopeLogEntry[] {
 export function recordTelescopeLog(
   entry: Omit<TelescopeLogEntry, 'id' | 'timestamp'> & { timestamp?: string }
 ): TelescopeLogEntry {
-  const currentLogs = getTelescopeLogs();
-  const now = new Date();
-  const formattedTime = entry.timestamp || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
-  const newLog: TelescopeLogEntry = {
-    id: `tel-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
-    timestamp: formattedTime,
-    execution_time: entry.execution_time || `${(Math.random() * 35 + 8).toFixed(1)}ms`,
-    memory_usage: entry.memory_usage || '2.4 MB',
-    ip: entry.ip || '127.0.0.1 (Local Environment)',
-    user_agent: entry.user_agent || (typeof navigator !== 'undefined' ? navigator.userAgent : 'ArtistsFarmApp/1.0'),
-    ...entry,
-  };
-
-  const updated = [newLog, ...currentLogs].slice(0, 300);
+  // Belt-and-suspenders: this function must NEVER throw to its caller, no matter what -
+  // logging a telescope event should never be able to break the feature that triggered it.
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch (e) {
-    console.error('Failed to write to localStorage for Telescope log:', e);
-  }
+    const currentLogs = getTelescopeLogs();
+    const now = new Date();
+    const formattedTime = entry.timestamp || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('telescope_log_added', { detail: newLog }));
-  }
+    const newLog: TelescopeLogEntry = {
+      id: `tel-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: formattedTime,
+      execution_time: entry.execution_time || `${(Math.random() * 35 + 8).toFixed(1)}ms`,
+      memory_usage: entry.memory_usage || '2.4 MB',
+      ip: entry.ip || '127.0.0.1 (Local Environment)',
+      user_agent: entry.user_agent || (typeof navigator !== 'undefined' ? navigator.userAgent : 'ArtistsFarmApp/1.0'),
+      ...entry,
+    };
 
-  // Persist to server-side logs.json so standalone PHP dashboard also shows logs
-  try {
-    const base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
-    fetch(`${base}/php/errors/index.php?action=log_event`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        portal: newLog.portal,
-        severity: newLog.severity,
-        msg: newLog.msg,
-        origin: newLog.origin,
-        extra: newLog.details || {},
-      }),
-      keepalive: true,
-    }).then((resp) => {
-      if (!resp.ok) {
-        resp.text().then((text) => {
-          console.warn('Telescope log_event failed:', resp.status, text);
-        }).catch(() => {
-          console.warn('Telescope log_event failed:', resp.status);
-        });
+    const updated = [newLog, ...currentLogs].slice(0, 300);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to write to localStorage for Telescope log:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('telescope_log_added', { detail: newLog }));
+      } catch (e) {
+        console.warn('Telescope log_added event dispatch failed:', e);
       }
-    }).catch((err) => {
-      console.warn('Telescope log_event network error:', err);
-    });
-  } catch (err) {
-    console.warn('Telescope log_event setup error:', err);
-  }
+    }
 
-  return newLog;
+    // Best-effort mirror to server-side logs.json so the standalone PHP dashboard also
+    // shows logs. Uses the same route-independent base path api.ts resolves, so this
+    // works correctly regardless of which page/route triggered the log (root_dashboard,
+    // tenant_dashboard, any property/room route, etc). Entirely fire-and-forget: the
+    // local log above has already succeeded by this point regardless of what happens here.
+    try {
+      fetch(`${API_ROOT_BASE}/php/errors/index.php?action=log_event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          portal: newLog.portal,
+          severity: newLog.severity,
+          msg: newLog.msg,
+          origin: newLog.origin,
+          extra: newLog.details || {},
+        }),
+        keepalive: true,
+      }).then((resp) => {
+        if (!resp.ok) {
+          resp.text().then((text) => {
+            console.warn('Telescope log_event failed:', resp.status, text);
+          }).catch(() => {
+            console.warn('Telescope log_event failed:', resp.status);
+          });
+        }
+      }).catch((err) => {
+        console.warn('Telescope log_event network error:', err);
+      });
+    } catch (err) {
+      console.warn('Telescope log_event setup error:', err);
+    }
+
+    return newLog;
+  } catch (err) {
+    console.error('Telescope logging failed unexpectedly (non-fatal, feature continues normally):', err);
+    // Still return a well-formed entry so callers that use the return value never crash.
+    return {
+      id: `tel-fallback-${Date.now().toString(36)}`,
+      timestamp: new Date().toISOString(),
+      portal: entry.portal,
+      severity: entry.severity,
+      msg: entry.msg,
+      origin: entry.origin,
+    };
+  }
 }
 
 export function clearTelescopeLogs(): void {

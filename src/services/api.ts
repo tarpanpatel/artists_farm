@@ -15,6 +15,11 @@ const _base = _isDev ? '' : (() => {
 })();
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
+// Shared, route-independent base path for anything under /php/ (e.g. telescopeLogger's
+// error-reporting endpoint) - resolves correctly from any route (/root_dashboard/,
+// /tenant_dashboard/, /{tenant}/{property}/{room}/, etc.), unlike deriving it from the
+// current page's URL segments.
+export const API_ROOT_BASE = _base;
 // NOTE: API_KEY removed from frontend - use session auth instead (cookies)
 
 // Path segments that are real app directories/routes, never a property slug.
