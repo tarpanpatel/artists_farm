@@ -61,4 +61,21 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---
 
+## 🔵 Phase 4: Staff Task & Service Request System (Telegram-Integrated)
+
+- [ ] **Kitchen Order Reminders (Stale Order Nudge)**
+  - **Problem:** An order (e.g. 2x noodles) has been sitting in "Pending" status a while with no chef action. Manager/waiter has no way to nudge the kitchen besides walking over.
+  - **Action:** Add a "Send Reminder" button on pending kitchen order rows (visible once elapsed time crosses a DB-configurable threshold, not hardcoded) that posts a Telegram message to the property's kitchen chat referencing the specific order.
+
+- [ ] **Ready-for-Pickup Reminders**
+  - **Problem:** Chef marks a dish "Ready" but the server hasn't collected it from the pass yet.
+  - **Action:** Same reminder mechanism as above, mirrored for the "Ready" → "Served" gap, notifying the server/floor staff Telegram chat instead of kitchen.
+
+- [ ] **Generalized Guest Service Requests (Housekeeping, Maintenance, etc.)**
+  - **Problem:** No way to log/track ad-hoc guest requests not tied to a kitchen order — e.g. guest in Room 101 calls for fresh towels. Currently manager has no system-tracked way to relay this to housekeeping or confirm it was completed.
+  - **Action:** New `service_requests` table (property_id, room_id, request_type, description, requested_by, assigned_department, status, created_at, fulfilled_at, fulfilled_by, telegram_message_id) + UI to create a request (room + quick-pick or free-text description) → sends Telegram message with an inline "Mark Fulfilled" button to the assigned department's chat → staff taps it, status updates to Fulfilled, message edits to show who/when.
+  - **Note:** requires a Telegram bot webhook (or polling `getUpdates`, simpler for local dev without a public HTTPS endpoint) to receive the button-tap callback and update the DB. See discussion in conversation for open design questions (department chat routing, whether reminders are automatic or manually triggered, per-property config).
+
+---
+
 *Last Updated: August 2026*
