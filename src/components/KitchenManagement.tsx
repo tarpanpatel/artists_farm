@@ -2215,16 +2215,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Unit</label>
-                  <select
+                  <StyledSelect
                     value={reqUnit}
-                    onChange={(e) => setReqUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                  >
-                    <option value="kg">kg</option>
-                    <option value="liters">liters</option>
-                    <option value="pcs">pcs</option>
-                    <option value="packets">packets</option>
-                  </select>
+                    onChange={setReqUnit}
+                    options={[
+                      { value: 'kg', label: 'kg' },
+                      { value: 'liters', label: 'liters' },
+                      { value: 'pcs', label: 'pcs' },
+                      { value: 'packets', label: 'packets' },
+                    ]}
+                  />
                 </div>
               </div>
 
