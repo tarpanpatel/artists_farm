@@ -701,13 +701,68 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           
           <form noValidate className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
             e.preventDefault();
+            const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
+            const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
+
+            if (!guestName.trim()) {
+              showToast('Booking Rejected: Guest name is required.', { type: 'error' });
+              return;
+            }
+            if (!phoneNumber.trim()) {
+              showToast('Booking Rejected: Phone number is required.', { type: 'error' });
+              return;
+            }
+            if (!checkinDate || !expectedCheckout) {
+              showToast('Booking Rejected: Check-in and check-out dates are required.', { type: 'error' });
+              return;
+            }
+
+            // 1. Strict Conflict Check: Check if room is already booked for overlapping dates
+            const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
+            const selectedRoomId = selectedRoomObj?.id;
+
+            const hasRoomConflict = guests.some((g) => {
+              if (g.status === 'CheckedOut' || (g.status as string) === 'Cancelled') return false;
+              const gRoomId = (g as any).roomId || (g as any).room_id;
+
+              const isSameRoom = (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
+                (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim());
+
+              if (!isSameRoom) return false;
+
+              const existingCheckin = new Date(g.checkinDate);
+              const existingCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
+              const newCheckin = new Date(newCheckinStr);
+              const newCheckout = new Date(newCheckoutStr);
+
+              return newCheckin < existingCheckout && existingCheckin < newCheckout;
+            });
+
+            if (hasRoomConflict) {
+              showToast(`Booking Rejected! ${roomNumber} is ALREADY booked for these dates.`, { type: 'error' });
+              return;
+            }
+
+            // 2. Strict Duplicate Check: Prevent duplicate entry for same guest on same check-in date
+            const isDuplicate = guests.some((g) => {
+              if (g.status === 'CheckedOut' || (g.status as string) === 'Cancelled') return false;
+              const gPhone = (g.phoneNumber || '').trim();
+              const gCheckin = (g.checkinDate || '').split(' ')[0];
+              return gPhone === phoneNumber.trim() && gCheckin === checkinDate;
+            });
+
+            if (isDuplicate) {
+              showToast('Booking Rejected! A reservation for this contact on this check-in date already exists.', { type: 'error' });
+              return;
+            }
+
             onAddGuest({
               id: Math.random().toString(36).substr(2, 9),
-              guestName,
-              phoneNumber,
+              guestName: guestName.trim(),
+              phoneNumber: phoneNumber.trim(),
               roomNumber,
-              checkinDate: checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate,
-              expectedCheckout: checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout,
+              checkinDate: newCheckinStr,
+              expectedCheckout: newCheckoutStr,
               status: 'Booked'
             });
             showToast('Guest booked successfully!', { type: 'success' });

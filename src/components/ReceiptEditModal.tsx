@@ -30,11 +30,29 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [paymentReceivedBy, setPaymentReceivedBy] = useState('');
 
+  const toInputDateFormat = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    const clean = dateStr.split(' ')[0].split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      return clean;
+    }
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    } catch {
+      return '';
+    }
+  };
+
   // Initialize form with guest data when modal opens or guest changes
   React.useEffect(() => {
     if (guest && isOpen) {
-      setCheckinDate(guest.checkinDate || '');
-      setCheckoutDate(guest.expectedCheckout || '');
+      setCheckinDate(toInputDateFormat(guest.checkinDate));
+      setCheckoutDate(toInputDateFormat(guest.expectedCheckout || guest.checkoutDate));
       setRoomCharges(guest.roomRate || guest.totalAmount || 0);
       setFoodCharges(kitchenModuleEnabled ? (guest.foodBill || 0) : 0);
       setOtherCharges(0);
@@ -74,7 +92,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-[550px] w-full max-h-[95vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
           <div>

@@ -98,7 +98,8 @@ function generateDemoData($pdo, $propertyId) {
 
         // Add bookings for rooms 103, 104, 105 if they exist (3+ rooms)
         if (count($roomIds) > 2) {
-            // Room 103: Back-to-back bookings
+            // Room 103: Booking checking out TODAY + future booking
+            $demoGuests[] = ['name' => 'Robert Taylor', 'phone' => '9988776670', 'checkin' => date('Y-m-d', strtotime('-2 days')), 'checkout' => date('Y-m-d'), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 7000, 'advance' => 3500];
             $demoGuests[] = ['name' => 'Alice Brown', 'phone' => '9988776659', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
             $demoGuests[] = ['name' => 'Bob Green', 'phone' => '9988776660', 'checkin' => date('Y-m-d', strtotime('+10 days')), 'checkout' => date('Y-m-d', strtotime('+13 days')), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
 
