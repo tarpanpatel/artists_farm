@@ -41,6 +41,10 @@ function handleMultiKeyPropertyRequests($pdo, $request_method, $action) {
             updateRoomOrder($pdo);
             break;
 
+        case 'update_room_name':
+            updateRoomName($pdo);
+            break;
+
         case 'restore_multikey_room':
             restoreMultiKeyRoom($pdo);
             break;
@@ -642,6 +646,10 @@ function deleteMultiKeyRoom($pdo) {
         $stmt = $pdo->prepare("UPDATE properties SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         $stmt->execute([$room_id]);
 
+        // Clean up: delete present and future (active) bookings associated with this deleted room
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status = 'Active'");
+        $stmt->execute([$room_id]);
+
         echo json_encode([
             'success' => true,
             'message' => 'Room deleted successfully. Booking history preserved.',
@@ -685,6 +693,48 @@ function updateRoomOrder($pdo) {
         echo json_encode([
             'success' => true,
             'message' => 'Room order updated successfully'
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+/**
+ * Rename a room within a MultiKey property
+ * POST /api/router.php?action=update_room_name
+ */
+function updateRoomName($pdo) {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $room_id = $input['room_id'] ?? '';
+    $new_name = trim($input['new_name'] ?? '');
+
+    if (!$room_id || $new_name === '') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'room_id and new_name are required']);
+        exit;
+    }
+
+    try {
+        // Verify room exists and is MULTI_KEY_ROOM
+        $stmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND property_type = 'MULTI_KEY_ROOM'");
+        $stmt->execute([$room_id]);
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Room not found']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("UPDATE properties SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->execute([$new_name, $room_id]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Room renamed successfully',
+            'room_id' => (int)$room_id,
+            'new_name' => $new_name
         ]);
 
     } catch (Exception $e) {

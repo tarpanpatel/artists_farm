@@ -21,13 +21,13 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟡 Phase 2: Inactive UI Buttons & Backend API Implementations
 
-- [ ] **Room Name Editor API (`MultiKeyPropertyOverview.tsx`)**
-  - **Button:** `Edit Name` on room header card.
-  - **Action:** Implement `UPDATE properties SET name = ? WHERE id = ? AND property_type = 'MULTI_KEY_ROOM'` in `php/api/multikey_properties.php` and wire up the `onUpdateRoomName` handler.
+- [x] **Room Name Editor API (`MultiKeyPropertyOverview.tsx`)** — *Done 2026-08-04*
+  - **Was:** Frontend already called `action=update_room_name` correctly - no backend handler existed at all, so the call silently 400'd (default "Invalid action" response).
+  - **Shipped as:** `updateRoomName()` in `php/api/multikey_properties.php` (scoped to `property_type = 'MULTI_KEY_ROOM'`, proper 404 if not found) + router dispatch. No frontend changes needed. Verified end-to-end through the real endpoint: rename, confirm in DB, rename back, plus both error paths (nonexistent room → 404, missing new_name → 400).
 
-- [ ] **Booking Management Actions (`OperationalDashboard.tsx`)**
-  - **Buttons:** `Update Booking` and `Delete Booking`.
-  - **Action:** Implement `update_booking` and `delete_booking` PHP API handlers in `php/guests/guests.php` and replace stubs at lines 518 & 577 in `OperationalDashboard.tsx`.
+- [x] **Booking Management Actions (`OperationalDashboard.tsx`)** — *Done 2026-08-04*
+  - **Was:** Both Save and Delete had real confirmation UI but were literal `// TODO` comments underneath — silently discarded whatever the user thought they'd just changed or removed.
+  - **Shipped as:** Save wired to the already-existing (but never-connected) `handleUpdateGuest` in `App.tsx`, with the three previously-uncontrolled inputs (Guest Name/Phone/Number of Guests) converted to controlled state so their edited values are actually readable. Delete needed a new `delete_guest` action from scratch (`php/guests/guests.php` + router dispatch + `deleteGuestFromDB` in `api.ts`), threaded through `MultiKeyPropertyOverview` down to `OperationalDashboard`. Both now show success/error toasts and a loading state instead of failing silently. Verified through the real endpoint end-to-end (update persisted, delete removed the row, re-deleting an already-gone booking correctly 404s).
 
 - [x] **Telegram Notification Template Sync (`TelegramNotificationModal.tsx`)** — *Done 2026-08-04*
   - **Was:** The Templates Catalog only ever displayed the hardcoded `FALLBACK_TEMPLATES` array — any template that existed only in the DB (like `kitchen_order_reminder`/`kitchen_pickup_reminder`, added earlier this session) was invisible in the editor even though it worked correctly at send time. An earlier note in this file claiming "no new UI needed" for those two templates was wrong.
@@ -53,6 +53,10 @@ This document tracks identified bugs, pending backend API integrations, and upco
 - [ ] **Expense Item Icons in Frontend Dropdowns**
   - **Problem:** `getExpenseItemIcon()` (added in `src/utils/expenseIcons.ts`) currently only renders icons in `DefaultExpensesManager.tsx`'s card grid (Root Admin view). Wherever a guest-facing/staff-facing dropdown lists expense/misc-charge items — e.g. `GuestManagement.tsx`'s charge-category picker, `MiscChargesManagement.tsx`, `ExpenseItemsManagement.tsx` — options are still plain text.
   - **Action:** Since `StyledSelect` already accepts `React.ReactNode` for an option's `label`, wire `getExpenseItemIcon(item.label, item.category)` into each of those option lists the same way, so the icon shows consistently everywhere an expense item appears, not just the admin management screen.
+
+- [ ] **GST Billing Support**
+  - **Problem:** No way to generate a GST-compliant bill for guests who need one (common for business travelers billing their company). No GSTIN field exists anywhere in the backend yet.
+  - **Action:** Add a GSTIN field on `properties` (the property's own registration number, needed on any GST invoice regardless of guest) and an optional per-guest/per-receipt GSTIN + billing name (for guests who want the invoice addressed to their company, not themselves personally) - likely on `guests` or captured at checkout time on the receipt record. Frontend: an optional "GST Bill" toggle in the checkout/receipt flow that, when the guest provides a GSTIN, generates a proper tax invoice (property GSTIN, guest/company GSTIN, tax breakdown - CGST/SGST or IGST depending on same-state vs. inter-state) instead of the regular receipt. Needs the correct GST rate(s) for this business category - not hardcoded, should come from a config value so it can be updated if rates change.
 
 ---
 

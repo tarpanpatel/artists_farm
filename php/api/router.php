@@ -867,6 +867,7 @@ switch ($action) {
     case 'add_multikey_room':
     case 'delete_multikey_room':
     case 'update_room_order':
+    case 'update_room_name':
     case 'restore_multikey_room':
     case 'get_multikey_property':
     case 'get_multikey_overview':
