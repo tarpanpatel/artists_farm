@@ -57,6 +57,7 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                     'botToken' => $input['botToken'] ?? null,
                     'groups' => is_array($input['groups'] ?? null) ? $input['groups'] : [],
                     'routing' => is_array($input['routing'] ?? null) ? $input['routing'] : [],
+                    'reminderThresholdMinutes' => max(1, (int)($input['reminderThresholdMinutes'] ?? 5)),
                 ];
                 $ok = updatePropertyModuleConfig($pdo, $propertyId, 'telegram', $config);
                 echo json_encode(['status' => $ok ? 'success' : 'error']);

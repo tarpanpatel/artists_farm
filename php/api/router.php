@@ -140,6 +140,7 @@ $currentProperty = getCurrentProperty($pdo); // Get the full property details
 // just hides the nav link.
 $kitchen_module_actions = [
     'get_orders', 'create_order', 'update_order_status', 'get_served_logs', 'add_served_log',
+    'update_order_item_status', 'update_item_reminder_timestamp', 'check_stale_reminders',
     'get_menu', 'add_menu_item', 'update_menu_item', 'delete_menu_item', 'dedup_menu',
     'get_recipes', 'save_recipe', 'delete_recipe', 'deplete_stock',
     'get_inventory', 'update_stock',
@@ -966,6 +967,9 @@ switch ($action) {
     case 'update_order_status':
     case 'get_served_logs':
     case 'add_served_log':
+    case 'update_order_item_status':
+    case 'update_item_reminder_timestamp':
+    case 'check_stale_reminders':
         handleKitchenRequests($pdo, $request_method, $action, $propertyId);
         break;
 

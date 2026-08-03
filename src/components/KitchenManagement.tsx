@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -89,6 +89,32 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   }, []);
 
+  // Sync Ready/Served UI state from the DB-persisted item_status on every orders
+  // refresh, so a page reload (or another device/tab) reflects reality instead of
+  // reverting everything to Pending-looking. Merges with (rather than replaces)
+  // existing local state so an item never appears to move backward.
+  useEffect(() => {
+    const nextReady: Record<string, boolean> = {};
+    const nextServed: Record<string, boolean> = {};
+    const nextReadyTimes: Record<string, string> = {};
+    orders.forEach((ord: Order) => {
+      ord.items.forEach((item: OrderItem, idx: number) => {
+        const key = `${ord.id}_${idx}`;
+        if (item.itemStatus === 'Ready') {
+          nextReady[key] = true;
+          if (item.readyAt) {
+            nextReadyTimes[key] = new Date(item.readyAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        } else if (item.itemStatus === 'Served') {
+          nextServed[key] = true;
+        }
+      });
+    });
+    setReadyItemKeys((prev) => ({ ...nextReady, ...prev }));
+    setServedItemKeys((prev) => ({ ...nextServed, ...prev }));
+    setItemReadyTimes((prev) => ({ ...nextReadyTimes, ...prev }));
+  }, [orders]);
+
   const [ingredientCategoryNames, setIngredientCategoryNames] = useState<string[]>([]);
   useEffect(() => {
     fetchMaterialCategoriesFromDB().then((cats) => {
@@ -139,6 +165,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setReadyItemKeys((prev) => ({ ...prev, [key]: true }));
     setItemReadyTimes((prev) => ({ ...prev, [key]: nowTime }));
 
+    if (item.id) {
+      updateOrderItemStatus(item.id, 'Ready');
+    }
+
     if (onDispatchTelegram) {
       const cleanTicketId = ord.id.replace('#', '');
       const dishReadyVars: Record<string, string> = {
@@ -179,6 +209,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setServedItemKeys((prev) => ({ ...prev, [key]: true }));
+
+    if (item.id) {
+      updateOrderItemStatus(item.id, 'Served');
+    }
 
     // Add to Current Guest Served Dishes
     const servedByUser = getCurrentUserName();
@@ -255,6 +289,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       onDispatchTelegram('Kitchen Order Reminder', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     }
 
+    if (item.id) {
+      updateItemReminderTimestamp(item.id);
+    }
+
     showToast(`Reminder sent to kitchen: ${item.quantity}x ${item.name}`, { type: 'success' });
 
     recordTelescopeLog({
@@ -293,6 +331,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       onDispatchTelegram('Pickup Reminder', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     }
 
+    if (item.id) {
+      updateItemReminderTimestamp(item.id);
+    }
+
     showToast(`Pickup reminder sent: ${item.quantity}x ${item.name}`, { type: 'success' });
 
     recordTelescopeLog({
@@ -303,6 +345,64 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       details: { orderId: ord.id, itemIndex, item, readySince },
     });
   };
+
+  // --- Shared Reminder/Nudge Engine: auto-fires the same reminders as the manual
+  // buttons above once an item has sat unaddressed longer than the property's
+  // configured threshold. Since no background worker exists, this runs as a
+  // page-open poll (see ROADMAP.md) rather than a true server-side cron - it only
+  // fires while a staff member has the Kitchen page open, same tradeoff already
+  // accepted for the 15s order auto-sync above. Manual taps reset the same
+  // last_reminder_at the auto-check reads, so either path resets the countdown.
+  const [reminderThresholdMinutes, setReminderThresholdMinutes] = useState(5);
+  useEffect(() => {
+    fetchTelegramConfigDB().then((cfg) => {
+      if (cfg.reminderThresholdMinutes) setReminderThresholdMinutes(cfg.reminderThresholdMinutes);
+    });
+  }, []);
+
+  const autoFireKitchenReminder = async (stale: StaleReminderItem) => {
+    const reminderVars: Record<string, string> = {
+      order_id: String(stale.order_id),
+      qty: String(stale.quantity),
+      dish_name: stale.dish_name,
+      table_no: stale.table_no,
+      elapsed_minutes: String(stale.elapsed_minutes),
+    };
+    const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
+    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.table_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>`;
+    onDispatchTelegram?.('Kitchen Order Reminder (Auto)', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
+    updateItemReminderTimestamp(stale.item_id);
+  };
+
+  const autoFirePickupReminder = async (stale: StaleReminderItem) => {
+    const reminderVars: Record<string, string> = {
+      order_id: String(stale.order_id),
+      qty: String(stale.quantity),
+      dish_name: stale.dish_name,
+      table_no: stale.table_no,
+      ready_since: `${stale.elapsed_minutes} min ago`,
+    };
+    const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
+      ]
+    };
+    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.table_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>`;
+    onDispatchTelegram?.('Pickup Reminder (Auto)', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
+    updateItemReminderTimestamp(stale.item_id);
+  };
+
+  useEffect(() => {
+    const pollStaleReminders = async () => {
+      const { pending, ready } = await checkStaleReminders(reminderThresholdMinutes);
+      for (const item of pending) await autoFireKitchenReminder(item);
+      for (const item of ready) await autoFirePickupReminder(item);
+    };
+    const interval = setInterval(pollStaleReminders, 60000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reminderThresholdMinutes]);
 
   React.useEffect(() => {
     if (activeMenuItemKey === 'take_food_order') {

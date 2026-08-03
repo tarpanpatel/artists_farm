@@ -22,7 +22,7 @@ require_once __DIR__ . '/../errors/logger.php';
  */
 if (!function_exists('getPropertyTelegramConfig')) {
     function getPropertyTelegramConfig($pdo, $propertyId) {
-        $defaults = ['enabled' => true, 'botToken' => null, 'groups' => [], 'routing' => []];
+        $defaults = ['enabled' => true, 'botToken' => null, 'groups' => [], 'routing' => [], 'reminderThresholdMinutes' => 5];
         try {
             $stmt = $pdo->prepare("SELECT config FROM property_modules WHERE property_id = ? AND module_slug = 'telegram'");
             $stmt->execute([$propertyId]);

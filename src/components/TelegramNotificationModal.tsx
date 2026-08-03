@@ -412,7 +412,16 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   }, [kitchenEnabled, activeTemplateId]);
 
   useEffect(() => {
-    fetchTelegramConfigDB().then(setTgSettings);
+    fetchTelegramConfigDB().then((cfg) => {
+      setTgSettings(cfg);
+      // Auto-open the setup wizard while any of the 3 core groups isn't connected
+      // yet, so a tenant lands straight in onboarding instead of a blank template
+      // manager. Once all 3 have a chat ID, stop auto-opening - the button stays
+      // available for anyone who wants to revisit it manually.
+      const requiredKeys = ['kitchen', 'admin', 'finance'];
+      const isComplete = requiredKeys.every((key) => cfg.groups.some((g) => g.key === key && g.chatId));
+      if (!isComplete) setShowSetupWizard(true);
+    });
   }, []);
 
   const updateTgSettings = (patch: Partial<PropertyTelegramConfig>) => {
