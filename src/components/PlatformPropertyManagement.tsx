@@ -1131,12 +1131,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <li>All staff assignments</li>
               <li>All audit logs</li>
             </ul>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Type the property name to confirm:
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+              Type <span className="font-bold font-mono text-gray-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:
             </p>
             <input
               type="text"
-              placeholder={properties.find(p => p.id === showDeletePropertyModal)?.name || ''}
+              autoFocus
+              placeholder="Type here..."
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white mb-6 font-mono"
