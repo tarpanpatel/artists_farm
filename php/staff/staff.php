@@ -112,14 +112,27 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'add_user':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                $username = $input['username'] ?? ($input['name'] ?? '');
+                $passcode = $input['passcode'] ?? '';
+                if (!preg_match('/^\d{10}$/', $username)) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'Username must be a 10-digit phone number.']);
+                    break;
+                }
+                if (!preg_match('/^\d{6}$/', $passcode)) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'Passcode must be exactly 6 digits.']);
+                    break;
+                }
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
                             role = VALUES(role),
                             phone = VALUES(phone),
+                            phone_number = VALUES(phone_number),
                             monthly_salary = VALUES(monthly_salary),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
@@ -128,14 +141,15 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([
                         $input['id'] ?? ('usr-' . time()),
                         $propertyId,
-                        $input['username'] ?? ($input['name'] ?? 'Staff'),
-                        $input['fullName'] ?? ($input['name'] ?? $input['username'] ?? 'Staff'),
+                        $username,
+                        $input['fullName'] ?? ($input['name'] ?? $username),
                         $input['role'] ?? 'Staff',
-                        $input['phone'] ?? '',
+                        $username,
+                        $username,
                         $input['monthlySalary'] ?? 0,
                         $input['status'] ?? 'Active',
                         !empty($input['isFinancialHandler']) ? 1 : 0,
-                        $input['passcode'] ?? '1234',
+                        $passcode,
                         $input['qrCodeUrl'] ?? ''
                     ]);
                     echo json_encode(['status' => 'success', 'message' => 'Staff member created successfully']);
@@ -164,16 +178,28 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $monthlySalary    = isset($input['monthlySalary']) ? $input['monthlySalary'] : ($existing['monthly_salary'] ?? 0);
                     $status           = $input['status'] ?? ($existing['status'] ?? 'Active');
                     $isFinancialHandler = isset($input['isFinancialHandler']) ? ($input['isFinancialHandler'] ? 1 : 0) : ($existing['is_financial_handler'] ?? 0);
+                    if (!empty($input['passcode']) && !preg_match('/^\d{6}$/', $input['passcode'])) {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'Passcode must be exactly 6 digits.']);
+                        break;
+                    }
+                    if (!empty($input['username']) && !preg_match('/^\d{10}$/', $input['username'])) {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'Username must be a 10-digit phone number.']);
+                        break;
+                    }
                     $passcode         = !empty($input['passcode']) ? $input['passcode'] : ($existing['passcode'] ?? '1234');
                     $qrCodeUrl        = isset($input['qrCodeUrl']) && $input['qrCodeUrl'] !== '' ? $input['qrCodeUrl'] : ($existing['qr_code_url'] ?? '');
+                    $phoneNumber      = $input['username'] ?? ($existing['phone_number'] ?? $username);
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
                             role = VALUES(role),
                             phone = VALUES(phone),
+                            phone_number = VALUES(phone_number),
                             monthly_salary = VALUES(monthly_salary),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
@@ -186,6 +212,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $fullName,
                         $role,
                         $phone,
+                        $phoneNumber,
                         $monthlySalary,
                         $status,
                         $isFinancialHandler,

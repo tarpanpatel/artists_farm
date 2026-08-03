@@ -265,62 +265,62 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               const dynamicHeight = Math.max(minRowHeight, maxLanes * laneHeight + 12);
 
               return (
-              <div
-                key={room.id}
-                className="flex border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition"
-                style={{ height: `${dynamicHeight}px` }}
-              >
-                {/* Room Name */}
-                <div className="w-24 min-w-[6rem] px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
-                  {room.name}
-                </div>
+                <div
+                  key={room.id}
+                  className="flex border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition"
+                  style={{ height: `${dynamicHeight}px` }}
+                >
+                  {/* Room Name */}
+                  <div className="w-24 min-w-[6rem] px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
+                    {room.name}
+                  </div>
 
-                {/* Days Grid - Background with diagonal stripes */}
-                <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * 64}px`, minWidth: `${daysArray.length * 64}px` }}>
-                  {daysArray.map((day) => {
-                    const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
-                    return (
-                      <div
-                        key={`bg-${day}`}
-                        className={`w-16 border-r border-slate-100 dark:border-slate-700/50 transition ${
-                          isToday ? 'bg-teal-50/60 dark:bg-teal-900/15' : 'bg-white dark:bg-slate-800/30'
-                        }`}
-                        style={{
-                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(203, 213, 225, 0.08) 8px, rgba(203, 213, 225, 0.08) 16px)'
-                        }}
-                      />
-                    );
-                  })}
-
-                  {/* Spanning capsules overlaid */}
-                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-                    {guestLanesInfo.map((info, idx) => {
-                      const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
-
+                  {/* Days Grid - Background with diagonal stripes */}
+                  <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * 64}px`, minWidth: `${daysArray.length * 64}px` }}>
+                    {daysArray.map((day) => {
+                      const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
                       return (
                         <div
-                          key={`${info.guest.id}-${idx}`}
-                          className={`px-2.5 rounded-md text-white font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
-                            info.guest.id
-                          )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
+                          key={`bg-${day}`}
+                          className={`w-16 border-r border-slate-100 dark:border-slate-700/50 transition ${
+                            isToday ? 'bg-teal-50/60 dark:bg-teal-900/15' : 'bg-white dark:bg-slate-800/30'
+                          }`}
                           style={{
-                            left: `${(info.startCol - 1) * 64 + 3}px`,
-                            width: `${Math.max(48, info.span * 64 - 6)}px`,
-                            top: `${topOffset}px`,
-                            height: `${capsuleHeight}px`,
+                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(203, 213, 225, 0.08) 8px, rgba(203, 213, 225, 0.08) 16px)'
                           }}
-                          onClick={() => setSelectedGuest(info.guest)}
-                          title={`${info.guest.guestName} (₹${info.nightlyRate}/night)`}
-                        >
-                          <span className="font-bold truncate text-[11px] leading-none">{info.guest.guestName}</span>
-                          <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
-                        </div>
+                        />
                       );
                     })}
+
+                    {/* Spanning capsules overlaid */}
+                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+                      {guestLanesInfo.map((info, idx) => {
+                        const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
+
+                        return (
+                          <div
+                            key={`${info.guest.id}-${idx}`}
+                            className={`px-2.5 rounded-md text-white font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
+                              info.guest.id
+                            )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
+                            style={{
+                              left: `${(info.startCol - 1) * 64 + 3}px`,
+                              width: `${Math.max(48, info.span * 64 - 6)}px`,
+                              top: `${topOffset}px`,
+                              height: `${capsuleHeight}px`,
+                            }}
+                            onClick={() => setSelectedGuest(info.guest)}
+                            title={`${info.guest.guestName} (₹${info.nightlyRate}/night)`}
+                          >
+                            <span className="font-bold truncate text-[11px] leading-none">{info.guest.guestName}</span>
+                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
+              );
             })
           ) : (
             <div className="text-center py-8 text-slate-600 dark:text-slate-400">

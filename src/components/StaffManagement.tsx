@@ -264,6 +264,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPasscode) return;
+    if (!/^\d{10}$/.test(newUsername)) {
+      showToast('Username must be a 10-digit phone number.', { type: 'error' });
+      return;
+    }
+    if (!/^\d{6}$/.test(newPasscode)) {
+      showToast('Passcode must be exactly 6 digits.', { type: 'error' });
+      return;
+    }
     const newUser: UserAccount = {
       id: `usr-${Date.now().toString().slice(-4)}`,
       username: newUsername,
@@ -279,6 +287,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       fullName: newUser.username,
       role: newUser.role,
       passcode: newUser.passcodePin,
+      phone: newUser.username,
       isFinancialHandler: newUser.isFinancialHandler,
       qrCodeUrl: newUser.qrCodeUrl,
       status: newUser.status,
@@ -343,6 +352,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     if (!selectedUpdateUserId) return;
     const currentUser = users.find((user) => user.id === selectedUpdateUserId);
     if (!currentUser) return;
+    if (updatePasscode && !/^\d{6}$/.test(updatePasscode)) {
+      showToast('Passcode must be exactly 6 digits.', { type: 'error' });
+      return;
+    }
     const saved = await updateStaffUserDB(selectedUpdateUserId, {
       role: updateRole || currentUser.role,
       passcode: updatePasscode || currentUser.passcodePin,
@@ -700,25 +713,26 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {userFormTab === 'create' ? (
                   <form onSubmit={handleCreateUser} className="space-y-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Username</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
                       <input
-                        type="text"
+                        type="tel"
                         required
+                        maxLength={10}
                         value={newUsername}
-                        onChange={(e) => setNewUsername(e.target.value)}
-                        placeholder="Username..."
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                        onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="10-digit mobile number"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">4-Digit Passcode PIN</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">6-Digit Passcode PIN</label>
                       <input
                         type="password"
                         required
-                        maxLength={4}
+                        maxLength={6}
                         value={newPasscode}
-                        onChange={(e) => setNewPasscode(e.target.value)}
-                        placeholder="••••"
+                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="••••••"
                         className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
                       />
                     </div>
@@ -793,13 +807,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 4-Digit Passcode PIN (Leave blank to keep current)</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 6-Digit Passcode PIN (Leave blank to keep current)</label>
                       <input
                         type="password"
-                        maxLength={4}
+                        maxLength={6}
                         value={updatePasscode}
-                        onChange={(e) => setUpdatePasscode(e.target.value)}
-                        placeholder="••••"
+                        onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="••••••"
                         className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
                       />
                     </div>
