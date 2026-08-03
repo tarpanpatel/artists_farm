@@ -39,6 +39,14 @@ const STEPS: WizardStep[] = [
   { key: 'finance', label: 'Finance', icon: Wallet },
 ];
 
+// Who typically belongs in each group — shown while creating it, since that's the
+// moment a tenant is actually deciding who to invite, not three steps later.
+const ROLE_GUIDANCE: Record<WizardStep['key'], string> = {
+  kitchen: 'Add cooks, kitchen helpers, the kitchen manager who takes orders, whoever handles requisitions/purchases, and servers.',
+  admin: 'Add the property manager, housekeeping, inventory manager, and reception staff.',
+  finance: 'Add only staff who handle money coming in or going out — keep this group tight.',
+};
+
 type StepStatus = 'idle' | 'generating' | 'waiting' | 'confirming' | 'connected' | 'expired' | 'error';
 
 interface StepState {
@@ -373,11 +381,19 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             );
           })}
         </div>
+        <div className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
+          Staff can be in more than one group if they wear multiple hats.
+        </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
             Step {currentIndex + 1} of {STEPS.length} — Connect your <span className="font-bold text-slate-700 dark:text-slate-200">{currentStep.label}</span> Telegram group
+          </div>
+
+          <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2 text-[11px] text-sky-800 dark:text-sky-300">
+            <span className="font-bold">Who belongs here: </span>
+            {ROLE_GUIDANCE[currentStep.key]}
           </div>
 
           {!botUsername ? (
