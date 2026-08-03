@@ -33,7 +33,7 @@ import { detectClientInfo } from './utils/clientInfo';
 import { trackDeadEnd, trackSessionLoss, trackAPIError, trackPropertyIssue } from './utils/userFlowTracker';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
@@ -900,11 +900,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   };
 
   const handleUpdateGuest = async (updatedGuest: Guest) => {
-    setGuests((prev) =>
-      prev.map((g) => (g.id === updatedGuest.id ? { ...g, ...updatedGuest } : g))
-    );
     const g = updatedGuest as any;
-    await updateGuestInDB({
+    const ok = await updateGuestInDB({
       id: updatedGuest.id,
       guest_name: updatedGuest.guestName,
       phone_number: updatedGuest.phoneNumber,
@@ -916,7 +913,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
       total_charge: g.total_charge ?? g.totalCharge ?? updatedGuest.totalAmount ?? 0,
       advance_paid: g.advance_paid ?? g.advancePaid ?? updatedGuest.advanceAmount ?? 0,
     });
+    if (!ok) throw new Error('Failed to update booking');
+    setGuests((prev) =>
+      prev.map((g) => (g.id === updatedGuest.id ? { ...g, ...updatedGuest } : g))
+    );
     logAudit(`Updated booking: ${updatedGuest.guestName} (${updatedGuest.roomNumber})`);
+  };
+
+  const handleDeleteGuest = async (guestId: string) => {
+    const target = guests.find((g) => g.id === guestId);
+    const ok = await deleteGuestFromDB(guestId);
+    if (!ok) throw new Error('Failed to delete booking');
+    setGuests((prev) => prev.filter((g) => g.id !== guestId));
+    logAudit(`Deleted booking: ${target?.guestName || guestId} (${target?.roomNumber || 'unknown room'})`);
   };
 
   const handleCheckoutGuest = async (receipt: BillingReceipt) => {
@@ -1379,6 +1388,8 @@ ${itemsStr}
                       onNavigate={(tab) => handleNavigateTab(tab)}
                       onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                      onUpdateBooking={handleUpdateGuest}
+                      onDeleteBooking={handleDeleteGuest}
                     />
                   </ErrorBoundary>
                 )

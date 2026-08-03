@@ -56,6 +56,8 @@ interface MultiKeyPropertyOverviewProps {
   receipts?: any[];
   onAddGuest?: (guest: any) => void;
   onCheckoutGuest?: (guest: any) => void;
+  onUpdateBooking?: (guest: any) => Promise<void>;
+  onDeleteBooking?: (guestId: string) => Promise<void>;
   onAddMenuItem?: (item: any) => void;
   onUpdateStock?: (item: any) => void;
   onAddInventoryItem?: (item: any) => void;
@@ -81,6 +83,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   receipts = [],
   onAddGuest,
   onCheckoutGuest,
+  onUpdateBooking,
+  onDeleteBooking,
   onAddMenuItem,
   onUpdateStock,
   onAddInventoryItem,
@@ -176,7 +180,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const handleDeleteRoom = async (roomId: number) => {
     const confirmed = await confirm({
       title: 'Delete Room',
-      message: 'Delete this room? Booking history will be preserved.',
+      message: 'Delete this room? All present and future bookings associated with this room will be deleted. Past bookings and their billing records will stay intact.',
       confirmText: 'Delete Room',
       variant: 'danger',
     });
@@ -287,6 +291,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   onOpenCheckin={() => setActiveTab?.('guests')}
                   onAddGuest={onAddGuest}
                   onCheckoutGuest={onCheckoutGuest}
+                  onUpdateBooking={onUpdateBooking}
+                  onDeleteBooking={onDeleteBooking}
                   onDispatchTelegram={onDispatchTelegram}
                   activeMenuItemKey={activeMenuItemKey}
                   onUpdateRoomName={async (newName) => {

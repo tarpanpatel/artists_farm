@@ -20,6 +20,7 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
+import { useToast } from './ToastContext';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -35,6 +36,8 @@ interface OperationalDashboardProps {
   onCheckoutGuest?: (receipt: any) => void;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onUpdateRoomName?: (newName: string) => void;
+  onUpdateBooking?: (guest: Guest) => Promise<void>;
+  onDeleteBooking?: (guestId: string) => Promise<void>;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
 }
@@ -53,9 +56,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onCheckoutGuest,
   onDispatchTelegram,
   onUpdateRoomName,
+  onUpdateBooking,
+  onDeleteBooking,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
 }) => {
+  const { showToast } = useToast();
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -63,8 +69,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [selectedBooking, setSelectedBooking] = useState<Guest | null>(null);
   const [editCheckin, setEditCheckin] = useState<string>('');
   const [editCheckout, setEditCheckout] = useState<string>('');
+  const [editGuestName, setEditGuestName] = useState<string>('');
+  const [editPhone, setEditPhone] = useState<string>('');
+  const [editNoOfGuests, setEditNoOfGuests] = useState<number>(1);
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSavingBooking, setIsSavingBooking] = useState(false);
+  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
@@ -120,6 +131,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     if (selectedBooking) {
       setEditCheckin(selectedBooking.checkinDate?.split(' ')[0] || '');
       setEditCheckout(selectedBooking.expectedCheckout?.split(' ')[0] || '');
+      setEditGuestName(selectedBooking.guestName || '');
+      setEditPhone(selectedBooking.phoneNumber || '');
+      setEditNoOfGuests((selectedBooking as any).no_of_guests || 1);
       setShowDateRangePicker(false);
     }
   }, [selectedBooking]);
@@ -521,7 +535,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Guest Name</label>
                 <input
                   type="text"
-                  defaultValue={selectedBooking.guestName}
+                  value={editGuestName}
+                  onChange={(e) => setEditGuestName(e.target.value)}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
                 />
               </div>
@@ -541,7 +556,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Phone</label>
                 <input
                   type="tel"
-                  defaultValue={selectedBooking.phoneNumber}
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
                 />
               </div>
@@ -550,7 +566,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Number of Guests</label>
                 <input
                   type="number"
-                  defaultValue={(selectedBooking as any).no_of_guests}
+                  min={1}
+                  value={editNoOfGuests}
+                  onChange={(e) => setEditNoOfGuests(Math.max(1, Number(e.target.value) || 1))}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
                 />
               </div>
@@ -564,13 +582,30 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // TODO: Call API to update booking
-                  setSelectedBooking(null);
+                onClick={async () => {
+                  if (!selectedBooking || !onUpdateBooking) return;
+                  setIsSavingBooking(true);
+                  try {
+                    await onUpdateBooking({
+                      ...selectedBooking,
+                      guestName: editGuestName,
+                      phoneNumber: editPhone,
+                      checkinDate: editCheckin,
+                      expectedCheckout: editCheckout,
+                      ...( { no_of_guests: editNoOfGuests } as any),
+                    });
+                    showToast('Booking updated successfully', { type: 'success' });
+                    setSelectedBooking(null);
+                  } catch (err) {
+                    showToast('Failed to update booking. Please try again.', { type: 'error' });
+                  } finally {
+                    setIsSavingBooking(false);
+                  }
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                disabled={isSavingBooking || !onUpdateBooking}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
               >
-                Save
+                {isSavingBooking ? 'Saving…' : 'Save'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -612,14 +647,24 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      // TODO: Call API to delete booking
-                      setSelectedBooking(null);
-                      setShowDeleteConfirm(false);
+                    onClick={async () => {
+                      if (!selectedBooking || !onDeleteBooking) return;
+                      setIsDeletingBooking(true);
+                      try {
+                        await onDeleteBooking(selectedBooking.id);
+                        showToast('Booking deleted', { type: 'success' });
+                        setSelectedBooking(null);
+                        setShowDeleteConfirm(false);
+                      } catch (err) {
+                        showToast('Failed to delete booking. Please try again.', { type: 'error' });
+                      } finally {
+                        setIsDeletingBooking(false);
+                      }
                     }}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
+                    disabled={isDeletingBooking || !onDeleteBooking}
+                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
                   >
-                    Delete
+                    {isDeletingBooking ? 'Deleting…' : 'Delete'}
                   </button>
                 </div>
               </div>

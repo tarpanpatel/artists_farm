@@ -851,6 +851,7 @@ switch ($action) {
                     $pdo->prepare("DELETE FROM `$table` WHERE property_id = ?")->execute([$property_id]);
                 }
             }
+
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Property deleted successfully']);
@@ -946,6 +947,7 @@ switch ($action) {
     case 'add_guest':
     case 'update_guest':
     case 'checkout_guest':
+    case 'delete_guest':
         handleGuestRequests($pdo, $request_method, $action, $propertyId);
         break;
 

@@ -844,6 +844,21 @@ export async function checkoutGuestInDB(guestId: string): Promise<boolean> {
   }
 }
 
+export async function deleteGuestFromDB(guestId: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: guestId }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete guest/booking in DB:', err);
+    return false;
+  }
+}
+
 export async function fetchOrdersFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_orders`);

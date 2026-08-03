@@ -21,7 +21,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     SELECT g.*, COALESCE(r.name, 'Unassigned') as roomNumber
                     FROM guests g
                     LEFT JOIN properties r ON g.room_id = r.id AND r.property_type = 'MULTI_KEY_ROOM'
-                    WHERE g.property_id = ?
+                    WHERE g.property_id = ? AND (g.room_id IS NULL OR r.id IS NULL OR r.is_deleted = 0)
                     ORDER BY g.checkin_date DESC
                 ");
                 $stmt->execute([$propertyId]);
@@ -175,6 +175,31 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update guest: ' . $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_guest':
+            if ($request_method === 'POST' || $request_method === 'DELETE') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = $input['id'] ?? null;
+                if (!$guestId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM guests WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$guestId, $propertyId]);
+                    if ($stmt->rowCount() > 0) {
+                        echo json_encode(['status' => 'success', 'message' => 'Booking deleted successfully']);
+                    } else {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => 'Booking not found']);
+                    }
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to delete booking: ' . $e->getMessage()]);
                 }
             }
             break;
