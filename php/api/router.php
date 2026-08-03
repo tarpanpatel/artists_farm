@@ -632,7 +632,7 @@ switch ($action) {
             $tables = ['guests', 'financial_ledger', 'kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'cash_drawer', 'petty_cash', 'misc_charges', 'telegram_settings', 'property_modules', 'audit_logs'];
             foreach ($tables as $table) {
                 // Check if table exists before attempting delete
-                $checkStmt = $pdo->prepare("SHOW TABLES LIKE ?");
+                $checkStmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
                 $checkStmt->execute([$table]);
                 if ($checkStmt->fetch()) {
                     // Table exists, delete from it (will fail if deletion fails)
