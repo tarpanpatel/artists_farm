@@ -76,6 +76,20 @@ This document tracks identified bugs, pending backend API integrations, and upco
   - **Action:** New `service_requests` table (property_id, room_id, request_type, description, requested_by, assigned_department, status, created_at, fulfilled_at, fulfilled_by, telegram_message_id) + UI to create a request (room + quick-pick or free-text description) → sends Telegram message with an inline "Mark Fulfilled" button to the assigned department's chat → staff taps it, status updates to Fulfilled, message edits to show who/when.
   - **Note:** requires a Telegram bot webhook (or polling `getUpdates`, simpler for local dev without a public HTTPS endpoint) to receive the button-tap callback and update the DB. See discussion in conversation for open design questions (department chat routing, whether reminders are automatic or manually triggered, per-property config).
 
+- [ ] **Editable Message Templates for Reminders & Service Requests**
+  - **Problem:** Kitchen reminder, ready-for-pickup reminder, service-request-created, and service-request-fulfilled messages must not be hardcoded strings in code (see [no-hardcoding principle]) — tenants should be able to customize wording per property.
+  - **Action:** Extend the existing `telegram_templates` table (already created in the Phase 1 hardcoded-data refactor) with entries for these new message types, supporting placeholder variables (`{{room}}`, `{{item}}`, `{{elapsed_minutes}}`, `{{staff_name}}`, `{{guest_name}}`) that get substituted at send time. Add a template editor UI (likely inside `TelegramNotificationModal.tsx` or a new settings section) so tenant admins can edit wording without a developer.
+
+- [ ] **Zero-Friction Telegram Setup Wizard (Critical for Tenant Onboarding)**
+  - **Problem:** A non-technical tenant currently has no guided way to connect Telegram at all. A naive "create your own bot via BotFather, find your chat ID, paste your token" flow is realistically an hour+ of confusion for a non-tech-friendly user and a major onboarding drop-off risk.
+  - **Design (shortest viable path — see conversation for full reasoning):**
+    1. **Shared platform bot, not per-tenant bots.** Ship one bot the platform owns; tenants search for it by name and add it to their group like any contact. Eliminates the BotFather flow entirely for the default path.
+    2. **Auto-detected chat ID, not manual lookup.** App generates a short one-time pairing code (e.g. `FARM-KITCHEN-8321`) shown in-app. Tenant creates their Telegram group, adds the bot, and pastes that one code as a message. App (via `getUpdates` poll or webhook) detects which chat received the code and auto-pairs that chat ID to the correct tenant + department — no numeric chat ID ever shown to the tenant.
+    3. **One-tap "Send Test"** posts immediately into that specific group so the tenant gets instant, visible confirmation it worked.
+    4. **Repeat per department** (Kitchen, Admin, Housekeeping, etc.) — same 3-step loop each time, all inside one guided in-app wizard with progress indicator.
+    5. **Optional advanced path:** "bring your own bot" (paste a custom token from BotFather) for tenants who want their own branded bot name/avatar — not the default, offered as an opt-in for advanced users only.
+  - **Action:** Build `TelegramSetupWizard.tsx` (step-by-step, one department at a time) + backend endpoints for code generation, `getUpdates` polling/pairing, and test-send. Depends on the webhook/polling decision from the Service Requests task above, since both features share the same "receive from Telegram" infrastructure.
+
 ---
 
 *Last Updated: August 2026*
