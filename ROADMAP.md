@@ -59,6 +59,10 @@ This document tracks identified bugs, pending backend API integrations, and upco
 - [ ] **Multi-Property Financial Ledger Reports**
   - **Action:** Expand `AnalyticsDashboard.tsx` to include comparative revenue, occupancy rate breakdown, and expense totals across parent and sub-key properties.
 
+- [ ] **Expense Item Icons in Frontend Dropdowns**
+  - **Problem:** `getExpenseItemIcon()` (added in `src/utils/expenseIcons.ts`) currently only renders icons in `DefaultExpensesManager.tsx`'s card grid (Root Admin view). Wherever a guest-facing/staff-facing dropdown lists expense/misc-charge items — e.g. `GuestManagement.tsx`'s charge-category picker, `MiscChargesManagement.tsx`, `ExpenseItemsManagement.tsx` — options are still plain text.
+  - **Action:** Since `StyledSelect` already accepts `React.ReactNode` for an option's `label`, wire `getExpenseItemIcon(item.label, item.category)` into each of those option lists the same way, so the icon shows consistently everywhere an expense item appears, not just the admin management screen.
+
 ---
 
 ## 🔵 Phase 4: Staff Task & Service Request System (Telegram-Integrated)
@@ -87,7 +91,7 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 - [ ] **Editable Message Templates for Reminders & Service Requests**
   - **Problem:** Kitchen reminder, ready-for-pickup reminder, service-request-created, and service-request-fulfilled messages must not be hardcoded strings in code (see [no-hardcoding principle]) — tenants should be able to customize wording per property.
-  - **Action:** Extend the existing `telegram_templates` table (already created in the Phase 1 hardcoded-data refactor) with entries for these new message types, supporting placeholder variables (`{{room}}`, `{{item}}`, `{{elapsed_minutes}}`, `{{staff_name}}`, `{{guest_name}}`) that get substituted at send time. Add a template editor UI (likely inside `TelegramNotificationModal.tsx` or a new settings section) so tenant admins can edit wording without a developer.
+  - **Action:** Extend the existing `system_telegram_templates` table (confirmed already in use — `telegram_webhook.php` and `KitchenManagement.tsx`'s `resolveTelegramTemplate()` already read/write template keys like `item_served`, `kitchen_single_dish_ready`, `webhook_dish_served_edit`) with entries for these new message types, supporting placeholder variables (`{{room}}`, `{{item}}`, `{{elapsed_minutes}}`, `{{staff_name}}`, `{{guest_name}}`) that get substituted at send time. Add a template editor UI (likely inside `TelegramNotificationModal.tsx` or a new settings section) so tenant admins can edit wording without a developer.
 
 - [ ] **Webhook (production) / Polling (local) Receive Path — Environment-Conditional**
   - **Action:** Mirror the existing `database.php` dev-vs-production detection pattern. On `localhost`/`127.0.0.1`/XAMPP, poll Telegram's `getUpdates` (triggered on page load or a short interval — no public HTTPS endpoint needed, works everywhere). On the real domain, register a proper webhook (instant, no polling delay). Both paths feed the same internal "new Telegram message/button-tap received" handler so the rest of the system (pairing codes, Mark Fulfilled callbacks) doesn't need to know which mode is active.
