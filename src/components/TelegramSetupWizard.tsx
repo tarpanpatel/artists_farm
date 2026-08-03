@@ -320,6 +320,16 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   {currentState.testSent ? 'Test Message Sent ✓ (send again)' : 'Send Test Message'}
                 </button>
+                {currentState.testSent && (
+                  <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    Check your Telegram group — the test message should be there.
+                  </div>
+                )}
+                {!currentState.testSending && !currentState.testSent && currentState.errorMessage && (
+                  <div className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                    {currentState.errorMessage}
+                  </div>
+                )}
               </div>
             )}
             {currentState.status === 'expired' && (
