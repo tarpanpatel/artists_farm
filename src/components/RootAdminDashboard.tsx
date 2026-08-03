@@ -13,21 +13,40 @@ interface RootAdminDashboardProps {
 
 type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses';
 
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses'];
+
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
   onLogout,
   activeRole,
 }) => {
   const [activeSection, setActiveSection] = useState<SectionType>(() => {
+    const fromHash = window.location.hash.replace('#', '') as SectionType;
+    if (VALID_SECTIONS.includes(fromHash)) return fromHash;
     const saved = localStorage.getItem('root_dashboard_section');
     return (saved as SectionType) || 'dashboard';
   });
   const [navItems, setNavItems] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Persist active section to localStorage
+  // Keep the URL hash and localStorage in sync with the active section
   useEffect(() => {
     localStorage.setItem('root_dashboard_section', activeSection);
+    if (window.location.hash.replace('#', '') !== activeSection) {
+      window.location.hash = activeSection;
+    }
+  }, [activeSection]);
+
+  // Support browser back/forward navigation between sections
+  useEffect(() => {
+    const handleHashChange = () => {
+      const fromHash = window.location.hash.replace('#', '') as SectionType;
+      if (VALID_SECTIONS.includes(fromHash) && fromHash !== activeSection) {
+        setActiveSection(fromHash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [activeSection]);
 
   const handleLogout = () => {

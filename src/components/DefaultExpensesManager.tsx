@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader } from 'lucide-react';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 
@@ -22,6 +22,7 @@ export const DefaultExpensesManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '' });
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null);
@@ -192,40 +193,59 @@ export const DefaultExpensesManager: React.FC = () => {
     );
   }
 
-  const categories = Object.keys(expenses).sort();
+  const allCategories = Object.keys(expenses).sort();
+  const query = searchQuery.trim().toLowerCase();
+  const filteredExpenses: CategoryGroup = query
+    ? Object.fromEntries(
+        allCategories
+          .map((cat) => [cat, expenses[cat].filter((item) => item.label.toLowerCase().includes(query))])
+          .filter(([, items]) => (items as ExpenseItem[]).length > 0)
+      )
+    : expenses;
+  const categories = query ? Object.keys(filteredExpenses).sort() : allCategories;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <DollarSign className="w-6 h-6 text-green-600" />
-              System Default Expenses (MultiKey)
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-600 shrink-0" />
+              <span className="truncate">Default Expenses (MultiKey)</span>
             </h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-              Manage the 20 default expense categories and their items. Add, edit, or delete items here—changes automatically cascade to all MultiKey properties. Note: Deleting an item removes it from property-level templates but preserves historical expense logs.
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              Manage the 20 default expense categories. Changes cascade to all MultiKey properties.
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleSyncDefaults}
               disabled={syncing}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               title="Populate all 20 default categories across all MultiKey properties"
             >
-              {syncing ? <Loader className="w-4 h-4 animate-spin" /> : '⚡'}
+              {syncing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : '⚡'}
               Sync Defaults
             </button>
             <button
               onClick={() => setIsAddingNew(!isAddingNew)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               Add New Item
             </button>
           </div>
+        </div>
+        <div className="relative mt-3">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search expense items..."
+            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          />
         </div>
       </div>
 
@@ -245,10 +265,10 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Add New Item Form */}
       {isAddingNew && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-          <h3 className="font-semibold text-slate-900 dark:text-white">Add New Expense Item</h3>
-          <form onSubmit={handleAddItem} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Add New Expense Item</h3>
+          <form onSubmit={handleAddItem} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Item Name *
@@ -295,40 +315,49 @@ export const DefaultExpensesManager: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {categories.length === 0 && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-12 text-center">
-          <p className="text-slate-600 dark:text-slate-400 mb-4">
+      {allCategories.length === 0 && (
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             No expense categories yet. Click <strong>"⚡ Sync Defaults"</strong> to populate all 20 default categories.
+          </p>
+        </div>
+      )}
+
+      {/* No Search Results */}
+      {allCategories.length > 0 && query && categories.length === 0 && (
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            No expense items match "{searchQuery}".
           </p>
         </div>
       )}
 
       {/* Categories Display */}
       {categories.length > 0 && (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {categories.map((category) => (
           <div key={category} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
-              <h3 className="font-bold text-slate-900 dark:text-white">{category}</h3>
+            <div className="bg-slate-100 dark:bg-slate-700 px-4 py-2">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {expenses[category].map((item) => (
-                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
-                    <div className="space-y-3">
+            <div className="p-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {filteredExpenses[category].map((item) => (
+                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                    <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-semibold text-slate-900 dark:text-white text-sm leading-tight flex-1">{item.label}</span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        <span className="font-semibold text-slate-900 dark:text-white text-xs leading-tight flex-1">{item.label}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
                           ID: {item.id}
                         </span>
                       </div>
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex gap-1.5">
                         <button
                           onClick={() => {
                             setEditingItem(item);
                             setEditForm({ label: item.label, default_amount: item.default_amount.toString() });
                           }}
-                          className="flex-1 p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
+                          className="flex-1 p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
                           title="Edit"
                         >
                           <Edit2 className="w-3 h-3" />
@@ -337,7 +366,7 @@ export const DefaultExpensesManager: React.FC = () => {
                         <button
                           onClick={() => handleDeleteItem(item.id, item.label)}
                           disabled={saving}
-                          className="flex-1 p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                          className="flex-1 p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
                           title="Delete"
                         >
                           <Trash2 className="w-3 h-3" />
