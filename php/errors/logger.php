@@ -16,6 +16,14 @@ if (!class_exists('TelescopeLogger')) {
         }
 
         /**
+         * Clear the file-backed telescope log store. Does not touch audit_logs -
+         * that's real staff login/activity history, not debug telemetry.
+         */
+        public static function clear() {
+            return @file_put_contents(self::$logFile, '[]') !== false;
+        }
+
+        /**
          * Log an event entry to logs.json without requiring MySQL/PDO
          */
         public static function log($portal, $severity, $msg, $origin = 'Dashboard', $extraData = []) {

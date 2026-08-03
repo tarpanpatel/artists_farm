@@ -9,7 +9,7 @@ require_once __DIR__ . '/logger.php';
 // Handle API requests
 $action = $_GET['action'] ?? $_POST['action'] ?? null;
 
-if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
+if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_logs' || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -37,6 +37,12 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
         TelescopeLogger::log($portalInput, $severityInput, $msgInput, $originInput, $extraData);
 
         echo json_encode(['status' => 'success', 'message' => 'Log entry captured successfully']);
+        exit();
+    }
+
+    if ($action === 'reset_logs') {
+        $ok = TelescopeLogger::clear();
+        echo json_encode(['status' => $ok ? 'success' : 'error', 'message' => $ok ? 'Telescope logs cleared' : 'Failed to clear log file']);
         exit();
     }
 
@@ -466,11 +472,21 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
         }).join('');
     }
 
-    function resetLogs() {
-        if (confirm('Clear all Telescope logs and reset to defaults?')) {
-            localStorage.removeItem(LS_KEY);
-            loadPortalLogs();
+    async function resetLogs() {
+        if (!confirm('Clear all Telescope logs and reset to defaults?\n\n(This clears requests/php/sql/js/telegram/security/404 debug logs. Login Portal and Staff Activity are real audit history and are not affected.)')) {
+            return;
         }
+        localStorage.removeItem(LS_KEY);
+        try {
+            const res = await fetch('index.php?action=reset_logs', { method: 'POST' });
+            const data = await res.json();
+            if (data.status !== 'success') {
+                console.warn('Server-side log reset failed:', data.message);
+            }
+        } catch (e) {
+            console.warn('Server-side log reset request failed:', e);
+        }
+        loadPortalLogs();
     }
 
     function openModal(logObj) {
