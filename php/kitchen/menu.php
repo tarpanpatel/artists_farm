@@ -453,6 +453,55 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'get_staff_meal_options':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_options (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    property_id INT NOT NULL DEFAULT 1,
+                    name VARCHAR(255) NOT NULL,
+                    cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    is_system_default TINYINT(1) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM staff_meal_options WHERE property_id = ?");
+                $countStmt->execute([$propertyId]);
+                if ((int)$countStmt->fetchColumn() === 0) {
+                    // Seed defaults on first use for this property - no hardcoded
+                    // options at runtime, just a one-time starting point.
+                    $seed = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, is_system_default) VALUES (?, ?, ?, 1)");
+                    $seed->execute([$propertyId, 'Rice, daal and sabzi', 50]);
+                    $seed->execute([$propertyId, 'Chapati & Chicken Curry', 80]);
+                }
+
+                $stmt = $pdo->prepare("SELECT id, name, cost FROM staff_meal_options WHERE property_id = ? ORDER BY id ASC");
+                $stmt->execute([$propertyId]);
+                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
+        case 'add_staff_meal_option':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $name = trim($input['name'] ?? '');
+                $cost = floatval($input['cost'] ?? 0);
+                if (!$name) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'name is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, is_system_default) VALUES (?, ?, ?, 0)");
+                    $stmt->execute([$propertyId, $name, $cost]);
+                    echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid menu action']);

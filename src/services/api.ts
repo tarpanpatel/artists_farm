@@ -1787,3 +1787,37 @@ export async function depleteStockForDish(menuItemId: number, quantity: number):
     return { status: 'error', message: String(err) };
   }
 }
+
+export interface StaffMealOption {
+  id: number;
+  name: string;
+  cost: number;
+}
+
+export async function fetchStaffMealOptionsFromDB(): Promise<StaffMealOption[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_staff_meal_options`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data.map((o: any) => ({ id: Number(o.id), name: o.name, cost: Number(o.cost) || 0 }));
+    }
+  } catch (err) {
+    console.error('Failed to fetch staff meal options:', err);
+  }
+  return [];
+}
+
+export async function addStaffMealOptionToDB(name: string, cost: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_staff_meal_option`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, cost }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to add staff meal option:', err);
+    return false;
+  }
+}

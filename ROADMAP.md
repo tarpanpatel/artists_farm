@@ -36,13 +36,17 @@ This document tracks identified bugs, pending backend API integrations, and upco
 - [x] **Recipe Builder Stock Depletion (`KitchenManagement.tsx`)**
   - **Verified:** Already implemented — `depleteStockForDish()` in `src/services/api.ts` calls a `deplete_stock` action (`php/kitchen/menu.php`), wired into `handleMarkDishServed` for automatic BOM-based ingredient depletion when a dish is served.
 
-- [ ] **Dynamic Staff Meal Options (`KitchenManagement.tsx`)**
-  - **Dropdown:** Staff Meal Options.
-  - **Action:** Replace hardcoded `smMealOptions` array with dynamic API endpoint `get_staff_meal_options`.
+- [x] **Dynamic Staff Meal Options (`KitchenManagement.tsx`)** — *Done 2026-08-04*
+  - **Shipped as:** New `staff_meal_options` table (self-healing create + seed-on-first-use with the original two defaults, matching the `manager.php` seeding pattern), `get_staff_meal_options`/`add_staff_meal_option` actions in `php/kitchen/menu.php`. Saving a custom meal now persists it (previously vanished on refresh, same as everything below). Verified through the real endpoint: fetch auto-seeds, added option appears in the next fetch, dropdown in the browser shows exactly the two DB-seeded options.
+  - **Found but out of scope for this pass:** `smLogs` (the "Monthly Tracking Log" of who ate what/when) is *also* 100% local-state-only with zero DB persistence — every logged staff meal vanishes on refresh, not just the options list. Worth its own item if this matters.
 
 ---
 
 ## 🟢 Phase 3: Enhancements & Platform Optimization
+
+- [ ] **Staff Meal Log Persistence (`KitchenManagement.tsx`)**
+  - **Problem:** Found while fixing the Staff Meal Options dropdown (Phase 2) — the "Monthly Tracking Log" (`smLogs`: who ate what, when) is entirely local React state, seeded from hardcoded demo rows. Every meal logged via "Record Consumption" is gone on the next page refresh; nothing is ever written to the database.
+  - **Action:** New `staff_meal_logs` table (property_id, staff_names, food_description, quantity, is_leftover_buffer, logged_at) + `get_staff_meal_logs`/`add_staff_meal_log` actions, matching the pattern just used for `staff_meal_options`. Replace the hardcoded initial `smLogs` array with a DB fetch on mount, and have `handleLogStaffMeal` persist instead of only calling `setSmLogs`.
 
 - [ ] **Automated iCal Sync Background Worker**
   - **Action:** Set up a scheduled cron task or server background worker to automatically trigger `ical_sync.php` at regular intervals (e.g. every 15 minutes) for all connected Airbnb/Booking.com calendars.

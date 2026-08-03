@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -426,11 +426,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [isCustomMealModalOpen, setIsCustomMealModalOpen] = useState(false);
   const [newMealName, setNewMealName] = useState('');
   const [newMealCost, setNewMealCost] = useState('');
-  // TODO: Fetch smMealOptions from DB instead of hardcoding
-  const [smMealOptions, setSmMealOptions] = useState([
-    { name: 'Rice, daal and sabzi', cost: 50 },
-    { name: 'Chapati & Chicken Curry', cost: 80 }
-  ]);
+  const [smMealOptions, setSmMealOptions] = useState<{ name: string; cost: number }[]>([]);
+  useEffect(() => {
+    fetchStaffMealOptionsFromDB().then((options) => {
+      setSmMealOptions(options.map((o) => ({ name: o.name, cost: o.cost })));
+    });
+  }, []);
   const [smLogs, setSmLogs] = useState([
     { date: '25 Jul, 11:30 AM', staff: 'Abhijeet, Kinkar Sarkar, Pranay, Ramesh', food: '4x Rice, daal and sabzi', hasTag: false },
     { date: '25 Jul, 10:20 AM', staff: 'Kamlesh', food: '1x Rice, daal and sabzi', hasTag: false },
@@ -453,6 +454,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setIsCustomMealModalOpen(false);
     setNewMealName('');
     setNewMealCost('');
+    addStaffMealOptionToDB(newMealName, cost);
   };
   const [smError, setSmError] = useState('');
 
