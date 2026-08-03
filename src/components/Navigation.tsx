@@ -125,12 +125,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   }, [activeMenuItemKey]);
 
   const isVisible = useCallback((allowedRoles?: string[], itemTabKey?: string) => {
-    // Telegram is only visible to root admin
-    if (itemTabKey === 'telegram') {
-      const normalizedActiveRole = activeRole.toLowerCase().trim();
-      return normalizedActiveRole === 'root admin';
-    }
-
     // Hide kitchen items if kitchen module is disabled
     const kitchenItems = new Set(['kitchen', 'take_food_order', 'kitchen_orders', 'staff_meals']);
     if (kitchenItems.has(itemTabKey || '') && !kitchenModuleEnabled) {
