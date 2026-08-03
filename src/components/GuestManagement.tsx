@@ -206,6 +206,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
+
+    // 1. iCal blocked dates
     blockedDates.forEach((bd) => {
       const start = new Date(bd.event_start.split(' ')[0]);
       const end = new Date(bd.event_end.split(' ')[0]);
@@ -218,6 +220,42 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         current = new Date(current.getTime() + 86400000);
       }
     });
+
+    // 2. Existing guest bookings for the currently selected room
+    const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
+    const selectedRoomId = selectedRoomObj?.id;
+
+    guests
+      .filter((g) => g.status === 'Active' || g.status === 'Booked')
+      .filter((g) => {
+        const gRoomId = (g as any).roomId || (g as any).room_id;
+        if (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) return true;
+        if (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim()) return true;
+        return false;
+      })
+      .forEach((g) => {
+        const checkinStr = (g.checkinDate || '').split(' ')[0].split('T')[0];
+        const checkoutStr = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0].split('T')[0];
+        if (!checkinStr) return;
+
+        const [sy, sm, sd] = checkinStr.split('-').map(Number);
+        const [ey, em, ed] = (checkoutStr || checkinStr).split('-').map(Number);
+
+        if (!sy || !sm || !sd) return;
+
+        const start = new Date(sy, sm - 1, sd, 12, 0, 0);
+        const end = ey && em && ed ? new Date(ey, em - 1, ed, 12, 0, 0) : new Date(start);
+
+        const current = new Date(start);
+        while (current < end) {
+          const y = current.getFullYear();
+          const m = String(current.getMonth() + 1).padStart(2, '0');
+          const d = String(current.getDate()).padStart(2, '0');
+          blocked.push(`${y}-${m}-${d}`);
+          current.setDate(current.getDate() + 1);
+        }
+      });
+
     return blocked;
   };
 
@@ -722,8 +760,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               onCheckinChange={setCheckinDate}
               onCheckoutChange={setExpectedCheckout}
               onClear={() => {
-                setCheckinDate(new Date().toISOString().split('T')[0]);
-                setExpectedCheckout(new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+                setCheckinDate('');
+                setExpectedCheckout('');
               }}
               blockedDates={getBlockedDateStrings()}
             />

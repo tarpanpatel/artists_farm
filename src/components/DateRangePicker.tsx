@@ -77,12 +77,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       return;
     }
 
-    if (selectedMode === 'checkin') {
+    if (selectedMode === 'checkin' || !checkinDate) {
       onCheckinChange(dateStr);
+      onCheckoutChange('');
       setSelectedMode('checkout');
     } else {
       if (checkinDate && dateStr <= checkinDate) {
-        // Reset check-in if user picked an earlier check-out date
+        // Reset check-in if user picked an earlier or same check-out date
         onCheckinChange(dateStr);
         onCheckoutChange('');
         setSelectedMode('checkout');
