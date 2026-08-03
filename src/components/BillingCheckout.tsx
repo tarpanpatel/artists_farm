@@ -119,7 +119,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       const phone = (g.phoneNumber || '').trim();
 
       // Filter out invalid/orphaned system placeholders ("Guest" or blank with no contact number)
-      if ((rawName.toLowerCase() === 'guest' || rawName === '' || rawName.toLowerCase() === 'unassigned') && (!phone || phone.length < 5)) {
+      if ((rawName.toLowerCase() === 'guest' || rawName === '' || rawName.toLowerCase() === 'unassigned') && (!phone || phone.length < 10)) {
         continue;
       }
 

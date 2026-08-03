@@ -692,7 +692,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
         const room = (g.roomNumber || g.room_number || 'Unassigned').trim();
 
         // Filter out invalid/orphaned system placeholders ("Guest" or blank with no contact number)
-        if ((name.toLowerCase() === 'guest' || name === '' || name.toLowerCase() === 'unassigned') && (!phone || phone.length < 5)) {
+        if ((name.toLowerCase() === 'guest' || name === '' || name.toLowerCase() === 'unassigned') && (!phone || phone.length < 10)) {
           continue;
         }
 
