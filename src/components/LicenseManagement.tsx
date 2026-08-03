@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Edit2, Trash2, AlertCircle, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useConfirm } from './ConfirmDialogContext';
+import { StyledSelect } from './StyledSelect';
 
 interface License {
   id: number;
@@ -33,6 +35,7 @@ const LICENSE_TYPES = [
 ];
 
 export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId }) => {
+  const { confirm } = useConfirm();
   const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -59,7 +62,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
       });
       const data = await response.json();
       if (data.status === 'success') {
-        setLicenses(data.data || []);
+        setLicenses(data.licenses || []);
       }
     } catch (error) {
       console.error('Failed to load licenses:', error);
@@ -90,7 +93,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this license?')) return;
+    const confirmed = await confirm({
+      title: 'Delete License',
+      message: 'Delete this license?',
+      confirmText: 'Delete License',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const response = await fetch('/php/api/router.php?action=delete_license', {
         method: 'POST',
@@ -172,17 +181,11 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 License Type *
               </label>
-              <select
+              <StyledSelect
                 value={formData.license_type}
-                onChange={(e) => setFormData({ ...formData, license_type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-              >
-                {LICENSE_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setFormData({ ...formData, license_type: value })}
+                options={LICENSE_TYPES.map((type) => ({ value: type.value, label: type.label }))}
+              />
             </div>
 
             {/* License Name */}

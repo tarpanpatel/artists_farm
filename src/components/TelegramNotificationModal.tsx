@@ -26,6 +26,7 @@ import {
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB } from '../services/api';
 import { TelegramConnectionSettings } from './TelegramConnectionSettings';
+import { StyledSelect } from './StyledSelect';
 
 export interface TelegramInlineButton {
   id: string;
@@ -894,17 +895,16 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             <Send className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">Send to:</label>
             {tgSettings ? (
-              <select
+              <StyledSelect
+                className="flex-1"
                 value={tgSettings.routing[currentTpl.dbKey] ?? ''}
-                onChange={(e) => setTemplateRouting(currentTpl.dbKey, e.target.value)}
+                onChange={(value) => setTemplateRouting(currentTpl.dbKey, value)}
                 disabled={tgRoutingSaving}
-                className="flex-1 bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-800 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-100"
-              >
-                <option value="">Not sent</option>
-                {tgSettings.groups.map((g) => (
-                  <option key={g.key} value={g.key}>{g.name}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Not sent' },
+                  ...tgSettings.groups.map((g) => ({ value: g.key, label: g.name })),
+                ]}
+              />
             ) : (
               <span className="text-[11px] text-slate-400">Loading…</span>
             )}

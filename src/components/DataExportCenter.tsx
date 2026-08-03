@@ -21,6 +21,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { StyledSelect } from './StyledSelect';
 
 interface DataExportCenterProps {
   guests: Guest[];
@@ -416,17 +417,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <Calendar className="w-4 h-4 text-gray-500" />
               <span>Target Statement Month</span>
             </label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm font-semibold rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-            >
-              {monthsList.map((m) => (
-                <option key={m.num} value={m.num}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <StyledSelect
+              value={String(selectedMonth)}
+              onChange={(val) => setSelectedMonth(Number(val))}
+              options={monthsList.map((m) => ({
+                value: String(m.num),
+                label: m.name,
+              }))}
+            />
           </div>
 
           <div>
@@ -434,17 +432,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <Calendar className="w-4 h-4 text-gray-500" />
               <span>Target Statement Year</span>
             </label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm font-semibold rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-            >
-              {yearsList.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            <StyledSelect
+              value={String(selectedYear)}
+              onChange={(val) => setSelectedYear(Number(val))}
+              options={yearsList.map((y) => ({
+                value: String(y),
+                label: String(y),
+              }))}
+            />
           </div>
         </div>
 

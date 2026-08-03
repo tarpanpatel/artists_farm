@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Save, RotateCcw, Loader } from 'lucide-react';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
+import { useConfirm } from './ConfirmDialogContext';
 
 export const ThemeManagement: React.FC = () => {
+  const { confirm } = useConfirm();
   const [settings, setSettings] = useState<ThemeSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,7 +77,13 @@ export const ThemeManagement: React.FC = () => {
   };
 
   const handleReset = async () => {
-    if (confirm('Reset to Tailwind default colors?')) {
+    const confirmed = await confirm({
+      title: 'Reset Theme Colors',
+      message: 'Reset to Tailwind default colors?',
+      confirmText: 'Reset Colors',
+      variant: 'warning',
+    });
+    if (confirmed) {
       const defaultTheme: ThemeSettings = {
         colors: {
           primary: '#3b82f6',

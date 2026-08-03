@@ -49,6 +49,7 @@ import {
 import { MenuItem, NavMenuItem, StaffMember } from '../types';
 import { uploadImageDB } from '../services/api';
 import { NavMenuEditor } from './NavMenuEditor';
+import { StyledSelect } from './StyledSelect';
 import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -551,17 +552,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               {/* Category Dropdown */}
-              <select
+              <StyledSelect
+                className="w-40"
                 value={selectedFoodCategory}
-                onChange={(e) => setSelectedFoodCategory(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2 font-semibold"
-              >
-                {foodCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedFoodCategory}
+                options={foodCategories.map((cat) => ({ value: cat, label: cat }))}
+              />
             </div>
 
             <button
@@ -750,54 +746,47 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Target Section / Tab</label>
-                  <select
+                  <StyledSelect
                     value={navForm.tabKey}
-                    onChange={(e) => setNavForm({ ...navForm, tabKey: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-semibold focus:outline-hidden"
-                  >
-                    <option value="dashboard">Dashboard</option>
-                    <option value="guests">Residents & Billing</option>
-                    <option value="kitchen">Kitchen & Orders</option>
-                    <option value="inventory">Inventory & Stock</option>
-                    <option value="petty_cash">Expenses</option>
-                    <option value="staff">Staff & HR</option>
-                    <option value="analytics">Analytics</option>
-                    <option value="audit_logs">Audit Logs</option>
-                    <option value="menu_manager">Menu Manager</option>
-                    <option value="telegram">Telegram Bot</option>
-                  </select>
+                    onChange={(val) => setNavForm({ ...navForm, tabKey: val })}
+                    options={[
+                      { value: 'dashboard', label: 'Dashboard' },
+                      { value: 'guests', label: 'Residents & Billing' },
+                      { value: 'kitchen', label: 'Kitchen & Orders' },
+                      { value: 'inventory', label: 'Inventory & Stock' },
+                      { value: 'petty_cash', label: 'Expenses' },
+                      { value: 'staff', label: 'Staff & HR' },
+                      { value: 'analytics', label: 'Analytics' },
+                      { value: 'audit_logs', label: 'Audit Logs' },
+                      { value: 'menu_manager', label: 'Menu Manager' },
+                      { value: 'telegram', label: 'Telegram Bot' },
+                    ]}
+                  />
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Category Group</label>
-                  <select
+                  <StyledSelect
                     value={navForm.category}
-                    onChange={(e) => setNavForm({ ...navForm, category: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-semibold focus:outline-hidden"
-                  >
-                    {NAV_CATEGORIES.filter((c) => c !== 'All Categories').map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setNavForm({ ...navForm, category: val })}
+                    options={NAV_CATEGORIES.filter((c) => c !== 'All Categories').map((cat) => ({ value: cat, label: cat }))}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Parent Menu Item (Hierarchy)</label>
-                <select
+                <StyledSelect
                   value={navForm.parentId || ''}
-                  onChange={(e) => setNavForm({ ...navForm, parentId: e.target.value || null })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-semibold focus:outline-hidden"
-                >
-                  <option value="">Root Level (no parent)</option>
-                  {navItems.filter((i) => i.id !== editingNavItem?.id).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.parentId ? `\u00A0\u00A0\u21B3 ${item.title}` : item.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setNavForm({ ...navForm, parentId: val || null })}
+                  options={[
+                    { value: '', label: 'Root Level (no parent)' },
+                    ...navItems.filter((i) => i.id !== editingNavItem?.id).map((item) => ({
+                      value: item.id,
+                      label: item.parentId ? `\u00A0\u00A0\u21B3 ${item.title}` : item.title,
+                    })),
+                  ]}
+                />
                 <p className="text-[10px] text-slate-400 mt-1">Nest this item under another menu item to create a hierarchy group.</p>
               </div>
 
@@ -944,17 +933,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Category</label>
-                  <select
+                  <StyledSelect
                     value={foodForm.category}
-                    onChange={(e) => setFoodForm({ ...foodForm, category: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-semibold focus:outline-hidden"
-                  >
-                    {foodCategories.filter((c) => c !== 'All').map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFoodForm({ ...foodForm, category: val })}
+                    options={foodCategories.filter((c) => c !== 'All').map((cat) => ({ value: cat, label: cat }))}
+                  />
                 </div>
 
                 <div>

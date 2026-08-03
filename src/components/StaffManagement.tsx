@@ -24,7 +24,9 @@ import {
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, SalaryEntry } from '../types';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
+import { StyledSelect } from './StyledSelect';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB } from '../services/api';
 
 interface StaffManagementProps {
@@ -45,6 +47,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   tenantId,
 }) => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
@@ -292,7 +295,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (confirm('Delete user profile permanently?')) {
+    const confirmed = await confirm({
+      title: 'Delete User Profile',
+      message: 'Delete user profile permanently?',
+      confirmText: 'Delete User',
+      variant: 'danger',
+    });
+    if (confirmed) {
       if (await deleteStaffUserDB(id)) refreshStaff?.();
       else showToast('Unable to delete the staff member from the database.', { type: 'error' });
     }
@@ -317,7 +326,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   };
 
   const handleDeletePayee = async (id: string) => {
-    if (confirm('Purge payee archive records permanently?')) {
+    const confirmed = await confirm({
+      title: 'Purge Payee Archive',
+      message: 'Purge payee archive records permanently?',
+      confirmText: 'Purge Payee',
+      variant: 'danger',
+    });
+    if (confirmed) {
       if (await deletePayeeDB(id)) setPayees((previous) => previous.filter((payee) => payee.id !== id));
       else showToast('Unable to delete the payee from the database.', { type: 'error' });
     }
@@ -709,13 +724,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
-                      <select
+                      <StyledSelect
                         value={newRole}
-                        onChange={(e) => setNewRole(e.target.value as any)}
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                      >
-                        {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                      </select>
+                        onChange={(val) => setNewRole(val as any)}
+                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                      />
                     </div>
                     <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
                       <input
@@ -756,11 +769,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
-                      <select
-                        required
+                      <StyledSelect
                         value={selectedUpdateUserId}
-                        onChange={(e) => {
-                          const uid = e.target.value;
+                        onChange={(uid) => {
                           setSelectedUpdateUserId(uid);
                           const target = users.find((u) => u.id === uid);
                           if (target) {
@@ -768,26 +779,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             setUpdateIsFinancialHandler(target.isFinancialHandler);
                           }
                         }}
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                      >
-                        <option value="">-- Choose User Profile --</option>
-                        {users.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.username} ({u.role})
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="-- Choose User Profile --"
+                        options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.role})` }))}
+                      />
                     </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
-                      <select
+                      <StyledSelect
                         value={updateRole}
-                        onChange={(e) => setUpdateRole(e.target.value as any)}
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                      >
-                        <option value="">-- Keep Current Role --</option>
-                        {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                      </select>
+                        onChange={(val) => setUpdateRole(val as any)}
+                        placeholder="-- Keep Current Role --"
+                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                      />
                     </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 4-Digit Passcode PIN (Leave blank to keep current)</label>
@@ -861,14 +864,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                   <div>
                     <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Classification Group</label>
-                    <select
+                    <StyledSelect
                       value={newPayeeType}
-                      onChange={(e) => setNewPayeeType(e.target.value as any)}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                    >
-                      <option value="Vendor">Business Vendor (Daily/Project Supplies)</option>
-                      <option value="Third Party">Third Party Account (Pass-Through Routing)</option>
-                    </select>
+                      onChange={(val) => setNewPayeeType(val as any)}
+                      options={[
+                        { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
+                        { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
+                      ]}
+                    />
                   </div>
 
                   <div>
@@ -1348,9 +1351,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 sortable: true,
                 width: '150px',
                 cell: (row: any) => editingStaffId === row.id ? (
-                  <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
-                    {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                  </select>
+                  <StyledSelect
+                    value={editStaffRole}
+                    onChange={setEditStaffRole}
+                    options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                  />
                 ) : (
                   <span className="font-medium text-gray-600 dark:text-gray-300">{row.role}</span>
                 ),
@@ -1385,10 +1390,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 width: '110px',
                 center: true,
                 cell: (row: any) => editingStaffId === row.id ? (
-                  <select value={editStaffStatus} onChange={e => setEditStaffStatus(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <StyledSelect
+                    value={editStaffStatus}
+                    onChange={setEditStaffStatus}
+                    options={[
+                      { value: 'Active', label: 'Active' },
+                      { value: 'Inactive', label: 'Inactive' },
+                    ]}
+                  />
                 ) : (
                   <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{row.status}</span>
                 ),
@@ -1477,14 +1486,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Classification Type</label>
-                <select
+                <StyledSelect
                   value={editingPayee.type}
-                  onChange={(e) => setEditingPayee({ ...editingPayee, type: e.target.value as any })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-bold"
-                >
-                  <option value="Vendor">Vendor</option>
-                  <option value="Third Party">Third Party</option>
-                </select>
+                  onChange={(val) => setEditingPayee({ ...editingPayee, type: val as any })}
+                  options={[
+                    { value: 'Vendor', label: 'Vendor' },
+                    { value: 'Third Party', label: 'Third Party' },
+                  ]}
+                />
               </div>
 
               <div>
@@ -1554,13 +1563,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Role</label>
-                <select
+                <StyledSelect
                   value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {roleOptions.map((roleName) => <option key={roleName} value={roleName}>{roleName}</option>)}
-                </select>
+                  onChange={(val) => setRole(val as any)}
+                  options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                />
               </div>
 
               <div>

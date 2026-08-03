@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
+import { StyledSelect } from './StyledSelect';
 
 interface Tenant {
   id: number;
@@ -311,10 +312,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       const data = await response.json();
 
       if (data.success) {
-        setPropertyModules((prev) => ({
-          ...prev,
-          [propertyId]: { ...prev[propertyId], kitchen: newStatus },
-        }));
+        setPropertyModules((prev) => {
+          const next = {
+            ...prev,
+            [propertyId]: { ...prev[propertyId], kitchen: newStatus },
+          };
+          properties
+            .filter((p) => (p as any).parent_property_id === propertyId)
+            .forEach((child) => {
+              next[child.id] = { ...(next[child.id] || {}), kitchen: newStatus };
+            });
+          return next;
+        });
       } else {
         setError(data.message || 'Failed to toggle module');
       }
@@ -850,20 +859,20 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Subscription Status
                 </label>
-                <select
+                <StyledSelect
                   value={editingTenant.subscription_status}
-                  onChange={(e) =>
+                  onChange={(val) =>
                     setEditingTenant({
                       ...editingTenant,
-                      subscription_status: e.target.value,
+                      subscription_status: val,
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                >
-                  <option value="trial">Trial</option>
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </select>
+                  options={[
+                    { value: 'trial', label: 'Trial' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'suspended', label: 'Suspended' },
+                  ]}
+                />
               </div>
 
               <div>
@@ -993,19 +1002,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Color Scheme
                   </label>
-                  <select
+                  <StyledSelect
                     value={editingProperty.tailwind_color_scheme}
-                    onChange={(e) =>
-                      setEditingProperty({ ...editingProperty, tailwind_color_scheme: e.target.value })
+                    onChange={(val) =>
+                      setEditingProperty({ ...editingProperty, tailwind_color_scheme: val })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  >
-                    <option value="blue">Blue</option>
-                    <option value="green">Green</option>
-                    <option value="red">Red</option>
-                    <option value="purple">Purple</option>
-                    <option value="amber">Amber</option>
-                  </select>
+                    options={[
+                      { value: 'blue', label: 'Blue' },
+                      { value: 'green', label: 'Green' },
+                      { value: 'red', label: 'Red' },
+                      { value: 'purple', label: 'Purple' },
+                      { value: 'amber', label: 'Amber' },
+                    ]}
+                  />
                 </div>
               )}
 

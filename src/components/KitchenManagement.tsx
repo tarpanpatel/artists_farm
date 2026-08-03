@@ -26,8 +26,9 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
 import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug } from '../services/api';
-import { SearchableSelect } from './SearchableSelect';
+import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import DataTable from 'react-data-table-component';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -53,6 +54,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   activeMenuItemKey = 'kitchen_orders',
   isTestingMode = false,
 }) => {
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { orders, addOrder } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser } = useAuth();
@@ -169,7 +172,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const cleanTicketId = ord.id.replace('#', '');
 
     if (servedItemKeys[key]) {
-      alert(`⚠️ [Telegram answerCallbackQuery]: Dish "${item.name}" on Ticket #${cleanTicketId} is ALREADY marked as SERVED!`);
+      showToast(`⚠️ [Telegram answerCallbackQuery]: Dish "${item.name}" on Ticket #${cleanTicketId} is ALREADY marked as SERVED!`, { type: 'warning' });
       return;
     }
 
@@ -281,7 +284,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setNewMealCost('');
   };
   const [smError, setSmError] = useState('');
-  const { showToast } = useToast();
 
   const handleLogStaffMeal = () => {
     if (smSelectedStaff.length === 0) {
@@ -321,7 +323,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const handleDispatchStaffMeal = (e: React.FormEvent) => {
     e.preventDefault();
     if (smSelectedStaff.length === 0) {
-      alert("Please select at least one staff member.");
+      showToast("Please select at least one staff member.", { type: 'warning' });
       return;
     }
     const staffName = smSelectedStaff.join(', ');
@@ -1473,35 +1475,32 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Consumption Type</label>
-                <select 
+                <StyledSelect
                   value={smConsumptionType}
-                  onChange={(e) => setSmConsumptionType(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden focus:border-cyan-500 shadow-2xs cursor-pointer"
-                >
-                  <option value="Freshly Prepared (New Stock)">Freshly Prepared (New Stock)</option>
-                  <option value="Leftover Buffer items">Leftover Buffer items</option>
-                  <option value="Evening Chai">Evening Chai</option>
-                </select>
+                  onChange={setSmConsumptionType}
+                  options={[
+                    { value: 'Freshly Prepared (New Stock)', label: 'Freshly Prepared (New Stock)' },
+                    { value: 'Leftover Buffer items', label: 'Leftover Buffer items' },
+                    { value: 'Evening Chai', label: 'Evening Chai' },
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">Custom Meal Combination</label>
                   <div className="flex gap-2">
-                    <select 
+                    <StyledSelect
+                      className="flex-1"
                       value={smCustomMeal}
-                      onChange={(e) => {
-                        setSmCustomMeal(e.target.value);
-                        const selected = smMealOptions.find(m => m.name === e.target.value);
+                      onChange={(val) => {
+                        setSmCustomMeal(val);
+                        const selected = smMealOptions.find(m => m.name === val);
                         if (selected) setSmEstCost(selected.cost.toString());
                       }}
-                      className="flex-1 p-2.5 rounded-xl border border-cyan-300 dark:border-cyan-700 font-semibold bg-white dark:bg-slate-900 text-cyan-700 dark:text-cyan-400 text-xs focus:outline-hidden shadow-2xs cursor-pointer"
-                    >
-                      <option value="">-- Select Database Meal --</option>
-                      {smMealOptions.map((opt, i) => (
-                        <option key={i} value={opt.name}>{opt.name}</option>
-                      ))}
-                    </select>
+                      placeholder="-- Select Database Meal --"
+                      options={smMealOptions.map((opt, i) => ({ value: opt.name, label: opt.name }))}
+                    />
                     <button 
                       onClick={() => setIsCustomMealModalOpen(true)}
                       className="bg-slate-700 hover:bg-slate-800 text-white px-3 rounded-xl shadow-2xs font-bold text-xs flex items-center justify-center cursor-pointer transition-all"
@@ -1706,12 +1705,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">Dish:</span>
-                <SearchableSelect
+                <StyledSelect
+                  searchable
+                  className="w-72"
                   value={String(selectedRecipeMenuItemId)}
                   onChange={(val) => setSelectedRecipeMenuItemId(Number(val))}
                   placeholder="Search dishes..."
-                  inputClassName="p-2 rounded-xl border border-indigo-300 font-bold text-xs bg-indigo-50 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-700 w-72"
-                  dropdownClassName="border-indigo-200 dark:border-indigo-700"
                   options={menu.map(m => ({
                     value: String(m.id),
                     label: `${m.name} — ₹${m.price}`,
@@ -1841,7 +1840,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <>
                 <button
                   onClick={async () => {
-                    if (confirm(`Delete recipe for "${selectedRecipeMenuItem?.name}"?`)) {
+                    const confirmed = await confirm({
+                      title: 'Delete Recipe',
+                      message: `Delete recipe for "${selectedRecipeMenuItem?.name}"?`,
+                      confirmText: 'Delete Recipe',
+                      variant: 'danger',
+                    });
+                    if (confirmed) {
                       await deleteRecipeFromDB(selectedRecipeMenuItemId);
                       setAllRecipes((prev) => { const n = { ...prev }; delete n[selectedRecipeMenuItemId]; return n; });
                       setRecipeIngredients([]);
@@ -1979,13 +1984,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">From Kitchen Stock</label>
                   {inventory && inventory.length > 0 ? (
-                    <SearchableSelect
-                      required
+                    <StyledSelect
+                      searchable
                       value={selectedStockItemId}
                       onChange={(val) => handleStockItemSelect(val)}
                       placeholder="-- Choose Ingredient --"
-                      inputClassName="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                      dropdownClassName="border-slate-200 dark:border-slate-600"
                       options={inventory
                         .filter((item) => !ingredientCategoryNames.length || ingredientCategoryNames.includes(item.category))
                         .map(item => ({
@@ -2014,13 +2017,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </div>
                   <div>
                     <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Unit</label>
-                    <select value={newIngUnit} onChange={(e) => setNewIngUnit(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold text-xs text-slate-900 dark:text-white">
-                      <option value="kg">kg</option>
-                      <option value="liters">liters</option>
-                      <option value="pcs">pcs</option>
-                      <option value="grams">grams</option>
-                      <option value="ml">ml</option>
-                    </select>
+                    <StyledSelect
+                      value={newIngUnit}
+                      onChange={setNewIngUnit}
+                      options={[
+                        { value: 'kg', label: 'kg' },
+                        { value: 'liters', label: 'liters' },
+                        { value: 'pcs', label: 'pcs' },
+                        { value: 'grams', label: 'grams' },
+                        { value: 'ml', label: 'ml' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -2073,17 +2080,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Category</label>
-                <select
+                <StyledSelect
                   value={newItemCategory}
-                  onChange={(e) => setNewItemCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                >
-                  <option value="Starters">Starters</option>
-                  <option value="Main Course">Main Course</option>
-                  <option value="Beverages">Beverages</option>
-                  <option value="Farm Specials">Farm Specials</option>
-                  <option value="Desserts">Desserts</option>
-                </select>
+                  onChange={(val) => setNewItemCategory(val as any)}
+                  options={[
+                    { value: 'Starters', label: 'Starters' },
+                    { value: 'Main Course', label: 'Main Course' },
+                    { value: 'Beverages', label: 'Beverages' },
+                    { value: 'Farm Specials', label: 'Farm Specials' },
+                    { value: 'Desserts', label: 'Desserts' },
+                  ]}
+                />
               </div>
 
               <div>

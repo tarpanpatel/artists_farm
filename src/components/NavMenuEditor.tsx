@@ -10,6 +10,7 @@ import {
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
+import { StyledSelect } from './StyledSelect';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -33,6 +34,7 @@ interface PageOption {
 // Default page options (fallback if API fails)
 function getDefaultPageOptions(): PageOption[] {
   return [
+    { label: 'Overview', tabKey: 'dashboard', uniqueKey: 'overview' },
     { label: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard' },
     { label: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration' },
     { label: 'Billing & Checkout', tabKey: 'guests', uniqueKey: 'billing_checkout' },
@@ -723,22 +725,31 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               placeholder="Item title" autoFocus
               className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
             {/* Page selector */}
-            <select value={`${newItem.tabKey}|${newItem.uniqueKey}`} onChange={(e) => {
-              const [tabKey, uniqueKey] = e.target.value.split('|');
-              setNewItem(p => ({ ...p, tabKey, uniqueKey }));
-            }} className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
-              {pageOptions.map(p => (
-                <option key={`${p.tabKey}-${p.uniqueKey}`} value={`${p.tabKey}|${p.uniqueKey}`}>{p.label}</option>
-              ))}
-            </select>
+            <StyledSelect
+              value={`${newItem.tabKey}|${newItem.uniqueKey}`}
+              onChange={(val) => {
+                const [tabKey, uniqueKey] = val.split('|');
+                setNewItem(p => ({ ...p, tabKey, uniqueKey }));
+              }}
+              options={pageOptions.map(p => ({
+                value: `${p.tabKey}|${p.uniqueKey}`,
+                label: p.label,
+              }))}
+              searchable
+            />
             {/* Parent dropdown */}
-            <select value={newItem.parentId || ''} onChange={(e) => setNewItem(p => ({ ...p, parentId: e.target.value || null }))}
-              className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
-              <option value="">Root Level (no parent)</option>
-              {visibleItems.filter(i => i.id !== newItem.parentId).map(i => (
-                <option key={i.id} value={i.id}>{'  '.repeat(0)}{i.title}</option>
-              ))}
-            </select>
+            <StyledSelect
+              value={newItem.parentId || ''}
+              onChange={(val) => setNewItem(p => ({ ...p, parentId: val || null }))}
+              options={[
+                { value: '', label: 'Root Level (no parent)' },
+                ...visibleItems.filter(i => i.id !== newItem.parentId).map(i => ({
+                  value: i.id,
+                  label: i.title,
+                })),
+              ]}
+              searchable
+            />
             {/* Custom URL (if custom selected) */}
             {newItem.tabKey === 'custom' && (
               <input type="url" value={newItem.customUrl} onChange={(e) => setNewItem(p => ({ ...p, customUrl: e.target.value }))}

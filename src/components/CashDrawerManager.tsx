@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, X, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, X, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary, StaffMember } from '../types';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, fetchStaffUsersFromDB, resolveTelegramTemplate } from '../services/api';
 import DataTable from 'react-data-table-component';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from './ConfirmDialogContext';
+import { StyledSelect } from './StyledSelect';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
@@ -19,6 +21,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 }) => {
   const { staff } = useStaff();
   const { activeRole } = useAuth();
+  const { confirm } = useConfirm();
   const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
   const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,12 +54,19 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStaffId || !amount || Number(amount) <= 0) return;
+    if (activeForm === 'handover' && !handedTo) return;
 
     const staffMember = summaries.find(s => s.staffId === selectedStaffId);
     if (!staffMember) return;
 
     if (activeForm === 'handover' && Number(amount) > staffMember.netBalance) {
-      if (!window.confirm(`Warning: Handover amount (₹${amount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`)) {
+      const confirmed = await confirm({
+        title: 'Exceeds Net Balance',
+        message: `Warning: Handover amount (₹${amount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`,
+        confirmText: 'Proceed Handover',
+        variant: 'warning',
+      });
+      if (!confirmed) {
         return;
       }
     }
@@ -151,9 +161,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       {/* Quick Action Tabs */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
         {[
-          { key: 'handover' as const, label: '🤝 Handover', desc: 'Cash Given to Owner' },
-          { key: 'manual_adjustment' as const, label: '⚙️ Adjustment', desc: 'Admin Correction' },
-        ].map(tab => (
+          { key: 'handover' as const, label: 'Handover', icon: Handshake, desc: 'Cash Given to Owner' },
+          { key: 'manual_adjustment' as const, label: 'Adjustment', icon: Sliders, desc: 'Admin Correction' },
+        ].map(tab => {
+          const TabIcon = tab.icon;
+          return (
           <button
             key={tab.key}
             onClick={() => setActiveForm(tab.key)}
@@ -163,36 +175,46 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold'
             }`}
           >
-            <div className="text-[11px]">{tab.label}</div>
+            <div className="text-[11px] flex items-center justify-center gap-1.5">
+              <TabIcon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </div>
             <div className={`text-[9px] mt-0.5 ${activeForm === tab.key ? 'text-emerald-100' : 'text-slate-400'}`}>{tab.desc}</div>
           </button>
-        ))}
+        );
+        })}
       </div>
 
       {/* Entry Form */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-emerald-500 pl-2.5 mb-4 flex items-center gap-1.5">
-          {activeForm === 'handover' && '🤝 RECORD CASH HANDOVER'}
-          {activeForm === 'manual_adjustment' && '⚙️ MANUAL BALANCE ADJUSTMENT'}
+          {activeForm === 'handover' && (
+            <>
+              <Handshake className="w-4 h-4" />
+              <span>RECORD CASH HANDOVER</span>
+            </>
+          )}
+          {activeForm === 'manual_adjustment' && (
+            <>
+              <Sliders className="w-4 h-4" />
+              <span>MANUAL BALANCE ADJUSTMENT</span>
+            </>
+          )}
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Select Staff Member *</label>
-              <select
-                required
+              <StyledSelect
                 value={selectedStaffId}
-                onChange={e => setSelectedStaffId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-              >
-                <option value="">-- Choose Staff --</option>
-                {summaries.map(s => (
-                  <option key={s.staffId} value={s.staffId}>
-                    {s.staffName} (Balance: ₹{s.netBalance.toLocaleString('en-IN')})
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedStaffId}
+                placeholder="-- Choose Staff --"
+                options={summaries.map(s => ({
+                  value: s.staffId,
+                  label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
+                }))}
+              />
             </div>
 
             <div>
@@ -218,18 +240,18 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           {activeForm === 'handover' && (
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Handing Over To *</label>
-              <select
-                required
+              <StyledSelect
                 value={handedTo}
-                onChange={e => setHandedTo(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-              >
-                <option value="">-- Select Recipient --</option>
-                <option value="Tarpan (Owner)">Tarpan (Owner)</option>
-                {staff.filter(s => s.status === 'Active').map(s => (
-                  <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
-                ))}
-              </select>
+                onChange={setHandedTo}
+                placeholder="-- Select Recipient --"
+                options={[
+                  { value: 'Tarpan (Owner)', label: 'Tarpan (Owner)' },
+                  ...staff.filter(s => s.status === 'Active').map(s => ({
+                    value: s.name,
+                    label: `${s.name} (${s.role})`,
+                  })),
+                ]}
+              />
             </div>
           )}
 

@@ -21,6 +21,7 @@ import { BillingReceipt, Order } from '../types';
 import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { StyledSelect } from './StyledSelect';
 
 interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
@@ -305,15 +306,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-500" />
-          <select
+          <StyledSelect
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-            className="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5"
-          >
-            {dateFilterOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+            onChange={(value) => setDateFilter(value as DateFilter)}
+            options={dateFilterOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+          />
         </div>
       </div>
 

@@ -18,7 +18,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_guests':
             try {
                 $stmt = $pdo->prepare("
-                    SELECT g.*, COALESCE(r.name, r.slug, '') as roomNumber
+                    SELECT g.*, COALESCE(r.name, 'Unassigned') as roomNumber
                     FROM guests g
                     LEFT JOIN properties r ON g.room_id = r.id AND r.property_type = 'MULTI_KEY_ROOM'
                     WHERE g.property_id = ?
@@ -27,15 +27,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $stmt->execute([$propertyId]);
                 $guests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $guests = array_map(function($guest) {
+                    unset($guest['room_number']);
                     return convertSnakeToCamel($guest);
                 }, $guests);
                 echo json_encode(['status' => 'success', 'data' => $guests]);
             } catch (PDOException $e) {
                 try {
-                    $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY check_in DESC");
+                    $stmt = $pdo->prepare("SELECT * FROM guests WHERE property_id = ? ORDER BY checkin_date DESC");
                     $stmt->execute([$propertyId]);
                     $guests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     $guests = array_map(function($guest) {
+                        unset($guest['room_number']);
                         return convertSnakeToCamel($guest);
                     }, $guests);
                     echo json_encode(['status' => 'success', 'data' => $guests]);
@@ -110,6 +112,69 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to register guest: ' . $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'update_guest':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $guestId = $input['id'];
+                    $roomId = isset($input['room_id']) && $input['room_id'] !== '' ? intval($input['room_id']) : null;
+                    $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
+                    $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
+
+                    if ($roomId !== null) {
+                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status = 'Active' AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $conflictStmt->execute([$roomId, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        if ($conflictStmt->fetch()) {
+                            http_response_code(409);
+                            echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
+                            break;
+                        }
+                    }
+
+                    $totalCharge = floatval($input['total_charge'] ?? 0);
+                    $advancePaid = floatval($input['advance_paid'] ?? 0);
+                    $pendingAmount = max(0, $totalCharge - $advancePaid);
+
+                    if ($roomId !== null) {
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ? WHERE id = ? AND property_id = ?");
+                        $stmt->execute([
+                            $input['guest_name'] ?? $input['name'] ?? '',
+                            $input['phone_number'] ?? $input['contact'] ?? '',
+                            $input['checkin_date'] ?? date('Y-m-d'),
+                            $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
+                            $roomId,
+                            intval($input['no_of_guests'] ?? 1),
+                            floatval($input['base_room_rent'] ?? 0),
+                            $totalCharge,
+                            $advancePaid,
+                            $pendingAmount,
+                            $guestId,
+                            $propertyId,
+                        ]);
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ? WHERE id = ? AND property_id = ?");
+                        $stmt->execute([
+                            $input['guest_name'] ?? $input['name'] ?? '',
+                            $input['phone_number'] ?? $input['contact'] ?? '',
+                            $input['checkin_date'] ?? date('Y-m-d'),
+                            $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
+                            intval($input['no_of_guests'] ?? 1),
+                            floatval($input['base_room_rent'] ?? 0),
+                            $totalCharge,
+                            $advancePaid,
+                            $pendingAmount,
+                            $guestId,
+                            $propertyId,
+                        ]);
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to update guest: ' . $e->getMessage()]);
                 }
             }
             break;

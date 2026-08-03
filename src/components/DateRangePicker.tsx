@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface DateRangePickerProps {
+  isOpen: boolean;
+  onClose: () => void;
   checkinDate: string;
   checkoutDate: string;
   onCheckinChange: (date: string) => void;
@@ -11,6 +13,8 @@ interface DateRangePickerProps {
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+  isOpen,
+  onClose,
   checkinDate,
   checkoutDate,
   onCheckinChange,
@@ -18,12 +22,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onClear,
   blockedDates = [],
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const today = new Date();
   const [startMonth, setStartMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
   );
   const [selectedMode, setSelectedMode] = useState<'checkin' | 'checkout'>('checkin');
+
+  if (!isOpen) return null;
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -44,6 +49,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return `${year}-${month}-${day}`;
   };
 
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return 'Add date';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
   const isDateBeforeToday = (dateStr: string): boolean => {
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
@@ -61,23 +73,22 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const date = new Date(month.getFullYear(), month.getMonth(), day);
     const dateStr = formatDate(date);
 
-    // Check if date is blocked or in the past
     if (isDateBlocked(dateStr) || isDateBeforeToday(dateStr)) {
       return;
     }
 
     if (selectedMode === 'checkin') {
       onCheckinChange(dateStr);
-      // Auto-switch to checkout mode after selecting checkin
       setSelectedMode('checkout');
     } else {
-      // Checkout date must be after check-in
       if (checkinDate && dateStr <= checkinDate) {
+        // Reset check-in if user picked an earlier check-out date
+        onCheckinChange(dateStr);
+        onCheckoutChange('');
+        setSelectedMode('checkout');
         return;
       }
       onCheckoutChange(dateStr);
-      // Close calendar after checkout selection
-      setTimeout(() => setIsOpen(false), 100);
     }
   };
 
@@ -87,44 +98,40 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const firstDay = getFirstDayOfMonth(month);
     const days = [];
 
-    // Empty cells
+    // Empty lead cells
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${monthOffset}-${i}`} />);
+      days.push(<div key={`empty-${monthOffset}-${i}`} className="w-9 h-9" />);
     }
 
-    // Days
+    // Day cells
     for (let day = 1; day <= daysInMonth; day++) {
-      // Create date at noon to avoid timezone issues
       const date = new Date(month.getFullYear(), month.getMonth(), day, 12, 0, 0);
       const dateStr = formatDate(date);
       const blocked = isDateBlocked(dateStr);
       const beforeToday = isDateBeforeToday(dateStr);
+      const isDisabled = blocked || beforeToday;
 
-      // Checkout mode: disable dates <= checkin
-      let invalidForCheckout = false;
-      if (selectedMode === 'checkout' && checkinDate && dateStr <= checkinDate) {
-        invalidForCheckout = true;
-      }
-
-      const isDisabled = blocked || beforeToday || invalidForCheckout;
-      const isCheckinSelected = checkinDate && checkinDate === dateStr;
-      const isCheckoutSelected = checkoutDate && checkoutDate === dateStr;
+      const isCheckinSelected = checkinDate === dateStr;
+      const isCheckoutSelected = checkoutDate === dateStr;
       const inRange = isDateInRange(dateStr);
 
       days.push(
         <button
           key={`${monthOffset}-${day}`}
+          type="button"
           disabled={isDisabled}
           onClick={() => handleSelectDate(day, monthOffset)}
           className={`
-            p-2 text-center rounded-full text-sm font-bold transition relative w-full aspect-square flex items-center justify-center
+            w-9 h-9 rounded-full text-xs font-semibold flex items-center justify-center transition-all relative
             ${isDisabled
-              ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
+              ? blocked
+                ? 'text-gray-300 dark:text-gray-600 line-through cursor-not-allowed'
+                : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
               : isCheckinSelected || isCheckoutSelected
-              ? 'bg-black dark:bg-white text-white dark:text-black ring-2 ring-white dark:ring-gray-800'
+              ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold shadow-md z-10'
               : inRange
-              ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-              : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-none'
+              : 'text-gray-800 dark:text-gray-200 hover:border hover:border-gray-900 dark:hover:border-white'
             }
           `}
         >
@@ -145,145 +152,134 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const month2 = new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1);
 
   return (
-    <div className="space-y-4">
-      {/* Input Fields */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Check-In Date *
-          </label>
-          <button
-            onClick={() => {
-              setIsOpen(true);
-              setSelectedMode('checkin');
-            }}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {checkinDate ? new Date(checkinDate).toLocaleDateString('en-GB') : 'Select date'}
-          </button>
+    <>
+      {/* Dark Overlay Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Centered Modal Popover Container */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-gray-100 dark:border-slate-700">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Select dates
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Add your reservation dates for exact pricing & availability
+            </p>
+          </div>
+
+          {/* Airbnb Dual Pill Switcher */}
+          <div className="flex items-center border border-gray-300 dark:border-slate-600 rounded-2xl p-1 bg-gray-50 dark:bg-slate-900/50 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setSelectedMode('checkin')}
+              className={`px-3 py-1.5 rounded-xl text-left transition-all ${
+                selectedMode === 'checkin'
+                  ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-xs font-bold ring-2 ring-gray-900 dark:ring-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">CHECK-IN</div>
+              <div className="text-xs font-semibold">{formatDisplayDate(checkinDate)}</div>
+            </button>
+
+            <div className="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => setSelectedMode('checkout')}
+              className={`px-3 py-1.5 rounded-xl text-left transition-all ${
+                selectedMode === 'checkout'
+                  ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-xs font-bold ring-2 ring-gray-900 dark:ring-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+              }`}
+            >
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">CHECKOUT</div>
+              <div className="text-xs font-semibold">{formatDisplayDate(checkoutDate)}</div>
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Check-Out Date *
-          </label>
+        {/* Month Navigation Header & Side-by-Side Calendars */}
+        <div className="relative pt-2">
+          {/* Previous Month Arrow */}
           <button
-            onClick={() => {
-              setIsOpen(true);
-              setSelectedMode(checkinDate ? 'checkout' : 'checkin');
-            }}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
+            type="button"
+            onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
+            className="absolute left-0 top-3 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-gray-700 dark:text-gray-300"
+            title="Previous month"
           >
-            {checkoutDate ? new Date(checkoutDate).toLocaleDateString('en-GB') : 'Select date'}
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Next Month Arrow */}
+          <button
+            type="button"
+            onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
+            className="absolute right-0 top-3 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-gray-700 dark:text-gray-300"
+            title="Next month"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
+          {/* 2-Month Grid View */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 px-4">
+            {/* Month 1 */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-center text-gray-900 dark:text-white">
+                {monthNames[month1.getMonth()]} {month1.getFullYear()}
+              </h3>
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1 justify-items-center">
+                {renderMonthCalendar(0)}
+              </div>
+            </div>
+
+            {/* Month 2 */}
+            <div className="space-y-3 hidden sm:block">
+              <h3 className="text-sm font-bold text-center text-gray-900 dark:text-white">
+                {monthNames[month2.getMonth()]} {month2.getFullYear()}
+              </h3>
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1 justify-items-center">
+                {renderMonthCalendar(1)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-700">
+          {onClear ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                setSelectedMode('checkin');
+              }}
+              className="text-xs font-bold text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white transition"
+            >
+              Clear dates
+            </button>
+          ) : <div />}
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer"
+          >
+            Close
           </button>
         </div>
       </div>
-
-      {/* Calendar Modal */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-
-          {/* Modal */}
-          <div className="fixed z-50 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-screen overflow-y-auto">
-            {/* Close button */}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-            >
-              <X size={20} />
-            </button>
-
-            {/* Mode Indicator */}
-            <div className="mb-6 text-center">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {selectedMode === 'checkin' ? 'Select Check-In Date' : 'Select Check-Out Date'}
-              </h3>
-              {checkinDate && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Check-in: {new Date(checkinDate).toLocaleDateString('en-GB')}
-                </p>
-              )}
-            </div>
-
-            {/* Two month calendars */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Month 1 */}
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
-                  {monthNames[month1.getMonth()]} {month1.getFullYear()}
-                </h3>
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-                    <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {renderMonthCalendar(0)}
-                </div>
-              </div>
-
-              {/* Month 2 */}
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
-                  {monthNames[month2.getMonth()]} {month2.getFullYear()}
-                </h3>
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => (
-                    <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {renderMonthCalendar(1)}
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation and Buttons */}
-            <div className="flex justify-between items-center mt-6">
-              <button
-                onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <div className="flex gap-2">
-                {onClear && (
-                  <button
-                    onClick={() => {
-                      onClear();
-                      setSelectedMode('checkin');
-                    }}
-                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm font-medium"
-                  >
-                    Clear dates
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 rounded-lg transition text-sm font-medium"
-                >
-                  Close
-                </button>
-              </div>
-              <button
-                onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+    </>
   );
 };

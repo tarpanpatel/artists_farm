@@ -5,7 +5,7 @@ import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
-import { MultiKeyRoomDrawer } from './MultiKeyRoomDrawer';
+import { useConfirm } from './ConfirmDialogContext';
 
 export type TabType =
   | 'dashboard'
@@ -180,17 +180,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     return roots;
   }, [navItems, isVisible]);
 
-  // Filter out staff and expenses items when viewing a MultiKey room (not the parent)
+  // Hide Overview menu item since it's merged into Operational Dashboard
   const filteredNavItems = useMemo(() => {
-    if (!isMultiKeyProperty || !currentRoomSlug) {
-      return navItems; // Show all items for single properties or MultiKey parent
-    }
-
-    // Hide staff and expenses items in room views
-    const staffExpenseTabKeys = new Set(['staff_payees_control', 'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions', 'staff', 'expenses', 'petty_cash', 'misc_charges', 'cash_drawer']);
-
-    return navItems.filter(item => !staffExpenseTabKeys.has(item.tabKey));
-  }, [navItems, isMultiKeyProperty, currentRoomSlug]);
+    return navItems.filter(item => item.uniqueKey !== 'overview');
+  }, [navItems]);
 
   const tree = useMemo(() => buildTree(filteredNavItems), [buildTree, filteredNavItems]);
 
@@ -214,15 +207,23 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (window.innerWidth < 768) onCloseSidebar();
   }, [setActiveTab, setActiveMenuItemKey, onCloseSidebar]);
 
-  const handleLogoutClick = useCallback(() => {
+  const { confirm } = useConfirm();
+
+  const handleLogoutClick = useCallback(async () => {
     if (logout) {
       logout();
     } else {
-      if (confirm('Sign out of Artists Farm Jaipur Terminal?')) {
+      const confirmed = await confirm({
+        title: 'Sign Out',
+        message: 'Sign out of Artists Farm Jaipur Terminal?',
+        confirmText: 'Sign Out',
+        variant: 'warning',
+      });
+      if (confirmed) {
         window.location.reload();
       }
     }
-  }, [logout]);
+  }, [logout, confirm]);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedParents(prev => {
@@ -272,7 +273,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <button
             type="button"
             onClick={() => toggleExpand(node.id)}
-            className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-bold' : 'p-2 text-xs font-bold'} rounded-lg transition-colors cursor-pointer text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700`}
+            className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700`}
           >
             <div className="flex items-center gap-2.5 truncate">
               <ItemIcon className={`w-4 h-4 shrink-0 ${depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
@@ -429,61 +430,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                 Hello, Tarpan
               </div>
 
-              {/* MultiKey Property Rooms as Menu Items */}
-              {isMultiKeyProperty && multiKeyPropertyId && multiKeyPropertyName && multiKeyPropertySlug && onNavigateToMultiKeyOverview && onNavigateToRoom && multiKeyRooms && multiKeyRooms.length > 0 && (
-                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-slate-700">
-                  <div className="px-3 pb-2 mb-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-                    🏠 Rooms ({multiKeyRooms.length})
-                  </div>
-
-                  {/* Property Overview Button */}
-                  <button
-                    onClick={() => {
-                      onNavigateToMultiKeyOverview();
-                      setActiveMenuItemKey('multikey_overview');
-                      if (window.innerWidth < 768) onCloseSidebar();
-                    }}
-                    className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer mb-2 ${
-                      activeMenuItemKey === 'multikey_overview'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="text-lg">🏢</span>
-                    <span className="truncate">Overview</span>
-                  </button>
-
-                  {/* Room List */}
-                  <div className="space-y-1">
-                    {multiKeyRooms.map((room) => {
-                      const isRoomActive = currentRoomSlug === room.slug;
-                      return (
-                        <button
-                          key={room.id}
-                          onClick={() => {
-                            onNavigateToRoom(room.slug);
-                            setActiveMenuItemKey(room.slug);
-                            if (window.innerWidth < 768) onCloseSidebar();
-                          }}
-                          className={`w-full flex items-center gap-2.5 p-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            isRoomActive
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'
-                          }`}
-                        >
-                          <span className="text-lg">🚪</span>
-                          <div className="flex-1 text-left">
-                            <span className="truncate block text-xs font-semibold">{room.name || `Room ${room.room_number}`}</span>
-                            <span className={`text-[10px] ${isRoomActive ? 'text-blue-100' : 'text-gray-500'}`}>
-                              {room.room_number}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {tree.map(node => renderNode(node, 0))}
 

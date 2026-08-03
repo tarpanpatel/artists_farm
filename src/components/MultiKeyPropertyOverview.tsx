@@ -3,6 +3,7 @@ import { Plus, Trash2, GripVertical, Loader, AlertCircle, BarChart3, Users, Doll
 import { navigateToRoomHash } from '../services/api';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
+import { useConfirm } from './ConfirmDialogContext';
 
 interface Room {
   id: number;
@@ -64,6 +65,7 @@ interface MultiKeyPropertyOverviewProps {
   onSetActiveMenuItemKey?: (key: string) => void;
   isTestingMode?: boolean;
   kitchenModuleEnabled?: boolean;
+  hideHeader?: boolean;
 }
 
 export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> = ({
@@ -88,6 +90,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onSetActiveMenuItemKey,
   isTestingMode = false,
   kitchenModuleEnabled = false,
+  hideHeader = false,
 }) => {
   const [property, setProperty] = useState<MultiKeyProperty | null>(null);
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -97,7 +100,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const [newRoom, setNewRoom] = useState({ name: '', slug: '' });
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
-  const [draggedRoom, setDraggedRoom] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -169,8 +171,16 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDeleteRoom = async (roomId: number) => {
-    if (!window.confirm('Delete this room? Booking history will be preserved.')) return;
+    const confirmed = await confirm({
+      title: 'Delete Room',
+      message: 'Delete this room? Booking history will be preserved.',
+      confirmText: 'Delete Room',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setDeletingRoom(roomId);
     try {
@@ -231,7 +241,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             className="flex items-center gap-2 px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Overview
+            Back to Dashboard
           </button>
           <div className="text-center py-8">
             <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
@@ -249,39 +259,76 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
           className="flex items-center gap-2 px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to Overview
+          Back to Dashboard
         </button>
 
-        {/* Room Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedRoom.name}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">in {property.name}</p>
-        </div>
 
         {/* Show room's dashboard and content based on activeTab */}
-        {activeTab === 'dashboard' && (
-          <OperationalDashboard
-            guests={guests}
-            onNavigate={(tab) => setActiveTab?.(tab)}
-            onOpenCheckin={() => setActiveTab?.('guests', 'guest_registration', selectedRoomSlug)}
-            kitchenModuleEnabled={kitchenModuleEnabled}
-          />
-        )}
+        {(() => {
+          const roomGuests = guests.filter((g) => {
+            // Use room_id (database primary key) - authoritative, no ambiguity
+            const guestRoomId = g.roomId || g.room_id;
+            return guestRoomId && Number(guestRoomId) === Number(selectedRoom.id);
+          });
+          const roomReceipts = receipts.filter((r) => roomGuests.some((g) => g.id === r.guest_id));
 
-        {activeTab === 'guests' && (
-          <GuestManagement
-            guests={guests}
-            receipts={receipts}
-            onAddGuest={onAddGuest}
-            onCheckoutGuest={onCheckoutGuest}
-            activeMenuItemKey={activeMenuItemKey}
-            onDispatchTelegram={onDispatchTelegram}
-            menu={menu}
-            isMultiKeyProperty={true}
-            rooms={property.rooms}
-            selectedRoomSlug={selectedRoomSlug}
-          />
-        )}
+          return (
+            <>
+              {activeTab === 'dashboard' && (
+                <OperationalDashboard
+                  guests={roomGuests}
+                  receipts={receipts}
+                  menu={menu}
+                  rooms={property.rooms}
+                  roomName={selectedRoom.name}
+                  roomId={selectedRoom.id}
+                  propertySlug={propertySlug}
+                  onNavigate={(tab) => setActiveTab?.(tab)}
+                  onOpenCheckin={() => setActiveTab?.('guests')}
+                  onAddGuest={onAddGuest}
+                  onCheckoutGuest={onCheckoutGuest}
+                  onDispatchTelegram={onDispatchTelegram}
+                  activeMenuItemKey={activeMenuItemKey}
+                  onUpdateRoomName={async (newName) => {
+                    try {
+                      const response = await fetch('/artists_farm/php/api/router.php?action=update_room_name', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                          property_slug: propertySlug,
+                          room_id: selectedRoom.id,
+                          new_name: newName
+                        }),
+                      });
+                      if (response.ok) {
+                        // Update UI - ideally refresh the room list
+                      }
+                    } catch (error) {
+                      console.error('Failed to update room name:', error);
+                    }
+                  }}
+                  kitchenModuleEnabled={kitchenModuleEnabled}
+                />
+              )}
+
+              {activeTab === 'guests' && (
+                <GuestManagement
+                  guests={roomGuests}
+                  receipts={roomReceipts}
+                  onAddGuest={onAddGuest}
+                  onCheckoutGuest={onCheckoutGuest}
+                  activeMenuItemKey={activeMenuItemKey}
+                  onDispatchTelegram={onDispatchTelegram}
+                  menu={menu}
+                  isMultiKeyProperty={true}
+                  rooms={property.rooms}
+                  selectedRoomSlug={selectedRoomSlug}
+                />
+              )}
+            </>
+          );
+        })()}
       </div>
     );
   }
@@ -295,7 +342,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
         </div>
       )}
 
-      {/* Header */}
+      {/* Header - hide on dashboard overview */}
+      {!hideHeader && (
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{property.name}</h1>
@@ -310,9 +358,10 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
           Add Room
         </button>
       </div>
+      )}
 
-      {/* Stats */}
-      {overview && (
+      {/* Stats - hide on dashboard overview */}
+      {!hideHeader && overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-3">
@@ -354,7 +403,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             </div>
           </div>
         </div>
-      )}
+      )})
 
       {/* Rooms List */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
@@ -363,7 +412,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
         {property.rooms.length === 0 ? (
           <p className="text-center text-gray-600 dark:text-gray-400 py-8">No rooms yet. Add one to get started!</p>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {property.rooms.map((room) => {
               const roomData = overview?.rooms.find(r => r.id === room.id);
               const status = roomData?.occupied > 0 ? 'booked' : 'available';
@@ -371,49 +420,52 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
               return (
                 <div
                   key={room.id}
-                  className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
+                  className="flex flex-col p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600"
                 >
-                  <GripVertical className="w-4 h-4 text-gray-400 dark:text-gray-500 cursor-grab" />
-
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{room.name}</h3>
-                      <span
-                        className={`px-2 py-1 text-xs font-bold rounded ${
-                          status === 'booked'
-                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
-                            : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
-                        }`}
-                      >
-                        {status === 'booked' ? 'Booked' : 'Available'}
-                      </span>
-                    </div>
+                  <div className="flex-1 mb-3">
+                    <button
+                      onClick={() => onNavigateToRoom?.(room.slug)}
+                      className="font-semibold text-gray-900 dark:text-white text-sm mb-2 hover:text-blue-600 dark:hover:text-blue-400 underline transition-colors cursor-pointer text-left w-full"
+                    >
+                      {room.name}
+                    </button>
+                    <span
+                      className={`inline-block px-2 py-1 text-xs font-bold rounded ${
+                        status === 'booked'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
+                      }`}
+                    >
+                      {status === 'booked' ? 'Booked' : 'Available'}
+                    </span>
                     {roomData && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                         Revenue: {property.currency} {roomData.total_revenue.toFixed(0)}
                       </p>
                     )}
                   </div>
 
-                  <button
-                    onClick={() => onNavigateToRoom?.(room.slug)}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                  >
-                    Manage
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onNavigateToRoom?.(room.slug)}
+                      className="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
+                    >
+                      Manage
+                    </button>
 
-                  <button
-                    onClick={() => handleDeleteRoom(room.id)}
-                    disabled={deletingRoom === room.id}
-                    className="p-2 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
-                    title="Delete room"
-                  >
-                    {deletingRoom === room.id ? (
-                      <Loader className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                    <button
+                      onClick={() => handleDeleteRoom(room.id)}
+                      disabled={deletingRoom === room.id}
+                      className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
+                      title="Delete room"
+                    >
+                      {deletingRoom === room.id ? (
+                        <Loader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               );
             })}

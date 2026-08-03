@@ -94,6 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 name: session.username,
                 username: session.username,
                 role: 'root_admin', // Root admin has full access to any property
+                phone: session.phone_number || session.username || '',
+                monthlySalary: 0,
+                status: 'Active',
               };
               localStorage.setItem(userKey(), JSON.stringify(user));
               setIsAuthenticated(true);
@@ -111,6 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: session.username,
               username: session.username,
               role: session.role || 'Staff',
+              phone: session.phone_number || session.username || '',
+              monthlySalary: 0,
+              status: 'Active',
             };
             localStorage.setItem(userKey(), JSON.stringify(user));
             setIsAuthenticated(true);

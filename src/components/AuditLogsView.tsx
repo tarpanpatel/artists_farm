@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { AuditLog, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
+import { StyledSelect } from './StyledSelect';
 
 interface AuditLogsViewProps {
   logs: AuditLog[];
@@ -463,16 +464,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 dark:text-slate-300 transition-all"
               />
 
-              <select
+              <StyledSelect
                 value={activityUser}
-                onChange={(e) => setActivityUser(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 dark:text-slate-300 transition-all"
-              >
-                <option value="All">All Users</option>
-                {Array.from(new Set(logs.map(l => l.user))).filter(Boolean).map(user => (
-                  <option key={user} value={user}>{user}</option>
-                ))}
-              </select>
+                onChange={setActivityUser}
+                className="w-48"
+                options={[
+                  { value: 'All', label: 'All Users' },
+                  ...Array.from(new Set(logs.map(l => l.user))).filter(Boolean).map(user => ({ value: user, label: user })),
+                ]}
+              />
             </div>
           </div>
 
@@ -821,47 +821,47 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">ADVANCE COLLECTED BY</label>
-                        <select
+                        <StyledSelect
                           value={editingReceipt.advanceCollectedBy || 'Tarpan'}
-                          onChange={(e) => setEditingReceipt(prev => prev ? ({ ...prev, advanceCollectedBy: e.target.value }) : null)}
-                          className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold"
-                        >
-                          <option value="Tarpan">Tarpan</option>
-                          <option value="Kamlesh">Kamlesh</option>
-                          <option value="Subrata">Subrata</option>
-                          <option value="Manager">Manager</option>
-                          <option value="Staff">Staff</option>
-                        </select>
+                          onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, advanceCollectedBy: val }) : null)}
+                          options={[
+                            { value: 'Tarpan', label: 'Tarpan' },
+                            { value: 'Kamlesh', label: 'Kamlesh' },
+                            { value: 'Subrata', label: 'Subrata' },
+                            { value: 'Manager', label: 'Manager' },
+                            { value: 'Staff', label: 'Staff' },
+                          ]}
+                        />
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">PENDING TARIFF COLLECTED BY</label>
-                        <select
+                        <StyledSelect
                           value={editingReceipt.tariffCollectedBy || 'Kamlesh'}
-                          onChange={(e) => setEditingReceipt(prev => prev ? ({ ...prev, tariffCollectedBy: e.target.value }) : null)}
-                          className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold"
-                        >
-                          <option value="Tarpan">Tarpan</option>
-                          <option value="Kamlesh">Kamlesh</option>
-                          <option value="Subrata">Subrata</option>
-                          <option value="Manager">Manager</option>
-                          <option value="Staff">Staff</option>
-                        </select>
+                          onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, tariffCollectedBy: val }) : null)}
+                          options={[
+                            { value: 'Tarpan', label: 'Tarpan' },
+                            { value: 'Kamlesh', label: 'Kamlesh' },
+                            { value: 'Subrata', label: 'Subrata' },
+                            { value: 'Manager', label: 'Manager' },
+                            { value: 'Staff', label: 'Staff' },
+                          ]}
+                        />
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">INCIDENTALS CASHIER</label>
-                        <select
+                        <StyledSelect
                           value={editingReceipt.incidentalsCashier || 'Subrata'}
-                          onChange={(e) => setEditingReceipt(prev => prev ? ({ ...prev, incidentalsCashier: e.target.value }) : null)}
-                          className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold"
-                        >
-                          <option value="Tarpan">Tarpan</option>
-                          <option value="Kamlesh">Kamlesh</option>
-                          <option value="Subrata">Subrata</option>
-                          <option value="Manager">Manager</option>
-                          <option value="Staff">Staff</option>
-                        </select>
+                          onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, incidentalsCashier: val }) : null)}
+                          options={[
+                            { value: 'Tarpan', label: 'Tarpan' },
+                            { value: 'Kamlesh', label: 'Kamlesh' },
+                            { value: 'Subrata', label: 'Subrata' },
+                            { value: 'Manager', label: 'Manager' },
+                            { value: 'Staff', label: 'Staff' },
+                          ]}
+                        />
                       </div>
                     </div>
                   </div>
@@ -875,18 +875,16 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                     {/* Insert Food Item Bar */}
                     <div className="flex flex-col sm:flex-row items-center gap-2">
-                      <select
+                      <StyledSelect
+                        className="flex-1 w-full"
                         value={selectedDish}
-                        onChange={(e) => setSelectedDish(e.target.value)}
-                        className="flex-1 w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold"
-                      >
-                        <option value="">-- Choose Menu Dish --</option>
-                        {defaultMenuCatalog.map((item) => (
-                          <option key={item.id} value={item.name}>
-                            {item.name} (₹{item.price})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setSelectedDish}
+                        placeholder="-- Choose Menu Dish --"
+                        options={defaultMenuCatalog.map((item) => ({
+                          value: item.name,
+                          label: `${item.name} (₹${item.price})`,
+                        }))}
+                      />
 
                       <input
                         type="number"
@@ -974,15 +972,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">STRATEGY TYPE</label>
-                      <select
+                      <StyledSelect
                         value={adjType}
-                        onChange={(e) => setAdjType(e.target.value)}
-                        className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold"
-                      >
-                        <option value="Extra Incidentals Charge (+)">Extra Incidentals Charge (+)</option>
-                        <option value="Discount / Compensation (-)">Discount / Compensation (-)</option>
-                        <option value="Tax Adjustment (+)">Tax Adjustment (+)</option>
-                      </select>
+                        onChange={setAdjType}
+                        options={[
+                          { value: 'Extra Incidentals Charge (+)', label: 'Extra Incidentals Charge (+)' },
+                          { value: 'Discount / Compensation (-)', label: 'Discount / Compensation (-)' },
+                          { value: 'Tax Adjustment (+)', label: 'Tax Adjustment (+)' },
+                        ]}
+                      />
                     </div>
 
                     <div>

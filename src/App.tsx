@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
+import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { KitchenManagement } from './components/KitchenManagement';
 import { InventoryManagement } from './components/InventoryManagement';
@@ -19,7 +20,8 @@ import { ICalSyncManager } from './components/ICalSyncManager';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { DemoDataModal } from './components/DemoDataModal';
 import { GlobalModal } from './components/GlobalModal';
-import { ToastProvider } from './components/ToastContext';
+import { ToastProvider, useToast } from './components/ToastContext';
+import { ConfirmDialogProvider, useConfirm } from './components/ConfirmDialogContext';
 import { LoginModal } from './components/LoginModal';
 import { StaffProvider, useStaff } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -31,7 +33,7 @@ import { detectClientInfo } from './utils/clientInfo';
 import { trackDeadEnd, trackSessionLoss, trackAPIError, trackPropertyIssue } from './utils/userFlowTracker';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
@@ -73,9 +75,28 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [selectedRoomSlugOverride, setSelectedRoomSlugOverride] = useState<string | null>(null);
   const [selectedRoomForGuestRegistration, setSelectedRoomForGuestRegistration] = useState<string | null>(null);
   const selectedRoomSlugOverrideRef = useRef<string | null>(null);
+  const multiKeyRoomsRef = useRef<any[]>([]);
   useEffect(() => {
     selectedRoomSlugOverrideRef.current = selectedRoomSlugOverride;
   }, [selectedRoomSlugOverride]);
+  useEffect(() => {
+    multiKeyRoomsRef.current = preloadedData.currentProperty?.rooms || [];
+  }, [preloadedData.currentProperty?.rooms]);
+
+  // Restore room view on page refresh if hash is a room slug
+  useEffect(() => {
+    if (typeof window !== 'undefined' && multiKeyRoomsRef.current.length > 0) {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash) {
+        const isRoomSlug = multiKeyRoomsRef.current.some((r: any) => r.slug === hash);
+        if (isRoomSlug && selectedRoomSlugOverride !== hash) {
+          setActiveTab('dashboard');
+          setActiveMenuItemKey(hash);
+          setSelectedRoomSlugOverride(hash);
+        }
+      }
+    }
+  }, [multiKeyRoomsRef.current.length, selectedRoomSlugOverride]);
 
   const getInitialActiveState = (): { tab: TabType; key: string } => {
     if (typeof window !== 'undefined') {
@@ -118,6 +139,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
         return routeMap[hash];
       }
 
+      // If hash is not in routeMap but exists, assume it's a room slug
+      if (hash) {
+        return { tab: 'dashboard', key: hash };
+      }
+
       const savedTab = localStorage.getItem('artists_farm_active_tab') as TabType;
       const savedKey = localStorage.getItem('artists_farm_active_menu_key');
       if (savedTab && savedKey) {
@@ -136,6 +162,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>(
     preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
   );
+  const [isTestModeActive, setIsTestModeActive] = useState(false);
 
   // MultiKey room navigation handlers
   const { propertySlug: multiKeyPropertySlug, tenantSlug } = getPropertyAndRoomSlugs();
@@ -149,20 +176,32 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setActiveTab('dashboard');
     setActiveMenuItemKey(roomSlug);
     setSelectedRoomSlugOverride(roomSlug);
+    // Update URL to include room slug so it persists on refresh
+    window.location.hash = `#${roomSlug}`;
   };
 
 
   useEffect(() => {
     localStorage.setItem('artists_farm_active_tab', activeTab);
     localStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
-    // Only update hash for menu items, NOT for room slugs (which start with "room-")
-    if (typeof window !== 'undefined' && activeMenuItemKey && !activeMenuItemKey.startsWith('room-')) {
-      const targetHash = `#${activeMenuItemKey}`;
-      if (window.location.hash !== targetHash) {
-        window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
+    // Only update hash for menu items, NOT for room slugs (which start with "room-" or other room patterns)
+    if (typeof window !== 'undefined' && activeMenuItemKey) {
+      const isRoomSlug = activeMenuItemKey.match(/^(room-|vr-|[a-z]+-\d+)/);
+      if (!isRoomSlug) {
+        const targetHash = `#${activeMenuItemKey}`;
+        if (window.location.hash !== targetHash) {
+          window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
+        }
       }
     }
   }, [activeTab, activeMenuItemKey]);
+
+  // Preserve room hash when room is selected
+  useEffect(() => {
+    if (selectedRoomSlugOverride && typeof window !== 'undefined') {
+      window.location.hash = `#${selectedRoomSlugOverride}`;
+    }
+  }, [selectedRoomSlugOverride]);
 
   // Global Input UX Enhancements
   useEffect(() => {
@@ -389,7 +428,27 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [receipts, setReceipts] = useState<BillingReceipt[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { refreshStaff, refreshAttendance } = useStaff();
+
+  const handleResetTestDatabase = async () => {
+    const confirmed = await confirm({
+      title: "Reset Sandbox Database",
+      message: "Are you sure you want to reset the Sandbox Database? This will overwrite all test data with a fresh snapshot from the live production database.",
+      confirmText: "Reset Database",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    const res = await resetTestDatabaseInDB();
+    if (res.success) {
+      showToast("✔ Sandbox Database reset to live production snapshot successfully!", { type: 'success' });
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(`Failed to reset Sandbox Database: ${res.message || 'Unknown error'}`, { type: 'error' });
+    }
+  };
   const { refreshPettyCash, pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { refreshInventory, inventory, requisitions, lowStockCount, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const { orders, addOrder, updateOrderStatus } = useKitchenContext();
@@ -398,8 +457,29 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // Sandbox / Testing Mode State & Handlers
   const [isTestingMode, setIsTestingMode] = useState<boolean>(isTestingModeActive());
 
-  const handleToggleTestingMode = () => {
+  const handleToggleTestingMode = async () => {
     const nextState = !isTestingMode;
+
+    if (nextState) {
+      // Turning ON: Generate demo data
+      await resetTestDatabaseInDB(preloadedData.currentProperty?.id);
+    } else {
+      // Turning OFF: Clear demo data
+      try {
+        await fetch('/php/api/demo_data.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'clear',
+            property_id: preloadedData.currentProperty?.id,
+          }),
+          credentials: 'include',
+        });
+      } catch (err) {
+        console.error('Failed to clear demo data:', err);
+      }
+    }
+
     setTestingModeState(nextState);
     setIsTestingMode(nextState);
   };
@@ -424,17 +504,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     });
   }, [isTestingMode, isModuleEnabled]);
 
-  const handleResetTestDatabase = async () => {
-    if (window.confirm("Are you sure you want to reset the Sandbox Database? This will overwrite all test data with a fresh snapshot from the live production database.")) {
-      const res = await resetTestDatabaseInDB();
-      if (res.success) {
-        alert("✔ Sandbox Database reset to live production snapshot successfully!");
-        window.location.reload();
-      } else {
-        alert(`Failed to reset Sandbox Database: ${res.message || 'Unknown error'}`);
-      }
-    }
-  };
+
 
   // Hydrate nav menu from DB on startup
   useEffect(() => {
@@ -638,16 +708,26 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
       };
 
-      // 404 or Invalid Route -> Try dynamic nav items from DB, then fallback to dashboard
+      // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
       if (!routeMap[hash]) {
         const dynamicItem = visibleNavItems.find((n) => n.uniqueKey === hash || n.tabKey === hash);
         if (dynamicItem && dynamicItem.isVisible) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
           setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
         } else {
-          setActiveTab('dashboard');
-          setActiveMenuItemKey('dashboard');
-          window.location.hash = '#dashboard';
+          // Check if hash is a room slug from multi-key property
+          const isRoomSlug = multiKeyRoomsRef.current?.some((r: any) => r.slug === hash);
+          if (isRoomSlug) {
+            // Restore room view
+            setActiveTab('dashboard');
+            setActiveMenuItemKey(hash);
+            setSelectedRoomSlugOverride(hash);
+          } else {
+            // Not a valid route or room, fallback to dashboard
+            setActiveTab('dashboard');
+            setActiveMenuItemKey('dashboard');
+            window.location.hash = '#dashboard';
+          }
         }
         return;
       }
@@ -817,6 +897,26 @@ function AppBody({ preloadedData }: AppBodyProps) {
       origin: '/src/App.tsx -> handleAddGuest',
       details: newGuest,
     });
+  };
+
+  const handleUpdateGuest = async (updatedGuest: Guest) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.id === updatedGuest.id ? { ...g, ...updatedGuest } : g))
+    );
+    const g = updatedGuest as any;
+    await updateGuestInDB({
+      id: updatedGuest.id,
+      guest_name: updatedGuest.guestName,
+      phone_number: updatedGuest.phoneNumber,
+      checkin_date: updatedGuest.checkinDate,
+      expected_checkout: updatedGuest.expectedCheckout,
+      room_id: g.room_id ?? g.roomId ?? undefined,
+      no_of_guests: g.no_of_guests ?? g.noOfGuests ?? updatedGuest.numberOfGuests ?? 1,
+      base_room_rent: g.base_room_rent ?? g.baseRoomRent ?? updatedGuest.roomRate ?? 0,
+      total_charge: g.total_charge ?? g.totalCharge ?? updatedGuest.totalAmount ?? 0,
+      advance_paid: g.advance_paid ?? g.advancePaid ?? updatedGuest.advanceAmount ?? 0,
+    });
+    logAudit(`Updated booking: ${updatedGuest.guestName} (${updatedGuest.roomNumber})`);
   };
 
   const handleCheckoutGuest = async (receipt: BillingReceipt) => {
@@ -1089,7 +1189,6 @@ ${itemsStr}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
-      <ToastProvider>
         {!isAuthenticated && (
           <LoginModal
             onLoginSuccess={handleLoginSuccess}
@@ -1101,7 +1200,10 @@ ${itemsStr}
           <Header
             onLogout={handleLogout}
             onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
-            onOpenDemoModal={() => setIsDemoModalOpen(true)}
+            onOpenDemoModal={() => {
+              setIsDemoModalOpen(true);
+              setIsTestModeActive(true);
+            }}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isIconOnly={isIconOnly}
@@ -1110,6 +1212,15 @@ ${itemsStr}
             currentPropertyColorScheme={currentPropertyColorScheme}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             propertyName={propertyName}
+            isTestModeActive={isTestModeActive}
+            onCloseDemoModal={() => {
+              setIsDemoModalOpen(false);
+              setIsTestModeActive(false);
+            }}
+            kitchenModuleEnabled={kitchenEnabled}
+            isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+            guests={guests}
+            rooms={preloadedData.currentProperty?.rooms || []}
           />
         )}
 
@@ -1162,12 +1273,8 @@ ${itemsStr}
             onNavigateToRoom={handleNavigateToRoom}
             multiKeyRooms={preloadedData.currentProperty?.rooms}
             kitchenModuleEnabled={(() => {
-              console.log('[App] All modules:', preloadedData.modules);
               const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
-              console.log('[App] Kitchen module found:', kitchenModule);
-              const isEnabled = kitchenModule?.is_enabled ?? true;
-              console.log('[App] Kitchen enabled:', isEnabled);
-              return isEnabled;
+              return kitchenModule?.is_enabled ?? true;
             })()}
           />
         )}
@@ -1221,42 +1328,60 @@ ${itemsStr}
                 </ErrorBoundary>
               ) : null}
 
-              {/* Dashboard tab - MultiKey Property Overview (when Overview button clicked) */}
-              {!selectedRoomSlugOverride && activeMenuItemKey === 'multikey_property_overview' && preloadedData.isMultiKeyProperty ? (
-                <ErrorBoundary section="Multi-Key Property Overview">
-                  <MultiKeyPropertyOverview
-                  propertyId={preloadedData.currentProperty?.id}
-                  propertySlug={multiKeyPropertySlug}
-                  selectedRoomSlug={null}
-                  onNavigateToRoom={handleNavigateToRoom}
-                  onBackToOverview={handleNavigateToMultiKeyOverview}
-                  activeTab={activeTab}
-                  setActiveTab={handleNavigateTab}
-                  guests={guests}
-                  menu={menu}
-                  receipts={receipts}
-                  onAddGuest={handleAddGuest}
-                  onCheckoutGuest={handleCheckoutGuest}
-                  onAddMenuItem={handleAddMenuItem}
-                  onUpdateStock={handleUpdateStock}
-                  onAddInventoryItem={handleAddInventoryItem}
-                  onUpdateItemImage={handleUpdateInventoryItemImage}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                  activeMenuItemKey={activeMenuItemKey}
-                  onSetActiveMenuItemKey={setActiveMenuItemKey}
-                  isTestingMode={isTestingMode}
-                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                  />
-                </ErrorBoundary>
-              ) : !selectedRoomSlugOverride && activeTab === 'dashboard' ? (
-                <ErrorBoundary section="Operational Dashboard">
-                  <OperationalDashboard
-                    guests={guests}
-                    onNavigate={(tab) => handleNavigateTab(tab)}
-                    onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
-                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                  />
-                </ErrorBoundary>
+              {/* Dashboard - Multi-Key Property Overview or Operational Dashboard */}
+              {!selectedRoomSlugOverride && activeTab === 'dashboard' ? (
+                preloadedData.isMultiKeyProperty ? (
+                  <div className="space-y-6">
+                    <ErrorBoundary section="Booking Calendar">
+                      <TodayOverview
+                        guests={guests}
+                        rooms={preloadedData.currentProperty?.rooms}
+                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        kitchenModuleEnabled={(() => {
+                          const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
+                          return kitchenModule?.is_enabled ?? true;
+                        })()}
+                        onNavigateToRoom={handleNavigateToRoom}
+                        onUpdateGuest={handleUpdateGuest}
+                      />
+                    </ErrorBoundary>
+                    <ErrorBoundary section="Multi-Key Property Overview">
+                      <MultiKeyPropertyOverview
+                      propertyId={preloadedData.currentProperty?.id}
+                      propertySlug={multiKeyPropertySlug}
+                      selectedRoomSlug={null}
+                      onNavigateToRoom={handleNavigateToRoom}
+                      onBackToOverview={handleNavigateToMultiKeyOverview}
+                      activeTab={activeTab}
+                      setActiveTab={handleNavigateTab}
+                      guests={guests}
+                      menu={menu}
+                      receipts={receipts}
+                      onAddGuest={handleAddGuest}
+                      onCheckoutGuest={handleCheckoutGuest}
+                      onAddMenuItem={handleAddMenuItem}
+                      onUpdateStock={handleUpdateStock}
+                      onAddInventoryItem={handleAddInventoryItem}
+                      onUpdateItemImage={handleUpdateInventoryItemImage}
+                      onDispatchTelegram={dispatchTelegramAlert}
+                      activeMenuItemKey={activeMenuItemKey}
+                      onSetActiveMenuItemKey={setActiveMenuItemKey}
+                      isTestingMode={isTestingMode}
+                      kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                      hideHeader={true}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                ) : (
+                  <ErrorBoundary section="Operational Dashboard">
+                    <OperationalDashboard
+                      guests={guests}
+                      onNavigate={(tab) => handleNavigateTab(tab)}
+                      onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                      kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    />
+                  </ErrorBoundary>
+                )
               ) : null}
 
               {!selectedRoomSlugOverride && activeTab === 'guests' && (
@@ -1273,6 +1398,9 @@ ${itemsStr}
                     rooms={preloadedData.currentProperty?.rooms}
                     onSetActiveMenuItemKey={setActiveMenuItemKey}
                     selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                    onNavigateToBilling={(guestId) => {
+                      // Navigate to billing view for guest
+                    }}
                   />
                 </ErrorBoundary>
               )}
@@ -1417,7 +1545,6 @@ ${itemsStr}
         )}
 
         <GlobalModal />
-      </ToastProvider>
     </div>
   );
 }
@@ -1430,7 +1557,11 @@ function AppWithProviders({ preloadedData }: { preloadedData: PreloadedData }) {
           <InventoryProvider>
             <KitchenProvider>
               <ConfigurationDataProvider>
-                <AppBodyWithData preloadedData={preloadedData} />
+                <ToastProvider>
+                  <ConfirmDialogProvider>
+                    <AppBodyWithData preloadedData={preloadedData} />
+                  </ConfirmDialogProvider>
+                </ToastProvider>
               </ConfigurationDataProvider>
             </KitchenProvider>
           </InventoryProvider>

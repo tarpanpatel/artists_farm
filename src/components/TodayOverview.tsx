@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import { Guest } from '../types';
+import { DateRangePicker } from './DateRangePicker';
+import { StyledSelect } from './StyledSelect';
 
 interface TodayOverviewProps {
   guests: Guest[];
@@ -8,6 +10,7 @@ interface TodayOverviewProps {
   isMultiKeyProperty?: boolean;
   kitchenModuleEnabled?: boolean;
   onNavigateToRoom?: (roomSlug: string) => void;
+  onUpdateGuest?: (guest: Guest) => void | Promise<void>;
 }
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
@@ -16,8 +19,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   isMultiKeyProperty = false,
   kitchenModuleEnabled = true,
   onNavigateToRoom,
+  onUpdateGuest,
 }) => {
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [isEditingBooking, setIsEditingBooking] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editCheckin, setEditCheckin] = useState('');
+  const [editCheckout, setEditCheckout] = useState('');
+  const [editRoomId, setEditRoomId] = useState('');
+  const [editGuests, setEditGuests] = useState('');
+  const [editRoomRate, setEditRoomRate] = useState('');
+  const [editTotal, setEditTotal] = useState('');
+  const [editAdvance, setEditAdvance] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
@@ -73,6 +88,53 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     return colors[numId % colors.length];
   };
 
+  const getBlockedDateStrings = (currentGuest: Guest | null) => {
+    if (!currentGuest) return [];
+    const guestRoomId = (currentGuest as any).roomId || (currentGuest as any).room_id;
+    const blockedStrings: string[] = [];
+    activeGuests
+      .filter((g) => g.id !== currentGuest.id)
+      .filter((g) => {
+        const gRoomId = (g as any).roomId || (g as any).room_id;
+        return guestRoomId ? Number(gRoomId) === Number(guestRoomId) : g.roomNumber === currentGuest.roomNumber;
+      })
+      .forEach((g) => {
+        const start = new Date(g.checkinDate);
+        const end = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
+        const current = new Date(start);
+        while (current < end) {
+          const y = current.getFullYear();
+          const m = String(current.getMonth() + 1).padStart(2, '0');
+          const d = String(current.getDate()).padStart(2, '0');
+          blockedStrings.push(`${y}-${m}-${d}`);
+          current.setDate(current.getDate() + 1);
+        }
+      });
+    return blockedStrings;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedGuest || !onUpdateGuest) return;
+    const newRoom = rooms.find((r) => String(r.id) === editRoomId);
+    const updated: any = {
+      ...selectedGuest,
+      guestName: editName,
+      phoneNumber: editPhone,
+      checkinDate: editCheckin,
+      expectedCheckout: editCheckout,
+      room_id: editRoomId ? parseInt(editRoomId, 10) : undefined,
+      roomId: editRoomId ? parseInt(editRoomId, 10) : undefined,
+      roomNumber: newRoom?.name || selectedGuest.roomNumber,
+      no_of_guests: parseInt(editGuests, 10) || 1,
+      base_room_rent: parseFloat(editRoomRate) || 0,
+      total_charge: parseFloat(editTotal) || 0,
+      advance_paid: parseFloat(editAdvance) || 0,
+    };
+    await onUpdateGuest(updated);
+    setSelectedGuest(updated);
+    setIsEditingBooking(false);
+  };
+
   const navigateMonth = (direction: number) => {
     let newMonth = currentMonth + direction;
     let newYear = currentYear;
@@ -109,11 +171,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Calendar Container with scroll */}
-      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative">
         <div className="min-w-max">
           {/* Date Header */}
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">
-            <div className="w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-20">
+            <div className="w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30">
               Room
             </div>
             {daysArray.map((day) => {
@@ -209,12 +271,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 style={{ height: `${dynamicHeight}px` }}
               >
                 {/* Room Name */}
-                <div className="w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-10">
+                <div className="w-24 min-w-[6rem] px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
                   {room.name}
                 </div>
 
                 {/* Days Grid - Background with diagonal stripes */}
-                <div className="flex relative flex-1" style={{ width: `${daysArray.length * 64}px` }}>
+                <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * 64}px`, minWidth: `${daysArray.length * 64}px` }}>
                   {daysArray.map((day) => {
                     const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
                     return (
@@ -231,7 +293,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   })}
 
                   {/* Spanning capsules overlaid */}
-                  <div className="absolute inset-0 px-1 pointer-events-none">
+                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
                     {guestLanesInfo.map((info, idx) => {
                       const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
 
@@ -240,21 +302,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           key={`${info.guest.id}-${idx}`}
                           className={`px-2.5 rounded-md text-white font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
                             info.guest.id
-                          )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-10 overflow-hidden`}
+                          )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
                           style={{
                             left: `${(info.startCol - 1) * 64 + 3}px`,
                             width: `${Math.max(48, info.span * 64 - 6)}px`,
                             top: `${topOffset}px`,
                             height: `${capsuleHeight}px`,
                           }}
-                          onClick={() => {
-                            setSelectedGuest(info.guest);
-                            if (onNavigateToRoom) {
-                              const guestRoomId = (info.guest as any).roomId || (info.guest as any).room_id;
-                              const room = rooms?.find((r) => r.id === guestRoomId);
-                              if (room) onNavigateToRoom(room.slug);
-                            }
-                          }}
+                          onClick={() => setSelectedGuest(info.guest)}
                           title={`${info.guest.guestName} (₹${info.nightlyRate}/night)`}
                         >
                           <span className="font-bold truncate text-[11px] leading-none">{info.guest.guestName}</span>
@@ -275,20 +330,28 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      {/* Booking Details Popup */}
+      {/* Booking Details / Edit Popup */}
       {selectedGuest && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedGuest(null)}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setSelectedGuest(null);
+            setIsEditingBooking(false);
+          }}
         >
           <div
             className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Booking Details</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {isEditingBooking ? 'Edit Booking' : 'Booking Details'}
+              </h2>
               <button
-                onClick={() => setSelectedGuest(null)}
+                onClick={() => {
+                  setSelectedGuest(null);
+                  setIsEditingBooking(false);
+                }}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
               >
                 <X className="w-5 h-5" />
@@ -298,61 +361,161 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Guest Name</label>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.guestName}</p>
+                {isEditingBooking ? (
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.guestName}</p>
+                )}
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Room</label>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.roomNumber}</p>
+                {isEditingBooking ? (
+                  <div className="mt-1">
+                    <StyledSelect
+                      value={editRoomId}
+                      onChange={setEditRoomId}
+                      options={rooms.map((room) => {
+                        const newCheckin = new Date(editCheckin || selectedGuest.checkinDate);
+                        const newCheckout = new Date(editCheckout || selectedGuest.expectedCheckout);
+                        const occupiedByOther = activeGuests.some((g) => {
+                          if (g.id === selectedGuest.id) return false;
+                          const gRoomId = (g as any).roomId || (g as any).room_id;
+                          if (Number(gRoomId) !== Number(room.id)) return false;
+                          const gCheckin = new Date(g.checkinDate);
+                          const gCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
+                          return newCheckin < gCheckout && gCheckin < newCheckout;
+                        });
+                        return {
+                          value: String(room.id),
+                          label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`,
+                          disabled: occupiedByOther,
+                        };
+                      })}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.roomNumber}</p>
+                )}
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Phone</label>
-                <p className="text-slate-900 dark:text-white">{selectedGuest.phoneNumber}</p>
+                {isEditingBooking ? (
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                ) : (
+                  <p className="text-slate-900 dark:text-white">{selectedGuest.phoneNumber}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Check-in</label>
-                  <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.checkinDate?.split('T')[0] || '')}</p>
-                  {selectedGuest.checkinDate && selectedGuest.checkinDate.includes(' ') && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{selectedGuest.checkinDate.split(' ')[1]?.split(':').slice(0, 2).join(':')}</p>
+                  {isEditingBooking ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDatePicker(true)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
+                    >
+                      {editCheckin ? formatDate(editCheckin) : 'Add date'}
+                    </button>
+                  ) : (
+                    <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.checkinDate?.split('T')[0] || '')}</p>
                   )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Check-out</label>
-                  <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.expectedCheckout?.split('T')[0] || '')}</p>
-                  {selectedGuest.expectedCheckout && selectedGuest.expectedCheckout.includes(' ') && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{selectedGuest.expectedCheckout.split(' ')[1]?.split(':').slice(0, 2).join(':')}</p>
+                  {isEditingBooking ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDatePicker(true)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
+                    >
+                      {editCheckout ? formatDate(editCheckout) : 'Add date'}
+                    </button>
+                  ) : (
+                    <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.expectedCheckout?.split('T')[0] || '')}</p>
                   )}
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Guests</label>
-                <p className="text-slate-900 dark:text-white">{(selectedGuest as any).no_of_guests || 1} guest{(selectedGuest as any).no_of_guests !== 1 ? 's' : ''}</p>
+                {isEditingBooking ? (
+                  <input
+                    type="number"
+                    min={1}
+                    value={editGuests}
+                    onChange={(e) => setEditGuests(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  />
+                ) : (
+                  <p className="text-slate-900 dark:text-white">{(selectedGuest as any).no_of_guests || 1} guest{(selectedGuest as any).no_of_guests !== 1 ? 's' : ''}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Room Rate</label>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).per_night_charges || (selectedGuest as any).roomRate || 0}</p>
+                  {isEditingBooking ? (
+                    <input
+                      type="number"
+                      min={0}
+                      value={editRoomRate}
+                      onChange={(e) => setEditRoomRate(e.target.value)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).per_night_charges || (selectedGuest as any).roomRate || 0}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Total</label>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0}</p>
+                  {isEditingBooking ? (
+                    <input
+                      type="number"
+                      min={0}
+                      value={editTotal}
+                      onChange={(e) => setEditTotal(e.target.value)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0}</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Advance Paid</label>
-                  <p className="text-emerald-600 dark:text-emerald-400 font-bold">₹{(selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0}</p>
+                  {isEditingBooking ? (
+                    <input
+                      type="number"
+                      min={0}
+                      value={editAdvance}
+                      onChange={(e) => setEditAdvance(e.target.value)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-emerald-600 dark:text-emerald-400 font-bold">₹{(selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Pending</label>
                   <p className="text-amber-600 dark:text-amber-400 font-bold">
-                    ₹{Math.max(0, ((selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0) - ((selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0))}
+                    ₹{isEditingBooking
+                      ? Math.max(0, (parseFloat(editTotal) || 0) - (parseFloat(editAdvance) || 0))
+                      : Math.max(0, ((selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0) - ((selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0))}
                   </p>
                 </div>
               </div>
@@ -363,15 +526,70 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={() => setSelectedGuest(null)}
-              className="w-full mt-6 px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition"
-            >
-              Close
-            </button>
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              {isEditingBooking ? (
+                <>
+                  <button
+                    onClick={() => setIsEditingBooking(false)}
+                    className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSelectedGuest(null)}
+                    className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditName(selectedGuest.guestName || '');
+                      setEditPhone(selectedGuest.phoneNumber || '');
+                      setEditCheckin(selectedGuest.checkinDate?.split(' ')[0] || '');
+                      setEditCheckout(selectedGuest.expectedCheckout?.split(' ')[0] || selectedGuest.checkoutDate?.split(' ')[0] || '');
+                      setEditRoomId(String((selectedGuest as any).roomId || (selectedGuest as any).room_id || ''));
+                      setEditGuests(String((selectedGuest as any).no_of_guests || 1));
+                      setEditRoomRate(String((selectedGuest as any).per_night_charges || (selectedGuest as any).roomRate || 0));
+                      setEditTotal(String((selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0));
+                      setEditAdvance(String((selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0));
+                      setIsEditingBooking(true);
+                    }}
+                    className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Edit
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Date Range Picker for editing */}
+      <DateRangePicker
+        isOpen={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        checkinDate={editCheckin}
+        checkoutDate={editCheckout}
+        onCheckinChange={setEditCheckin}
+        onCheckoutChange={setEditCheckout}
+        onClear={() => {
+          setEditCheckin('');
+          setEditCheckout('');
+        }}
+        blockedDates={getBlockedDateStrings(selectedGuest)}
+      />
     </div>
   );
 };

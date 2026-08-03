@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Database, Loader, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Database, Loader, CheckCircle, AlertCircle, BarChart3, Check, Lightbulb, Calendar, Sparkles } from 'lucide-react';
+import { useConfirm } from './ConfirmDialogContext';
 
 interface DemoDataModalProps {
   isOpen: boolean;
@@ -8,9 +9,11 @@ interface DemoDataModalProps {
 }
 
 export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, propertyId }) => {
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState<'demo' | 'current' | 'future'>('demo');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [hasGeneratedDemo, setHasGeneratedDemo] = useState(false);
 
   const generateDemoData = async () => {
     if (!propertyId) {
@@ -29,6 +32,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
       const data = await response.json();
       if (data.status === 'success') {
+        setHasGeneratedDemo(true);
         setMessage({ type: 'success', text: '✅ Demo data generated! Refresh to see changes.' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
@@ -47,10 +51,17 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       return;
     }
 
-    if (!confirm('Clear all demo data? This cannot be undone.')) return;
+    const confirmed = await confirm({
+      title: 'Exit Test Mode',
+      message: 'Exit test mode? This will clear all demo data.',
+      confirmText: 'Exit Test Mode',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     setLoading(true);
     try {
+      console.log('[DemoDataModal] Clearing demo data for property:', propertyId);
       const response = await fetch('/php/api/demo_data.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -58,15 +69,22 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
         credentials: 'include',
       });
 
+      console.log('[DemoDataModal] API Response status:', response.status);
       const data = await response.json();
+      console.log('[DemoDataModal] API Response data:', data);
+
       if (data.status === 'success') {
-        setMessage({ type: 'success', text: '✅ Demo data cleared! Refresh to see changes.' });
-        setTimeout(() => window.location.reload(), 1500);
+        setMessage({ type: 'success', text: '✅ Test mode exited! Closing...' });
+        setTimeout(() => {
+          onClose();
+          window.location.reload();
+        }, 1000);
       } else {
-        setMessage({ type: 'error', text: data.message || 'Failed to clear demo data' });
+        setMessage({ type: 'error', text: data.message || 'Failed to exit test mode' });
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Error clearing demo data' });
+      console.error('[DemoDataModal] Error exiting test mode:', err);
+      setMessage({ type: 'error', text: `Error exiting test mode: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setLoading(false);
     }
@@ -114,20 +132,42 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
           {activeTab === 'demo' && (
             <div className="space-y-6">
               <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-3">
-                <h3 className="font-bold text-blue-900 dark:text-blue-100">📊 Sample Data Included:</h3>
+                <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  <span>Sample Data Included:</span>
+                </h3>
                 <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-                  <li>✅ 4 Demo Users (Manager, Chef, Housekeeping, Reception)</li>
-                  <li>✅ 4 Demo Guests (Various booking statuses)</li>
-                  <li>✅ 13 Menu Items (Breakfast, Main, Beverage, Snacks, Desserts)</li>
-                  <li>✅ 6 Inventory Items (Stock with low-stock alerts)</li>
-                  <li>✅ 4 Petty Cash Entries (Various expense types)</li>
-                  <li>✅ System Audit Logs (Activity records)</li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>4 Demo Users (Manager, Chef, Housekeeping, Reception)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>1-2 Demo Guests (Active bookings, one per room)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>13 Menu Items (Breakfast, Main, Beverage, Snacks, Desserts)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>6 Inventory Items (Stock with low-stock alerts)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>4 Petty Cash Entries (Various expense types)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>System Audit Logs (Activity records)</span>
+                  </li>
                 </ul>
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  💡 <strong>Tip:</strong> Generate demo data to test all features without manual entry. Each generation refreshes the data.
+                <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                  <Lightbulb className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+                  <span><strong>Tip:</strong> Generate demo data to test all features without manual entry. Each generation refreshes the data.</span>
                 </p>
               </div>
 
@@ -162,7 +202,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
                   ) : (
                     <>
                       <Database className="w-4 h-4" />
-                      Generate Demo Data
+                      {hasGeneratedDemo ? 'Refresh Demo Data' : 'Generate Demo Data'}
                     </>
                   )}
                 </button>
@@ -171,7 +211,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
                   disabled={loading}
                   className="flex-1 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-950/50 disabled:bg-slate-300 text-red-700 dark:text-red-400 font-bold py-3 px-4 rounded-lg transition-colors"
                 >
-                  {loading ? 'Clearing...' : 'Clear Demo Data'}
+                  {loading ? 'Exiting...' : 'Exit Test Mode'}
                 </button>
               </div>
             </div>
@@ -181,7 +221,10 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
           {activeTab === 'current' && (
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-6 text-center space-y-3">
-                <p className="text-slate-600 dark:text-slate-400 text-lg">📅 Today's Data</p>
+                <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center justify-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  <span>Today's Data</span>
+                </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Shows all current bookings, active guests, today's food orders, and real-time system activity.
                 </p>
@@ -199,7 +242,10 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
           {activeTab === 'future' && (
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-6 text-center space-y-3">
-                <p className="text-slate-600 dark:text-slate-400 text-lg">🔮 Upcoming Data</p>
+                <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center justify-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  <span>Upcoming Data</span>
+                </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Shows future bookings, upcoming reservations, and scheduled events.
                 </p>

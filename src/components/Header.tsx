@@ -1,8 +1,27 @@
 import React, { useState } from 'react';
-import { Building2, UserCheck, Clock, AlertTriangle, Menu, X, Bell, Sun, Moon, CheckCircle2, LogOut } from 'lucide-react';
+import {
+  Building2,
+  UserCheck,
+  Clock,
+  AlertTriangle,
+  Menu,
+  X,
+  Bell,
+  Sun,
+  Moon,
+  CheckCircle2,
+  LogOut,
+  Beaker,
+  Play,
+  Square,
+  Utensils,
+  Calendar,
+  User
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { Guest, Order } from '../types';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -16,6 +35,12 @@ interface HeaderProps {
   onToggleDarkMode: () => void;
   currentPropertyColorScheme: string;
   propertyName: string;
+  isTestModeActive?: boolean;
+  onCloseDemoModal?: () => void;
+  kitchenModuleEnabled?: boolean;
+  isMultiKeyProperty?: boolean;
+  guests?: Guest[];
+  rooms?: any[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,19 +55,74 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleDarkMode,
   currentPropertyColorScheme,
   propertyName,
+  isTestModeActive = false,
+  onCloseDemoModal,
+  kitchenModuleEnabled = true,
+  isMultiKeyProperty = false,
+  guests = [],
+  rooms = [],
 }) => {
   const { activeRole, setActiveRole, currentUser, isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
-  const { pendingOrdersCount } = useKitchenContext();
+  const { orders } = useKitchenContext();
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [lastSeenHash, setLastSeenHash] = useState<string>('');
 
-  const currentTime = new Date().toLocaleDateString('en-IN', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  // Date strings for today and tomorrow
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+  // 1. Kitchen Orders logic
+  const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing').slice(0, 5);
+  const servedOrders = orders.filter((o) => (o.status as string) === 'Served' || o.status === 'Fulfilled').slice(0, 5);
+  const isShowingServed = activeOrders.length === 0 && servedOrders.length > 0;
+  const kitchenDisplayOrders = activeOrders.length > 0 ? activeOrders : servedOrders;
+
+  // 2. Bookings logic for MultiKey Property
+  const todayGuests = guests.filter((g) => {
+    if (g.status === 'CheckedOut') return false;
+    const checkin = g.checkinDate?.split(' ')[0] || g.checkinDate?.split('T')[0] || '';
+    const checkout = g.expectedCheckout?.split(' ')[0] || g.expectedCheckout?.split('T')[0] || '';
+    return checkin === todayStr || checkout === todayStr || (g.status === 'Active');
   });
+
+  const tomorrowGuests = guests.filter((g) => {
+    if (g.status === 'CheckedOut') return false;
+    const checkin = g.checkinDate?.split(' ')[0] || g.checkinDate?.split('T')[0] || '';
+    return checkin === tomorrowStr;
+  });
+
+  // Calculate current notification hash to track unread status
+  const currentNotificationHash = JSON.stringify({
+    kitchen: kitchenDisplayOrders.map((o) => `${o.id}-${o.status}`),
+    today: todayGuests.map((g) => `${g.id}-${g.status}`),
+    tomorrow: tomorrowGuests.map((g) => g.id),
+    lowStock: lowStockCount,
+  });
+
+  const hasUnread = currentNotificationHash !== lastSeenHash && (
+    (kitchenModuleEnabled && kitchenDisplayOrders.length > 0) ||
+    (isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0)) ||
+    lowStockCount > 0
+  );
+
+  const handleToggleNotifications = () => {
+    const nextState = !showNotificationDropdown;
+    setShowNotificationDropdown(nextState);
+    if (nextState) {
+      setLastSeenHash(currentNotificationHash);
+    }
+  };
+
+  const totalCount =
+    (kitchenModuleEnabled ? kitchenDisplayOrders.length : 0) +
+    (isMultiKeyProperty ? todayGuests.length + tomorrowGuests.length : 0) +
+    lowStockCount;
 
   return (
     <header className="pos-main-header fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
@@ -72,10 +152,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="block">
               <span className="text-sm font-bold text-gray-700 dark:text-white tracking-tight flex items-center gap-2">
-                {propertyName} {/* Use the propertyName prop here */}
+                {propertyName}
                 <span className="hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                   POS
-                </span> {/* This badge still uses hardcoded blue, consider making it dynamic too */}
+                </span>
               </span>
             </div>
           </div>
@@ -83,48 +163,155 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Section: Notifications + Dark Mode + Profile Username */}
         <div className="flex items-center gap-2">
-
-          {/* Flowbite Notification Bell Button */}
+          {/* Notification Bell Button */}
           <div className="relative">
             <button
-              onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+              onClick={handleToggleNotifications}
               title="Notifications"
               aria-label="View notifications"
               className="btn-notification-bell relative p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
-              {(lowStockCount > 0 || pendingOrdersCount > 0) && (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-800 animate-pulse"></span>
+              {hasUnread && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800 animate-pulse"></span>
               )}
             </button>
 
             {/* Notifications Popover Dropdown */}
             {showNotificationDropdown && (
-              <div className="notifications-popover-dropdown absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              <div className="notifications-popover-dropdown absolute right-0 mt-2 w-88 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" />
                     Notifications
                   </span>
                   <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
-                    {lowStockCount + pendingOrdersCount} new
+                    {totalCount} updates
                   </span>
                 </div>
-                <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-700">
-                  {pendingOrdersCount > 0 && (
-                    <div className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mt-0.5">
-                        <Bell className="w-4 h-4" />
+
+                <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-700 text-xs">
+                  {/* 1. Kitchen Module Orders */}
+                  {kitchenModuleEnabled && kitchenDisplayOrders.length > 0 && (
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1.5">
+                          <Utensils className="w-3.5 h-3.5 text-amber-600" />
+                          {isShowingServed ? 'Recently Served Orders' : 'Live Kitchen Tickets'}
+                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                          {isShowingServed ? 'Served' : 'Active'}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">
-                          {pendingOrdersCount} Pending Kitchen Tickets
-                        </p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          Requires chef attention in Kitchen Display system
-                        </p>
+
+                      <div className="space-y-1.5">
+                        {kitchenDisplayOrders.map((ord) => (
+                          <div
+                            key={ord.id}
+                            className="p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                          >
+                            <div className="overflow-hidden">
+                              <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                <span>{ord.id}</span>
+                                <span className="text-gray-400 font-normal">({ord.roomNumber})</span>
+                              </div>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                {ord.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
+                              </p>
+                            </div>
+                            <span
+                              className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                                ord.status === 'Pending'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300'
+                                  : ord.status === 'Preparing'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300'
+                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300'
+                              }`}
+                            >
+                              {ord.status}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
+
+                  {/* 2. MultiKey Property Bookings */}
+                  {isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0) && (
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          Property Bookings
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                          Today & Tomorrow
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {/* Today Guests */}
+                        {todayGuests.map((guest) => {
+                          const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
+                          const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
+                          let badgeText = 'Active Stay';
+                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+                          if (checkin === todayStr) {
+                            badgeText = 'Check-in Today';
+                            badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300';
+                          } else if (checkout === todayStr) {
+                            badgeText = 'Check-out Today';
+                            badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
+                          }
+
+                          return (
+                            <div
+                              key={guest.id}
+                              className="p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                            >
+                              <div>
+                                <p className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                  <User className="w-3 h-3 text-gray-400" />
+                                  <span>{guest.guestName}</span>
+                                  <span className="text-gray-400 font-normal">({guest.roomNumber})</span>
+                                </p>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  Phone: {guest.phoneNumber}
+                                </p>
+                              </div>
+                              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${badgeStyle}`}>
+                                {badgeText}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                        {/* Tomorrow Guests */}
+                        {tomorrowGuests.map((guest) => (
+                          <div
+                            key={guest.id}
+                            className="p-2 rounded-lg bg-purple-50/60 dark:bg-purple-950/20 flex items-center justify-between gap-2 border border-purple-100 dark:border-purple-900/30"
+                          >
+                            <div>
+                              <p className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                <User className="w-3 h-3 text-purple-500" />
+                                <span>{guest.guestName}</span>
+                                <span className="text-gray-400 font-normal">({guest.roomNumber})</span>
+                              </p>
+                              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                Upcoming tomorrow
+                              </p>
+                            </div>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                              Checking in Tomorrow
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Low Stock Warnings */}
                   {lowStockCount > 0 && (
                     <div className="p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
                       <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mt-0.5">
@@ -140,10 +327,12 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
                   )}
-                  {lowStockCount === 0 && pendingOrdersCount === 0 && (
-                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center gap-1">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      <span>All systems operating normally</span>
+
+                  {/* Fallback Operating Normally */}
+                  {totalCount === 0 && (
+                    <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center gap-2">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                      <span className="font-semibold">All systems operating normally</span>
                     </div>
                   )}
                 </div>
@@ -155,12 +344,20 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenDemoModal && (
             <button
               onClick={onOpenDemoModal}
-              title="Open Test Data Center - Generate demo data for testing"
+              title={isTestModeActive ? "Test mode active - Click to stop" : "Open Test Data Center - Click to start"}
               aria-label="Test Data Center"
-              className="btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-950/50"
+              className={`btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
+                isTestModeActive
+                  ? 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-950/50'
+                  : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-950/50'
+              }`}
             >
-              <span className="text-lg">⚗️</span>
-              <span className="hidden sm:inline">Test</span>
+              {isTestModeActive ? (
+                <Square className="w-4 h-4 fill-current" />
+              ) : (
+                <Play className="w-4 h-4 fill-current" />
+              )}
+              <span className="hidden sm:inline">{isTestModeActive ? 'Active' : 'Test'}</span>
             </button>
           )}
 
@@ -174,8 +371,7 @@ export const Header: React.FC<HeaderProps> = ({
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
           </button>
 
-
-          {/* Flowbite User Profile with Username and Picture Avatar - only shown when authenticated */}
+          {/* Flowbite User Profile */}
           {isAuthenticated ? (
             <div className="pos-user-profile-badge flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-slate-700">
               <img

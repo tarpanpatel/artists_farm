@@ -5,6 +5,8 @@ import { PettyCashEntry, StaffMember } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { useToast } from './ToastContext';
+import { StyledSelect } from './StyledSelect';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -57,6 +59,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 }) => {
   const { staff } = useStaff();
   const { pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
+  const { showToast } = useToast();
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
     category: 'Other',
@@ -223,7 +226,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
     // Security Gate check for Salaries
     if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin') {
-      alert('🔒 Access Denied: Only Admins or Super Admins are authorized to record Salary payments.');
+      showToast('🔒 Access Denied: Only Admins or Super Admins are authorized to record Salary payments.', { type: 'error' });
       return;
     }
 
@@ -380,16 +383,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Cost Category Group</label>
-              <select
+              <StyledSelect
                 value={formState.category}
-                onChange={e => dispatch({ type: 'SET_FIELD', field: 'category', value: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-              >
-                <option value="Other">Other</option>
-                <option value="Salaries">Salaries (Manual)</option>
-                <option value="Salary (Auto)">Salary (Auto)</option>
-                <option value="Bills">Bills</option>
-              </select>
+                onChange={val => dispatch({ type: 'SET_FIELD', field: 'category', value: val })}
+                options={[
+                  { value: 'Other', label: 'Other' },
+                  { value: 'Salaries', label: 'Salaries (Manual)' },
+                  { value: 'Salary (Auto)', label: 'Salary (Auto)' },
+                  { value: 'Bills', label: 'Bills' },
+                ]}
+              />
             </div>
           </div>
 
@@ -397,17 +400,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Details Descriptions *</label>
             {formState.category === 'Salaries' || formState.category === 'Salary (Auto)' ? (
               <div>
-                <select
-                  required
+                <StyledSelect
                   value={formState.description}
-                  onChange={e => handleDescriptionChange(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-                >
-                  <option value="">-- Select Staff Beneficiary --</option>
-                  {staff.map(s => (
-                    <option key={s.id} value={s.name}>{s.name} ({s.role})</option>
-                  ))}
-                </select>
+                  onChange={handleDescriptionChange}
+                  placeholder="-- Select Staff Beneficiary --"
+                  options={staff.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
+                />
                 {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
                   <p className="text-red-500 font-semibold text-[10px] mt-1">🔒 Warning: You are not logged in as Admin. Salary submission will be blocked.</p>
                 )}
@@ -494,15 +492,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Payment Mode</label>
-              <select
+              <StyledSelect
                 value={formState.paymentMode}
-                onChange={e => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-              >
-                <option value="UPI / QR">UPI / QR</option>
-                <option value="Cash">Cash</option>
-                <option value="Mixed">Mixed</option>
-              </select>
+                onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
+                options={[
+                  { value: 'UPI / QR', label: 'UPI / QR' },
+                  { value: 'Cash', label: 'Cash' },
+                  { value: 'Mixed', label: 'Mixed' },
+                ]}
+              />
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 font-bold">
@@ -559,15 +557,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Paid By</label>
-              <select
+              <StyledSelect
                 value={formState.paidBy}
-                onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-              >
-                {financialHandlers.map(h => (
-                  <option key={h.id} value={h.username}>{h.username}</option>
-                ))}
-              </select>
+                onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
+                options={financialHandlers.map(h => ({ value: h.username, label: h.username }))}
+              />
             </div>
           </div>
 
@@ -623,18 +617,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <span className="font-bold text-slate-700 dark:text-slate-300">📅 Select Ledger Month</span>
-          <select
+          <StyledSelect
             value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-            className="p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg font-semibold"
-          >
-            {uniqueMonths.map(m => {
+            onChange={setSelectedMonth}
+            options={uniqueMonths.map(m => {
               const [y, mm] = m.split('-');
               const dateObj = new Date(Number(y), Number(mm) - 1, 1);
               const label = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-              return <option key={m} value={m}>{label}</option>;
+              return { value: m, label };
             })}
-          </select>
+          />
         </div>
 
         <div className="relative flex-1 max-w-md w-full">
@@ -798,16 +790,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Category</label>
-                <select
+                <StyledSelect
                   value={editingEntry.category || editingEntry.costCategory || 'Other'}
-                  onChange={e => setEditingEntry({ ...editingEntry, category: e.target.value, costCategory: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                >
-                  <option value="Other">Other</option>
-                  <option value="Salaries">Salaries (Manual)</option>
-                  <option value="Salary (Auto)">Salary (Auto)</option>
-                  <option value="Bills">Bills</option>
-                </select>
+                  onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
+                  options={[
+                    { value: 'Other', label: 'Other' },
+                    { value: 'Salaries', label: 'Salaries (Manual)' },
+                    { value: 'Salary (Auto)', label: 'Salary (Auto)' },
+                    { value: 'Bills', label: 'Bills' },
+                  ]}
+                />
               </div>
 
               <div>
@@ -836,14 +828,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Payment Mode</label>
-                <select
+                <StyledSelect
                   value={editingEntry.paymentMode || 'Online / UPI / QR'}
-                  onChange={e => setEditingEntry({ ...editingEntry, paymentMode: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                >
-                  <option value="Online / UPI / QR">Online / UPI / QR</option>
-                  <option value="Cash">Cash</option>
-                </select>
+                  onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
+                  options={[
+                    { value: 'Online / UPI / QR', label: 'Online / UPI / QR' },
+                    { value: 'Cash', label: 'Cash' },
+                  ]}
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

@@ -677,21 +677,22 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map((g: any) => ({
         id: String(g.id || g.ID || ''),
-        guestName: g.guest_name || g.name || 'Guest',
-        phoneNumber: g.phone_number || g.contact || '',
-        checkinDate: g.checkin_date || g.check_in || '',
-        expectedCheckout: g.expected_checkout || '',
-        checkoutDate: g.checkout_date || g.check_out || '',
-        roomNumber: g.room_number || '101',
+        guestName: g.guestName || g.guest_name || g.name || 'Guest',
+        phoneNumber: g.phoneNumber || g.phone_number || g.contact || '',
+        checkinDate: g.checkinDate || g.checkin_date || g.check_in || '',
+        expectedCheckout: g.expectedCheckout || g.expected_checkout || '',
+        checkoutDate: g.checkoutDate || g.checkout_date || g.check_out || '',
+        roomNumber: g.roomNumber || g.room_number || 'Unassigned',
+        roomId: g.roomId || g.room_id || null,
         status: g.status || 'Active',
-        notes: g.notes || g.guest_notes || g.misc_arrangements || '',
-        bookingSource: g.booking_source || '',
-        numberOfGuests: Number(g.no_of_guests || g.total_guests || g.adults || 0),
-        roomRate: Number(g.per_night_charges || g.base_room_rent || 0),
-        advanceAmount: Number(g.advance_paid || 0),
-        foodBill: Number(g.total_food || 0),
-        totalAmount: Number(g.total_charge || 0),
-        paymentStatus: g.payment_status || g.status || 'Pending',
+        notes: g.notes || g.guestNotes || g.guest_notes || g.miscArrangements || g.misc_arrangements || '',
+        bookingSource: g.bookingSource || g.booking_source || '',
+        numberOfGuests: Number(g.noOfGuests || g.no_of_guests || g.total_guests || g.adults || 0),
+        roomRate: Number(g.perNightCharges || g.per_night_charges || g.baseRoomRent || g.base_room_rent || 0),
+        advanceAmount: Number(g.advancePaid || g.advance_paid || 0),
+        foodBill: Number(g.totalFood || g.total_food || 0),
+        totalAmount: Number(g.totalCharge || g.total_charge || 0),
+        paymentStatus: g.paymentStatus || g.payment_status || g.status || 'Pending',
       }));
     }
   } catch (err) {
@@ -731,6 +732,32 @@ export async function addGuestToDB(guest: {
     console.error('Failed to add guest to DB:', err);
   }
   return null;
+}
+
+export async function updateGuestInDB(guest: {
+  id: string;
+  guest_name?: string;
+  phone_number?: string;
+  checkin_date?: string;
+  expected_checkout?: string;
+  room_id?: number;
+  no_of_guests?: number;
+  base_room_rent?: number;
+  total_charge?: number;
+  advance_paid?: number;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(guest),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to update guest in DB:', err);
+    return false;
+  }
 }
 
 export async function checkoutGuestInDB(guestId: string): Promise<boolean> {

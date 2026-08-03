@@ -3,6 +3,8 @@ import { Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
+import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 
 interface MiscChargeTemplate {
   id: string | number;
@@ -49,6 +51,8 @@ const customStyles = {
 };
 
 export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ onLogAudit }) => {
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { miscCharges, refreshMiscCharges } = useConfigurationData();
   const [charges, setCharges] = useState<MiscChargeTemplate[]>([]);
   const [isEditing, setIsEditing] = useState<string | number | null>(null);
@@ -63,23 +67,36 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       if (savedUser) {
         try {
           const userObj = JSON.parse(savedUser);
-          return userObj.username || userObj.name || 'Admin';
-        } catch (e) {}
+          if (userObj && userObj.name) return userObj.name;
+        } catch { }
       }
     }
     return 'Admin';
   };
 
   useEffect(() => {
-    setCharges(miscCharges as MiscChargeTemplate[]);
+    if (miscCharges) {
+      setCharges(miscCharges as MiscChargeTemplate[]);
+    }
   }, [miscCharges]);
 
-  const saveToDB = (action: string, payload: any) => {
-    return fetch(`${API_BASE}?action=${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(r => r.json()).catch(console.error);
+  const saveToDB = async (action: string, payload: any) => {
+    try {
+      const res = await fetch(`${API_BASE}?action=${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.status === 'success' || data.success) {
+        refreshMiscCharges();
+        return true;
+      }
+    } catch (err) {
+      console.error(`Failed ${action}:`, err);
+    }
+    return false;
   };
 
   const handleAdd = (e: React.FormEvent) => {
@@ -90,13 +107,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       category: newForm.category,
     };
     saveToDB('add_misc_charge_template', newCharge).then((res) => {
-      if (onLogAudit) {
-        const currentUserName = getLoggedInUserName();
-        onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
+      if (res) {
+        if (onLogAudit) {
+          const currentUserName = getLoggedInUserName();
+          onLogAudit(`${currentUserName} added new miscellaneous charge template: '${newForm.label}' (Category: ${newForm.category}, Amount: ₹${newForm.default_amount})`);
+        }
+        setIsAddModalOpen(false);
+        setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
       }
-      refreshMiscCharges();
-      setIsAddModalOpen(false);
-      setNewForm({ label: '', default_amount: '' as unknown as number, category: 'Service' });
     });
   };
 
@@ -107,7 +125,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
     // Prevent editing system defaults
     if (updatedCharge.is_system_default) {
-      alert('System default expense items cannot be edited. Create a new custom item instead.');
+      showToast('System default expense items cannot be edited. Create a new custom item instead.', { type: 'warning' });
       return;
     }
 
@@ -124,34 +142,45 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       changes.push(`amount from ₹${updatedCharge.default_amount} to ₹${editForm.default_amount}`);
     }
 
-    saveToDB('add_misc_charge_template', finalData).then(() => {
-      if (onLogAudit && changes.length > 0) {
-        const currentUserName = getLoggedInUserName();
-        onLogAudit(`${currentUserName} updated details of miscellaneous charge template '${updatedCharge.label}': ${changes.join(', ')}`);
+    saveToDB('add_misc_charge_template', finalData).then((res) => {
+      if (res) {
+        if (onLogAudit && changes.length > 0) {
+          const currentUserName = getLoggedInUserName();
+          onLogAudit(`${currentUserName} updated details of miscellaneous charge template '${updatedCharge.label}': ${changes.join(', ')}`);
+        }
+        setCharges(charges.map(c => c.id === isEditing ? finalData as MiscChargeTemplate : c));
+        setIsEditing(null);
       }
-      setCharges(charges.map(c => c.id === isEditing ? finalData as MiscChargeTemplate : c));
-      setIsEditing(null);
     });
   };
 
-  const handleDelete = (id: string | number) => {
+  const handleDelete = async (id: string | number) => {
     const target = charges.find(c => c.id === id);
 
     // Prevent deletion of system defaults
     if (target?.is_system_default) {
-      alert('System default expense items cannot be deleted.');
+      showToast('System default expense items cannot be deleted.', { type: 'warning' });
       return;
     }
 
-    (window as any).showConfirm('Are you sure you want to delete this charge template?', () => {
-      saveToDB('delete_misc_charge_template', { id }).then(() => {
-        if (onLogAudit && target) {
-          const currentUserName = getLoggedInUserName();
-          onLogAudit(`${currentUserName} deleted miscellaneous charge template '${target.label}'`);
-        }
-        setCharges(charges.filter(c => c.id !== id));
-      });
+    const confirmed = await confirm({
+      title: 'Delete Misc Charge Template',
+      message: 'Are you sure you want to delete this charge template?',
+      confirmText: 'Delete Template',
+      variant: 'danger',
     });
+
+    if (confirmed) {
+      saveToDB('delete_misc_charge_template', { id }).then((res) => {
+        if (res) {
+          if (onLogAudit && target) {
+            const currentUserName = getLoggedInUserName();
+            onLogAudit(`${currentUserName} deleted miscellaneous charge template '${target.label}'`);
+          }
+          setCharges(charges.filter(c => c.id !== id));
+        }
+      });
+    }
   };
 
   const filteredCharges = charges.filter(c =>

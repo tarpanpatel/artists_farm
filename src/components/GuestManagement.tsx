@@ -25,12 +25,15 @@ import {
 import * as htmlToImage from 'html-to-image';
 import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate, MenuItem } from '../types';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
+import { StyledSelect } from './StyledSelect';
 import { BillingCheckout } from './BillingCheckout';
+import { TodayOverview } from './TodayOverview';
 
 interface Room {
   id: number;
@@ -53,6 +56,8 @@ interface GuestManagementProps {
   onNavigateToBilling?: (guestId: string) => void;
   onSetActiveMenuItemKey?: (key: string) => void;
   selectedRoomSlug?: string | null;
+  preSelectRoom?: string;
+  onClose?: () => void;
 }
 
 
@@ -91,9 +96,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onNavigateToBilling,
   onSetActiveMenuItemKey,
   selectedRoomSlug,
+  preSelectRoom,
+  onClose,
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { staff } = useStaff();
   const { miscCharges } = useConfigurationData();
   const [filterStatus, setFilterStatus] = useState<string>('All');
@@ -104,27 +112,51 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [roomNumber, setRoomNumber] = useState('Villa 101');
+  const [bookingSourceLocal, setBookingSourceLocal] = useState('Offline');
+  const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
+  const [pendingReceivedBy, setPendingReceivedBy] = useState('');
   const [checkinDate, setCheckinDate] = useState(new Date().toISOString().split('T')[0]);
+  const [checkinTime, setCheckinTime] = useState('14:00');
   const [expectedCheckout, setExpectedCheckout] = useState(
     new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
   );
+  const [checkoutTime, setCheckoutTime] = useState('11:00');
   const [notes, setNotes] = useState('');
+  const [showGuestNotes, setShowGuestNotes] = useState(false);
+  const [showDynamicIncidentals, setShowDynamicIncidentals] = useState(false);
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
 
   // Set default room for MultiKey properties on component mount
   useEffect(() => {
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
-      if (selectedRoomSlug) {
+      let roomToSelect = null;
+
+      // If preSelectRoom is provided (e.g., from modal on room view), use that
+      if (preSelectRoom) {
+        // Check if preSelectRoom exactly matches a room name
+        const exactMatch = rooms.find((r) => r.name === preSelectRoom);
+        if (exactMatch) {
+          roomToSelect = preSelectRoom;
+        } else {
+          // Try to find room by extracting number from name
+          roomToSelect = preSelectRoom;
+        }
+      } else if (selectedRoomSlug) {
         // If coming from a specific room view, pre-select that room
         const selectedRoom = rooms.find((r) => r.slug === selectedRoomSlug);
         if (selectedRoom) {
-          setRoomNumber(selectedRoom.name);
+          roomToSelect = selectedRoom.name;
         }
       } else if (roomNumber === 'Villa 101') {
         // Otherwise, pre-select the first room
-        setRoomNumber(rooms[0].name);
+        roomToSelect = rooms[0].name;
+      }
+
+      if (roomToSelect) {
+        setRoomNumber(roomToSelect);
       }
     }
-  }, [isMultiKeyProperty, rooms, selectedRoomSlug]);
+  }, [isMultiKeyProperty, rooms.length, selectedRoomSlug, preSelectRoom]);
 
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
@@ -203,7 +235,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   };
 
   // Selected Active Guest for Billing
-  const activeGuests = guests.filter((g) => g.status === 'Active');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const activeGuests = guests.filter((g) => {
+    if (g.status !== 'Active') return false;
+    // Also check if guest is currently staying (today is between checkin and checkout)
+    const checkinDate = new Date(g.checkinDate);
+    const checkoutDate = new Date(g.expectedCheckout);
+    checkinDate.setHours(0, 0, 0, 0);
+    checkoutDate.setHours(0, 0, 0, 0);
+    return today >= checkinDate && today < checkoutDate;
+  });
   const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
 
   // BUG 2 FIX: Auto-select first Active guest when guests prop changes
@@ -388,7 +430,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
     if (selectedDishId === 'custom') {
       if (!customDishName.trim() || !customDishPrice || Number(customDishPrice) <= 0) {
-        alert('Please provide a valid Custom Dish Name and Price.');
+        showToast('Please provide a valid Custom Dish Name and Price.', { type: 'warning' });
         return;
       }
       dishName = customDishName.trim();
@@ -494,14 +536,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   };
 
   // Complete Checkout Execution
-  const handleCompleteCheckout = (e: React.FormEvent) => {
+  const handleCompleteCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSplitMatching) {
-      alert(`Error: Split sum (₹${totalSplitSum.toFixed(2)}) must equal target due (₹${grandTargetDue.toFixed(2)}) exactly.`);
+      showToast(`Error: Split sum (₹${totalSplitSum.toFixed(2)}) must equal target due (₹${grandTargetDue.toFixed(2)}) exactly.`, { type: 'error' });
       return;
     }
 
-    if (window.confirm('Finalize room contract checkout distribution operations?')) {
+    const confirmed = await confirm({
+      title: 'Finalize Checkout',
+      message: 'Finalize room contract checkout distribution operations?',
+      confirmText: 'Finalize Checkout',
+      variant: 'warning',
+    });
+
+    if (confirmed) {
       if (currentGuest) {
         const checkoutDateStr = new Date().toISOString().split('T')[0];
         const primaryMode = splitRows[0]?.mode || 'UPI';
@@ -592,171 +641,277 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   if (activeMenuItemKey === 'guest_registration') {
     return (
-      <div className="guest-management-container grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+      <div className="guest-management-container w-full flex justify-center">
         {/* Left Column: Form */}
-        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5 space-y-4">
-          <div className="border-b border-slate-100 dark:border-slate-700 pb-2">
+        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 max-w-[550px] w-full">
+          <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
             <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
               <span className="font-normal">Add Guest Booking </span>
               <span className="font-extrabold">
                 {isMultiKeyProperty && roomNumber ? `(${roomNumber})` : '(Backdating Allowed)'}
               </span>
             </h3>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
           
-          <form className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
+          <form noValidate className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
             e.preventDefault();
             onAddGuest({
               id: Math.random().toString(36).substr(2, 9),
               guestName,
               phoneNumber,
               roomNumber,
-              checkinDate,
-              expectedCheckout,
+              checkinDate: checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate,
+              expectedCheckout: checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout,
               status: 'Booked'
             });
             showToast('Guest booked successfully!', { type: 'success' });
           }}>
-            <div>
-              <label className="block mb-1">Contact Phone Number *</label>
-              <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter mobile number" className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" required />
-            </div>
-            
+            {/* Row 1: Contact Phone + Assigned Room (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">Booking Source</label>
-                <select className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                  <option>Offline</option>
-                  <option>Online</option>
-                </select>
+                <label className="block mb-1">Contact Phone Number *</label>
+                <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter mobile number" className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
-              <div>
-                <label className="block mb-1">Total Headcount</label>
-                <input type="number" min="1" defaultValue="1" className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
-              </div>
-            </div>
 
-            {/* Room Selector for MultiKey Properties */}
-            {isMultiKeyProperty && rooms && rooms.length > 0 && (
-              <div>
-                <label className="block mb-1">Assigned Room / Villa *</label>
-                <select
-                  value={roomNumber}
-                  onChange={(e) => setRoomNumber(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  {rooms.map((room) => (
-                    <option key={room.id} value={room.name}>
-                      {room.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <DateRangePicker
-              checkinDate={checkinDate}
-              checkoutDate={expectedCheckout}
-              onCheckinChange={(date) => {
-                setCheckinDate(date);
-                if (expectedCheckout && date > expectedCheckout) setExpectedCheckout(date);
-              }}
-              onCheckoutChange={setExpectedCheckout}
-              onClear={() => {
-                setCheckinDate('');
-                setExpectedCheckout('');
-              }}
-              blockedDates={getBlockedDateStrings()}
-            />
-
-            <div>
-              <label className="block mb-1">Total Room Tariff (₹)</label>
-              <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label>Dynamic Incidentals (Pets, Decoration etc)</label>
-                <button type="button" onClick={() => setBookingIncidentals([...bookingIncidentals, {type: '', amount: 0}])} className="bg-blue-500 text-white px-2 py-0.5 rounded text-[10px]">+ Add Line</button>
-              </div>
-              {bookingIncidentals.length === 0 ? (
-                <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50 text-center text-slate-400">
-                  No incidentals added
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {bookingIncidentals.map((inc, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <select 
-                        value={inc.type}
-                        onChange={(e) => {
-                          const newInc = [...bookingIncidentals];
-                          newInc[idx].type = e.target.value;
-                          setBookingIncidentals(newInc);
-                        }}
-                        className="flex-1 p-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
-                      >
-                        <option value="">-- Select Type --</option>
-                        {miscChargesList.map(m => (
-                          <option key={m.id} value={m.label}>{m.label}</option>
-                        ))}
-                      </select>
-                      <input 
-                        type="number" 
-                        value={inc.amount || ''}
-                        onChange={(e) => {
-                          const newInc = [...bookingIncidentals];
-                          newInc[idx].amount = Number(e.target.value);
-                          setBookingIncidentals(newInc);
-                        }}
-                        placeholder="Amount"
-                        className="w-24 p-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
-                        required={!!inc.type}
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setBookingIncidentals(bookingIncidentals.filter((_, i) => i !== idx))}
-                        className="text-slate-400 hover:text-red-500 p-2 rounded-xl"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+              {/* Room Selector for MultiKey Properties */}
+              {isMultiKeyProperty && rooms && rooms.length > 0 && (
+                <div>
+                  <label className="block mb-1">Assigned Room / Villa *</label>
+                  <StyledSelect
+                    value={roomNumber}
+                    onChange={setRoomNumber}
+                    options={rooms.map((room) => ({ value: room.name, label: room.name }))}
+                  />
                 </div>
               )}
             </div>
 
+            {/* Row 2: Booking Source + No. of Guests (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">Advance Paid (₹)</label>
-                <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <label className="block mb-1">Booking Source</label>
+                <StyledSelect
+                  value={bookingSourceLocal}
+                  onChange={setBookingSourceLocal}
+                  options={[
+                    { value: 'Offline', label: 'Offline' },
+                    { value: 'Online', label: 'Online' },
+                  ]}
+                />
               </div>
               <div>
-                <label className="block mb-1">Advance Received By *</label>
-                <select required className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                  <option value="">-- Select Staff/User --</option>
-                  {staff.filter(s => s.isFinancialHandler).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                </select>
+                <label className="block mb-1">No. of Guests</label>
+                <input type="number" min="1" defaultValue="1" className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
             </div>
 
+            {/* Airbnb-Style Date Range Picker Modal Popover */}
+            <DateRangePicker
+              isOpen={showDateRangePicker}
+              onClose={() => setShowDateRangePicker(false)}
+              checkinDate={checkinDate}
+              checkoutDate={expectedCheckout}
+              onCheckinChange={setCheckinDate}
+              onCheckoutChange={setExpectedCheckout}
+              onClear={() => {
+                setCheckinDate(new Date().toISOString().split('T')[0]);
+                setExpectedCheckout(new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+              }}
+              blockedDates={getBlockedDateStrings()}
+            />
+
+            {/* Check-In & Check-Out Date Buttons (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">Pending Balance (₹)</label>
-                <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <label className="block mb-1 text-xs font-bold">Check-In Date *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowDateRangePicker(true)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-left text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-between"
+                >
+                  <span>{checkinDate ? new Date(checkinDate).toLocaleDateString('en-GB') : 'Select date'}</span>
+                  <svg className="w-4 h-4 text-blue-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
               </div>
+
               <div>
-                <label className="block mb-1">Pending Received By</label>
-                <select className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                  <option value="">-- Select Staff/User --</option>
-                  {staff.filter(s => s.isFinancialHandler).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                </select>
+                <label className="block mb-1 text-xs font-bold">Check-Out Date *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowDateRangePicker(true)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-left text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-between"
+                >
+                  <span>{expectedCheckout ? new Date(expectedCheckout).toLocaleDateString('en-GB') : 'Select date'}</span>
+                  <svg className="w-4 h-4 text-blue-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
               </div>
             </div>
 
+            {/* Row: Check-In & Check-Out Time (2 columns) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-xs font-bold">Check-In Time (Optional)</label>
+                <input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div>
+                <label className="block mb-1 text-xs font-bold">Check-Out Time (Optional)</label>
+                <input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+            </div>
+
+            {/* Total Room Tariff */}
             <div>
-              <label className="block mb-1">Guest Notes</label>
-              <textarea placeholder="Dietary adjustments..." rows={2} className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+              <label className="block mb-1">Total Room Tariff (₹)</label>
+              <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            {/* Advance Paid - Only show when Room Tariff has value */}
+            {bookingRoomTariff > 0 && (
+              <>
+                <div>
+                  <label className="block mb-1">Advance Paid (₹)</label>
+                  <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+
+                {/* Advance Received By - Only show when Advance Paid has value */}
+                {bookingAdvance > 0 && (
+                  <div>
+                    <label className="block mb-1">Advance Received By *</label>
+                    <StyledSelect
+                      value={advanceReceivedBy}
+                      onChange={setAdvanceReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Pending Balance - Only show when Advance Paid has value */}
+            {bookingAdvance > 0 && (
+              <>
+                <div>
+                  <label className="block mb-1">Pending Balance (₹)</label>
+                  <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+
+                {/* Pending Received By - Only show when Pending Balance has value */}
+                {bookingPending > 0 && (
+                  <div>
+                    <label className="block mb-1">Pending Received By</label>
+                    <StyledSelect
+                      value={pendingReceivedBy}
+                      onChange={setPendingReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Guest Notes & Additional Charges on same row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showGuestNotes}
+                    onChange={(e) => setShowGuestNotes(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold">Guest Notes</span>
+                </label>
+                {showGuestNotes && (
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Dietary adjustments..."
+                    rows={2}
+                    className="w-full mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showDynamicIncidentals}
+                    onChange={(e) => setShowDynamicIncidentals(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold">Additional Charges (Optional)</span>
+                </label>
+                {showDynamicIncidentals && (
+                  <div className="mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setBookingIncidentals([...bookingIncidentals, {type: '', amount: 0}])}
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-semibold"
+                      >
+                        + Add Line
+                      </button>
+                    </div>
+                    {bookingIncidentals.length === 0 ? (
+                      <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50 text-center text-slate-400 text-xs">
+                        No incidentals added
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {bookingIncidentals.map((inc, idx) => (
+                          <div key={idx} className="flex gap-2 items-center text-xs">
+                            <StyledSelect
+                              className="flex-1"
+                              value={inc.type}
+                              onChange={(val) => {
+                                const newInc = [...bookingIncidentals];
+                                newInc[idx].type = val;
+                                setBookingIncidentals(newInc);
+                              }}
+                              placeholder="-- Select Type --"
+                              options={miscChargesList.map(m => ({ value: m.label, label: m.label }))}
+                            />
+                            <input
+                              type="number"
+                              value={inc.amount || ''}
+                              onChange={(e) => {
+                                const newInc = [...bookingIncidentals];
+                                newInc[idx].amount = Number(e.target.value);
+                                setBookingIncidentals(newInc);
+                              }}
+                              placeholder="Amount"
+                              className="w-24 p-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                              required={!!inc.type}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setBookingIncidentals(bookingIncidentals.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-red-500 p-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <button type="submit" className="btn-register-guest w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl shadow-md transition-colors text-sm">
@@ -765,76 +920,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </form>
         </div>
 
-        {/* Right Column: Calendar */}
-        <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-5">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg uppercase tracking-wider">{new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h3>
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 italic">Active Tracking Matrix</span>
+        {/* Right Column: Booking Calendar (hidden in guest_registration mode) */}
+        {activeMenuItemKey !== 'guest_registration' && (
+          <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden flex flex-col">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+              <TodayOverview
+                guests={guests}
+                rooms={rooms}
+                isMultiKeyProperty={isMultiKeyProperty}
+                kitchenModuleEnabled={true}
+              />
+            </div>
           </div>
-          
-          <div className="grid grid-cols-7 gap-3 mb-2">
-            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
-              <div key={day} className="text-center text-[10px] font-extrabold text-slate-400 tracking-wider">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7 gap-3 auto-rows-[100px]">
-            {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }).map((_, i) => {
-              const today = new Date();
-              const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-              const blockedDate = blockedDates.find(
-                (bd) => dateStr >= bd.event_start.split(' ')[0] && dateStr < bd.event_end.split(' ')[0]
-              );
-              const isAirbnb = blockedDate?.source === 'airbnb';
-
-              return (
-                <div key={i} className={`border rounded-xl p-2 relative ${
-                  i === new Date().getDate() - 1
-                    ? 'border-blue-400 bg-blue-50'
-                    : isAirbnb
-                    ? 'border-orange-300 bg-orange-50'
-                    : 'border-slate-200'
-                }`}>
-                  <span className={`text-xs font-bold ${i === new Date().getDate() - 1 ? 'text-blue-600' : isAirbnb ? 'text-orange-600' : 'text-slate-500'}`}>{i + 1}</span>
-
-                  {/* Airbnb blocked dates */}
-                  {isAirbnb && (
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[7px] font-bold bg-orange-500 text-white px-1 py-0.5 rounded">
-                        AIRBNB
-                      </span>
-                      {blockedDate?.reservation_url && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(blockedDate.reservation_url, '_blank');
-                          }}
-                          className="p-0.5 hover:bg-orange-200 rounded transition group"
-                          title="Open Airbnb reservation details"
-                        >
-                          <ExternalLink size={12} className="text-orange-600 group-hover:text-orange-700" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Guest overlays */}
-                  {guests.filter(g => {
-                      const start = new Date(g.checkinDate).getDate();
-                      const end = new Date(g.expectedCheckout).getDate();
-                      return (i + 1) >= start && (i + 1) < end;
-                  }).map((g, idx) => (
-                    <div key={idx} className={`absolute bottom-2 left-2 right-2 rounded-[4px] px-1.5 py-0.5 text-[9px] font-bold text-white truncate shadow-xs ${g.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-                      👤 {g.guestName.split(' ')[0]} ({g.phoneNumber.slice(-4)})
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        )}
       </div>
     );
   }
@@ -886,19 +984,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
               <span className="font-bold text-gray-700">Active Resident Account:</span>
-              <select
+              <StyledSelect
+                className="w-64"
                 value={selectedGuestId}
-                onChange={(e) => setSelectedGuestId(e.target.value)}
-                className="bg-slate-50 border border-slate-300 font-bold text-slate-900 rounded-lg px-3 py-1.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer text-xs"
-              >
-                {guests
+                onChange={setSelectedGuestId}
+                options={guests
                   .filter((g) => g.status === 'Active')
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.guestName} ({g.roomNumber}) — Phone: {g.phoneNumber}
-                    </option>
-                  ))}
-              </select>
+                  .map((g) => ({
+                    value: g.id,
+                    label: `${g.guestName} (${g.roomNumber}) — Phone: ${g.phoneNumber}`,
+                  }))}
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -961,22 +1057,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <label className="block text-[11px] font-bold text-slate-600 mb-1">
                           Select Dish / Item
                         </label>
-                        <select
+                        <StyledSelect
                           value={selectedDishId}
-                          onChange={(e) => setSelectedDishId(e.target.value)}
-                          required
-                          className="w-full p-2 bg-white border border-slate-300 rounded-lg font-medium text-slate-900 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-                        >
-                          <option value="">-- Choose Menu Dish --</option>
-                          <option value="custom" className="font-bold text-cyan-600">
-                            -- CUSTOM --
-                          </option>
-                          {menu.map((dish) => (
-                            <option key={dish.id} value={dish.id}>
-                              {dish.name} (₹{dish.price.toFixed(2)})
-                            </option>
-                          ))}
-                        </select>
+                          onChange={setSelectedDishId}
+                          placeholder="-- Choose Menu Dish --"
+                          options={[
+                            { value: 'custom', label: <span className="font-bold text-cyan-600">-- CUSTOM --</span> },
+                            ...menu.map((dish) => ({
+                              value: String(dish.id),
+                              label: `${dish.name} (₹${dish.price.toFixed(2)})`,
+                            })),
+                          ]}
+                        />
                       </div>
 
                       <div className="w-24">
@@ -989,7 +1081,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           min={1}
                           required
                           onChange={(e) => setInsertQty(Number(e.target.value))}
-                          className="w-full p-2 text-center bg-white border border-slate-300 rounded-lg font-bold text-slate-900"
+                          className="w-full p-2 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
                         />
                       </div>
 
@@ -1016,7 +1108,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             value={customDishName}
                             onChange={(e) => setCustomDishName(e.target.value)}
                             placeholder="e.g. Special Thali / Extra Raita"
-                            className="w-full p-2 bg-white border border-slate-300 rounded-lg text-slate-900"
+                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                           />
                         </div>
                         <div className="w-32">
@@ -1032,7 +1124,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                               setCustomDishPrice(e.target.value === '' ? '' : Number(e.target.value))
                             }
                             placeholder="0.00"
-                            className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900"
+                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
                           />
                         </div>
                       </div>
@@ -1142,14 +1234,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       Strategy Type
                     </label>
-                    <select
+                    <StyledSelect
                       value={adjType}
-                      onChange={(e) => setAdjType(e.target.value as 'charge' | 'discount')}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-semibold text-slate-900 cursor-pointer"
-                    >
-                      <option value="charge">Extra Incidentals Charge (+)</option>
-                      <option value="discount">Discount Rebate (-)</option>
-                    </select>
+                      onChange={(val) => setAdjType(val as 'charge' | 'discount')}
+                      options={[
+                        { value: 'charge', label: 'Extra Incidentals Charge (+)' },
+                        { value: 'discount', label: 'Discount Rebate (-)' },
+                      ]}
+                    />
                   </div>
 
                   {adjType === 'charge' ? (
@@ -1157,16 +1249,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <label className="block text-[11px] font-bold text-slate-600 mb-1">
                         Charge Category
                       </label>
-                      <select
+                      <StyledSelect
                         value={adjReasonCharge}
-                        onChange={(e) => setAdjReasonCharge(e.target.value)}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-slate-900 cursor-pointer"
-                      >
-                        <option value="Decoration Fees">Decoration Fees</option>
-                        <option value="Extra Housekeeping">Extra Housekeeping</option>
-                        <option value="Misc">Misc</option>
-                        <option value="Pet Stay Charges">Pet Stay Charges</option>
-                      </select>
+                        onChange={setAdjReasonCharge}
+                        options={[
+                          { value: 'Decoration Fees', label: 'Decoration Fees' },
+                          { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
+                          { value: 'Misc', label: 'Misc' },
+                          { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
+                        ]}
+                      />
                     </div>
                   ) : (
                     <div>
@@ -1178,7 +1270,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         value={adjReasonDiscount}
                         onChange={(e) => setAdjReasonDiscount(e.target.value)}
                         placeholder="e.g. Service Apology..."
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-slate-900"
+                        className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                       />
                     </div>
                   )}
@@ -1196,7 +1288,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         setAdjAmount(e.target.value === '' ? '' : Number(e.target.value))
                       }
                       placeholder="0.00"
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
                     />
                   </div>
 
@@ -1346,44 +1438,40 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                                 handleUpdateSplitRow(row.id, 'amount', Number(e.target.value))
                               }
                               placeholder="Amount (₹)"
-                              className="flex-1 p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900"
+                              className="flex-1 p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
                             />
-                            <select
+                            <StyledSelect
+                              className="w-24"
                               value={row.mode}
-                              onChange={(e) =>
-                                handleUpdateSplitRow(row.id, 'mode', e.target.value as 'Cash' | 'UPI')
+                              onChange={(val) =>
+                                handleUpdateSplitRow(row.id, 'mode', val as 'Cash' | 'UPI')
                               }
-                              className="w-24 p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 cursor-pointer"
-                            >
-                              <option value="Cash">Cash</option>
-                              <option value="UPI">UPI</option>
-                            </select>
+                              options={[
+                                { value: 'Cash', label: 'Cash' },
+                                { value: 'UPI', label: 'UPI' },
+                              ]}
+                            />
                           </div>
 
                           {row.mode === 'UPI' && (
                             <div className="flex items-center gap-2 pt-1 animate-in fade-in">
-                              <select
+                              <StyledSelect
+                                className="flex-1"
                                 value={row.recipient}
-                                onChange={(e) =>
-                                  handleUpdateSplitRow(row.id, 'recipient', e.target.value)
+                                onChange={(val) =>
+                                  handleUpdateSplitRow(row.id, 'recipient', val)
                                 }
-                                className="flex-1 p-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs font-medium cursor-pointer"
-                              >
-                                <option value="On-Site Cash Safe">On-Site Cash Safe (System)</option>
-                                <optgroup label="Staff Accounts (Login Team)">
-                                  <option value="Kamlesh [Staff]">Kamlesh [Staff]</option>
-                                  <option value="Rohit [Staff]">Rohit [Staff]</option>
-                                  <option value="Subrata [Staff]">Subrata [Staff]</option>
-                                  <option value="Tarpan [Staff]">Tarpan [Staff]</option>
-                                </optgroup>
-                                <optgroup label="Core Business Vendors (Groceries/Upkeep)">
-                                  <option value="Disposable Shop [Vendor]">Disposable Shop [Vendor]</option>
-                                  <option value="Raju [Vendor]">Raju [Vendor]</option>
-                                </optgroup>
-                                <optgroup label="Third Parties (Pass-Through Routing)">
-                                  <option value="Nandkishore [ThirdParty]">Nandkishore [ThirdParty]</option>
-                                </optgroup>
-                              </select>
+                                options={[
+                                  { value: 'On-Site Cash Safe', label: 'On-Site Cash Safe (System)' },
+                                  { value: 'Kamlesh [Staff]', label: 'Kamlesh [Staff]', group: 'Staff Accounts (Login Team)' },
+                                  { value: 'Rohit [Staff]', label: 'Rohit [Staff]', group: 'Staff Accounts (Login Team)' },
+                                  { value: 'Subrata [Staff]', label: 'Subrata [Staff]', group: 'Staff Accounts (Login Team)' },
+                                  { value: 'Tarpan [Staff]', label: 'Tarpan [Staff]', group: 'Staff Accounts (Login Team)' },
+                                  { value: 'Disposable Shop [Vendor]', label: 'Disposable Shop [Vendor]', group: 'Core Business Vendors (Groceries/Upkeep)' },
+                                  { value: 'Raju [Vendor]', label: 'Raju [Vendor]', group: 'Core Business Vendors (Groceries/Upkeep)' },
+                                  { value: 'Nandkishore [ThirdParty]', label: 'Nandkishore [ThirdParty]', group: 'Third Parties (Pass-Through Routing)' },
+                                ]}
+                              />
 
                               <button
                                 type="button"

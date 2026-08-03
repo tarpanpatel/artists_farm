@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins } from 'lucide-react';
+import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins, Package, Check } from 'lucide-react';
 import { InventoryItem, StaffMember, CatalogItem } from '../types';
-import { SearchableSelect } from './SearchableSelect';
+import { StyledSelect } from './StyledSelect';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -246,8 +246,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const handleSaveCatalogItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!catItemName) return;
-    
+    if (!catItemName || !catCategory) return;
+
     // Upload image if one is selected (base64 data URI)
     let savedImagePath = catImagePath;
     if (catImagePath && catImagePath.startsWith('data:image')) {
@@ -404,7 +404,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
 
     if (missingCost) {
-      alert('⚠️ Cost/Price is mandatory for all items being delivered!');
+      showToast('⚠️ Cost/Price is mandatory for all items being delivered!', { type: 'warning' });
       return;
     }
 
@@ -593,7 +593,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const handleDispatchReq = async () => {
     if (reqBasket.length === 0 && !specialRequestText.trim()) {
-      alert('Supply basket is empty!');
+      showToast('Supply basket is empty!', { type: 'warning' });
       return;
     }
     const newSheetId = `${1167 + recentSheets.length}`;
@@ -823,17 +823,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Select Material Item *</label>
-                <select
-                  required
+                <StyledSelect
+                  searchable
                   value={wastedItem}
-                  onChange={e => setWastedItem(e.target.value)}
-                  className="wastage-item-select w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
-                >
-                  <option value="">-- Choose Catalog Item --</option>
-                  {catalogItems.map(item => (
-                    <option key={item.id} value={item.name}>{item.name} ({item.category})</option>
-                  ))}
-                </select>
+                  onChange={setWastedItem}
+                  placeholder="-- Choose Catalog Item --"
+                  options={catalogItems.map(item => ({ value: item.name, label: `${item.name} (${item.category})` }))}
+                />
               </div>
 
               <div>
@@ -849,35 +845,29 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     placeholder="0.00"
                     className="wastage-qty-input w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
                   />
-                  <select
+                  <StyledSelect
+                    className="w-28 shrink-0"
                     value={wastedUnit}
-                    onChange={e => setWastedUnit(e.target.value)}
-                    className="wastage-unit-select p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                  >
-                    <option value="Kg">Kg</option>
-                    <option value="Gm">Gm</option>
-                    <option value="Ltr">Ltr</option>
-                    <option value="Ml">Ml</option>
-                    <option value="Pcs">Pcs</option>
-                    <option value="Pack">Pack</option>
-                  </select>
+                    onChange={setWastedUnit}
+                    options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pcs', 'Pack'].map(u => ({ value: u, label: u }))}
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Reason for Loss *</label>
-                <select
+                <StyledSelect
                   value={wastedReason}
-                  onChange={e => setWastedReason(e.target.value)}
-                  className="wastage-reason-select w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
-                >
-                  <option value="Spillage / Leakage">💧 Spillage / Leakage</option>
-                  <option value="Spoilage / Expiry">🥬 Spoilage / Expiry</option>
-                  <option value="Cooking Wastage">🔥 Cooking Wastage</option>
-                  <option value="Damaged Packaging">📦 Damaged Packaging</option>
-                  <option value="Theft / Loss">🚨 Theft / Discrepancy</option>
-                  <option value="Other">❓ Other Incident</option>
-                </select>
+                  onChange={setWastedReason}
+                  options={[
+                    { value: 'Spillage / Leakage', label: '💧 Spillage / Leakage' },
+                    { value: 'Spoilage / Expiry', label: '🥬 Spoilage / Expiry' },
+                    { value: 'Cooking Wastage', label: '🔥 Cooking Wastage' },
+                    { value: 'Damaged Packaging', label: '📦 Damaged Packaging' },
+                    { value: 'Theft / Loss', label: '🚨 Theft / Discrepancy' },
+                    { value: 'Other', label: '❓ Other Incident' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -996,7 +986,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const handleSavePurchase = (e: React.FormEvent) => {
       e.preventDefault();
       if (!purItemName || !purQty || !purTotalPrice) {
-        alert('Please fill out all required purchase fields!');
+        showToast('Please fill out all required purchase fields!', { type: 'warning' });
         return;
       }
 
@@ -1043,11 +1033,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const handleAssignVendor = (e: React.MouseEvent) => {
       e.preventDefault();
       if (selectedPurIds.length === 0) {
-        alert('Please select at least one purchase item using checkboxes in the log table below!');
+        showToast('Please select at least one purchase item using checkboxes in the log table below!', { type: 'warning' });
         return;
       }
       if (!selectedVendorToPay) {
-        alert('Please choose a vendor to assign!');
+        showToast('Please choose a vendor to assign!', { type: 'warning' });
         return;
       }
 
@@ -1063,11 +1053,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const handleMarkSelectedPaid = (e: React.MouseEvent) => {
       e.preventDefault();
       if (selectedPurIds.length === 0) {
-        alert('Please select at least one purchase item using checkboxes in the log table below!');
+        showToast('Please select at least one purchase item using checkboxes in the log table below!', { type: 'warning' });
         return;
       }
       if (!selectedPaidByStaff) {
-        alert('Please select who paid (Step 2: Paid By)!');
+        showToast('Please select who paid (Step 2: Paid By)!', { type: 'warning' });
         return;
       }
 
@@ -1080,7 +1070,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       const totalSplit = farmCash + outOfPocket;
 
       if (totalSplit !== totalCostSelected) {
-        alert(`Split amounts (₹${farmCash} + ₹${outOfPocket} = ₹${totalSplit}) must equal total selected ₹${totalCostSelected}.`);
+        showToast(`Split amounts (₹${farmCash} + ₹${outOfPocket} = ₹${totalSplit}) must equal total selected ₹${totalCostSelected}.`, { type: 'warning' });
         return;
       }
 
@@ -1158,7 +1148,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Top Form: RECORD KITCHEN PURCHASES & STOCK */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <span className="text-slate-400 font-bold text-sm">🔍</span>
+            <Search className="text-slate-400 w-4 h-4" />
             <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
               RECORD KITCHEN PURCHASES & STOCK
             </h3>
@@ -1181,8 +1171,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
                 INVENTORY ITEM DETAIL (SELECT FROM MASTER MATERIALS CATALOG)
               </label>
-              <SearchableSelect
-                required
+              <StyledSelect
+                searchable
                 value={purItemName}
                 onChange={val => {
                   setPurItemName(val);
@@ -1200,7 +1190,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   }
                 }}
                 placeholder="Select product from Master Catalog... (e.g., Amul Butter)"
-                inputClassName="w-full p-2.5 text-xs font-semibold text-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden focus:border-cyan-500 bg-white dark:bg-slate-900"
                 options={catalogItems.map(item => ({
                   value: item.name,
                   label: `${item.name} (${item.category}) - ₹${item.price}/${item.packUnit || item.unitLabel}`,
@@ -1300,16 +1289,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Step 1: Assign Vendor */}
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-bold text-slate-700 text-xs w-12">1. To:</span>
-              <select
+              <StyledSelect
+                className="max-w-xs w-full"
                 value={selectedVendorToPay}
-                onChange={e => setSelectedVendorToPay(e.target.value)}
-                className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 max-w-xs w-full"
-              >
-                <option value="">-- Choose Vendor to Pay --</option>
-                {dbVendors.filter(v => v.type === 'Vendor').map(v => (
-                  <option key={v.id} value={v.name}>{v.name}</option>
-                ))}
-              </select>
+                onChange={setSelectedVendorToPay}
+                placeholder="-- Choose Vendor to Pay --"
+                options={dbVendors.filter(v => v.type === 'Vendor').map(v => ({ value: v.name, label: v.name }))}
+              />
               <button
                 onClick={handleAssignVendor}
                 className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
@@ -1322,18 +1308,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
               <span className="font-bold text-slate-700 text-xs w-12">2. Paid By:</span>
               {currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? (
-                <select
+                <StyledSelect
+                  className="max-w-xs w-full"
                   value={selectedPaidByStaff}
-                  onChange={e => setSelectedPaidByStaff(e.target.value)}
-                  className="p-2 border border-slate-300 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 max-w-xs w-full"
-                >
-                  <option value="">-- Paid By --</option>
-                  {cashHandlers.map(u => (
-                    <option key={u.id} value={u.username || u.name}>
-                      {u.name || u.username} ({u.role})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedPaidByStaff}
+                  placeholder="-- Paid By --"
+                  options={cashHandlers.map(u => ({
+                    value: u.username || u.name,
+                    label: `${u.name || u.username} (${u.role})`,
+                  }))}
+                />
               ) : (
                 <input
                   value={selectedPaidByStaff}
@@ -1566,7 +1550,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Header Title & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="text-slate-800 font-extrabold text-sm uppercase tracking-wider flex items-center gap-2">
-            <span>📦</span> Master Materials Catalog
+            <Package className="w-4 h-4 text-slate-700" /> Master Materials Catalog
           </div>
           
           <div className="flex items-center gap-2">
@@ -1648,8 +1632,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         autoFocus
                         className="flex-1 p-1 border border-blue-500 rounded text-xs"
                       />
-                      <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-green-600 hover:text-green-700 text-xs font-bold cursor-pointer">✓</button>
-                      <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer">✕</button>
+                      <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-green-600 hover:text-green-700 cursor-pointer p-1">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-1">
+                        <X className="w-4 h-4" />
+                      </button>
                     </>
                   ) : (
                     <>
@@ -1703,16 +1691,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <select
+              <StyledSelect
+                className="flex-1 sm:flex-none"
                 value={bulkTargetCategory}
-                onChange={(e) => setBulkTargetCategory(e.target.value)}
-                className="flex-1 sm:flex-none bg-white border border-blue-300 text-slate-800 text-xs font-semibold px-3 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-              >
-                <option value="" disabled>Select Target Category...</option>
-                {catalogCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-              </select>
+                onChange={setBulkTargetCategory}
+                placeholder="Select Target Category..."
+                options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
+              />
               <button
                 onClick={() => handleBulkAssignCategory(bulkTargetCategory)}
                 disabled={!bulkTargetCategory}
@@ -1927,58 +1912,61 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Add/Edit Modal */}
         {isCatalogModalOpen && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between p-4 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-bold text-slate-800 dark:text-white">
                   {editingCatalogItem ? '✏️ Edit Catalog Item' : '➕ Register New Material'}
                 </h3>
-                <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
               <form onSubmit={handleSaveCatalogItem} className="p-4 space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Item Name</label>
-                  <input type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden" placeholder="e.g. Tomato Puree" />
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Item Name</label>
+                  <input type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" placeholder="e.g. Tomato Puree" />
                 </div>
-                
+
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Category</label>
-                  <select required value={catCategory} onChange={e => setCatCategory(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden bg-white">
-                    <option value="">Select category...</option>
-                    {catalogCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Category</label>
+                  <StyledSelect
+                    value={catCategory}
+                    onChange={setCatCategory}
+                    placeholder="Select category..."
+                    error={!catCategory}
+                    options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Base Price (₹)</label>
-                    <input type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden" />
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Base Price (₹)</label>
+                    <input type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
                   </div>
                   <div className="flex gap-2">
                     <div className="w-1/2">
-                      <label className="block text-slate-700 font-bold mb-1">Pack Size</label>
-                      <input type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden" />
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Pack Size</label>
+                      <input type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
                     </div>
                     <div className="w-1/2">
-                      <label className="block text-slate-700 font-bold mb-1">Unit</label>
-                      <select value={catUnit} onChange={e => setCatUnit(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-hidden">
-                        {['Kg', 'Gms', 'Liter', 'Ml', 'Packets', 'Pc', 'Box', 'Dozen'].map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Unit</label>
+                      <StyledSelect
+                        value={catUnit}
+                        onChange={setCatUnit}
+                        options={['Kg', 'Gms', 'Liter', 'Ml', 'Packets', 'Pc', 'Box', 'Dozen'].map(u => ({ value: u, label: u }))}
+                      />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Upload Image (Auto-crops to 150x50)</label>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 rounded-lg text-slate-500" />
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Upload Image (Auto-crops to 150x50)</label>
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
                   {catImagePath && (
                     <div className="mt-2">
-                      <p className="text-[10px] text-slate-500 mb-1">Preview:</p>
-                      <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 rounded shadow-xs" />
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Preview:</p>
+                      <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-xs" />
                     </div>
                   )}
                 </div>
@@ -2201,19 +2189,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             </div>
                             <div>
                               <label className="block text-[9px] text-slate-400 font-semibold mb-1">Unit Format</label>
-                              <select 
+                              <StyledSelect
                                 value={data.unit}
-                                onChange={(e) => updateFulfillData(namePart, 'unit', e.target.value)}
-                                className="w-full p-2 text-sm font-semibold text-slate-700 border border-slate-200 rounded-lg focus:outline-hidden focus:border-cyan-500 cursor-pointer shadow-xs"
-                              >
-                                <option value="Kg">Kg</option>
-                                <option value="Gm">Gm</option>
-                                <option value="Ltr">Ltr</option>
-                                <option value="Ml">Ml</option>
-                                <option value="Pack">Pack</option>
-                                <option value="Pcs">Pcs</option>
-                                <option value="Box">Box</option>
-                              </select>
+                                onChange={(val) => updateFulfillData(namePart, 'unit', val)}
+                                options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pack', 'Pcs', 'Box'].map(u => ({ value: u, label: u }))}
+                              />
                             </div>
                           </div>
                         </div>
@@ -2765,17 +2745,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Category</label>
-                <select
+                <StyledSelect
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                >
-                  <option value="Groceries">Groceries</option>
-                  <option value="Dairy">Dairy</option>
-                  <option value="Oils">Oils & Spices</option>
-                  <option value="Kitchen Fuel">Kitchen Fuel</option>
-                  <option value="Maintenance">Maintenance & Cleaning</option>
-                </select>
+                  onChange={setCategory}
+                  options={[
+                    { value: 'Groceries', label: 'Groceries' },
+                    { value: 'Dairy', label: 'Dairy' },
+                    { value: 'Oils', label: 'Oils & Spices' },
+                    { value: 'Kitchen Fuel', label: 'Kitchen Fuel' },
+                    { value: 'Maintenance', label: 'Maintenance & Cleaning' },
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -2801,16 +2781,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Unit</label>
-                  <select
+                  <StyledSelect
                     value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                  >
-                    <option value="kg">kg</option>
-                    <option value="liters">liters</option>
-                    <option value="pcs">pcs</option>
-                    <option value="packets">packets</option>
-                  </select>
+                    onChange={setUnit}
+                    options={[
+                      { value: 'kg', label: 'kg' },
+                      { value: 'liters', label: 'liters' },
+                      { value: 'pcs', label: 'pcs' },
+                      { value: 'packets', label: 'packets' },
+                    ]}
+                  />
                 </div>
               </div>
 

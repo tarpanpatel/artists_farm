@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
+import { ReceiptEditModal } from './ReceiptEditModal';
+import { StyledSelect } from './StyledSelect';
 
 interface BillingCheckoutProps {
   guests: Guest[];
@@ -22,6 +24,7 @@ interface BillingCheckoutProps {
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
   onNavigateToGuestRegistration?: () => void;
+  kitchenModuleEnabled?: boolean;
 }
 
 interface GroupedRoomBooking {
@@ -39,12 +42,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   rooms = [],
   onCheckoutClick,
   onNavigateToGuestRegistration,
+  kitchenModuleEnabled = true,
 }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'Active' | 'All'>('Active');
   const [selectedGuestForCheckout, setSelectedGuestForCheckout] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [guestForReceipt, setGuestForReceipt] = useState<Guest | null>(null);
+  const [modalMode, setModalMode] = useState<'edit-only' | 'edit-and-checkout'>('edit-only');
 
   // Filter active guests
   const activeGuests = useMemo(
@@ -68,14 +75,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
     // For MultiKey: group by room
     const grouped: GroupedRoomBooking[] = rooms
-      .map((room) => ({
-        roomId: room.id,
-        roomName: room.name,
-        roomSlug: room.slug,
-        guests: (filterStatus === 'Active' ? activeGuests : guests).filter(
-          (g) => g.roomNumber === room.name || g.roomNumber === room.slug
-        ),
-      }))
+      .map((room) => {
+        const roomNum = room.name.match(/\d+/)?.[0]; // Extract number from "Room 101"
+        return {
+          roomId: room.id,
+          roomName: room.name,
+          roomSlug: room.slug,
+          guests: (filterStatus === 'Active' ? activeGuests : guests).filter((g) => {
+            // Match against: room name, slug, or extracted room number
+            return (
+              g.roomNumber === room.name || // "101" === "Room 101"
+              g.roomNumber === room.slug || // "101" === "room-101"
+              g.roomNumber === roomNum ||   // "101" === "101"
+              g.roomNumber === `Room ${roomNum}` // "101" === "Room 101"
+            );
+          }),
+        };
+      })
       .filter((group) => group.guests.length > 0); // Only show rooms with bookings
 
     return grouped;
@@ -103,73 +119,46 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return roomCharges - advancePaid + foodBill;
   };
 
-  // Handle checkout initiation
-  const handleInitiateCheckout = (guest: Guest) => {
+  // Handle edit only - open receipt modal in edit mode
+  const handleEditGuest = (guest: Guest) => {
     setSelectedGuestForCheckout(guest.id);
-    if (onCheckoutClick) {
-      onCheckoutClick(guest.id);
-    } else {
-      // Show checkout modal or navigate to billing
-      showToast(`Initiating checkout for ${guest.guestName}...`, { type: 'info' });
-    }
+    setGuestForReceipt(guest);
+    setModalMode('edit-only');
+    setReceiptModalOpen(true);
   };
 
-  // Handle complete checkout
-  const handleCompleteCheckout = async (guest: Guest) => {
-    if (window.confirm(`Complete checkout for ${guest.guestName}?`)) {
-      setIsProcessing(true);
-      try {
-        const checkoutDateStr = new Date().toISOString().split('T')[0];
-        const amountDue = calculateGuestTotal(guest);
-
-        const receipt: BillingReceipt = {
-          id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-          guestId: guest.id,
-          guestName: guest.guestName,
-          roomNumber: guest.roomNumber,
-          checkinDate: guest.checkinDate,
-          checkoutDate: checkoutDateStr,
-          roomTotal: guest.roomRate ?? guest.totalAmount ?? 0,
-          kitchenTotal: guest.foodBill ?? 0,
-          miscTotal: 0,
-          discount: 0,
-          grandTotal: guest.roomRate ?? guest.totalAmount ?? 0,
-          status: 'Paid',
-          paymentMethod: 'Cash',
-          advancePaid: guest.advanceAmount ?? 0,
-        };
-
-        onCheckoutGuest(receipt);
-        showToast(`Checkout completed for ${guest.guestName}!`, { type: 'success' });
-        setSelectedGuestForCheckout(null);
-      } catch (error) {
-        showToast('Error processing checkout', { type: 'error' });
-        console.error('Checkout error:', error);
-      } finally {
-        setIsProcessing(false);
-      }
-    }
+  // Handle edit and checkout - open receipt modal in checkout mode
+  const handleEditAndCheckoutGuest = (guest: Guest) => {
+    setSelectedGuestForCheckout(guest.id);
+    setGuestForReceipt(guest);
+    setModalMode('edit-and-checkout');
+    setReceiptModalOpen(true);
   };
+
 
   // Format date for display
   const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '—';
     try {
       const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '—';
       return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
     } catch {
-      return dateStr;
+      return '—';
     }
   };
 
   // Calculate nights
   const calculateNights = (checkin: string, checkout: string): number => {
+    if (!checkin || !checkout) return 0;
     try {
       const checkinDate = new Date(checkin);
       const checkoutDate = new Date(checkout);
+      if (isNaN(checkinDate.getTime()) || isNaN(checkoutDate.getTime())) return 0;
       const diffTime = checkoutDate.getTime() - checkinDate.getTime();
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     } catch {
-      return 1;
+      return 0;
     }
   };
 
@@ -189,10 +178,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           <p className="font-semibold mb-2">📝 Next Step: Register a Guest</p>
           <p className="text-xs mb-3">
             Go to <span className="font-mono bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">Guest Registration</span> to check in guests.
-            Once guests are checked in, checkout options will appear here.
-          </p>
-          <p className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-4">
-            Checkout options include: Proceed to Billing, Complete Checkout, Edit & Checkout
+            Once guests are checked in, you'll be able to edit and checkout here.
           </p>
           {onNavigateToGuestRegistration && (
             <button
@@ -244,14 +230,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 outline-none"
           />
         </div>
-        <select
+        <StyledSelect
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as 'Active' | 'All')}
-          className="px-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 outline-none"
-        >
-          <option value="Active">Active Only</option>
-          <option value="All">All Bookings</option>
-        </select>
+          onChange={(value) => setFilterStatus(value as 'Active' | 'All')}
+          options={[
+            { value: 'Active', label: 'Active Only' },
+            { value: 'All', label: 'All Bookings' },
+          ]}
+        />
       </div>
 
       {/* Room Groups (MultiKey) or Flat List (Single Property) */}
@@ -364,25 +350,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+                    <div className="flex gap-3">
                       <button
-                        onClick={() => handleInitiateCheckout(guest)}
+                        onClick={() => handleEditGuest(guest)}
                         disabled={isProcessing}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer"
                       >
-                        <DollarSign className="w-4 h-4" />
-                        Proceed to Billing
-                      </button>
-                      <button
-                        onClick={() => handleCompleteCheckout(guest)}
-                        disabled={isProcessing}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer"
-                      >
                         <CheckCircle2 className="w-4 h-4" />
-                        Complete Checkout
+                        Edit
                       </button>
                       <button
-                        onClick={() => handleInitiateCheckout(guest)}
+                        onClick={() => handleEditAndCheckoutGuest(guest)}
                         disabled={isProcessing}
                         className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer"
                       >
@@ -434,6 +412,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           </p>
         </div>
       )}
+
+      {/* Receipt Edit Modal */}
+      <ReceiptEditModal
+        isOpen={receiptModalOpen}
+        guest={guestForReceipt}
+        onClose={() => {
+          setReceiptModalOpen(false);
+          setGuestForReceipt(null);
+        }}
+        onCheckout={(receipt) => {
+          onCheckoutGuest(receipt);
+          setReceiptModalOpen(false);
+          setGuestForReceipt(null);
+          showToast(`Checkout completed for ${receipt.guestName}!`, { type: 'success' });
+        }}
+        isProcessing={isProcessing}
+        mode={modalMode}
+        kitchenModuleEnabled={kitchenModuleEnabled}
+      />
     </div>
   );
 };

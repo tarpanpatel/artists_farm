@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader } from 'lucide-react';
+import { useConfirm } from './ConfirmDialogContext';
+import { StyledSelect } from './StyledSelect';
 
 interface ExpenseItem {
   id: number;
@@ -14,6 +16,7 @@ interface CategoryGroup {
 }
 
 export const DefaultExpensesManager: React.FC = () => {
+  const { confirm } = useConfirm();
   const [expenses, setExpenses] = useState<CategoryGroup>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,13 @@ export const DefaultExpensesManager: React.FC = () => {
   }, []);
 
   const handleSyncDefaults = async () => {
-    if (!window.confirm('This will populate all 20 default expense categories across all MultiKey properties. Continue?')) return;
+    const confirmed = await confirm({
+      title: 'Sync Default Expenses',
+      message: 'This will populate all 20 default expense categories across all MultiKey properties. Continue?',
+      confirmText: 'Sync Defaults',
+      variant: 'info',
+    });
+    if (!confirmed) return;
 
     try {
       setSyncing(true);
@@ -144,7 +153,13 @@ export const DefaultExpensesManager: React.FC = () => {
   };
 
   const handleDeleteItem = async (itemId: number, itemLabel: string) => {
-    if (!window.confirm(`Delete "${itemLabel}"? This action cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: 'Delete Expense Category',
+      message: `Delete "${itemLabel}"? This action cannot be undone.`,
+      confirmText: 'Delete Category',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       setSaving(true);
@@ -250,18 +265,13 @@ export const DefaultExpensesManager: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Category *
                 </label>
-                <select
+                <StyledSelect
                   value={newItem.category}
-                  onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                >
-                  <option value="">-- Select Category --</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setNewItem({ ...newItem, category: value })}
+                  placeholder="-- Select Category --"
+                  searchable
+                  options={categories.map((cat) => ({ value: cat, label: cat }))}
+                />
               </div>
             </div>
             <div className="flex gap-2">
