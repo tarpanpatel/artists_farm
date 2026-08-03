@@ -96,8 +96,10 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
         const [modules, navItems, telegramConfig] = results as any[];
 
-        // If property doesn't exist (was deleted), show invalid property page
-        // Check if property is null, undefined, or empty object/array
+        // If property doesn't exist (was deleted, or the slug didn't resolve), show invalid
+        // property page rather than silently loading an unrelated property's data - this is a
+        // multi-tenant app, so falling back to "whatever property is first in the database"
+        // would leak a different tenant's data for a mistyped or stale URL.
         if (!property || (typeof property === 'object' && Object.keys(property).length === 0)) {
           setInvalidProperty(propertySlug);
           setIsLoading(false);

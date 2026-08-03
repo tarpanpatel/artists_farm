@@ -20,6 +20,7 @@ interface BillingCheckoutProps {
   guests: Guest[];
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
+  onUpdateGuest?: (updatedGuest: Guest) => void;
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
@@ -38,6 +39,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   guests,
   receipts,
   onCheckoutGuest,
+  onUpdateGuest,
   isMultiKeyProperty = false,
   rooms = [],
   onCheckoutClick,
@@ -104,7 +106,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
   };
 
-  // Deduplicate guests array to ensure no duplicate cards ever appear
+  // Deduplicate and sanitize guests array to ensure no invalid/orphan cards ever appear
   const uniqueGuests = useMemo(() => {
     const seenIds = new Set<string>();
     const seenKeys = new Set<string>();
@@ -112,9 +114,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
     for (const g of guests) {
       if (!g) continue;
-      const id = String(g.id || '');
-      const name = (g.guestName || '').toLowerCase().trim();
+
+      const rawName = (g.guestName || '').trim();
       const phone = (g.phoneNumber || '').trim();
+
+      // Filter out invalid/orphaned system placeholders ("Guest" or blank with no contact number)
+      if ((rawName.toLowerCase() === 'guest' || rawName === '' || rawName.toLowerCase() === 'unassigned') && (!phone || phone.length < 5)) {
+        continue;
+      }
+
+      const id = String(g.id || '');
+      const name = rawName.toLowerCase();
       const checkin = (g.checkinDate || '').split(' ')[0].split('T')[0];
       const room = (g.roomNumber || '').toLowerCase().trim();
 
@@ -173,22 +183,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     });
   }, [guests, activeTab, selectedRoomFilter, rooms, todayStr]);
 
-  // Group guests by room for MultiKey properties
+  // Group guests by room for ALL properties (Single property is treated as a 1-room unit)
   const groupedByRoom = useMemo(() => {
-    if (!isMultiKeyProperty || !rooms.length) {
-      return [
-        {
-          roomId: 0,
-          roomName: selectedRoomFilter !== 'all' ? selectedRoomFilter : 'All Bookings',
-          roomSlug: 'all',
-          guests: targetGuests,
-        },
-      ];
-    }
+    const effectiveRooms = rooms.length > 0 
+      ? rooms 
+      : [{ id: 1, name: 'Main Property / Villa', slug: 'main-villa' }];
 
-    // For MultiKey: group by room
     const matchedGuestIds = new Set<string>();
-    const grouped: GroupedRoomBooking[] = rooms
+    const grouped: GroupedRoomBooking[] = effectiveRooms
       .filter((room) => selectedRoomFilter === 'all' || room.name === selectedRoomFilter || room.slug === selectedRoomFilter)
       .map((room) => {
         const roomNum = room.name.match(/\d+/)?.[0];
@@ -201,6 +203,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           const rSlug = room.slug.toLowerCase().trim();
 
           return (
+            rooms.length === 0 || // for single property, target guests belong to this unit
             gRoom === rName ||
             gRoom === rSlug ||
             (roomNum && gRoom === roomNum) ||
@@ -233,7 +236,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
 
     return grouped;
-  }, [isMultiKeyProperty, rooms, targetGuests, selectedRoomFilter]);
+  }, [rooms, targetGuests, selectedRoomFilter]);
 
   // Apply search filter
   const filteredGroups = useMemo(
@@ -305,25 +308,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-              <Receipt className="w-7 h-7 text-blue-600" />
-              {isMultiKeyProperty ? 'Multi-Room Billing Terminal' : 'Guest Billing & Checkout'}
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              {isMultiKeyProperty
-                ? `${filteredGroups.length} room(s) displayed`
-                : `${totalFilteredGuestsCount} guest(s) displayed`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
-            <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
-              {totalFilteredGuestsCount} Guest Record{totalFilteredGuestsCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
+        <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+          <Receipt className="w-7 h-7 text-blue-600" />
+          Guest Billing & Checkout
+        </h2>
       </div>
 
       {/* Tabs Navigation & Search Bar */}
@@ -430,22 +418,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between"
             >
               {/* Room Header */}
-              {isMultiKeyProperty && (
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                      <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                      {group.roomName}
-                    </h3>
-                    <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
-                      {roomStatusLabel}
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
-                    Total: ₹{group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0).toFixed(2)}
-                  </span>
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                    <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    {group.roomName}
+                  </h3>
+                  <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                    {roomStatusLabel}
+                  </p>
                 </div>
-              )}
+                <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                  Total: ₹{group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0).toFixed(2)}
+                </span>
+              </div>
 
               {/* Guest Card(s) stacked inside Room Column */}
               <div className="p-4 space-y-4">
@@ -454,6 +440,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                   const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
                   const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : 'Same day stay';
                   const stayStatus = getGuestStayStatus(guest);
+                  const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
 
                   return (
                     <div
@@ -509,32 +496,47 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           </div>
                         )}
                         <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                          <span className="text-slate-700 dark:text-slate-300">Amount Due:</span>
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {amountDue < 0 ? 'Refund Due to Guest:' : 'Amount Due:'}
+                          </span>
                           <span className={amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}>
-                            ₹{amountDue.toFixed(2)}
+                            ₹{Math.abs(amountDue).toFixed(2)}
                           </span>
                         </div>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-0.5">
-                        <button
-                          onClick={() => handleEditGuest(guest)}
-                          disabled={isProcessing}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleEditAndCheckoutGuest(guest)}
-                          disabled={isProcessing}
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          Checkout
-                        </button>
-                      </div>
+                      {canCheckout ? (
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
+                          <button
+                            onClick={() => handleEditGuest(guest)}
+                            disabled={isProcessing}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleEditAndCheckoutGuest(guest)}
+                            disabled={isProcessing}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Checkout
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="pt-0.5">
+                          <button
+                            onClick={() => handleEditGuest(guest)}
+                            disabled={isProcessing}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Edit Booking
+                          </button>
+                        </div>
+                      )}
 
                       {/* Guest Notes */}
                       {guest.notes && (
@@ -567,10 +569,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </div>
       )}
 
-      {/* Receipt Edit Modal */}
+      {/* Receipt Edit Modal with Blocked Dates Calendar */}
       <ReceiptEditModal
         isOpen={receiptModalOpen}
         guest={guestForReceipt}
+        allGuests={uniqueGuests}
         onClose={() => {
           setReceiptModalOpen(false);
           setGuestForReceipt(null);
@@ -580,6 +583,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           setReceiptModalOpen(false);
           setGuestForReceipt(null);
           showToast(`Checkout completed for ${receipt.guestName}!`, { type: 'success' });
+        }}
+        onUpdateGuest={(updatedGuest) => {
+          onUpdateGuest?.(updatedGuest);
+          showToast(`Booking details updated for ${updatedGuest.guestName}!`, { type: 'success' });
         }}
         isProcessing={isProcessing}
         mode={modalMode}

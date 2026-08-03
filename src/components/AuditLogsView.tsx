@@ -751,7 +751,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* MODIFY BILL & AUDIT MODAL MATCHING SCREENSHOT */}
       {editingReceipt && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-6 max-h-[92vh] flex flex-col">
 
             {/* Header */}

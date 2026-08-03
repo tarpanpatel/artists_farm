@@ -686,6 +686,11 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
         const checkin = (g.checkinDate || g.checkin_date || g.check_in || '').split(' ')[0];
         const room = (g.roomNumber || g.room_number || 'Unassigned').trim();
 
+        // Filter out invalid/orphaned system placeholders ("Guest" or blank with no contact number)
+        if ((name.toLowerCase() === 'guest' || name === '' || name.toLowerCase() === 'unassigned') && (!phone || phone.length < 5)) {
+          continue;
+        }
+
         // 1. Deduplicate by ID
         if (id && seenIds.has(id)) continue;
 
@@ -839,21 +844,27 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
     const res = await apiFetch(`${API_BASE}?action=get_orders`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data.map((o: any) => ({
-        id: String(o.id || ''),
-        guestId: String(o.guest_id || ''),
-        guestName: o.guest_name || 'Walk-in',
-        roomNumber: o.room_number || '',
-        items: Array.isArray(o.items) ? o.items.map((it: any) => ({
-          name: it.name || it.item_name || '',
-          quantity: Number(it.quantity) || 1,
-          unitPrice: Number(it.unit_price || it.price) || 0,
-          itemStatus: it.item_status || 'Pending',
-        })) : [],
-        status: o.status || 'Pending',
-        orderTime: o.order_time || '',
-        totalAmount: Number(o.total_amount) || 0,
-      }));
+      return json.data
+        .map((o: any) => ({
+          id: String(o.id || ''),
+          guestId: String(o.guest_id || ''),
+          guestName: (o.guest_name || 'Walk-in').trim(),
+          roomNumber: (o.room_number || '').trim(),
+          items: Array.isArray(o.items)
+            ? o.items
+                .filter((it: any) => (it.name || it.item_name) && Number(it.quantity) > 0)
+                .map((it: any) => ({
+                  name: (it.name || it.item_name || '').trim(),
+                  quantity: Math.max(1, Number(it.quantity) || 1),
+                  unitPrice: Math.max(0, Number(it.unit_price || it.price) || 0),
+                  itemStatus: it.item_status || 'Pending',
+                }))
+            : [],
+          status: o.status || 'Pending',
+          orderTime: o.order_time || '',
+          totalAmount: Math.max(0, Number(o.total_amount) || 0),
+        }))
+        .filter((o) => o.items.length > 0 || o.totalAmount > 0);
     }
   } catch (err) {
     console.error('Failed to fetch orders from DB:', err);

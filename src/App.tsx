@@ -1391,6 +1391,7 @@ ${itemsStr}
                     receipts={receipts}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
+                    onUpdateGuest={handleUpdateGuest}
                     activeMenuItemKey={activeMenuItemKey}
                     onDispatchTelegram={dispatchTelegramAlert}
                     menu={menu}
@@ -1398,6 +1399,7 @@ ${itemsStr}
                     rooms={preloadedData.currentProperty?.rooms}
                     onSetActiveMenuItemKey={setActiveMenuItemKey}
                     selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
                     onNavigateToBilling={(guestId) => {
                       // Navigate to billing view for guest
                     }}

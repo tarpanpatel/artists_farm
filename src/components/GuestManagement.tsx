@@ -49,6 +49,7 @@ interface GuestManagementProps {
   menu: MenuItem[];
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
+  onUpdateGuest?: (updatedGuest: Guest) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   isMultiKeyProperty?: boolean;
@@ -58,6 +59,7 @@ interface GuestManagementProps {
   selectedRoomSlug?: string | null;
   preSelectRoom?: string;
   onClose?: () => void;
+  kitchenModuleEnabled?: boolean;
 }
 
 
@@ -89,6 +91,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   menu,
   onAddGuest,
   onCheckoutGuest,
+  onUpdateGuest,
   activeMenuItemKey,
   onDispatchTelegram,
   isMultiKeyProperty = false,
@@ -98,6 +101,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   selectedRoomSlug,
   preSelectRoom,
   onClose,
+  kitchenModuleEnabled = true,
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
@@ -1030,17 +1034,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     );
   }
 
-  // For MultiKey properties, show the new room-grouped BillingCheckout view
-  if (activeMenuItemKey === 'billing_checkout' && isMultiKeyProperty) {
+  // For ALL properties, show the unified BillingCheckout view
+  if (activeMenuItemKey === 'billing_checkout') {
     return (
       <BillingCheckout
         guests={guests}
         receipts={receipts}
         onCheckoutGuest={onCheckoutGuest}
-        isMultiKeyProperty={true}
+        onUpdateGuest={onUpdateGuest}
+        isMultiKeyProperty={isMultiKeyProperty}
         rooms={rooms}
         onCheckoutClick={onNavigateToBilling}
         onNavigateToGuestRegistration={() => onSetActiveMenuItemKey?.('guest_registration')}
+        kitchenModuleEnabled={kitchenModuleEnabled}
       />
     );
   }
@@ -1631,7 +1637,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* POPUP MODAL 1: HIGH CONTRAST UPI QR LIGHTBOX                             */}
       {/* ========================================================================= */}
       {isQrModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
             <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
               Scan UPI QR Target: {qrModalTitle}
@@ -1672,7 +1678,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* POPUP MODAL 2: CLEAN PRINT-FRIENDLY RECEIPT                              */}
       {/* ========================================================================= */}
       {isPrintModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
           <div
             id="printableReceiptModalContent"
             className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs relative"
