@@ -301,6 +301,25 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
         loadPortalLogs();
     }
 
+    function matchesTimeframe(log, timeframe, dateFrom, dateTo) {
+        if (timeframe === 'custom') {
+            if (!dateFrom && !dateTo) return true;
+            if (!log.timestamp) return true;
+            const logDate = log.timestamp.split(' ')[0].split('T')[0];
+            if (dateFrom && logDate < dateFrom) return false;
+            if (dateTo && logDate > dateTo) return false;
+            return true;
+        }
+        if (timeframe === 'all') return true;
+        const t = new Date(log.timestamp).getTime();
+        if (isNaN(t)) return true;
+        const h = (Date.now() - t) / 3600000;
+        if (timeframe === 'today') return h <= 24;
+        if (timeframe === 'yesterday') return h > 24 && h <= 48;
+        if (timeframe === '7days') return h <= 168;
+        return true;
+    }
+
     async function loadPortalLogs() {
         const search = document.getElementById('searchInput').value;
         const timeframe = document.getElementById('timeframeSelect').value;
@@ -382,6 +401,19 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
             }
         }
 
+        // "login" and "staff_activity" portals are synthesized entirely client-side from
+        // get_audit_logs (a different data source than the PHP TelescopeLogger file that
+        // serverCounts reflects), so serverCounts structurally never knows about them -
+        // their badges were always stuck showing whatever the static HTML started with.
+        // Compute their counts from the same merged allLogs + timeframe filter used for
+        // the visible row list, so the badge always matches what selecting that portal shows.
+        const loginCount = allLogs.filter(l => (l.portal || '').toLowerCase() === 'login' && matchesTimeframe(l, timeframe, dateFrom, dateTo)).length;
+        const staffActivityCount = allLogs.filter(l => (l.portal || '').toLowerCase() === 'staff_activity' && matchesTimeframe(l, timeframe, dateFrom, dateTo)).length;
+        const loginBadgeEl = document.getElementById('badge-login');
+        if (loginBadgeEl) loginBadgeEl.innerText = loginCount;
+        const staffBadgeEl = document.getElementById('badge-staff_activity');
+        if (staffBadgeEl) staffBadgeEl.innerText = staffActivityCount;
+
         const unseenCounts = getUnseenCounts(allLogs);
         updateUnseenBadges(unseenCounts);
 
@@ -397,29 +429,7 @@ if ($action === 'fetch_logs' || $action === 'log_event' || (isset($_SERVER['HTTP
             );
         }
 
-        // Client-side date filtering for localStorage logs and staff/login portal data
-        if (timeframe !== 'all' && timeframe !== 'custom') {
-            const now = Date.now();
-            filtered = filtered.filter(l => {
-                const t = new Date(l.timestamp).getTime();
-                if (isNaN(t)) return true;
-                const h = (now - t) / 3600000;
-                if (timeframe === 'today') return h <= 24;
-                if (timeframe === 'yesterday') return h > 24 && h <= 48;
-                if (timeframe === '7days') return h <= 168;
-                return true;
-            });
-        }
-
-        if (timeframe === 'custom' && (dateFrom || dateTo)) {
-            filtered = filtered.filter(l => {
-                if (!l.timestamp) return true;
-                const logDate = l.timestamp.split(' ')[0].split('T')[0];
-                if (dateFrom && logDate < dateFrom) return false;
-                if (dateTo && logDate > dateTo) return false;
-                return true;
-            });
-        }
+        filtered = filtered.filter(l => matchesTimeframe(l, timeframe, dateFrom, dateTo));
 
         if (filtered.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No events recorded for this selection.</td></tr>`;

@@ -83,7 +83,7 @@ if (!class_exists('TelescopeLogger')) {
                 '404' => 0,
                 'audit' => 0,
                 'staff_activity' => 0,
-                'login_portal' => 0
+                'login' => 0
             ];
 
             $now = time();
@@ -166,7 +166,9 @@ if (!class_exists('TelescopeLogger')) {
                 'telegram' => 0,
                 'security' => 0,
                 '404' => 0,
-                'audit' => 0
+                'audit' => 0,
+                'staff_activity' => 0,
+                'login' => 0
             ];
         }
     }
