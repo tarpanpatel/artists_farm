@@ -95,4 +95,22 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---
 
+## 🟣 Phase 5: Guest ID Verification & Check-in Compliance (Telegram-Integrated)
+
+**Design intent (2026-08-04):** Managed as its own compliance-tracking system (same "list of items with a status" shape as the Expenses management pages), not folded into the general check-in form. Guest count (from `guests.no_of_guests`) determines how many ID documents are required per booking — a booking isn't "complete" until every guest on it has an uploaded ID.
+
+- [ ] **Check-in ID Upload Flow**
+  - **Problem:** No system-tracked way to confirm every guest on a booking has had their ID photographed and filed at check-in — currently informal/paper-based or untracked entirely.
+  - **Action:** During (or any time after) guest registration, staff opens a "Complete Check-in" flow on that booking, uploads one photo per guest (count driven by `no_of_guests` — e.g. 2 guests = 2 required uploads, no hardcoded single-guest assumption), then taps "Check-in Complete." New `guest_id_documents` table (id, guest_id, property_id, guest_index, file_path, uploaded_at, uploaded_by). New `id_verification_status` column on `guests` (`Pending` / `Complete`), distinct from booking `status` (Active/CheckedOut) — a guest can be Active with verification still Pending.
+
+- [ ] **Telegram Notification on Completion**
+  - **Action:** The moment the last required ID for a booking is uploaded and "Check-in Complete" is tapped, send a message to the property's **Admin** chat with the guest name/room and the uploaded ID photo(s) attached. Needs a new `sendTelegramPhoto`/`sendTelegramMediaGroup` helper in `php/telegram/sender.php` (the existing `sendRawTelegramMessage` is text-only) and a new editable template (see the no-hardcoding principle — same pattern as the Kitchen reminder templates) for the caption text.
+
+- [ ] **Next-Morning Pending Reminder**
+  - **Problem:** If IDs weren't uploaded at check-in time, nobody currently gets reminded to go back and complete it.
+  - **Action:** Reuses the Shared Reminder/Nudge Engine's `last_reminder_at` pattern, but with a fixed "next morning" trigger instead of a rolling N-minute interval — needs its own scheduled check (e.g. "guests with `id_verification_status = 'Pending'` and `checkin_date` before today, not yet reminded today"), sent to the **Admin** chat, referencing the specific guest/room. Same underlying gap as the rest of the Reminder Engine and the Phase 3 iCal sync task: no real background worker exists yet, so this needs that same eventual cron solution — a page-load-triggered check doesn't reliably fire "next morning" the way a real scheduled job would.
+  - **Action:** Staff resolves a pending reminder by opening that booking's "Complete Check-in" flow from the app (same UI as above) and uploading the outstanding ID(s), which flips `id_verification_status` to `Complete` and stops further reminders for that booking.
+
+---
+
 *Last Updated: August 2026*
