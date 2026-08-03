@@ -341,7 +341,7 @@ export const DefaultExpensesManager: React.FC = () => {
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
             <div className="p-2.5">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
                 {filteredExpenses[category].map((item) => (
                   <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                     <div className="space-y-1.5">
