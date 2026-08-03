@@ -842,6 +842,11 @@ switch ($action) {
     case 'send_telegram_alert':
     case 'get_telegram_config':
     case 'save_telegram_config':
+    case 'get_bot_identity':
+    case 'generate_pairing_code':
+    case 'check_pairing_status':
+    case 'confirm_pairing':
+    case 'send_telegram_test':
         handleTelegramRequests($pdo, $request_method, $action, $propertyId);
         break;
 

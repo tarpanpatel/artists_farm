@@ -1299,6 +1299,82 @@ export async function saveTelegramConfigDB(config: PropertyTelegramConfig): Prom
   }
 }
 
+// --- Zero-Friction Telegram Setup Wizard ---
+
+export async function fetchTelegramBotIdentity(): Promise<{ username: string; name: string | null } | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_bot_identity`);
+    const json = await res.json();
+    return json.status === 'success' ? json.data : null;
+  } catch (err) {
+    console.error('Failed to fetch Telegram bot identity:', err);
+    return null;
+  }
+}
+
+export interface TelegramPairingStatus {
+  status: 'pending' | 'paired' | 'confirmed' | 'expired' | 'not_found';
+  chatId?: string | null;
+  groupKey?: string;
+  groupName?: string;
+}
+
+export async function generateTelegramPairingCode(groupKey: string, groupName: string): Promise<string | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=generate_pairing_code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupKey, groupName }),
+    });
+    const json = await res.json();
+    return json.status === 'success' ? json.code : null;
+  } catch (err) {
+    console.error('Failed to generate Telegram pairing code:', err);
+    return null;
+  }
+}
+
+export async function checkTelegramPairingStatus(code: string): Promise<TelegramPairingStatus> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=check_pairing_status&code=${encodeURIComponent(code)}`);
+    const json = await res.json();
+    if (json.status === 'success' && json.data) return json.data as TelegramPairingStatus;
+  } catch (err) {
+    console.error('Failed to check Telegram pairing status:', err);
+  }
+  return { status: 'not_found' };
+}
+
+export async function confirmTelegramPairing(code: string): Promise<{ success: boolean; chatId?: string; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=confirm_pairing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', chatId: json.chatId, message: json.message };
+  } catch (err) {
+    console.error('Failed to confirm Telegram pairing:', err);
+    return { success: false };
+  }
+}
+
+export async function sendTelegramTestMessage(chatId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=send_telegram_test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message };
+  } catch (err) {
+    console.error('Failed to send Telegram test message:', err);
+    return { success: false };
+  }
+}
+
 export async function addAuditLogDB(log: {
   action: string;
   user?: string;
