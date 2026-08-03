@@ -258,13 +258,16 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             <li className="flex gap-2.5">
               <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">2</span>
               <span>
-                Add{' '}
                 {botUsername ? (
-                  <span className="font-mono font-bold text-sky-700 dark:text-sky-400">@{botUsername}</span>
+                  <>
+                    Tap the group name → <b>Add Members</b> → search{' '}
+                    <span className="font-mono font-bold text-sky-700 dark:text-sky-400">@{botUsername}</span> → tap it to add.
+                  </>
                 ) : (
-                  'your platform\'s Telegram bot'
-                )}{' '}
-                to the group.
+                  <span className="text-amber-700 dark:text-amber-400">
+                    No Telegram bot is connected to this platform yet — ask your admin to finish that setup before continuing.
+                  </span>
+                )}
               </span>
             </li>
             <li className="flex gap-2.5">
