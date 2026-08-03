@@ -23,6 +23,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     return (saved as SectionType) || 'dashboard';
   });
   const [navItems, setNavItems] = useState<any[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Persist active section to localStorage
   useEffect(() => {
@@ -92,10 +93,27 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     window.open('/php/errors/', '_blank');
   };
 
+  const goToSection = (section: SectionType) => {
+    setActiveSection(section);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex">
+      {/* Mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-xs md:hidden transition-opacity"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col">
+      <aside
+        className={`fixed top-0 left-0 z-30 h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
         {/* Header */}
         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Root Admin</h1>
@@ -103,14 +121,14 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.section;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(item.section)}
+                onClick={() => goToSection(item.section)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-semibold'
@@ -152,29 +170,39 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 md:pl-64 overflow-auto">
         {/* Top Bar */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-8 py-4">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {activeSection === 'dashboard' && 'Dashboard'}
-              {activeSection === 'tenants_properties' && 'Tenants & Properties'}
-              {activeSection === 'edit_main_menu' && 'Edit Main Menu'}
-              {activeSection === 'default_expenses' && 'Default Expenses (MultiKey)'}
-              {activeSection === 'appearance' && 'Appearance Settings'}
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {activeSection === 'dashboard' && 'System overview and analytics'}
-              {activeSection === 'tenants_properties' && 'Manage all tenants and their properties'}
-              {activeSection === 'edit_main_menu' && 'Global navigation menu for all properties'}
-              {activeSection === 'default_expenses' && 'System expense categories and defaults'}
-              {activeSection === 'appearance' && 'Customize theme colors and CSS styling'}
-            </p>
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-3 py-2.5 lg:px-8 lg:py-4 flex items-center gap-2">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title="Toggle Sidebar Menu"
+              aria-label="Toggle Sidebar Navigation"
+              className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 rounded-lg hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-lg lg:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                {activeSection === 'dashboard' && 'Dashboard'}
+                {activeSection === 'tenants_properties' && 'Tenants & Properties'}
+                {activeSection === 'edit_main_menu' && 'Edit Main Menu'}
+                {activeSection === 'default_expenses' && 'Default Expenses (MultiKey)'}
+                {activeSection === 'appearance' && 'Appearance Settings'}
+              </h2>
+              <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
+                {activeSection === 'dashboard' && 'System overview and analytics'}
+                {activeSection === 'tenants_properties' && 'Manage all tenants and their properties'}
+                {activeSection === 'edit_main_menu' && 'Global navigation menu for all properties'}
+                {activeSection === 'default_expenses' && 'System expense categories and defaults'}
+                {activeSection === 'appearance' && 'Customize theme colors and CSS styling'}
+              </p>
+            </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {/* Dashboard Section */}
           {activeSection === 'dashboard' && (
             <div className="space-y-6">
