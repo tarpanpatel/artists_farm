@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Copy, 
-  Check, 
-  AlertCircle, 
-  Trash2, 
+  Copy,
+  Check,
+  Trash2,
   X, 
   Plus, 
   RefreshCw, 
@@ -12,7 +11,6 @@ import {
   Clock,
   CheckCircle2,
   Share2,
-  ExternalLink,
   ShieldCheck,
   Search,
   Filter,
@@ -23,6 +21,7 @@ import {
 import { getPropertySlug, getPropertyAndRoomSlugs } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { useToast } from './ToastContext';
 
 interface Calendar {
   id: number;
@@ -41,7 +40,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [exportUrl, setExportUrl] = useState('');
   const [copiedExport, setCopiedExport] = useState(false);
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
@@ -67,6 +65,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   const [roomImportUrls, setRoomImportUrls] = useState<{ [roomId: number]: string }>({});
 
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const { roomSlug } = getPropertyAndRoomSlugs();
@@ -131,7 +130,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     }
 
     if (!url.trim()) {
-      setMessage('Please enter a valid iCal URL');
+      showToast('Please enter a valid iCal URL', { type: 'error' });
       return;
     }
 
@@ -159,21 +158,20 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
       const data = await response.json();
       if (data.status === 'success') {
-        let msg = `✓ Added "${finalServiceName}" successfully`;
+        let msg = `iCal feed "${finalServiceName}" connected successfully`;
         if (data.sync_status === 'success') {
-          msg += ` - ${data.sync_message || 'Synced'}`;
+          msg += ` — ${data.sync_message || 'Initial sync complete'}`;
         }
-        setMessage(msg);
+        showToast(msg, { type: 'success', duration: 5000 });
         setNewImportUrl('');
         setCustomServiceName('');
         setIsAddModalOpen(false);
         loadCalendars();
-        setTimeout(() => setMessage(''), 5000);
       } else {
-        setMessage('✗ ' + (data.message || 'Failed to add calendar'));
+        showToast(data.message || 'Failed to add iCal feed', { type: 'error' });
       }
     } catch (err: any) {
-      setMessage('✗ Error: ' + (err?.message || 'Network error'));
+      showToast('Network error: ' + (err?.message || 'Could not connect'), { type: 'error' });
     } finally {
       setIsAdding(false);
     }
@@ -192,16 +190,15 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       });
       const data = await response.json();
       if (data.status === 'success') {
-        setMessage(`✓ Synced ${calName}: ${data.message || 'Events updated'}`);
+        showToast(`Synced "${calName}" — ${data.message || 'Events updated'}`, { type: 'success' });
         loadCalendars();
       } else {
-        setMessage(`✗ Sync failed for ${calName}: ${data.message || 'Unknown error'}`);
+        showToast(`Sync failed for "${calName}": ${data.message || 'Unknown error'}`, { type: 'error' });
       }
     } catch (err) {
-      setMessage(`✗ Error syncing ${calName}`);
+      showToast(`Error syncing "${calName}"`, { type: 'error' });
     } finally {
       setSyncingId(null);
-      setTimeout(() => setMessage(''), 4000);
     }
   };
 
@@ -225,9 +222,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       }
     }
     setIsSyncingAll(false);
-    setMessage(`✓ Batch Sync Complete: ${successCount}/${calendars.length} channels synchronized`);
+    showToast(`Batch sync complete: ${successCount}/${calendars.length} channels synchronized`, { type: successCount === calendars.length ? 'success' : 'warning', duration: 5000 });
     loadCalendars();
-    setTimeout(() => setMessage(''), 5000);
   };
 
   const handleDeleteCalendar = async (calId: number, calName: string) => {
@@ -249,14 +245,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
       const data = await response.json();
       if (data.status === 'success') {
-        setMessage(`✓ Deleted "${calName}"`);
+        showToast(`"${calName}" removed successfully`, { type: 'success' });
         loadCalendars();
-        setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage('✗ Delete failed');
+        showToast('Failed to remove feed', { type: 'error' });
       }
     } catch (error: any) {
-      setMessage('✗ Error deleting calendar');
+      showToast('Error removing iCal feed', { type: 'error' });
     }
   };
 
@@ -386,20 +381,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           </div>
         </div>
       </div>
-
-      {/* Alert Notification Toast */}
-      {message && (
-        <div
-          className={`p-4 rounded-xl flex items-center gap-3 border shadow-2xs transition-all ${
-            message.startsWith('✓')
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-          }`}
-        >
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span className="font-semibold text-xs">{message}</span>
-        </div>
-      )}
 
       {/* Top 4 Metric KPI Cards (Flowbite Layout Inspiration) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -708,6 +689,55 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                       {roomCalendars.length} Feeds
                     </span>
                   </div>
+
+                  {/* Connected Feeds for this Room */}
+                  {roomCalendars.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Connected Feeds ({roomCalendars.length})</span>
+                      <div className="space-y-1.5">
+                        {roomCalendars.map((cal) => {
+                          const badge = getPlatformBadge(cal.service_name);
+                          const isSyncing = syncingId === cal.id;
+                          const isCopiedUrl = copiedUrls.has(cal.id);
+                          return (
+                            <div key={cal.id} className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-extrabold flex items-center gap-1 shrink-0 ${badge.bg}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                {badge.name}
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate flex-1">
+                                {cal.service_name}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => copyToClipboard(cal.ical_url, cal.id)}
+                                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 transition cursor-pointer"
+                                  title="Copy feed URL"
+                                >
+                                  {isCopiedUrl ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                                <button
+                                  onClick={() => handleManualSync(cal.id, cal.service_name)}
+                                  disabled={isSyncing}
+                                  className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition cursor-pointer disabled:opacity-50"
+                                  title="Sync now"
+                                >
+                                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
+                                  className="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition cursor-pointer"
+                                  title="Delete feed"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Add Feed Inputs */}
                   <div className="space-y-2">

@@ -561,7 +561,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
-              🏨 Monthly Bookings, Revenue & Guest Count
+              <span>Monthly Bookings, Revenue & Guest Count</span>
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -656,7 +656,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-cyan-500 pl-2.5">
-              🍽️ Food Menu Performance & Most Popular Dish Analytics
+              <span>Food Menu Performance & Most Popular Dish Analytics</span>
             </h3>
 
             <div className="grid grid-cols-1 gap-6">
@@ -703,7 +703,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-amber-500 pl-2.5">
-              🍳 Kitchen Sales, Purchases & Net Profit
+              <span>Kitchen Sales, Purchases & Net Profit</span>
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

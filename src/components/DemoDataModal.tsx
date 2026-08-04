@@ -24,9 +24,15 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
     setLoading(true);
     try {
+      // Activate testing mode first so cookies and headers resolve correctly on backend
+      setTestingModeState(true);
+
       const response = await fetch('/php/api/demo_data.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Testing-Mode': '1'
+        },
         body: JSON.stringify({ action: 'generate', property_id: propertyId }),
         credentials: 'include',
       });
@@ -38,6 +44,8 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
         setMessage({ type: 'success', text: '✅ Demo data generated! Refreshing...' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
+        // Roll back testing mode if generation failed
+        setTestingModeState(false);
         setMessage({ type: 'error', text: data.message || 'Failed to generate demo data' });
       }
     } catch (err) {
@@ -66,7 +74,10 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       console.log('[DemoDataModal] Clearing demo data for property:', propertyId);
       const response = await fetch('/php/api/demo_data.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Testing-Mode': '1'
+        },
         body: JSON.stringify({ action: 'clear', property_id: propertyId }),
         credentials: 'include',
       });

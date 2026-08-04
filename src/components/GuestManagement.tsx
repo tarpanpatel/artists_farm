@@ -1910,7 +1910,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </div>
         </div>
       )}
-
       {/* ========================================================================= */}
       {/* POPUP MODAL 3: CLEAN PRINT-FRIENDLY BOOKING CONFIRMATION VOUCHER          */}
       {/* ========================================================================= */}

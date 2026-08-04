@@ -206,6 +206,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateOnly;
   };
 
+  // True only while today actually falls inside [checkin, checkout) - some
+  // seed/demo data marks bookings Active immediately regardless of date, so
+  // status alone isn't enough to say a guest is in-house right now.
+  const isCurrentlyInStay = (g: Guest) => {
+    const checkin = parseDateOnly(g.checkinDate);
+    const checkout = parseDateOnly(g.expectedCheckout);
+    return checkin !== null && checkout !== null && today >= checkin && today < checkout;
+  };
+
   const overdueCheckins = guests.filter((g) => {
     const checkin = parseDateOnly(g.checkinDate);
     return g.status === 'Booked' && checkin !== null && checkin <= today;
@@ -214,8 +223,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const checkout = parseDateOnly(g.expectedCheckout);
     return g.status === 'Active' && checkout !== null && checkout < today;
   });
-  const missingIdUploads = guests.filter(
-    (g) => (g.status === 'Active' || g.status === 'CheckedOut') && g.idVerificationStatus !== 'Complete'
+  const checkinPending = guests.filter(
+    (g) => g.status === 'Active' && isCurrentlyInStay(g) && g.idVerificationStatus !== 'Complete'
+  );
+  const idMissingAfterCheckout = guests.filter(
+    (g) => g.status === 'CheckedOut' && g.idVerificationStatus !== 'Complete'
   );
   // Advance doesn't need to be collected at check-in, but the bill must be
   // fully settled by checkout - flag any checked-out guest still owing.
@@ -250,11 +262,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       detail: (g) => `Due ${formatAlertDate(g.expectedCheckout)}`,
     },
     {
-      key: 'missing-id',
-      label: 'ID Not Uploaded',
+      key: 'checkin-pending',
+      label: 'Check-in Pending',
       colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
-      items: missingIdUploads,
-      detail: (g) => (g.status === 'CheckedOut' ? 'Checked out without ID on file' : 'Currently staying'),
+      items: checkinPending,
+      detail: () => 'ID verification needed',
+    },
+    {
+      key: 'id-missing-after-checkout',
+      label: 'ID Missing (Checked Out)',
+      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
+      items: idMissingAfterCheckout,
+      detail: () => 'Checked out without ID on file',
     },
     {
       key: 'unsettled-bill',

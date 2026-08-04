@@ -9,6 +9,12 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../modules/module_manager.php';
 
 function generateDemoData($pdo, $propertyId) {
+    // Always start from a clean slate. Previously relied on INSERT IGNORE
+    // to avoid duplicates, but there's no unique key backing that, so every
+    // repeat click silently added a second full copy of the demo dataset on
+    // top of the last one instead of replacing it.
+    clearDemoData($pdo, $propertyId);
+
     try {
         $pdo->beginTransaction();
 

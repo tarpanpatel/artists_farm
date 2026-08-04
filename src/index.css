@@ -642,3 +642,44 @@ html.dark .payees-registry-table tr:hover {
   animation: toast-in 0.2s ease-out;
 }
 
+/* Telegram notification template manager overrides */
+.active-template-item {
+  background-color: #0284c7 !important; /* sky-600 */
+  color: #ffffff !important;
+}
+.active-template-item .template-category {
+  color: #e0f2fe !important; /* sky-100 */
+}
+html.dark .active-template-item {
+  background-color: #0284c7 !important; /* sky-600 */
+  color: #ffffff !important;
+}
+html.dark .active-template-item .template-category {
+  color: #e0f2fe !important; /* sky-100 */
+}
+
+/* Variable Chips styling in both modes */
+.variable-chip {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.variable-chip:hover {
+  background-color: #e0f2fe;
+}
+html.dark .variable-chip {
+  background-color: #0c4a6e !important; /* sky-950 */
+  color: #38bdf8 !important; /* sky-400 */
+  border-color: #0369a1 !important; /* sky-700 */
+}
+html.dark .variable-chip:hover {
+  background-color: #0e5a84 !important;
+}
+
+/* Catalog active category tab override */
+html.dark .category-tab-active {
+  background-color: #1e293b !important;
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+

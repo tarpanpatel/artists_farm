@@ -485,10 +485,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     <div className="space-y-6">
       {/* Navigation Sub-Tabs Header */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>👥</span> Property Payroll & Payee Control Center
+              <Users className="w-5 h-5 text-indigo-500" /> Property Payroll & Payee Control Center
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isAttendancePage
@@ -496,6 +496,50 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 : 'Manage login staff credentials, core operational suppliers, and pass-through third parties.'}
             </p>
           </div>
+
+          {/* Moved Bulk Select controls here */}
+          {isAttendancePage && activeSubTab === 'calendar' && (
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <button
+                onClick={() => {
+                  setIsBulkSelectEnabled(!isBulkSelectEnabled);
+                  setSelectedCells(new Set());
+                }}
+                className={`font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shadow-2xs ${
+                  isBulkSelectEnabled
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
+                    : 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white'
+                }`}
+              >
+                {isBulkSelectEnabled ? '✕ Exit Bulk Mode' : '⚡ Enable Bulk Select'}
+              </button>
+
+              {isBulkSelectEnabled && (
+                <div className="flex items-center gap-1.5 text-xs flex-wrap sm:flex-nowrap">
+                  <button
+                    onClick={handleSelectTodayCells}
+                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                  >
+                    📅 Select Today ({staff.length})
+                  </button>
+                  <button
+                    onClick={handleSelectAllCells}
+                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                  >
+                    🗓️ Select Month
+                  </button>
+                  {selectedCells.size > 0 && (
+                    <button
+                      onClick={() => setSelectedCells(new Set())}
+                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold px-2 py-1 cursor-pointer"
+                    >
+                      Clear ({selectedCells.size})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {isAttendancePage && (
@@ -680,15 +724,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: MANAGERIAL ENTRY FORMS (5 cols) */}
+           {/* RIGHT COLUMN: MANAGERIAL ENTRY FORMS (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
             {/* Merged Form 1+3: Create & Update User with Tabs */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs overflow-hidden">
+            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs">
               {/* Tabs */}
               <div className="flex border-b border-slate-200 dark:border-slate-700">
                 <button
                   onClick={() => setUserFormTab('create')}
-                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors ${
+                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors rounded-tl-2xl ${
                     userFormTab === 'create'
                       ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500'
                       : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
@@ -698,7 +742,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </button>
                 <button
                   onClick={() => setUserFormTab('update')}
-                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors ${
+                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors rounded-tr-2xl ${
                     userFormTab === 'update'
                       ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border-b-2 border-amber-500'
                       : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
@@ -712,49 +756,53 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="p-5">
                 {userFormTab === 'create' ? (
                   <form onSubmit={handleCreateUser} className="space-y-3">
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
-                      <input
-                        type="tel"
-                        required
-                        maxLength={10}
-                        value={newUsername}
-                        onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        placeholder="10-digit mobile number"
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
+                        <input
+                          type="tel"
+                          required
+                          maxLength={10}
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="10-digit mobile number"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">6-Digit Passcode PIN</label>
+                        <input
+                          type="password"
+                          required
+                          maxLength={6}
+                          value={newPasscode}
+                          onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="••••••"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">6-Digit Passcode PIN</label>
-                      <input
-                        type="password"
-                        required
-                        maxLength={6}
-                        value={newPasscode}
-                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="••••••"
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
-                      <StyledSelect
-                        value={newRole}
-                        onChange={(val) => setNewRole(val as any)}
-                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                      <input
-                        type="checkbox"
-                        id="isFinancialHandlerCheck"
-                        checked={newIsFinancialHandler}
-                        onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                        Show in Cash Dropdowns
-                      </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
+                        <StyledSelect
+                          value={newRole}
+                          onChange={(val) => setNewRole(val as any)}
+                          options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                        <input
+                          type="checkbox"
+                          id="isFinancialHandlerCheck"
+                          checked={newIsFinancialHandler}
+                          onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
+                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                        />
+                        <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                          Cash Handling User
+                        </label>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Payment QR Code Image (Optional)</label>
@@ -781,53 +829,57 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </form>
                 ) : (
                   <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
-                      <StyledSelect
-                        value={selectedUpdateUserId}
-                        onChange={(uid) => {
-                          setSelectedUpdateUserId(uid);
-                          const target = users.find((u) => u.id === uid);
-                          if (target) {
-                            setUpdateRole(target.role);
-                            setUpdateIsFinancialHandler(target.isFinancialHandler);
-                          }
-                        }}
-                        placeholder="-- Choose User Profile --"
-                        options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.role})` }))}
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
+                        <StyledSelect
+                          value={selectedUpdateUserId}
+                          onChange={(uid) => {
+                            setSelectedUpdateUserId(uid);
+                            const target = users.find((u) => u.id === uid);
+                            if (target) {
+                              setUpdateRole(target.role);
+                              setUpdateIsFinancialHandler(target.isFinancialHandler);
+                            }
+                          }}
+                          placeholder="-- Choose User Profile --"
+                          options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.role})` }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 6-Digit Passcode PIN (Leave blank to keep current)</label>
+                        <input
+                          type="password"
+                          maxLength={6}
+                          value={updatePasscode}
+                          onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="••••••"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
-                      <StyledSelect
-                        value={updateRole}
-                        onChange={(val) => setUpdateRole(val as any)}
-                        placeholder="-- Keep Current Role --"
-                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 6-Digit Passcode PIN (Leave blank to keep current)</label>
-                      <input
-                        type="password"
-                        maxLength={6}
-                        value={updatePasscode}
-                        onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="••••••"
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                      <input
-                        type="checkbox"
-                        id="updateIsFinancialHandlerCheck"
-                        checked={updateIsFinancialHandler}
-                        onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                        Show in Cash Dropdowns
-                      </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
+                        <StyledSelect
+                          value={updateRole}
+                          onChange={(val) => setUpdateRole(val as any)}
+                          placeholder="-- Keep Current Role --"
+                          options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                        <input
+                          type="checkbox"
+                          id="updateIsFinancialHandlerCheck"
+                          checked={updateIsFinancialHandler}
+                          onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
+                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                        />
+                        <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                          Cash Handling User
+                        </label>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Replace Payment QR Code Image</label>
@@ -857,35 +909,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             {/* Form 2: Register Account Payee */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs overflow-hidden">
+            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs">
               <div className="p-5 space-y-3">
                 <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   ➕ Register Account Payee
                 </h4>
 
                 <form onSubmit={handleCreatePayee} className="space-y-3">
-                  <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Payee Account Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={newPayeeName}
-                      onChange={(e) => setNewPayeeName(e.target.value)}
-                      placeholder="e.g. Raju Grocery / Pool Supplier"
-                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Payee Account Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newPayeeName}
+                        onChange={(e) => setNewPayeeName(e.target.value)}
+                        placeholder="e.g. Raju Grocery / Pool Supplier"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Classification Group</label>
-                    <StyledSelect
-                      value={newPayeeType}
-                      onChange={(val) => setNewPayeeType(val as any)}
-                      options={[
-                        { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
-                        { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
-                      ]}
-                    />
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Classification Group</label>
+                      <StyledSelect
+                        value={newPayeeType}
+                        onChange={(val) => setNewPayeeType(val as any)}
+                        options={[
+                          { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
+                          { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
+                        ]}
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -921,63 +975,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {/* SUB-TAB 2: ATTENDANCE CALENDAR MATRIX */}
       {activeSubTab === 'calendar' && (
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setIsBulkSelectEnabled(!isBulkSelectEnabled);
-                    setSelectedCells(new Set());
-                  }}
-                  className={`font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shadow-2xs ${
-                    isBulkSelectEnabled
-                      ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
-                      : 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white'
-                  }`}
-                >
-                  {isBulkSelectEnabled ? '✕ Exit Bulk Mode' : '⚡ Enable Bulk Select'}
-                </button>
-
-                {isBulkSelectEnabled && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      onClick={handleSelectTodayCells}
-                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                    >
-                      📅 Select Today ({staff.length})
-                    </button>
-                    <button
-                      onClick={handleSelectAllCells}
-                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                    >
-                      🗓️ Select Entire Month ({monthDays.length * staff.length})
-                    </button>
-                    {selectedCells.size > 0 && (
-                      <button
-                        onClick={() => setSelectedCells(new Set())}
-                        className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold px-2 py-1 cursor-pointer"
-                      >
-                        Clear Selection ({selectedCells.size})
-                      </button>
-                    )}
-                  </div>
-                )}
+          {/* Bulk Marking Action Buttons */}
+          {(isBulkSelectEnabled || selectedCells.size > 0) && (
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  ⚡ Bulk Selection Actions
+                </div>
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {selectedCells.size > 0 ? (
+                    <span className="text-blue-600 dark:text-blue-400 font-bold">
+                      🎯 {selectedCells.size} cell{selectedCells.size > 1 ? 's' : ''} selected
+                    </span>
+                  ) : (
+                    <span>Select cells in the grid below to bulk update</span>
+                  )}
+                </div>
               </div>
 
-              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {selectedCells.size > 0 ? (
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    🎯 {selectedCells.size} cell{selectedCells.size > 1 ? 's' : ''} selected
-                  </span>
-                ) : (
-                  <span>Click cells or enable bulk mode to update attendance</span>
-                )}
-              </div>
-            </div>
-
-            {/* Bulk Marking Action Buttons */}
-            {(isBulkSelectEnabled || selectedCells.size > 0) && (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mr-1">
                   Mark Selected Cells As:
                 </span>
@@ -1017,8 +1033,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <span>Clear Status (-)</span>
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
             <button

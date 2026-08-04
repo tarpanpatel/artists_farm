@@ -120,20 +120,31 @@ function AppBody({ preloadedData }: AppBodyProps) {
         inventory: { tab: 'inventory', key: 'stock_requests' },
         expenses: { tab: 'petty_cash', key: 'expenses' },
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
+        cash_drawer: { tab: 'petty_cash', key: 'cash_drawer' },
+        edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
+        misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
         attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
+        staff_permissions: { tab: 'staff', key: 'staff_permissions' },
         staff: { tab: 'staff', key: 'staff_payees_control' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
+        login_logs: { tab: 'audit_logs', key: 'login_logs' },
+        system_health: { tab: 'audit_logs', key: 'system_health' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
+        admin_control_group: { tab: 'menu_manager', key: 'edit_main_menu' },
+        edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
-        misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
+        data_export_center: { tab: 'export', key: 'data_export_center' },
+        beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
+        ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
+        ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
       };
 
@@ -311,6 +322,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         menu_manager: 'edit_food_menu',
         telegram: 'telegram',
         misc_charges: 'misc_charges',
+        ical_sync: 'ical_sync_manager',
+        custom_css: 'custom_css',
         service_requests: 'service_requests',
       };
       setActiveMenuItemKey(defaults[tab] || tab);
@@ -471,16 +484,27 @@ function AppBody({ preloadedData }: AppBodyProps) {
       try {
         await fetch('/php/api/demo_data.php', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Testing-Mode': '1'
+          },
           body: JSON.stringify({
             action: 'clear',
             property_id: preloadedData.currentProperty?.id,
           }),
           credentials: 'include',
         });
+        showToast("✔ Sandbox Test Mode exited successfully! Refreshing...", { type: 'success' });
       } catch (err) {
         console.error('Failed to clear demo data:', err);
       }
+      
+      setTestingModeState(nextState);
+      setIsTestingMode(nextState);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+      return;
     }
 
     setTestingModeState(nextState);
@@ -511,7 +535,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Hydrate nav menu from DB on startup
   useEffect(() => {
-    refreshStaff();
+    if (!isTestingModeActive()) {
+      fetch('/php/api/clean_all_demo.php', { method: 'POST', credentials: 'include' })
+        .then(() => refreshStaff())
+        .catch(() => refreshStaff());
+    } else {
+      refreshStaff();
+    }
     fetchNavMenuFromDB().then((data) => {
       if (data && data.length > 0) {
         // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
@@ -1245,8 +1275,6 @@ ${itemsStr}
             rooms={preloadedData.currentProperty?.rooms || []}
           />
         )}
-
-
 
         {isAuthenticated && (
           <Navigation

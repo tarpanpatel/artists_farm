@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as LucideIcons from 'lucide-react';
 import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -10,6 +11,7 @@ interface ExpenseItem {
   category: string;
   default_amount: number;
   is_system_default: boolean;
+  selected_icon?: string;
 }
 
 interface CategoryGroup {
@@ -25,11 +27,15 @@ export const DefaultExpensesManager: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '' });
+  const [newItem, setNewItem] = useState({ label: '', category: '', default_amount: '', selected_icon: '' });
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null);
-  const [editForm, setEditForm] = useState({ label: '', default_amount: '' });
+  const [editForm, setEditForm] = useState({ label: '', default_amount: '', selected_icon: '' });
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  const [iconPickerItemId, setIconPickerItemId] = useState<number | null>(null);
+  const [iconPickerForNew, setIconPickerForNew] = useState(false);
+  const [iconPickerForEdit, setIconPickerForEdit] = useState(false);
 
   useEffect(() => {
     loadExpenses();

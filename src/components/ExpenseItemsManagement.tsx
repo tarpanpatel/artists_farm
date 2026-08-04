@@ -11,6 +11,7 @@ interface ExpenseItem {
   category: string;
   default_amount: number;
   is_system_default: boolean;
+  selected_icon?: string;
 }
 
 interface CategoryGroup {

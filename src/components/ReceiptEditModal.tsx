@@ -4,8 +4,8 @@ import { Guest, BillingReceipt } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { fetchMenuFromDB } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import * as htmlToImage from 'html-to-image';
 
 interface ReceiptEditModalProps {
@@ -885,9 +885,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                                       if (json.status === 'success' || json.success) {
                                         setGstRates(rateDraft);
                                         setIsEditingRates(false);
+                                        showToast('GST rates updated', { type: 'success' });
+                                      } else {
+                                        showToast(json.error || json.message || 'Failed to save GST rates', { type: 'error' });
                                       }
                                     } catch (err) {
-                                      /* ignore */
+                                      showToast('Failed to save GST rates', { type: 'error' });
                                     } finally {
                                       setSavingRates(false);
                                     }
@@ -1088,9 +1091,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="font-extrabold text-base text-black uppercase">
-                  {(guest as any).propertyName || 'ARTISTS FARM RESORT'}
+                  {propertyName || (guest as any).propertyName || 'ARTISTS FARM RESORT'}
                 </h3>
-                <p className="text-[11px] text-black font-medium">Consolidated Stay & KOT Settlement</p>
+                <p className="text-[11px] text-black font-medium">
+                  {gstEnabled ? 'Tax Invoice' : 'Consolidated Stay & KOT Settlement'}
+                </p>
+                {gstEnabled && propertyGstin && (
+                  <p className="text-[10px] text-black">GSTIN: {propertyGstin}</p>
+                )}
               </div>
 
               <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
@@ -1101,6 +1109,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   <b>Date:</b> {new Date().toLocaleDateString('en-GB')}
                 </span>
               </div>
+
+              {gstEnabled && (guestGstin || guestBillingName) && (
+                <div className="text-[11px] border-b border-dashed border-slate-300 pb-2 text-black">
+                  {guestBillingName && <div><b>Billed To:</b> {guestBillingName}</div>}
+                  {guestGstin && <div><b>Guest/Company GSTIN:</b> {guestGstin}</div>}
+                </div>
+              )}
 
               {/* Stay Logistics */}
               <div className="space-y-1">
@@ -1177,14 +1192,23 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   )}
                   <div className="border-t border-dashed border-slate-300 pt-1">
-                    <div className="flex justify-between text-black text-[11px] font-bold">
-                      <span>CGST (50% split):</span>
-                      <span>₹{gstCgst.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-black text-[11px] font-bold">
-                      <span>SGST (50% split):</span>
-                      <span>₹{gstSgst.toFixed(2)}</span>
-                    </div>
+                    {taxType === 'cgst_sgst' ? (
+                      <>
+                        <div className="flex justify-between text-black text-[11px] font-bold">
+                          <span>CGST (50% split):</span>
+                          <span>₹{gstCgst.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-black text-[11px] font-bold">
+                          <span>SGST (50% split):</span>
+                          <span>₹{gstSgst.toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between text-black text-[11px] font-bold">
+                        <span>IGST:</span>
+                        <span>₹{gstIgst.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
