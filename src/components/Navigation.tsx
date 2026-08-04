@@ -21,7 +21,8 @@ export type TabType =
   | 'telegram'
   | 'misc_charges'
   | 'custom_css'
-  | 'ical_sync';
+  | 'ical_sync'
+  | 'service_requests';
 
 interface NavigationProps {
   activeTab: TabType;
