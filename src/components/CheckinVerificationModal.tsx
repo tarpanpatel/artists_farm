@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IdCard, X, Upload, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { IdCard, X, Upload, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { Guest } from '../types';
 import {
   GuestIdDocument,
@@ -35,6 +35,10 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const [completing, setCompleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  // Extra blank slots beyond whatever's required/already uploaded, added via
+  // "+ Add More Images" - covers front/back-of-ID as separate files, or
+  // guests who show up later than the original headcount.
+  const [extraSlots, setExtraSlots] = useState(0);
 
   const requiredCount = Math.max(1, guest.numberOfGuests || 1);
 
@@ -42,6 +46,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     if (!isOpen) return;
     setErrorMsg(null);
     setSuccessMsg(null);
+    setExtraSlots(0);
     setLoading(true);
     fetchIdDocumentsFromDB(guest.id).then((docs) => {
       setDocuments(docs);
@@ -107,9 +112,13 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     }
   };
 
-  const uploadedCount = documents.length;
-  const allUploaded = uploadedCount >= requiredCount;
+  const requiredUploadedCount = documents.filter((d) => d.guestIndex < requiredCount).length;
+  const extraUploadedCount = documents.length - requiredUploadedCount;
+  const allUploaded = requiredUploadedCount >= requiredCount;
   const alreadyComplete = guest.idVerificationStatus === 'Complete';
+
+  const highestUploadedIndex = documents.reduce((max, d) => Math.max(max, d.guestIndex), -1);
+  const totalSlotCount = Math.max(requiredCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
@@ -164,66 +173,76 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {Array.from({ length: requiredCount }, (_, index) => {
-              const doc = docForIndex(index);
-              const isUploading = uploadingIndex === index;
-              return (
-                <div key={index} className="space-y-1.5">
-                  <label
-                    className={`relative flex flex-col items-center justify-center aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-colors ${
-                      doc
-                        ? 'border-emerald-300 dark:border-emerald-700'
-                        : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-slate-50 dark:bg-slate-700'
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      disabled={isUploading}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileSelected(index, file);
-                        e.target.value = '';
-                      }}
-                    />
-                    {isUploading ? (
-                      <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
-                    ) : doc ? (
-                      <img src={doc.filePath} alt={`Guest ${index + 1} ID`} className="w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <Upload className="w-6 h-6 text-slate-400" />
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-1 text-center px-1">
-                          Guest {index + 1} ID
-                        </span>
-                      </>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Array.from({ length: totalSlotCount }, (_, index) => {
+                const doc = docForIndex(index);
+                const isUploading = uploadingIndex === index;
+                const isExtra = index >= requiredCount;
+                const label = isExtra ? `Extra Photo ${index - requiredCount + 1}` : `Guest ${index + 1} ID`;
+                return (
+                  <div key={index} className="space-y-1.5">
+                    <label
+                      className={`relative flex flex-col items-center justify-center aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-colors ${
+                        doc
+                          ? 'border-emerald-300 dark:border-emerald-700'
+                          : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-slate-50 dark:bg-slate-700'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isUploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileSelected(index, file);
+                          e.target.value = '';
+                        }}
+                      />
+                      {isUploading ? (
+                        <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
+                      ) : doc ? (
+                        <img src={doc.filePath} alt={label} className="w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <Upload className="w-6 h-6 text-slate-400" />
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-1 text-center px-1">
+                            {label}
+                          </span>
+                        </>
+                      )}
+                    </label>
+                    {doc && (
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>{formatUploadedAt(doc.uploadedAt)}</span>
+                        <button
+                          onClick={() => handleDelete(doc.id)}
+                          className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
+                          title="Remove and re-upload"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )}
-                  </label>
-                  {doc && (
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                      <span>{formatUploadedAt(doc.uploadedAt)}</span>
-                      <button
-                        onClick={() => handleDelete(doc.id)}
-                        className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
-                        title="Remove and re-upload"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setExtraSlots((n) => n + 1)}
+              className="w-full py-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add More Images
+            </button>
+          </>
         )}
 
         {/* Footer */}
         <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
-            {uploadedCount} of {requiredCount} ID document{requiredCount > 1 ? 's' : ''} uploaded
+            {requiredUploadedCount} of {requiredCount} required ID document{requiredCount > 1 ? 's' : ''} uploaded
+            {extraUploadedCount > 0 && ` (+${extraUploadedCount} extra)`}
           </p>
           <div className="flex gap-2">
             <button

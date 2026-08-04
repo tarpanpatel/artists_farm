@@ -143,6 +143,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
                     $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
 
+                    $prevStmt = $pdo->prepare("SELECT no_of_guests FROM guests WHERE id = ? AND property_id = ?");
+                    $prevStmt->execute([$guestId, $propertyId]);
+                    $previousNoOfGuests = intval($prevStmt->fetchColumn() ?: 0);
+
                     if ($roomId !== null) {
                         $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status = 'Active' AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
                         $conflictStmt->execute([$roomId, $guestId, $propertyId, $newCheckout, $newCheckin]);
@@ -190,6 +194,34 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ]);
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
+
+                    $newNoOfGuests = intval($input['no_of_guests'] ?? 1);
+                    if ($newNoOfGuests > $previousNoOfGuests) {
+                        try {
+                            $roomStmt = $pdo->prepare("
+                                SELECT g.guest_name, COALESCE(r.name, 'Unassigned') as room_name
+                                FROM guests g
+                                LEFT JOIN properties r ON g.room_id = r.id
+                                WHERE g.id = ? AND g.property_id = ?
+                            ");
+                            $roomStmt->execute([$guestId, $propertyId]);
+                            $guestInfo = $roomStmt->fetch(PDO::FETCH_ASSOC);
+                            if ($guestInfo) {
+                                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
+                                $countStmt->execute([$guestId, $propertyId]);
+                                $uploadedCount = intval($countStmt->fetchColumn());
+                                require_once __DIR__ . '/../telegram/sender.php';
+                                $msg = "👥 <b>Guest Count Updated</b>\n\n";
+                                $msg .= "👤 <b>Booking:</b> {$guestInfo['guest_name']}\n";
+                                $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
+                                $msg .= "🔢 <b>Guests:</b> {$previousNoOfGuests} → {$newNoOfGuests}\n";
+                                $msg .= "📋 <b>ID Documents:</b> {$uploadedCount}/{$newNoOfGuests} uploaded";
+                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                            }
+                        } catch (Exception $e) {
+                            error_log("Failed to send guest-count-updated Telegram notification: " . $e->getMessage());
+                        }
+                    }
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update guest: ' . $e->getMessage()]);
@@ -270,6 +302,33 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     ");
                     $stmt->execute([$guestId, $propertyId, $guestIndex, $filePath, $_SESSION['username'] ?? '']);
                     echo json_encode(['status' => 'success', 'message' => 'ID document saved']);
+
+                    // Live progress ping - lets the tenant follow along in Telegram as
+                    // photos come in, rather than only hearing about it at completion.
+                    try {
+                        $guestStmt = $pdo->prepare("
+                            SELECT g.guest_name, g.no_of_guests, COALESCE(r.name, 'Unassigned') as room_name
+                            FROM guests g
+                            LEFT JOIN properties r ON g.room_id = r.id
+                            WHERE g.id = ? AND g.property_id = ?
+                        ");
+                        $guestStmt->execute([$guestId, $propertyId]);
+                        $guestInfo = $guestStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($guestInfo) {
+                            $required = max(1, intval($guestInfo['no_of_guests'] ?? 1));
+                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
+                            $countStmt->execute([$guestId, $propertyId]);
+                            $uploadedCount = intval($countStmt->fetchColumn());
+                            require_once __DIR__ . '/../telegram/sender.php';
+                            $msg = "📸 <b>ID Document Uploaded</b>\n\n";
+                            $msg .= "👤 <b>Guest:</b> {$guestInfo['guest_name']}\n";
+                            $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
+                            $msg .= "✅ <b>Progress:</b> {$uploadedCount}/{$required} required ID(s) uploaded";
+                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                        }
+                    } catch (Exception $e) {
+                        error_log("Failed to send ID upload Telegram notification: " . $e->getMessage());
+                    }
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to save ID document: ' . $e->getMessage()]);

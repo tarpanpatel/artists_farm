@@ -177,6 +177,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todaysCheckins = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr);
+
   // Active resident profile - must be currently staying (today is between checkin and checkout)
   const activeGuest = guests.find((g) => {
     if (g.status !== 'Active') return false;
@@ -255,6 +258,49 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <Plus className="w-4 h-4" />
             <span>Add Guest</span>
           </button>
+        </div>
+      )}
+
+      {/* Today's Check-ins & Pending Actions */}
+      {todaysCheckins.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5">
+          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+            <IdCard className="w-4 h-4 text-purple-600" />
+            Today's Check-ins & Pending Actions
+          </h3>
+          <ul className="space-y-2">
+            {todaysCheckins.map((g) => {
+              const verified = g.idVerificationStatus === 'Complete';
+              return (
+                <li
+                  key={g.id}
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
+                    verified ? 'border-gray-100 bg-gray-50' : 'border-amber-200 bg-amber-50'
+                  }`}
+                >
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{g.guestName}</p>
+                    <p className="text-xs text-gray-500">{g.roomNumber}</p>
+                  </div>
+                  {verified ? (
+                    <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      ID Verified
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedBooking(g);
+                        setShowCheckinVerification(true);
+                      }}
+                      className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      ⚠️ ID Upload Pending
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
