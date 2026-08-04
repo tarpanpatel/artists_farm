@@ -42,6 +42,10 @@ export interface BillingReceipt {
   gstFoodRate?: number;
   gstAccommodationAmount?: number;
   gstFoodAmount?: number;
+  gstTaxType?: 'cgst_sgst' | 'igst';
+  gstIgst?: number;
+  guestGstin?: string;
+  guestBillingName?: string;
   discount: number;
   grandTotal: number;
   status: 'Paid' | 'Pending';

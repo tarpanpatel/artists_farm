@@ -1232,6 +1232,10 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
         gstFoodRate: Number(r.gst_food_rate || 0),
         gstAccommodationAmount: Number(r.gst_accommodation_amount || 0),
         gstFoodAmount: Number(r.gst_food_amount || 0),
+        gstTaxType: r.gst_tax_type || 'cgst_sgst',
+        gstIgst: Number(r.gst_igst || 0),
+        guestGstin: r.guest_gstin || '',
+        guestBillingName: r.guest_billing_name || '',
       }));
     }
   } catch (err) {
