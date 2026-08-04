@@ -5,6 +5,7 @@
  */
 
 session_start();
+header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../errors/logger.php';

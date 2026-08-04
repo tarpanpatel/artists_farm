@@ -444,6 +444,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [receipts, setReceipts] = useState<BillingReceipt[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  // Bumped at the start of every guest/menu/audit-log/receipt hydration fetch
+  // cycle (see the two effects below) so a slower, older in-flight request
+  // can detect it's been superseded and skip applying its (possibly
+  // wrong-property) result once it resolves.
+  const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { refreshStaff, refreshAttendance } = useStaff();
@@ -511,25 +516,35 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setIsTestingMode(nextState);
   };
 
-  // Re-fetch ALL data when testing mode changes (live DB ↔ test DB)
+  // Re-fetch ALL data when testing mode changes (live DB ↔ test DB). Shares
+  // hydrationTokenRef with the property-hydration effect below so whichever
+  // fetch cycle started last wins, regardless of which effect it belongs to.
   useEffect(() => {
+    hydrationTokenRef.current += 1;
+    const myToken = hydrationTokenRef.current;
+    const isStale = () => hydrationTokenRef.current !== myToken;
+
     fetchGuestsFromDB().then((data) => {
+      if (isStale()) return;
       if (data && data.length > 0) setGuests(data); else setGuests([]);
     });
     if (isModuleEnabled('kitchen')) {
       fetchMenuFromDB().then((data) => {
+        if (isStale()) return;
         if (data && data.length > 0) setMenu(data); else setMenu([]);
       });
     }
     refreshStaff();
     refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
+      if (isStale()) return;
       if (data && data.length > 0) setAuditLogs(data); else setAuditLogs([]);
     });
     fetchReceiptsFromDB().then((data) => {
+      if (isStale()) return;
       if (data && data.length > 0) setReceipts(data); else setReceipts([]);
     });
-  }, [isTestingMode, isModuleEnabled]);
+  }, [isTestingMode, isModuleEnabled, preloadedData.currentProperty?.id]);
 
 
 
@@ -605,32 +620,52 @@ function AppBody({ preloadedData }: AppBodyProps) {
     return navItems.filter((item) => !isKitchenModuleNavItem(item));
   }, [navItems, kitchenEnabled]);
 
-  // Hydrate guests, menu, orders, inventory, attendance, and audit logs from DB on startup
+  // Hydrate guests, menu, orders, inventory, attendance, and audit logs from DB
+  // whenever this property becomes active - re-running on property switch (not
+  // just on mount) is what keeps a previous property's data from lingering in
+  // state after navigating to a different one.
+  //
+  // This effect (and the testing-mode effect above) both fetch the same data,
+  // and StrictMode's dev-only double-invoke means each can fire twice - so up
+  // to 4 concurrent fetchGuestsFromDB() calls can be in flight at once. If an
+  // older call (still in flight for a previous property) resolves after a
+  // newer one, it would overwrite correct state with stale/wrong-property
+  // data. The token below discards any resolution that isn't from the most
+  // recently started fetch cycle.
   useEffect(() => {
+    hydrationTokenRef.current += 1;
+    const myToken = hydrationTokenRef.current;
+    const isStale = () => hydrationTokenRef.current !== myToken;
+
     fetchGuestsFromDB().then((data) => {
-      if (data && data.length > 0) setGuests(data);
+      if (isStale()) return;
+      setGuests(data && data.length > 0 ? data : []);
     });
     if (isModuleEnabled('kitchen')) {
       fetchMenuFromDB().then((data) => {
         if (data && data.length > 75) {
           dedupMenuDB().then(() => {
             fetchMenuFromDB().then((clean) => {
-              if (clean && clean.length > 0) setMenu(clean);
+              if (isStale()) return;
+              setMenu(clean && clean.length > 0 ? clean : []);
             });
           });
-        } else if (data && data.length > 0) {
-          setMenu(data);
+        } else {
+          if (isStale()) return;
+          setMenu(data && data.length > 0 ? data : []);
         }
       });
     }
     refreshAttendance();
     fetchAuditLogsFromDB().then((data) => {
-      if (data && data.length > 0) setAuditLogs(data);
+      if (isStale()) return;
+      setAuditLogs(data && data.length > 0 ? data : []);
     });
     fetchReceiptsFromDB().then((data) => {
-      if (data && data.length > 0) setReceipts(data);
+      if (isStale()) return;
+      setReceipts(data && data.length > 0 ? data : []);
     });
-  }, [isModuleEnabled]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {

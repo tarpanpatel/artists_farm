@@ -746,41 +746,6 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
         });
       }
 
-      // Ensure there is always a booking checking out today in demo/test dataset
-      const todayStr = new Date().toISOString().split('T')[0];
-      const hasCheckoutToday = result.some((g) => {
-        const checkout = (g.expectedCheckout || g.checkoutDate || '').split(' ')[0].split('T')[0];
-        return checkout === todayStr;
-      });
-
-      if (isTestingModeActive() && !hasCheckoutToday && result.length > 0) {
-        const prevDate = new Date();
-        prevDate.setDate(prevDate.getDate() - 2);
-        const prevStr = prevDate.toISOString().split('T')[0];
-
-        const demoCheckoutGuest = {
-          id: `g-demo-checkout-today`,
-          guestName: 'Robert Taylor',
-          phoneNumber: '9988776670',
-          checkinDate: `${prevStr} 14:00:00`,
-          expectedCheckout: `${todayStr} 11:00:00`,
-          checkoutDate: `${todayStr} 11:00:00`,
-          roomNumber: 'Room 103',
-          roomId: 3,
-          status: 'Active',
-          notes: 'Demo guest checking out today',
-          bookingSource: 'Offline',
-          numberOfGuests: 2,
-          roomRate: 3500,
-          advanceAmount: 3500,
-          foodBill: 0,
-          totalAmount: 7000,
-          paymentStatus: 'Pending',
-        };
-
-        result.unshift(demoCheckoutGuest);
-      }
-
       return result;
     }
   } catch (err) {
