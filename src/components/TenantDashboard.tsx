@@ -654,11 +654,18 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <div className="px-6 py-5 space-y-3">
               <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-red-800 dark:text-red-300 space-y-1">
-                  <p className="font-semibold">This action is permanent and irreversible.</p>
-                  <p>All guest records, billing history, and staff data for <span className="font-semibold">"{modal.property.name}"</span> will be permanently deleted.</p>
+                <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full">
+                  <p className="font-bold text-red-700 dark:text-red-400">This action is permanent and irreversible.</p>
+                  <div className="text-xs space-y-2 mt-1">
+                    <p className="font-semibold text-[11px] uppercase tracking-wider text-red-600 dark:text-red-400">⚠️ Deletion Consequences for "{modal.property.name}":</p>
+                    <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300">
+                      <li>All <strong>active and upcoming bookings</strong> (present and future stays) will be permanently deleted.</li>
+                      <li>Past bookings (checked-out/cancelled) and associated financial ledger records <strong>will remain intact</strong> for historical audit trail.</li>
+                      <li>Menus, inventory stock list, modules, and staff assignments will be deleted.</li>
+                    </ul>
+                  </div>
                   {(modal.property.room_count ?? 0) > 0 && (
-                    <p>This will also delete all {modal.property.room_count} sub-rooms.</p>
+                    <p className="text-[11px] font-bold mt-1">Note: This will also delete all {modal.property.room_count} sub-rooms.</p>
                   )}
                 </div>
               </div>

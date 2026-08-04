@@ -21,7 +21,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     SELECT g.*, COALESCE(r.name, 'Unassigned') as roomNumber
                     FROM guests g
                     LEFT JOIN properties r ON g.room_id = r.id AND r.property_type = 'MULTI_KEY_ROOM'
-                    WHERE g.property_id = ?
+                    WHERE g.property_id = ? AND (g.room_id IS NULL OR r.id IS NULL OR r.is_deleted = 0)
                     ORDER BY g.checkin_date DESC
                 ");
                 $stmt->execute([$propertyId]);

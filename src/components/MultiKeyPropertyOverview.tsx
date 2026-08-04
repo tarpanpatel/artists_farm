@@ -176,7 +176,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const handleDeleteRoom = async (roomId: number) => {
     const confirmed = await confirm({
       title: 'Delete Room',
-      message: 'Delete this room? Booking history will be preserved.',
+      message: 'Delete this room? All present and future bookings associated with this room will be deleted. Past bookings and their billing records will stay intact.',
       confirmText: 'Delete Room',
       variant: 'danger',
     });

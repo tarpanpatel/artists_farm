@@ -642,6 +642,10 @@ function deleteMultiKeyRoom($pdo) {
         $stmt = $pdo->prepare("UPDATE properties SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         $stmt->execute([$room_id]);
 
+        // Clean up: delete present and future (active) bookings associated with this deleted room
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status = 'Active'");
+        $stmt->execute([$room_id]);
+
         echo json_encode([
             'success' => true,
             'message' => 'Room deleted successfully. Booking history preserved.',

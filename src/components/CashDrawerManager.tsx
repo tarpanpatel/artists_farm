@@ -186,7 +186,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       </div>
 
       {/* Entry Form */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-emerald-500 pl-2.5 mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Database, Loader, CheckCircle, AlertCircle, BarChart3, Check, Lightbulb, Calendar, Sparkles } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
+import { setTestingModeState } from '../services/api';
 
 interface DemoDataModalProps {
   isOpen: boolean;
@@ -32,8 +33,9 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
       const data = await response.json();
       if (data.status === 'success') {
+        setTestingModeState(true);
         setHasGeneratedDemo(true);
-        setMessage({ type: 'success', text: '✅ Demo data generated! Refresh to see changes.' });
+        setMessage({ type: 'success', text: '✅ Demo data generated! Refreshing...' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to generate demo data' });
@@ -74,6 +76,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       console.log('[DemoDataModal] API Response data:', data);
 
       if (data.status === 'success') {
+        setTestingModeState(false);
         setMessage({ type: 'success', text: '✅ Test mode exited! Closing...' });
         setTimeout(() => {
           onClose();

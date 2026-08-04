@@ -27,6 +27,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onOpenTelegramModal: () => void;
   onOpenDemoModal?: () => void;
+  onToggleTestingMode?: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   isIconOnly: boolean;
@@ -36,6 +37,7 @@ interface HeaderProps {
   currentPropertyColorScheme: string;
   propertyName: string;
   isTestModeActive?: boolean;
+  isTestingMode?: boolean;
   onCloseDemoModal?: () => void;
   kitchenModuleEnabled?: boolean;
   isMultiKeyProperty?: boolean;
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenTelegramModal,
   onOpenDemoModal,
+  onToggleTestingMode,
   isSidebarOpen,
   onToggleSidebar,
   isIconOnly,
@@ -56,6 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentPropertyColorScheme,
   propertyName,
   isTestModeActive = false,
+  isTestingMode = false,
   onCloseDemoModal,
   kitchenModuleEnabled = true,
   isMultiKeyProperty = false,
@@ -343,21 +347,21 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Test Data Button */}
           {onOpenDemoModal && (
             <button
-              onClick={onOpenDemoModal}
-              title={isTestModeActive ? "Test mode active - Click to stop" : "Open Test Data Center - Click to start"}
+              onClick={isTestingMode ? onToggleTestingMode : onOpenDemoModal}
+              title={isTestingMode ? "Stop Test Mode" : "Open Test Data Center"}
               aria-label="Test Data Center"
               className={`btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
-                isTestModeActive
-                  ? 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-950/50'
+                isTestingMode
+                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700 font-bold'
                   : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-950/50'
               }`}
             >
-              {isTestModeActive ? (
-                <Square className="w-4 h-4 fill-current" />
+              {isTestingMode ? (
+                <Square className="w-4 h-4 fill-current text-white" />
               ) : (
                 <Play className="w-4 h-4 fill-current" />
               )}
-              <span className="hidden sm:inline">{isTestModeActive ? 'Active' : 'Test'}</span>
+              <span className="hidden sm:inline">{isTestingMode ? 'Stop Test' : 'Test'}</span>
             </button>
           )}
 

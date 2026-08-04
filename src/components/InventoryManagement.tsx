@@ -814,7 +814,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         </div>
 
         {/* Wastage Form */}
-        <div className="record-wastage-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+        <div className="record-wastage-card max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-amber-500 pl-2.5 flex items-center gap-1.5">
             📝 RECORD WASTAGE / SPILLAGE INCIDENT
           </h3>
@@ -1146,7 +1146,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return (
       <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
         {/* Top Form: RECORD KITCHEN PURCHASES & STOCK */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-6 space-y-4">
+        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
             <Search className="text-slate-400 w-4 h-4" />
             <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider">

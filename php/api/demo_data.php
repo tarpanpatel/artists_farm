@@ -232,7 +232,7 @@ function clearDemoData($pdo, $propertyId) {
         error_log("[demo_data.php] Deleted staff users: " . $stmt->rowCount());
 
         // Delete ALL demo guests (current and old demo data)
-        $stmt = $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND guest_name IN ('John Smith', 'Sarah Johnson', 'Mike Wilson', 'Emma Davis', 'Oliver Brown', 'Alice Brown', 'Bob Green', 'Carol White', 'David Lee', 'Fiona Taylor', 'George Harris')");
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND guest_name IN ('John Smith', 'Sarah Johnson', 'Mike Wilson', 'Emma Davis', 'Oliver Brown', 'Alice Brown', 'Bob Green', 'Carol White', 'David Lee', 'Fiona Taylor', 'George Harris', 'Robert Taylor')");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
         error_log("[demo_data.php] Deleted guests: " . $stmt->rowCount());

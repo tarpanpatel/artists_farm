@@ -121,3 +121,7 @@ try {
         exit();
     }
 }
+
+if (isset($pdo) && function_exists('initializeDatabaseTables')) {
+    initializeDatabaseTables($pdo);
+}

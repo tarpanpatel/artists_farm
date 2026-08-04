@@ -734,7 +734,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
         return checkout === todayStr;
       });
 
-      if (!hasCheckoutToday && result.length > 0) {
+      if (isTestingModeActive() && !hasCheckoutToday && result.length > 0) {
         const prevDate = new Date();
         prevDate.setDate(prevDate.getDate() - 2);
         const prevStr = prevDate.toISOString().split('T')[0];

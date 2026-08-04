@@ -840,8 +840,8 @@ switch ($action) {
 
         try {
             $pdo->beginTransaction();
-            // Delete all related data - FAIL if any deletion fails (no silent errors)
-            $tables = ['guests', 'financial_ledger', 'kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'cash_drawer', 'petty_cash', 'misc_charges', 'telegram_settings', 'property_modules', 'audit_logs'];
+            // Delete configuration, menu, staff, and setup tables - FAIL if any deletion fails
+            $tables = ['kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'misc_charges', 'telegram_settings', 'property_modules'];
             foreach ($tables as $table) {
                 // Check if table exists before attempting delete
                 $checkStmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
@@ -851,6 +851,10 @@ switch ($action) {
                     $pdo->prepare("DELETE FROM `$table` WHERE property_id = ?")->execute([$property_id]);
                 }
             }
+
+            // Only delete active/upcoming guests (present and future bookings)
+            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status = 'Active'")->execute([$property_id]);
+
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Property deleted successfully']);
@@ -1118,7 +1122,6 @@ switch ($action) {
         handle_reset_test_database($db_host, $db_user, $db_pass, $live_db, $test_db);
         break;
 
-    // --- DEMO DATA MANAGEMENT ---
     case 'generate_demo_data':
         require_once __DIR__ . '/demo_data.php';
         $input = json_decode(file_get_contents('php://input'), true);

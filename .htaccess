@@ -6,11 +6,13 @@
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so
     # /php/..., /dist/..., /assets/..., /api/... etc. are left untouched
+    RewriteCond %{REQUEST_URI} !clean_all_roberts\.php$
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-z0-9-_]+)/([a-z0-9-_]+)/?(.*)$ index.php?tenant_slug=$1&property_slug=$2 [QSA,L]
 
     # Fallback for single segment (tenant dashboard)
+    RewriteCond %{REQUEST_URI} !clean_all_roberts\.php$
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-z0-9-_]+)/?(.*)$ index.php?property_slug=$1 [QSA,L]
