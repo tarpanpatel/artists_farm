@@ -362,7 +362,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
 
       {/* Visible inline Form */}
-      <div className="add-expenses-container bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+      <div className="add-expenses-container max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-red-500 pl-2.5 mb-4 flex items-center gap-1.5">
           📝 ADD EXPENSES
         </h3>

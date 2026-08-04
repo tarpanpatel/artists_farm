@@ -555,7 +555,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             </button>
           </div>
 
-          {/* Card 6: SQL Snapshot Backup */}
+          {/* Card 6: SQL Snapshot Backup (Root Admin) */}
           {isRootAdmin && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
               <div className="space-y-1">

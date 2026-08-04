@@ -275,9 +275,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer"
+            className={`px-6 py-2.5 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer ${
+              checkinDate && checkoutDate
+                ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-0'
+                : 'bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900'
+            }`}
           >
-            Close
+            {checkinDate && checkoutDate ? 'Save' : 'Close'}
           </button>
         </div>
       </div>

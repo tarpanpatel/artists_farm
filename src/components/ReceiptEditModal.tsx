@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, User, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { X, IndianRupee, Home, User, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, ShieldAlert, Share2, Printer } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { fetchMenuFromDB } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './ToastContext';
+import * as htmlToImage from 'html-to-image';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -78,6 +80,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 }) => {
   const { activeRole } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
+  const { showToast } = useToast();
 
   // Base State
   const [roomCharges, setRoomCharges] = useState(0);
@@ -86,6 +89,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [deskCashier, setDeskCashier] = useState('Root Admin');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Calculate blocked dates for the room of this guest
   const blockedDates = useMemo(() => {
@@ -344,6 +348,35 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const handleRemoveSplitRow = (id: string) => {
     if (splitRows.length <= 1) return;
     setSplitRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  // Share Receipt PNG Handler
+  const handleShareReceipt = async () => {
+    const receiptBox = document.getElementById('printableReceiptModalContent');
+    const actionsBar = document.getElementById('printableReceiptActionsBar');
+    if (!receiptBox) return;
+
+    if (actionsBar) actionsBar.style.display = 'none';
+
+    try {
+      const blob = await htmlToImage.toBlob(receiptBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      if (!blob) return;
+      const file = new File([blob], `Bill_${Date.now()}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Final Bill Settlement' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `Bill_${Date.now()}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      }
+    } catch (err) {
+      showToast('Failed to generate image print: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
+      console.error(err);
+    } finally {
+      if (actionsBar) actionsBar.style.display = 'flex';
+    }
   };
 
   const handleSaveOrCheckout = () => {
@@ -961,6 +994,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           >
             Cancel
           </button>
+          {mode === 'edit-and-checkout' && (
+            <button
+              type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+            >
+              <Printer className="w-4 h-4" /> Preview & Share Bill
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSaveOrCheckout}
@@ -1001,6 +1043,161 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         }}
         blockedDates={blockedDates}
       />
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL: CLEAN PRINT-FRIENDLY RECEIPT                                 */}
+      {/* ========================================================================= */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
+          <div
+            id="printableReceiptModalContent"
+            className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs relative"
+          >
+            {/* Modal Actions Bar */}
+            <div
+              id="printableReceiptActionsBar"
+              className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2"
+            >
+              <button
+                type="button"
+                onClick={handleShareReceipt}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share Bill (PNG)
+              </button>
+              <a
+                href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
+                  `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${checkinDate}\n📅 *Check-Out:* ${checkoutDate}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center"
+              >
+                Share via WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Receipt Content */}
+            <div className="space-y-3 pt-2">
+              <div className="text-center pb-2 border-b border-slate-200">
+                <h3 className="font-extrabold text-base text-black uppercase">
+                  {(guest as any).propertyName || 'ARTISTS FARM RESORT'}
+                </h3>
+                <p className="text-[11px] text-black font-medium">Consolidated Stay & KOT Settlement</p>
+              </div>
+
+              <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
+                <span>
+                  <b>Guest:</b> {guest.guestName}
+                </span>
+                <span>
+                  <b>Date:</b> {new Date().toLocaleDateString('en-GB')}
+                </span>
+              </div>
+
+              {/* Stay Logistics */}
+              <div className="space-y-1">
+                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  Stay Logistics (Room {guest.roomNumber})
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Lodging Contract Charges:</span>
+                  <span>₹{roomCharges.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-black font-semibold">
+                  <span>[-] Advance Paid:</span>
+                  <span>₹{advancePaid.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
+                  <span>Pending Lodging Settled:</span>
+                  <span>₹{lodgingPendingDue.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* KOT Kitchen Incidentals */}
+              {kitchenModuleEnabled && incidentals.length > 0 && (
+                <div className="space-y-1 pt-2">
+                  <div className="flex justify-between items-center font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                    <span>KOT Kitchen Incidentals</span>
+                    <span>Subtotal: ₹{foodTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="space-y-1 pt-1">
+                    {incidentals.map((it) => (
+                      <div key={it.id} className="flex justify-between text-black">
+                        <span>
+                          {it.name} x{it.quantity}
+                        </span>
+                        <span>₹{(it.price * it.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Adjustments: Extra Charges and Discounts */}
+              {adjustments.length > 0 && (
+                <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
+                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                    Applied Adjustments
+                  </div>
+                  <div className="space-y-1 pt-1">
+                    {adjustments.map((adj) => (
+                      <div key={adj.id} className="flex justify-between text-black">
+                        <span>↳ {adj.reason}</span>
+                        <span className="font-semibold">
+                          {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* GST Breakdown — item-wise */}
+              {gstEnabled && gstAmount > 0 && (
+                <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
+                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                    Tax Breakdown (GST)
+                  </div>
+                  <div className="flex justify-between text-black text-[11px]">
+                    <span>Accommodation @ {gstAccommodationRate}%:</span>
+                    <span>₹{gstAccommodationAmount.toFixed(2)}</span>
+                  </div>
+                  {gstFoodAmount > 0 && (
+                    <div className="flex justify-between text-black text-[11px]">
+                      <span>Food @ {gstFoodRate}%:</span>
+                      <span>₹{gstFoodAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-dashed border-slate-300 pt-1">
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>CGST (50% split):</span>
+                      <span>₹{gstCgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>SGST (50% split):</span>
+                      <span>₹{gstSgst.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Grand Total */}
+              <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
+                <span>Grand Total Payable:</span>
+                <span>₹{grandTargetDue.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

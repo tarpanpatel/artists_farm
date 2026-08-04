@@ -1129,15 +1129,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               Delete Property?
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 font-semibold text-red-600">
-              ⚠️ This will permanently delete ALL data for this property:
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 font-bold text-red-600">
+              ⚠️ Deletion Consequences for this Property:
             </p>
             <ul className="text-sm text-gray-600 dark:text-gray-400 mb-4 list-disc list-inside space-y-1">
-              <li>All guests and billing records</li>
-              <li>All food orders and menu items</li>
-              <li>All inventory and stock</li>
-              <li>All staff assignments</li>
-              <li>All audit logs</li>
+              <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
+              <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
+              <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
             </ul>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
               Type <span className="font-bold font-mono text-gray-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:

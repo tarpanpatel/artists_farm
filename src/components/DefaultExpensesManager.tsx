@@ -266,7 +266,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Add New Item Form */}
       {isAddingNew && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
           <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Add New Expense Item</h3>
           <form onSubmit={handleAddItem} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

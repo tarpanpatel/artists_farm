@@ -1233,6 +1233,8 @@ ${itemsStr}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             propertyName={propertyName}
             isTestModeActive={isTestModeActive}
+            isTestingMode={isTestingMode}
+            onToggleTestingMode={handleToggleTestingMode}
             onCloseDemoModal={() => {
               setIsDemoModalOpen(false);
               setIsTestModeActive(false);
@@ -1244,32 +1246,7 @@ ${itemsStr}
           />
         )}
 
-        {isAuthenticated && isTestingMode && (
-          <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 px-4 py-2 text-xs font-bold shadow-md flex flex-wrap items-center justify-between z-40 border-b border-amber-400 mt-16">
-            <div className="flex items-center gap-2">
-              <span className="bg-slate-950 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
-                🧪 TEST MODE ACTIVE
-              </span>
-              <span>
-                All modifications are isolated in the Sandbox Database. Live production data remains completely protected.
-              </span>
-            </div>
-            <div className="flex items-center gap-2 mt-1 sm:mt-0">
-              <button
-                onClick={handleResetTestDatabase}
-                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 text-[11px]"
-              >
-                🔄 Reset Sandbox Data
-              </button>
-              <button
-                onClick={handleToggleTestingMode}
-                className="bg-amber-800 hover:bg-amber-900 text-white font-bold px-2.5 py-1 rounded-lg transition-all text-[11px] cursor-pointer"
-              >
-                Exit Test Mode
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {isAuthenticated && (
           <Navigation

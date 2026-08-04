@@ -134,6 +134,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [showGuestNotes, setShowGuestNotes] = useState(false);
   const [showDynamicIncidentals, setShowDynamicIncidentals] = useState(false);
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
+  const [noOfGuests, setNoOfGuests] = useState(1);
+  const [createdBooking, setCreatedBooking] = useState<Guest | null>(null);
 
   // Set default room for MultiKey properties on component mount
   useEffect(() => {
@@ -676,6 +678,35 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
+  // Share Booking Voucher PNG Handler
+  const handleShareBookingVoucher = async () => {
+    const voucherBox = document.getElementById('printableBookingVoucherContent');
+    const actionsBar = document.getElementById('printableBookingVoucherActionsBar');
+    if (!voucherBox) return;
+
+    if (actionsBar) actionsBar.style.display = 'none';
+
+    try {
+      const blob = await htmlToImage.toBlob(voucherBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      if (!blob) return;
+      const file = new File([blob], `Booking_${createdBooking?.guestName || 'Voucher'}_${Date.now()}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Booking Confirmation Voucher' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `Booking_${createdBooking?.guestName || 'Voucher'}_${Date.now()}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      }
+    } catch (err) {
+      showToast('Failed to generate voucher image: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
+      console.error(err);
+    } finally {
+      if (actionsBar) actionsBar.style.display = 'flex';
+    }
+  };
+
 
   const filteredGuests = guests.filter((g) => {
     const matchesStatus = filterStatus === 'All' || g.status === filterStatus;
@@ -765,17 +796,38 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               return;
             }
 
-            onAddGuest({
+            const guestObj: Guest = {
               id: Math.random().toString(36).substr(2, 9),
               guestName: guestName.trim(),
               phoneNumber: phoneNumber.trim(),
               roomNumber,
               checkinDate: newCheckinStr,
               expectedCheckout: newCheckoutStr,
-              status: 'Booked'
-            });
+              status: 'Booked',
+              bookingSource: bookingSourceLocal,
+              numberOfGuests: noOfGuests,
+              roomRate: bookingRoomTariff,
+              advanceAmount: bookingAdvance,
+              notes: showGuestNotes ? notes : '',
+            };
+
+            onAddGuest(guestObj);
+            setCreatedBooking(guestObj);
             showToast('Guest booked successfully!', { type: 'success' });
           }}>
+            {/* Row 0: Guest Name (Full width) */}
+            <div>
+              <label className="block mb-1">Guest Name *</label>
+              <input
+                type="text"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="Enter guest's full name"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+            </div>
+
             {/* Row 1: Contact Phone + Assigned Room (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -811,7 +863,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
               <div>
                 <label className="block mb-1">No. of Guests</label>
-                <input type="number" min="1" defaultValue="1" className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input
+                  type="number"
+                  min="1"
+                  value={noOfGuests}
+                  onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
             </div>
 
@@ -1712,19 +1770,31 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Modal Actions Bar */}
             <div
               id="printableReceiptActionsBar"
-              className="flex items-center justify-between border-b border-slate-100 pb-3"
+              className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2"
             >
               <button
                 type="button"
                 onClick={handleShareReceipt}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
               >
-                <Share2 className="w-3.5 h-3.5" /> Share Bill
+                <Share2 className="w-3.5 h-3.5" /> Share Bill (PNG)
               </button>
+              {currentGuest && (
+                <a
+                  href={`https://api.whatsapp.com/send?phone=${currentGuest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + currentGuest.phoneNumber.replace(/\D/g, '') : currentGuest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
+                    `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${currentGuest.checkinDate}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
+                >
+                  Share via WhatsApp
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(false)}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
               >
                 Close
               </button>
@@ -1835,6 +1905,142 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
                 <span>Grand Total Payable:</span>
                 <span>₹{grandTargetDue.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP MODAL 3: CLEAN PRINT-FRIENDLY BOOKING CONFIRMATION VOUCHER          */}
+      {/* ========================================================================= */}
+      {createdBooking && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
+          <div
+            id="printableBookingVoucherContent"
+            className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs relative"
+          >
+            {/* Modal Actions Bar */}
+            <div
+              id="printableBookingVoucherActionsBar"
+              className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2"
+            >
+              <button
+                type="button"
+                onClick={handleShareBookingVoucher}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share Voucher (PNG)
+              </button>
+              <a
+                href={`https://api.whatsapp.com/send?phone=${createdBooking.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + createdBooking.phoneNumber.replace(/\D/g, '') : createdBooking.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
+                  `🏨 *BOOKING CONFIRMATION VOUCHER*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${createdBooking.guestName}\n🏠 *Assigned Room:* ${createdBooking.roomNumber}\n📅 *Check-In:* ${createdBooking.checkinDate}\n📅 *Check-Out:* ${createdBooking.expectedCheckout}\n👥 *Number of Guests:* ${createdBooking.numberOfGuests}\n💰 *Room Tariff:* ₹${(createdBooking.roomRate || 0).toFixed(2)}\n💰 *Advance Paid:* ₹${(createdBooking.advanceAmount || 0).toFixed(2)}\n━━━━━━━━━━━━━━━━\nWe look forward to welcoming you to Artists Farm Resort!`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
+              >
+                Share via WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedBooking(null);
+                  // Clear form fields
+                  setGuestName('');
+                  setPhoneNumber('');
+                  setBookingRoomTariff(0);
+                  setBookingAdvance(0);
+                  setBookingPending(0);
+                  setAdvanceReceivedBy('');
+                  setPendingReceivedBy('');
+                  setShowGuestNotes(false);
+                  setNotes('');
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Receipt Content */}
+            <div className="space-y-3 pt-2 font-mono">
+              <div className="text-center pb-2 border-b border-slate-200">
+                <h3 className="font-extrabold text-base text-black uppercase">
+                  ARTISTS FARM RESORT
+                </h3>
+                <p className="text-[11px] text-black font-medium">Booking Confirmation Voucher</p>
+              </div>
+
+              <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
+                <span>
+                  <b>Guest:</b> {createdBooking.guestName}
+                </span>
+                <span>
+                  <b>Date:</b> {new Date().toLocaleDateString('en-GB')}
+                </span>
+              </div>
+
+              {/* Stay Logistics */}
+              <div className="space-y-1">
+                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  Booking Logistics
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Assigned Room / Villa:</span>
+                  <span className="font-bold">{createdBooking.roomNumber}</span>
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Check-In Date/Time:</span>
+                  <span>{createdBooking.checkinDate}</span>
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Check-Out Date/Time:</span>
+                  <span>{createdBooking.expectedCheckout}</span>
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>No. of Guests:</span>
+                  <span>{createdBooking.numberOfGuests}</span>
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Booking Source:</span>
+                  <span>{createdBooking.bookingSource || 'Offline'}</span>
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
+                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  Financial Summary
+                </div>
+                <div className="flex justify-between text-black">
+                  <span>Total Room Tariff:</span>
+                  <span>₹{(createdBooking.roomRate || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-black font-semibold">
+                  <span>[-] Advance Paid:</span>
+                  <span>₹{(createdBooking.advanceAmount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
+                  <span>Balance Due:</span>
+                  <span>₹{Math.max(0, (createdBooking.roomRate || 0) - (createdBooking.advanceAmount || 0)).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {createdBooking.notes && (
+                <div className="pt-2 border-t border-dashed border-slate-200">
+                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                    Guest Notes
+                  </div>
+                  <p className="text-black italic mt-1 pl-2">{createdBooking.notes}</p>
+                </div>
+              )}
+
+              {/* Welcome Message */}
+              <div className="border-t-2 border-black pt-3 text-center text-[10px] text-black font-semibold">
+                <p>Thank you for choosing Artists Farm Resort!</p>
+                <p>For support, contact us at 8888888888</p>
               </div>
             </div>
           </div>
