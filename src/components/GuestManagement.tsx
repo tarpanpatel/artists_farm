@@ -32,6 +32,7 @@ import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
+import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
 
@@ -981,7 +982,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                                 setBookingIncidentals(newInc);
                               }}
                               placeholder="-- Select Type --"
-                              options={miscChargesList.map(m => ({ value: m.label, label: m.label }))}
+                              options={miscChargesList.map(m => {
+                                const Icon = getExpenseItemIcon(m.label, m.category);
+                                return {
+                                  value: m.label,
+                                  label: (
+                                    <span className="flex items-center gap-2">
+                                      <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span>{m.label}</span>
+                                    </span>
+                                  ),
+                                  searchText: m.label,
+                                };
+                              })}
                             />
                             <input
                               type="number"
@@ -1351,12 +1364,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <StyledSelect
                         value={adjReasonCharge}
                         onChange={setAdjReasonCharge}
-                        options={[
-                          { value: 'Decoration Fees', label: 'Decoration Fees' },
-                          { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
-                          { value: 'Misc', label: 'Misc' },
-                          { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
-                        ]}
+                        options={['Decoration Fees', 'Extra Housekeeping', 'Misc', 'Pet Stay Charges'].map((label) => {
+                          const Icon = getExpenseItemIcon(label);
+                          return {
+                            value: label,
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span>{label}</span>
+                              </span>
+                            ),
+                            searchText: label,
+                          };
+                        })}
                       />
                     </div>
                   ) : (

@@ -3,6 +3,7 @@ import { Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { getExpenseItemIcon } from '../utils/expenseIcons';
 
 interface ExpenseItem {
   id: number;
@@ -260,10 +261,13 @@ export const ExpenseItemsManagement: React.FC = () => {
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {(filteredCategory.length > 0 ? filteredCategory : categoryItems).map((item) => (
+                    {(filteredCategory.length > 0 ? filteredCategory : categoryItems).map((item) => {
+                      const ItemIcon = getExpenseItemIcon(item.label, category);
+                      return (
                       <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
+                            <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                             <span className="font-semibold text-slate-900 dark:text-white text-sm leading-tight flex-1">{item.label}</span>
                             {item.is_system_default && (
                               <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded whitespace-nowrap">
@@ -284,7 +288,8 @@ export const ExpenseItemsManagement: React.FC = () => {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
