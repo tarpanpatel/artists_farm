@@ -21,6 +21,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 
 interface DataExportCenterProps {
@@ -42,6 +43,8 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   const { staff, attendance } = useStaff();
   const { pettyCash: expenses } = useFinance();
   const { inventory } = useInventoryContext();
+  const { activeRole } = useAuth();
+  const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
   const currentMonthNum = new Date().getMonth() + 1;
   const currentYearNum = new Date().getFullYear();
 
@@ -552,26 +555,28 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             </button>
           </div>
 
-          {/* Card 6: SQL Snapshot Backup */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
-            <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-rose-900 flex items-center gap-2">
-                <Database className="w-4 h-4 text-rose-700" />
-                <span>Full System Snapshot Backup</span>
-              </h3>
-              <p className="text-xs text-rose-700">
-                Generates an instant raw SQL dump of your entire database structure and entries for full data protection.
-              </p>
+          {/* Card 6: SQL Snapshot Backup (Root Admin) */}
+          {isRootAdmin && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-rose-900 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-rose-700" />
+                  <span>Full System Snapshot Backup (Root Admin)</span>
+                </h3>
+                <p className="text-xs text-rose-700">
+                  Generates an instant raw SQL dump of your entire database structure and entries for full data protection.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exportFullSqlBackup}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              >
+                <HardDriveDownload className="w-4 h-4" />
+                <span>DOWNLOAD BACKUP (.SQL)</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={exportFullSqlBackup}
-              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
-            >
-              <HardDriveDownload className="w-4 h-4" />
-              <span>DOWNLOAD BACKUP (.SQL)</span>
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

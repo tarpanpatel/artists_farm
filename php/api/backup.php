@@ -6,6 +6,14 @@
 
 require_once __DIR__ . '/../config/database.php';
 
+session_start();
+if (empty($_SESSION['is_platform_admin'])) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'error', 'message' => 'Root admin access required.']);
+    exit;
+}
+
 header('Content-Type: text/plain; charset=utf-8');
 header('Content-Disposition: attachment; filename="Backup_Artists_Farm_Jaipur_' . date('Y-m-d') . '.sql"');
 
