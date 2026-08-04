@@ -24,6 +24,7 @@ require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/../theme/theme_settings.php';
 require_once __DIR__ . '/configuration.php';
 require_once __DIR__ . '/multikey_properties.php';
+require_once __DIR__ . '/../service_requests/service_requests.php';
 
 // === Global Error & Exception Handlers ===
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
@@ -967,6 +968,15 @@ switch ($action) {
     case 'delete_id_document':
     case 'complete_checkin_verification':
         handleGuestRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- GUEST SERVICE REQUESTS (Housekeeping, Maintenance, etc.) ---
+    case 'get_service_requests':
+    case 'create_service_request':
+    case 'fulfill_service_request':
+    case 'update_service_request_reminder_timestamp':
+    case 'check_stale_service_requests':
+        handleServiceRequestActions($pdo, $request_method, $action, $propertyId);
         break;
 
     // --- BILLING & CHECKOUT ---
