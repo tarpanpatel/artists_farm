@@ -51,8 +51,9 @@ This document tracks identified bugs, pending backend API integrations, and upco
 - [ ] **Automated iCal Sync Background Worker**
   - **Action:** Set up a scheduled cron task or server background worker to automatically trigger `ical_sync.php` at regular intervals (e.g. every 15 minutes) for all connected Airbnb/Booking.com calendars.
 
-- [ ] **Multi-Property Financial Ledger Reports**
-  - **Action:** Expand `AnalyticsDashboard.tsx` to include comparative revenue, occupancy rate breakdown, and expense totals across parent and sub-key properties.
+- [x] **Multi-Property Financial Ledger Reports** — *Done 2026-08-04 (sub-key room comparison)*
+  - **Shipped as:** New "Room-by-Room Performance Comparison" card in `AnalyticsDashboard.tsx`'s Bookings tab, visible only for MULTI_KEY parent properties (`isMultiKeyProperty` + `rooms` now threaded in from `App.tsx`'s `preloadedData.currentProperty`). Groups the existing `receipts` prop by `roomNumber` to show each sub-key room's booking count, revenue, and occupancy % (booked room-nights ÷ elapsed days in the selected date filter) side by side — no backend changes needed, all data was already present on `BillingReceipt`. Occupancy % is intentionally blank on "All Time" (no fixed period to divide by) with an inline explanation. Verified in-browser on Goa Homes (4 rooms) in both light and dark mode, and re-checked after switching the date filter to "This Month" to confirm the occupancy math updates correctly.
+  - **Not done:** true cross-parent-property comparison (e.g. Goa Homes vs. a different tenant property) — each property is a fully isolated DB scope today, so that would need a new tenant-level aggregation endpoint. Sub-key rooms share one parent's data already, which is what this shipped.
 
 - [ ] **Expense Item Icons in Frontend Dropdowns**
   - **Problem:** `getExpenseItemIcon()` (added in `src/utils/expenseIcons.ts`) currently only renders icons in `DefaultExpensesManager.tsx`'s card grid (Root Admin view). Wherever a guest-facing/staff-facing dropdown lists expense/misc-charge items — e.g. `GuestManagement.tsx`'s charge-category picker, `MiscChargesManagement.tsx`, `ExpenseItemsManagement.tsx` — options are still plain text.

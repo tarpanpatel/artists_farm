@@ -1487,6 +1487,8 @@ ${itemsStr}
                     guests={guests}
                     activeMenuItemKey={activeMenuItemKey}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                    rooms={preloadedData.currentProperty?.rooms}
                   />
                 </ErrorBoundary>
               )}

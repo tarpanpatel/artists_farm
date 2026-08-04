@@ -14,7 +14,8 @@ import {
   Search,
   Filter,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BedDouble
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt, Order } from '../types';
@@ -23,11 +24,19 @@ import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { StyledSelect } from './StyledSelect';
 
+interface AnalyticsRoom {
+  id: number;
+  name: string;
+  is_active?: number;
+}
+
 interface AnalyticsDashboardProps {
   receipts: BillingReceipt[];
   guests?: any[];
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
+  isMultiKeyProperty?: boolean;
+  rooms?: AnalyticsRoom[];
 }
 
 type DateFilter = 'all' | 'day' | 'week' | 'month' | 'year';
@@ -37,6 +46,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   guests = [],
   activeMenuItemKey,
   kitchenModuleEnabled = true,
+  isMultiKeyProperty = false,
+  rooms = [],
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
@@ -179,6 +190,37 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }, {} as Record<string, { bookings: number; revenue: number; guests: number }>);
 
   const sortedBookingsByMonth = Object.entries(bookingsByMonth).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Room-by-room comparison (multi-key properties only) — how each sub-key
+  // room is performing against its siblings under the same parent property.
+  const activeRooms = rooms.filter((r) => r.is_active !== 0);
+  const periodDays = (() => {
+    const bounds = getDateBounds();
+    if (!bounds) return null;
+    return Math.max(1, Math.ceil((bounds.end.getTime() - bounds.start.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
+  const roomPerformance = activeRooms.map((room) => {
+    const roomReceipts = filteredReceipts.filter((r) => r.roomNumber === room.name);
+    const revenue = roomReceipts.reduce((sum, r) => sum + (r.grandTotal || r.roomTotal || 0), 0);
+    const bookedNights = roomReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const occupancyRate = periodDays ? Math.min(100, (bookedNights / periodDays) * 100) : null;
+    return { name: room.name, revenue, bookings: roomReceipts.length, bookedNights, occupancyRate };
+  }).sort((a, b) => b.revenue - a.revenue);
+
+  const roomRevenueBarOptions: any = {
+    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
+    colors: ['#2563eb'],
+    xaxis: { categories: roomPerformance.map((r) => r.name) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const roomRevenueBarSeries = [
+    { name: 'Revenue', data: roomPerformance.map((r) => r.revenue) }
+  ];
 
   const purchaseItems = filteredKitchenPurchases.reduce((acc, p: any) => {
     const name = p.itemName || 'Unknown';
@@ -555,6 +597,48 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </table>
             </div>
           </div>
+
+          {isMultiKeyProperty && activeRooms.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
+                <BedDouble className="w-4 h-4 text-blue-600" /> Room-by-Room Performance Comparison
+              </h3>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <ReactApexChart options={roomRevenueBarOptions} series={roomRevenueBarSeries} type="bar" height={320} />
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="datatable w-full text-left border-collapse">
+                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3">Room</th>
+                        <th className="p-3 text-center">Bookings</th>
+                        <th className="p-3 text-right">Revenue (₹)</th>
+                        <th className="p-3 text-right">Occupancy</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {roomPerformance.map((room) => (
+                        <tr key={room.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                          <td className="p-3 font-bold text-slate-900 dark:text-white">{room.name}</td>
+                          <td className="p-3 text-center font-semibold text-blue-600">{room.bookings}</td>
+                          <td className="p-3 text-right font-extrabold text-emerald-600">₹{room.revenue.toLocaleString('en-IN')}</td>
+                          <td className="p-3 text-right font-semibold text-amber-600">
+                            {room.occupancyRate === null ? '—' : `${room.occupancyRate.toFixed(0)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {periodDays === null && (
+                    <p className="text-[10px] text-slate-400 mt-2">Occupancy % needs a specific date range — pick Today, Week, Month, or Year above to see it.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
