@@ -84,6 +84,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  const [showCleared, setShowCleared] = useState(false);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -190,6 +191,81 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     return today >= checkinDate && today < checkoutDate;
   });
 
+  // --- Front-desk alerts: bookings needing attention, with no time cutoff so
+  // stale/forgotten bookings from any point in the past still surface. ---
+  const parseDateOnly = (dateStr?: string): Date | null => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr.split(' ')[0]);
+    if (isNaN(d.getTime())) return null;
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  const formatAlertDate = (dateStr?: string) => {
+    const dateOnly = (dateStr || '').split(' ')[0];
+    const parts = dateOnly.split('-');
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateOnly;
+  };
+
+  const overdueCheckins = guests.filter((g) => {
+    const checkin = parseDateOnly(g.checkinDate);
+    return g.status === 'Booked' && checkin !== null && checkin <= today;
+  });
+  const overdueCheckouts = guests.filter((g) => {
+    const checkout = parseDateOnly(g.expectedCheckout);
+    return g.status === 'Active' && checkout !== null && checkout < today;
+  });
+  const missingIdUploads = guests.filter(
+    (g) => (g.status === 'Active' || g.status === 'CheckedOut') && g.idVerificationStatus !== 'Complete'
+  );
+  // Advance doesn't need to be collected at check-in, but the bill must be
+  // fully settled by checkout - flag any checked-out guest still owing.
+  const unsettledBills = guests.filter(
+    (g) => g.status === 'CheckedOut' && (g.totalAmount || 0) > (g.advanceAmount || 0)
+  );
+  const clearedGuests = guests.filter(
+    (g) =>
+      g.status === 'CheckedOut' &&
+      g.idVerificationStatus === 'Complete' &&
+      (g.totalAmount || 0) <= (g.advanceAmount || 0)
+  );
+  const alertGroups: Array<{
+    key: string;
+    label: string;
+    colorClasses: string;
+    items: Guest[];
+    detail: (g: Guest) => string;
+  }> = [
+    {
+      key: 'overdue-checkin',
+      label: 'Overdue Check-in',
+      colorClasses: 'border-red-200 bg-red-50 text-red-800',
+      items: overdueCheckins,
+      detail: (g) => `Expected ${formatAlertDate(g.checkinDate)}`,
+    },
+    {
+      key: 'overdue-checkout',
+      label: 'Overdue Checkout',
+      colorClasses: 'border-red-200 bg-red-50 text-red-800',
+      items: overdueCheckouts,
+      detail: (g) => `Due ${formatAlertDate(g.expectedCheckout)}`,
+    },
+    {
+      key: 'missing-id',
+      label: 'ID Not Uploaded',
+      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
+      items: missingIdUploads,
+      detail: (g) => (g.status === 'CheckedOut' ? 'Checked out without ID on file' : 'Currently staying'),
+    },
+    {
+      key: 'unsettled-bill',
+      label: 'Unsettled Bill',
+      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
+      items: unsettledBills,
+      detail: (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`,
+    },
+  ];
+  const totalAlerts = alertGroups.reduce((sum, group) => sum + group.items.length, 0);
+
   return (
     <div className="space-y-6">
       {/* Room Info Header - Compact Layout */}
@@ -258,6 +334,82 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <Plus className="w-4 h-4" />
             <span>Add Guest</span>
           </button>
+        </div>
+      )}
+
+      {/* Front-desk Alerts */}
+      {(totalAlerts > 0 || clearedGuests.length > 0) && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            Alerts
+            {totalAlerts > 0 && (
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+                {totalAlerts}
+              </span>
+            )}
+          </h3>
+          {totalAlerts === 0 ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">No outstanding issues.</p>
+          ) : (
+            <div className="space-y-4">
+              {alertGroups
+                .filter((group) => group.items.length > 0)
+                .map((group) => (
+                  <div key={group.key}>
+                    <p className="text-xs font-bold text-gray-600 dark:text-gray-300 mb-1.5">
+                      {group.label} ({group.items.length})
+                    </p>
+                    <ul className="space-y-1.5">
+                      {group.items.map((g) => (
+                        <li key={g.id}>
+                          <button
+                            onClick={() => setSelectedBooking(g)}
+                            className={`w-full flex items-center justify-between gap-3 rounded-lg border p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity ${group.colorClasses}`}
+                          >
+                            <span className="text-sm font-bold">
+                              {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
+                            </span>
+                            <span className="text-xs font-medium whitespace-nowrap">{group.detail(g)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+            </div>
+          )}
+          {clearedGuests.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+              <button
+                onClick={() => setShowCleared((prev) => !prev)}
+                className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Cleared ({clearedGuests.length})
+                <span className="text-gray-400 font-normal">{showCleared ? '▲' : '▼'}</span>
+              </button>
+              {showCleared && (
+                <ul className="space-y-1.5 mt-2">
+                  {clearedGuests.map((g) => (
+                    <li key={g.id}>
+                      <button
+                        onClick={() => setSelectedBooking(g)}
+                        className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        <span className="text-sm font-bold text-emerald-900">
+                          {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
+                        </span>
+                        <span className="text-xs font-medium text-emerald-700 whitespace-nowrap">
+                          {formatAlertDate(g.checkinDate)} → {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 
