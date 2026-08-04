@@ -1010,6 +1010,100 @@ export async function checkStaleReminders(thresholdMinutes: number): Promise<{ p
   return { pending: [], ready: [] };
 }
 
+export interface ServiceRequest {
+  id: number;
+  propertyId: number;
+  roomId: number | null;
+  roomName: string;
+  requestType: string;
+  description: string;
+  requestedBy: string;
+  status: 'Pending' | 'Fulfilled';
+  createdAt: string;
+  lastReminderAt: string | null;
+  fulfilledAt: string | null;
+  fulfilledBy: string | null;
+}
+
+export interface StaleServiceRequestItem {
+  id: number;
+  request_type: string;
+  description: string;
+  requested_by: string;
+  room_name: string;
+  elapsed_minutes: number;
+}
+
+export async function fetchServiceRequestsFromDB(status?: string): Promise<ServiceRequest[]> {
+  try {
+    const qs = status ? `&status=${encodeURIComponent(status)}` : '';
+    const res = await apiFetch(`${API_BASE}?action=get_service_requests${qs}`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch service requests:', err);
+  }
+  return [];
+}
+
+export async function createServiceRequestInDB(request: {
+  room_id?: number | null;
+  request_type: string;
+  description?: string;
+  requested_by: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=create_service_request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to create service request:', err);
+    return false;
+  }
+}
+
+export async function fulfillServiceRequestInDB(id: number, fulfilledBy: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=fulfill_service_request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, fulfilled_by: fulfilledBy }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to fulfill service request:', err);
+    return false;
+  }
+}
+
+export async function updateServiceRequestReminderTimestamp(id: number): Promise<void> {
+  try {
+    await apiFetch(`${API_BASE}?action=update_service_request_reminder_timestamp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+  } catch (err) {
+    console.error('Failed to update service request reminder timestamp:', err);
+  }
+}
+
+export async function checkStaleServiceRequests(thresholdMinutes: number): Promise<StaleServiceRequestItem[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=check_stale_service_requests&threshold_minutes=${thresholdMinutes}`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to check stale service requests:', err);
+  }
+  return [];
+}
+
 export async function fetchInventoryFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_inventory`);
