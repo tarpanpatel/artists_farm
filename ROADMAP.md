@@ -6,6 +6,13 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### 🔒 Security & Access Control
+
+- [ ] **Restrict Full Database Export to Root Admin Only**
+  - **Problem (confirmed 2026-08-04, higher severity than a typical backlog item):** The "Full System Snapshot Backup" card on the Data Export Center (`src/components/DataExportCenter.tsx`, `#data_export_center`) calls `exportFullSqlBackup()` → `php/api/backup.php`, which has **no authentication or role check at all** and dumps a raw SQL `SELECT * FROM` every table in the database — every tenant, every property, every guest's PII, every financial ledger, staff records, all of it, in one file. Any user who can reach the Data Export Center page (any logged-in staff member of any single property) can download the entire multi-tenant database, not just their own. `backup.php` doesn't even check `$_SESSION['username']`, so it's reachable directly by URL regardless of login state.
+  - **Action:** Gate `backup.php` behind an explicit root-admin check (`$_SESSION['is_platform_admin']`, matching the flag already used elsewhere for platform-admin actions like `toggle_property_module`/`delete_property`) — reject with 401/403 otherwise. Hide the "Full System Snapshot Backup" card entirely in `DataExportCenter.tsx` for non-root-admin users (component doesn't currently receive any role/user prop at all — needs one threaded in from `App.tsx`).
+  - **Also confirm:** the other export cards (Bookings, Kitchen Purchases, Farm Upkeep, Payroll, Master Ledger, Receipts, Orders, Menu, Audit Logs) already pull from the same property-scoped React state (`guests`/`receipts`/`menu`/`auditLogs` props) as the rest of the app, so a regular user's CSV exports are already scoped to their own property's data only — just double-check none of them slip in cross-property data before considering this item fully closed, since that's the standing requirement for every export a non-root-admin user runs: it must only ever contain data under their own account.
+
 ### Enhancements & Platform Optimization
 
 - [ ] **Automated iCal Sync Background Worker**
