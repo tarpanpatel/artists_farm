@@ -362,7 +362,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'guest_id is required']);
                     break;
                 }
-                $stmt = $pdo->prepare("SELECT guest_name, no_of_guests FROM guests WHERE id = ? AND property_id = ?");
+                $stmt = $pdo->prepare("
+                    SELECT g.guest_name, g.no_of_guests, COALESCE(r.name, 'Unassigned') as room_name
+                    FROM guests g
+                    LEFT JOIN properties r ON g.room_id = r.id
+                    WHERE g.id = ? AND g.property_id = ?
+                ");
                 $stmt->execute([$guestId, $propertyId]);
                 $guest = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$guest) {
@@ -371,9 +376,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 $required = max(1, intval($guest['no_of_guests'] ?? 1));
-                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
-                $countStmt->execute([$guestId, $propertyId]);
-                $uploadedCount = intval($countStmt->fetchColumn());
+                $docsStmt = $pdo->prepare("SELECT file_path FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
+                $docsStmt->execute([$guestId, $propertyId]);
+                $docPaths = $docsStmt->fetchAll(PDO::FETCH_COLUMN);
+                $uploadedCount = count($docPaths);
                 if ($uploadedCount < $required) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => "Only {$uploadedCount} of {$required} required ID document(s) uploaded"]);
@@ -381,6 +387,25 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 }
                 $pdo->prepare("UPDATE guests SET id_verification_status = 'Complete' WHERE id = ? AND property_id = ?")->execute([$guestId, $propertyId]);
                 echo json_encode(['status' => 'success', 'message' => 'Check-in verification complete']);
+
+                // Final compliance record - attaches the actual ID photos, distinct
+                // from the text-only progress pings sent during upload.
+                try {
+                    require_once __DIR__ . '/../telegram/sender.php';
+                    require_once __DIR__ . '/../telegram/templates.php';
+                    $fsPaths = array_filter(array_map(function ($url) {
+                        $pos = strpos($url, '/uploads/');
+                        return $pos === false ? null : (__DIR__ . '/../' . substr($url, $pos + 1));
+                    }, $docPaths));
+                    $caption = TelegramTemplates::render($pdo, 'checkin_verification_complete', [
+                        'guest_name' => $guest['guest_name'],
+                        'room_name' => $guest['room_name'],
+                        'doc_count' => $uploadedCount,
+                    ]);
+                    sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', $fsPaths, $caption, 'checkin_verification_complete');
+                } catch (Exception $e) {
+                    error_log("Failed to send check-in completion Telegram photo notification: " . $e->getMessage());
+                }
             }
             break;
 

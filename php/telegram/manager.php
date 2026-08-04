@@ -193,8 +193,35 @@ $defaultTemplates = [
         'description' => 'Manual nudge sent to Admin when a ready dish has not been collected/served yet.',
         'available_variables' => '{order_id},{qty},{dish_name},{table_no},{ready_since}',
         'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({table_no})\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
+    ],
+    'checkin_verification_complete' => [
+        'template_key' => 'checkin_verification_complete',
+        'title' => 'Check-in ID Verification Complete',
+        'category' => 'Guest Check-in',
+        'description' => 'Sent to Admin with the uploaded ID photo(s) attached the moment a booking\'s check-in verification is completed.',
+        'available_variables' => '{guest_name},{room_name},{doc_count}',
+        'content' => "✅ <b>CHECK-IN VERIFICATION COMPLETE</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n🪪 <b>ID Document(s):</b> {doc_count}"
     ]
 ];
+
+// Ensure any template added after the table was first seeded (the seed above
+// only ever runs against a fully empty table) still gets inserted.
+if (isset($pdo)) {
+    try {
+        $existingKeysStmt = $pdo->query("SELECT template_key FROM system_telegram_templates");
+        $existingKeys = $existingKeysStmt->fetchAll(PDO::FETCH_COLUMN);
+        $missing = array_diff(array_keys($defaultTemplates), $existingKeys);
+        if (!empty($missing)) {
+            $ins = $pdo->prepare("INSERT INTO system_telegram_templates (template_key, title, category, description, available_variables, content) VALUES (?, ?, ?, ?, ?, ?)");
+            foreach ($missing as $key) {
+                $dt = $defaultTemplates[$key];
+                $ins->execute([$dt['template_key'], $dt['title'], $dt['category'], $dt['description'], $dt['available_variables'], $dt['content']]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Failed to backfill missing telegram templates: " . $e->getMessage());
+    }
+}
 
 $action = $_POST['action'] ?? $_GET['action'] ?? 'get_templates';
 

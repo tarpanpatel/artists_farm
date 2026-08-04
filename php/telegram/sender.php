@@ -120,6 +120,120 @@ if (!function_exists('sendPropertyTelegramMessage')) {
     }
 }
 
+/**
+ * Send one or more photos for a property, routed the same way
+ * sendPropertyTelegramMessage() routes text (templateKey → configured group →
+ * legacy category fallback). Sends a single sendPhoto call for one file, or a
+ * sendMediaGroup (caption on the first item) for multiple. Silently skips
+ * (same shape as the text sender) if Telegram isn't configured/enabled.
+ */
+if (!function_exists('sendPropertyTelegramPhoto')) {
+    function sendPropertyTelegramPhoto($pdo, $propertyId, $category, array $filePaths, $caption, $templateKey = null) {
+        $config = getPropertyTelegramConfig($pdo, $propertyId);
+        if (!$config['enabled']) {
+            return ['skipped' => true, 'reason' => 'Telegram notifications are turned off for this property'];
+        }
+
+        $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
+
+        $chatId = null;
+        if ($templateKey && isset($config['routing'][$templateKey])) {
+            $chatId = resolveGroupChatId($config, $config['routing'][$templateKey]);
+        }
+        if (!$chatId) {
+            $chatId = legacyCategoryChatId($category);
+        }
+        if (!$chatId) {
+            $label = $templateKey ?: $category;
+            return ['skipped' => true, 'reason' => "No group configured for '$label'"];
+        }
+
+        $existingPaths = array_values(array_filter($filePaths, 'file_exists'));
+        if (empty($existingPaths)) {
+            return ['skipped' => true, 'reason' => 'No photo files found on disk'];
+        }
+
+        if (count($existingPaths) === 1) {
+            return sendRawTelegramPhoto($existingPaths[0], $caption, $token, $chatId);
+        }
+        return sendRawTelegramMediaGroup($existingPaths, $caption, $token, $chatId);
+    }
+}
+
+if (!function_exists('sendRawTelegramPhoto')) {
+    function sendRawTelegramPhoto($filePath, $caption, $token, $chatId) {
+        $url = "https://api.telegram.org/bot" . $token . "/sendPhoto";
+        $data = [
+            'chat_id' => $chatId,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+            'photo' => new CURLFile($filePath),
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        TelescopeLogger::log(
+            'telegram',
+            ($http_code == 200) ? 'SUCCESS' : 'WARNING',
+            "📨 Telegram API: sendPhoto to chat {$chatId} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['chat_id' => $chatId, 'http_code' => $http_code, 'error' => $error]
+        );
+
+        return $response;
+    }
+}
+
+if (!function_exists('sendRawTelegramMediaGroup')) {
+    function sendRawTelegramMediaGroup(array $filePaths, $caption, $token, $chatId) {
+        $url = "https://api.telegram.org/bot" . $token . "/sendMediaGroup";
+        $media = [];
+        $data = ['chat_id' => $chatId];
+
+        foreach (array_values($filePaths) as $i => $path) {
+            $attachKey = "photo{$i}";
+            $item = ['type' => 'photo', 'media' => "attach://{$attachKey}"];
+            if ($i === 0 && $caption) {
+                $item['caption'] = $caption;
+                $item['parse_mode'] = 'HTML';
+            }
+            $media[] = $item;
+            $data[$attachKey] = new CURLFile($path);
+        }
+        $data['media'] = json_encode($media);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        TelescopeLogger::log(
+            'telegram',
+            ($http_code == 200) ? 'SUCCESS' : 'WARNING',
+            "📨 Telegram API: sendMediaGroup to chat {$chatId} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['chat_id' => $chatId, 'photo_count' => count($filePaths), 'http_code' => $http_code, 'error' => $error]
+        );
+
+        return $response;
+    }
+}
+
 // Legacy global-constant senders — kept for telegram_webhook.php and test.php,
 // which operate on the bot's own admin group rather than a specific property.
 if (!function_exists('sendTelegramMessage')) {
