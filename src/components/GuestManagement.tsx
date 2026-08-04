@@ -61,6 +61,8 @@ interface GuestManagementProps {
   preSelectRoom?: string;
   onClose?: () => void;
   kitchenModuleEnabled?: boolean;
+  propertyGstin?: string;
+  propertyName?: string;
 }
 
 
@@ -103,6 +105,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   preSelectRoom,
   onClose,
   kitchenModuleEnabled = true,
+  propertyGstin = '',
+  propertyName = '',
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
@@ -1060,6 +1064,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         onCheckoutClick={onNavigateToBilling}
         onNavigateToGuestRegistration={() => onSetActiveMenuItemKey?.('guest_registration')}
         kitchenModuleEnabled={kitchenModuleEnabled}
+        propertyGstin={propertyGstin}
+        propertyName={propertyName}
       />
     );
   }
