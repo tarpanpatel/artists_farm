@@ -22,16 +22,16 @@ interface LicenseManagementProps {
 }
 
 const LICENSE_TYPES = [
-  { value: 'homestay', label: '🏠 Homestay License' },
-  { value: 'guest_house', label: '🏨 Guest House License' },
-  { value: 'fssai', label: '🍽️ FSSAI License' },
-  { value: 'pollution', label: '💨 Pollution Control Certificate' },
-  { value: 'trade', label: '📋 Trade License' },
-  { value: 'property_tax', label: '🏛️ Property Tax' },
-  { value: 'fire', label: '🔥 Fire Safety Certificate' },
-  { value: 'electrical', label: '⚡ Electrical Certificate' },
-  { value: 'gst', label: '📊 GST Certificate' },
-  { value: 'other', label: '📄 Other' },
+  { value: 'homestay', label: 'Homestay License' },
+  { value: 'guest_house', label: 'Guest House License' },
+  { value: 'fssai', label: 'FSSAI License' },
+  { value: 'pollution', label: 'Pollution Control Certificate' },
+  { value: 'trade', label: 'Trade License' },
+  { value: 'property_tax', label: 'Property Tax' },
+  { value: 'fire', label: 'Fire Safety Certificate' },
+  { value: 'electrical', label: 'Electrical Certificate' },
+  { value: 'gst', label: 'GST Certificate' },
+  { value: 'other', label: 'Other' },
 ];
 
 export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId }) => {

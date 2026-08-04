@@ -297,7 +297,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       <div className="analytics-header-banner bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            📊 Business Intelligence (BI) Analytics Dashboard
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+            <span>Business Intelligence (BI) Analytics Dashboard</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Real-time multi-dimensional financial reports, revenue streams, operational expenses, and procurement price analytics.
@@ -361,87 +362,95 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       <div className="analytics-tab-bar flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl gap-1 flex-wrap">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'overview'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          📈 Overview
+          <TrendingUp className="w-4 h-4" />
+          <span>Overview</span>
         </button>
         <button
           onClick={() => setActiveTab('bookings')}
-          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'bookings'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          🏨 Bookings
+          <Calendar className="w-4 h-4" />
+          <span>Bookings</span>
         </button>
         {kitchenModuleEnabled && (
           <button
             onClick={() => setActiveTab('food')}
-            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'food'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            🍽️ Food POS
+            <Utensils className="w-4 h-4" />
+            <span>Food POS</span>
           </button>
         )}
         {kitchenModuleEnabled && (
           <button
             onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'kitchen'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            🍳 Kitchen
+            <Utensils className="w-4 h-4" />
+            <span>Kitchen</span>
           </button>
         )}
         <button
           onClick={() => setActiveTab('expenses')}
-          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'expenses'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          🛒 Expenses
+          <ShoppingBag className="w-4 h-4" />
+          <span>Expenses</span>
         </button>
         <button
           onClick={() => setActiveTab('profit_loss')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'profit_loss'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          📊 P&L
+          <BarChart3 className="w-4 h-4" />
+          <span>P&L</span>
         </button>
         <button
           onClick={() => setActiveTab('balance_sheet')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'balance_sheet'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          ⚖️ Balance Sheet
+          <PieChart className="w-4 h-4" />
+          <span>Balance Sheet</span>
         </button>
         <button
           onClick={() => setActiveTab('cash_flow')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'cash_flow'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          💰 Cash Flow
+          <IndianRupee className="w-4 h-4" />
+          <span>Cash Flow</span>
         </button>
       </div>
 
