@@ -12,6 +12,7 @@
  */
 
 require_once __DIR__ . '/sender.php';
+require_once __DIR__ . '/../service_requests/service_requests.php';
 
 if (!function_exists('handleTelegramCallbackQuery')) {
     function handleTelegramCallbackQuery($pdo, array $cq) {
@@ -170,6 +171,15 @@ if (!function_exists('handleTelegramCallbackQuery')) {
             }
 
             answerTelegramCallbackQuery($cq_id, "Order #{$order_id} marked as completed!");
+        } elseif (preg_match('/^fulfill_request_(\d+)$/', $callback_data, $matches)) {
+            $result = fulfillServiceRequest($pdo, intval($matches[1]), $staff_name);
+            if (($result['status'] ?? '') === 'success' && empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Service request marked fulfilled!");
+            } elseif (!empty($result['already'])) {
+                answerTelegramCallbackQuery($cq_id, "Already marked fulfilled.", true);
+            } else {
+                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to update request.', true);
+            }
         }
     }
 }

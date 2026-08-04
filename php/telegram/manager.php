@@ -209,6 +209,22 @@ $defaultTemplates = [
         'description' => 'Daily nudge sent to Admin for bookings still missing required ID documents the morning after check-in.',
         'available_variables' => '{guest_name},{room_name},{uploaded_count},{required_count},{checkin_date}',
         'content' => "🪪 <b>ID VERIFICATION STILL PENDING</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n📅 <b>Checked In:</b> {checkin_date}\n📋 <b>Uploaded:</b> {uploaded_count}/{required_count}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Open Complete Check-in for this booking to finish it.</i>"
+    ],
+    'service_request_created' => [
+        'template_key' => 'service_request_created',
+        'title' => 'New Service Request',
+        'category' => 'Guest Services',
+        'description' => 'Sent to Admin with a "Mark Fulfilled" button whenever staff log a new housekeeping/maintenance-style guest request.',
+        'available_variables' => '{request_type},{room_name},{description},{requested_by}',
+        'content' => "🛎️ <b>NEW SERVICE REQUEST</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n📝 <b>Details:</b> {description}\n👤 <b>Requested By:</b> {requested_by}"
+    ],
+    'service_request_fulfilled_edit' => [
+        'template_key' => 'service_request_fulfilled_edit',
+        'title' => 'Service Request Fulfilled (Message Edit)',
+        'category' => 'Guest Services',
+        'description' => 'Replaces the original service request message once it\'s marked fulfilled, whether by button tap or from the app.',
+        'available_variables' => '{request_type},{room_name},{staff_name},{fulfill_time}',
+        'content' => "✅ <b>SERVICE REQUEST FULFILLED</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n👤 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {fulfill_time}"
     ]
 ];
 
