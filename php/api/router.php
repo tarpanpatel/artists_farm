@@ -734,6 +734,10 @@ switch ($action) {
                 $sets[] = 'phone = ?';
                 $params[] = trim($input['phone']) ?: null;
             }
+            if (array_key_exists('gstin', $input)) {
+                $sets[] = 'gstin = ?';
+                $params[] = trim($input['gstin']) ?: null;
+            }
 
             if (empty($sets)) {
                 echo json_encode(['success' => false, 'message' => 'No fields to update']);

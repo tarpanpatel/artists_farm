@@ -49,6 +49,13 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_accommodation_rate`"); } catch (PDOException $e) {}
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_food_rate`"); } catch (PDOException $e) {}
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_accommodation_amount`"); } catch (PDOException $e) {}
+        // Inter-state (IGST) vs intra-state (CGST+SGST) support, plus the
+        // guest/company's own GSTIN and billing name for tax invoices where the
+        // guest wants it addressed to their company rather than themselves.
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_tax_type` VARCHAR(15) DEFAULT 'cgst_sgst' AFTER `gst_food_amount`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_igst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_tax_type`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_gstin` VARCHAR(20) DEFAULT NULL AFTER `gst_igst`"); } catch (PDOException $e) {}
+        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_billing_name` VARCHAR(255) DEFAULT NULL AFTER `guest_gstin`"); } catch (PDOException $e) {}
     } catch (PDOException $e) {}
 
     switch ($action) {
@@ -75,7 +82,7 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount)");
+                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount, gst_tax_type, gst_igst, guest_gstin, guest_billing_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount), gst_tax_type=VALUES(gst_tax_type), gst_igst=VALUES(gst_igst), guest_gstin=VALUES(guest_gstin), guest_billing_name=VALUES(guest_billing_name)");
                     $stmt->execute([
                         $input['id'] ?? 'REC-' . time(),
                         $propertyId,
@@ -105,7 +112,11 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                         floatval($input['gstAccommodationRate'] ?? 0),
                         floatval($input['gstFoodRate'] ?? 0),
                         floatval($input['gstAccommodationAmount'] ?? 0),
-                        floatval($input['gstFoodAmount'] ?? 0)
+                        floatval($input['gstFoodAmount'] ?? 0),
+                        $input['gstTaxType'] ?? 'cgst_sgst',
+                        floatval($input['gstIgst'] ?? 0),
+                        $input['guestGstin'] ?? null,
+                        $input['guestBillingName'] ?? null
                     ]);
 
                     // Record only the settlement collected at checkout. Registration
