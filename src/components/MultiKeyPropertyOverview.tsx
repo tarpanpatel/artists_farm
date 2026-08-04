@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, GripVertical, Loader, AlertCircle, BarChart3, Users, DollarSign, TrendingUp, ChevronLeft } from 'lucide-react';
 import { navigateToRoomHash } from '../services/api';
 import { OperationalDashboard } from './OperationalDashboard';
@@ -107,7 +107,15 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
 
+  // Guards against firing a duplicate/overlapping load for the same
+  // propertyId - StrictMode's dev-only double-invoke and rapid re-renders
+  // (e.g. navigating dashboard -> room -> dashboard quickly) would otherwise
+  // each kick off their own pair of requests.
+  const loadedForRef = useRef<number | null>(null);
+
   useEffect(() => {
+    if (!propertyId || loadedForRef.current === propertyId) return;
+    loadedForRef.current = propertyId;
     loadData();
   }, [propertyId]);
 
@@ -115,19 +123,22 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
     try {
       setLoading(true);
 
-      // Load property details
-      const propRes = await fetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`, {
-        credentials: 'include',
-      });
+      // These two calls are independent of each other - fetch in parallel
+      // instead of awaiting one before starting the next.
+      const [propRes, overviewRes] = await Promise.all([
+        fetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`, {
+          credentials: 'include',
+        }),
+        fetch(`/php/api/router.php?action=get_multikey_overview&property_id=${propertyId}`, {
+          credentials: 'include',
+        }),
+      ]);
+
       const propData = await propRes.json();
       if (propData.success) {
         setProperty(propData.data);
       }
 
-      // Load overview data
-      const overviewRes = await fetch(`/php/api/router.php?action=get_multikey_overview&property_id=${propertyId}`, {
-        credentials: 'include',
-      });
       const overviewData = await overviewRes.json();
       if (overviewData.success) {
         setOverview(overviewData.data);
