@@ -1,17 +1,10 @@
 # 🗺️ Artists Farm — Project Roadmap & TODO List
 
-This document tracks identified bugs, pending backend API integrations, and upcoming feature enhancements across the **Artists Farm** SaaS Resort Management System.
+This document tracks identified bugs, pending backend API integrations, and upcoming feature enhancements across the **Artists Farm** SaaS Resort Management System. Completed items are removed once shipped — see git history (`git log -p ROADMAP.md`) for what's already been done and how.
 
 ---
 
 ## 🟢 Open Items
-
-### 🔒 Security & Access Control
-
-- [ ] **Restrict Full Database Export to Root Admin Only**
-  - **Problem (confirmed 2026-08-04, higher severity than a typical backlog item):** The "Full System Snapshot Backup" card on the Data Export Center (`src/components/DataExportCenter.tsx`, `#data_export_center`) calls `exportFullSqlBackup()` → `php/api/backup.php`, which has **no authentication or role check at all** and dumps a raw SQL `SELECT * FROM` every table in the database — every tenant, every property, every guest's PII, every financial ledger, staff records, all of it, in one file. Any user who can reach the Data Export Center page (any logged-in staff member of any single property) can download the entire multi-tenant database, not just their own. `backup.php` doesn't even check `$_SESSION['username']`, so it's reachable directly by URL regardless of login state.
-  - **Action:** Gate `backup.php` behind an explicit root-admin check (`$_SESSION['is_platform_admin']`, matching the flag already used elsewhere for platform-admin actions like `toggle_property_module`/`delete_property`) — reject with 401/403 otherwise. Hide the "Full System Snapshot Backup" card entirely in `DataExportCenter.tsx` for non-root-admin users (component doesn't currently receive any role/user prop at all — needs one threaded in from `App.tsx`).
-  - **Also confirm:** the other export cards (Bookings, Kitchen Purchases, Farm Upkeep, Payroll, Master Ledger, Receipts, Orders, Menu, Audit Logs) already pull from the same property-scoped React state (`guests`/`receipts`/`menu`/`auditLogs` props) as the rest of the app, so a regular user's CSV exports are already scoped to their own property's data only — just double-check none of them slip in cross-property data before considering this item fully closed, since that's the standing requirement for every export a non-root-admin user runs: it must only ever contain data under their own account.
 
 ### Enhancements & Platform Optimization
 
@@ -47,36 +40,12 @@ This document tracks identified bugs, pending backend API integrations, and upco
 **Design intent (2026-08-04):** Managed as its own compliance-tracking system (same "list of items with a status" shape as the Expenses management pages), not folded into the general check-in form. Guest count (from `guests.no_of_guests`) determines how many ID documents are required per booking — a booking isn't "complete" until every guest on it has an uploaded ID.
 
 - [ ] **Telegram Notification on Completion**
-  - **Action:** The moment the last required ID for a booking is uploaded and "Check-in Complete" is tapped, send a message to the property's **Admin** chat with the guest name/room and the uploaded ID photo(s) attached. Needs a new `sendTelegramPhoto`/`sendTelegramMediaGroup` helper in `php/telegram/sender.php` (the existing `sendRawTelegramMessage` is text-only) and a new editable template (see the no-hardcoding principle — same pattern as the Kitchen reminder templates) for the caption text. Distinct from the live text-only progress pings already shipped (see Completed) — this one attaches the actual photos as the final compliance record.
+  - **Action:** The moment the last required ID for a booking is uploaded and "Check-in Complete" is tapped, send a message to the property's **Admin** chat with the guest name/room and the uploaded ID photo(s) attached. Needs a new `sendTelegramPhoto`/`sendTelegramMediaGroup` helper in `php/telegram/sender.php` (the existing `sendRawTelegramMessage` is text-only) and a new editable template (see the no-hardcoding principle — same pattern as the Kitchen reminder templates) for the caption text. Distinct from the live text-only progress pings already shipped on every upload/guest-count-change — this one attaches the actual photos as the final compliance record.
 
 - [ ] **Next-Morning Pending Reminder**
   - **Problem:** If IDs weren't uploaded at check-in time, nobody currently gets reminded to go back and complete it.
   - **Action:** Reuses the Shared Reminder/Nudge Engine's `last_reminder_at` pattern, but with a fixed "next morning" trigger instead of a rolling N-minute interval — needs its own scheduled check (e.g. "guests with `id_verification_status = 'Pending'` and `checkin_date` before today, not yet reminded today"), sent to the **Admin** chat, referencing the specific guest/room. Same underlying gap as the rest of the Reminder Engine and the iCal sync task above: no real background worker exists yet, so this needs that same eventual cron solution — a page-load-triggered check doesn't reliably fire "next morning" the way a real scheduled job would.
   - **Action:** Staff resolves a pending reminder by opening that booking's "Complete Check-in" flow from the app and uploading the outstanding ID(s), which flips `id_verification_status` to `Complete` and stops further reminders for that booking.
-
----
-
-## ✅ Completed
-
-*Condensed to one line each — full implementation notes, bugs found/fixed, and verification steps live in git history (`git log -p ROADMAP.md`) for whoever needs the detail.*
-
-- [x] Logout & Login Redirect Flow — routes point to the real React app paths, not legacy PHP pages.
-- [x] Icon Resolution Error (`Navigation.tsx`) — stale Lucide import already fixed.
-- [x] Active Resident Date-Range & Status Validation — `OperationalDashboard`/`MultiKeyPropertyOverview` already validate correctly.
-- [x] Room Name Editor API — *2026-08-04* — added the missing `update_room_name` backend handler (frontend already called it).
-- [x] Booking Management Actions — *2026-08-04* — Save/Delete on bookings actually persist now (were silent `// TODO` stubs).
-- [x] Telegram Notification Template Sync — *2026-08-04* — Templates Catalog now shows DB-backed templates, not just hardcoded fallbacks.
-- [x] Recipe Builder Stock Depletion — already implemented, verified only.
-- [x] Dynamic Staff Meal Options — *2026-08-04* — custom staff meal options persist to DB.
-- [x] Staff Meal Log Persistence — *2026-08-04* — meal consumption log persists to DB (was local-state-only).
-- [x] Multi-Property Financial Ledger Reports — *2026-08-04* — Room-by-Room Performance Comparison (revenue/occupancy) for multi-key properties in Analytics.
-- [x] Shared Reminder/Nudge Engine — *2026-08-04* — auto (every N min, configurable) + manual nudge system used by both reminder types below.
-- [x] Kitchen Order Reminders — *2026-08-04* — stale-order nudges to the Kitchen chat.
-- [x] Ready-for-Pickup Reminders — *2026-08-04* — Ready→Served nudges to the Admin chat.
-- [x] Editable Message Templates for Reminders — *2026-08-04* — kitchen/pickup reminder templates editable in the Templates Catalog (reminders only).
-- [x] Zero-Friction Telegram Setup Wizard — *2026-08-03/04* — guided 3-step Kitchen/Admin/Finance bot pairing wizard.
-- [x] Check-in ID Upload Flow — *2026-08-04* — per-guest ID photo upload/verification (`CheckinVerificationModal.tsx`), plus follow-ups: "Add More Images" for extra/front-back photos, a "Today's Check-ins & Pending Actions" dashboard panel, and a desktop upload-button fix.
-- [x] Live Telegram Progress Notifications — *2026-08-04* — text-only live pings to Admin on each ID upload and on guest-count increases.
 
 ---
 *Last Updated: August 2026*
