@@ -26,6 +26,8 @@ interface BillingCheckoutProps {
   onCheckoutClick?: (guestId: string) => void;
   onNavigateToGuestRegistration?: () => void;
   kitchenModuleEnabled?: boolean;
+  propertyGstin?: string;
+  propertyName?: string;
 }
 
 interface GroupedRoomBooking {
@@ -45,6 +47,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   onCheckoutClick,
   onNavigateToGuestRegistration,
   kitchenModuleEnabled = true,
+  propertyGstin = '',
+  propertyName = '',
 }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -591,6 +595,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         isProcessing={isProcessing}
         mode={modalMode}
         kitchenModuleEnabled={kitchenModuleEnabled}
+        propertyGstin={propertyGstin}
+        propertyName={propertyName}
       />
     </div>
   );
