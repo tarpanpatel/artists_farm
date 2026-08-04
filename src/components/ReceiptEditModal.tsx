@@ -4,6 +4,7 @@ import { Guest, BillingReceipt } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { fetchMenuFromDB } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -15,7 +16,31 @@ interface ReceiptEditModalProps {
   isProcessing?: boolean;
   mode?: 'edit-only' | 'edit-and-checkout';
   kitchenModuleEnabled?: boolean;
+  propertyGstin?: string;
+  propertyName?: string;
 }
+
+interface GstRatesConfig {
+  accLowMax: number;
+  accMidMax: number;
+  accLowRate: number;
+  accMidRate: number;
+  accHighRate: number;
+  foodRate: number;
+}
+
+// Indian hotel GST slabs as of 2026: rooms billed <=1000/night are exempt,
+// 1001-7500 is 12%, above 7500 is 18%; restaurant/food service is a flat 5%.
+// Kept as the fallback default - Root Admin can override via system_settings
+// (key "gst_rates_config") without a code change if rates change.
+const DEFAULT_GST_RATES: GstRatesConfig = {
+  accLowMax: 1000,
+  accMidMax: 7500,
+  accLowRate: 0,
+  accMidRate: 12,
+  accHighRate: 18,
+  foodRate: 5,
+};
 
 interface IncidentalItem {
   id: string;
@@ -48,7 +73,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   isProcessing = false,
   mode = 'edit-and-checkout',
   kitchenModuleEnabled = true,
+  propertyGstin = '',
+  propertyName = '',
 }) => {
+  const { activeRole } = useAuth();
+  const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
+
   // Base State
   const [roomCharges, setRoomCharges] = useState(0);
   const [checkinDate, setCheckinDate] = useState('');
@@ -113,6 +143,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // GST State
   const [gstEnabled, setGstEnabled] = useState(false);
+  const [taxType, setTaxType] = useState<'cgst_sgst' | 'igst'>('cgst_sgst');
+  const [guestGstin, setGuestGstin] = useState('');
+  const [guestBillingName, setGuestBillingName] = useState('');
+  const [gstRates, setGstRates] = useState<GstRatesConfig>(DEFAULT_GST_RATES);
+  const [isEditingRates, setIsEditingRates] = useState(false);
+  const [rateDraft, setRateDraft] = useState<GstRatesConfig>(DEFAULT_GST_RATES);
+  const [savingRates, setSavingRates] = useState(false);
 
   // Split Payment Rows
   const [splitRows, setSplitRows] = useState<SplitPaymentRow[]>([
@@ -152,6 +189,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     }
   }, [kitchenModuleEnabled, isOpen]);
 
+  // GST rates are a config value (system_settings key "gst_rates_config"), not
+  // hardcoded - falls back to DEFAULT_GST_RATES until a Root Admin overrides it.
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch(`/php/api/router.php?action=get_system_settings`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((json) => {
+        const raw = json?.data?.gst_rates_config;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            setGstRates({ ...DEFAULT_GST_RATES, ...parsed });
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
   // Initialize form with guest data when modal opens
   useEffect(() => {
     if (guest && isOpen) {
@@ -161,6 +216,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setIncidentals([]);
       setAdjustments([]);
       setGstEnabled(false);
+      setTaxType('cgst_sgst');
+      setGuestGstin('');
+      setGuestBillingName('');
       setAdvanceReceivedBy('');
 
       const lodgingDue = (guest.roomRate || guest.totalAmount || 0) - (guest.advanceAmount || 0);
@@ -184,17 +242,34 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // Base Subtotal before GST
   const subtotalBeforeGst = Math.max(0, lodgingPendingDue + foodTotal + extraCharges - discounts);
 
-  // GST Calculation Logic (Accommodation Slab: <=1000: 0%, 1001-7500: 12%, >7500: 18%. Food: 5%)
-  const dailyRate = guest.roomRate || 0;
-  const gstAccommodationRate = dailyRate > 7500 ? 18 : dailyRate > 1000 ? 12 : 0;
-  const gstFoodRate = 5;
+  // GST Calculation Logic - accommodation rate is a configurable slab (see
+  // gstRates / DEFAULT_GST_RATES), food is a flat configurable rate. The slab
+  // is keyed off the per-night tariff, not the total stay cost, so derive it
+  // from the actual lodging charge being billed rather than the guest's
+  // stale registration-time roomRate (which may be 0 or long out of date).
+  const nightsForGst = (() => {
+    const inD = new Date(checkinDate || guest.checkinDate);
+    const outD = new Date(checkoutDate || new Date().toISOString().split('T')[0]);
+    const diff = Math.round((outD.getTime() - inD.getTime()) / 86400000);
+    return Math.max(1, diff);
+  })();
+  const dailyRate = roomCharges / nightsForGst;
+  const gstAccommodationRate = dailyRate > gstRates.accMidMax
+    ? gstRates.accHighRate
+    : dailyRate > gstRates.accLowMax
+    ? gstRates.accMidRate
+    : gstRates.accLowRate;
+  const gstFoodRate = gstRates.foodRate;
 
   const gstAccommodationAmount = gstEnabled ? lodgingPendingDue * (gstAccommodationRate / 100) : 0;
   const gstFoodAmount = (gstEnabled && kitchenModuleEnabled) ? foodTotal * (gstFoodRate / 100) : 0;
 
   const gstAmount = gstAccommodationAmount + gstFoodAmount;
-  const gstCgst = gstAmount / 2;
-  const gstSgst = gstAmount / 2;
+  // Same-state stays split the tax evenly into CGST+SGST; inter-state stays
+  // (guest billed from another state) charge the full amount as IGST instead.
+  const gstCgst = taxType === 'cgst_sgst' ? gstAmount / 2 : 0;
+  const gstSgst = taxType === 'cgst_sgst' ? gstAmount / 2 : 0;
+  const gstIgst = taxType === 'igst' ? gstAmount : 0;
 
   // Grand Target Due
   const grandTargetDue = subtotalBeforeGst + gstAmount;
@@ -303,6 +378,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         advancePaid,
         status: 'Paid',
         paymentMethod: splitRows[0]?.mode || 'Cash',
+        gstEnabled,
+        gstRate: gstAccommodationRate,
+        gstAmount,
+        gstCgst,
+        gstSgst,
+        gstAccommodationRate,
+        gstFoodRate,
+        gstAccommodationAmount,
+        gstFoodAmount,
+        gstTaxType: taxType,
+        gstIgst,
+        guestGstin: guestGstin || undefined,
+        guestBillingName: guestBillingName || undefined,
       };
 
       onCheckout(receipt);
@@ -651,14 +739,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                     {gstEnabled && (
                       <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                        Acc: {gstAccommodationRate}% | Food: 5%
+                        Acc: {gstAccommodationRate}% | Food: {gstFoodRate}%
                       </span>
                     )}
                   </div>
 
                   {/* Itemized GST Breakdown */}
                   {gstEnabled && (
-                    <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-1 text-[11px] text-blue-900 dark:text-blue-200">
+                    <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
                       <div className="flex justify-between">
                         <span>Accommodation GST @ {gstAccommodationRate}%:</span>
                         <span className="font-bold">₹{gstAccommodationAmount.toFixed(2)}</span>
@@ -669,10 +757,117 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                           <span className="font-bold">₹{gstFoodAmount.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="border-t border-dashed border-blue-200 dark:border-blue-700 pt-1 mt-1 flex justify-between font-extrabold text-[11px]">
-                        <span>CGST (50%) / SGST (50%):</span>
-                        <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
+
+                      {/* Same State (CGST+SGST) vs Inter-State (IGST) */}
+                      <div className="flex items-center gap-3 pt-1">
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input type="radio" checked={taxType === 'cgst_sgst'} onChange={() => setTaxType('cgst_sgst')} />
+                          <span>Same State (CGST+SGST)</span>
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input type="radio" checked={taxType === 'igst'} onChange={() => setTaxType('igst')} />
+                          <span>Inter-State (IGST)</span>
+                        </label>
                       </div>
+
+                      <div className="border-t border-dashed border-blue-200 dark:border-blue-700 pt-1 mt-1 flex justify-between font-extrabold text-[11px]">
+                        {taxType === 'cgst_sgst' ? (
+                          <>
+                            <span>CGST (50%) / SGST (50%):</span>
+                            <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>IGST:</span>
+                            <span>₹{gstIgst.toFixed(2)}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Optional guest/company GSTIN for a proper tax invoice */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={guestGstin}
+                          onChange={(e) => setGuestGstin(e.target.value.toUpperCase())}
+                          placeholder="Guest/Company GSTIN (optional)"
+                          className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 text-[11px]"
+                        />
+                        <input
+                          type="text"
+                          value={guestBillingName}
+                          onChange={(e) => setGuestBillingName(e.target.value)}
+                          placeholder="Billing Name (optional)"
+                          className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 text-[11px]"
+                        />
+                      </div>
+
+                      {isRootAdmin && (
+                        <div className="pt-1 border-t border-dashed border-blue-200 dark:border-blue-700">
+                          {!isEditingRates ? (
+                            <button
+                              type="button"
+                              onClick={() => { setRateDraft(gstRates); setIsEditingRates(true); }}
+                              className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline cursor-pointer"
+                            >
+                              Edit GST Rates (Root Admin)
+                            </button>
+                          ) : (
+                            <div className="space-y-1.5 pt-1">
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <label className="text-[10px]">Low tier max (₹)
+                                  <input type="number" value={rateDraft.accLowMax} onChange={(e) => setRateDraft({ ...rateDraft, accLowMax: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                                <label className="text-[10px]">Mid tier max (₹)
+                                  <input type="number" value={rateDraft.accMidMax} onChange={(e) => setRateDraft({ ...rateDraft, accMidMax: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                                <label className="text-[10px]">Low rate (%)
+                                  <input type="number" value={rateDraft.accLowRate} onChange={(e) => setRateDraft({ ...rateDraft, accLowRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                                <label className="text-[10px]">Mid rate (%)
+                                  <input type="number" value={rateDraft.accMidRate} onChange={(e) => setRateDraft({ ...rateDraft, accMidRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                                <label className="text-[10px]">High rate (%)
+                                  <input type="number" value={rateDraft.accHighRate} onChange={(e) => setRateDraft({ ...rateDraft, accHighRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                                <label className="text-[10px]">Food rate (%)
+                                  <input type="number" value={rateDraft.foodRate} onChange={(e) => setRateDraft({ ...rateDraft, foodRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
+                                </label>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-bold text-slate-500 cursor-pointer">Cancel</button>
+                                <button
+                                  type="button"
+                                  disabled={savingRates}
+                                  onClick={async () => {
+                                    setSavingRates(true);
+                                    try {
+                                      const res = await fetch(`/php/api/router.php?action=save_system_settings`, {
+                                        method: 'POST',
+                                        credentials: 'include',
+                                        headers: { 'Content-Type': 'application/json', 'X-User-Role': 'root_admin' },
+                                        body: JSON.stringify({ setting_key: 'gst_rates_config', setting_value: JSON.stringify(rateDraft) }),
+                                      });
+                                      const json = await res.json();
+                                      if (json.status === 'success' || json.success) {
+                                        setGstRates(rateDraft);
+                                        setIsEditingRates(false);
+                                      }
+                                    } catch (err) {
+                                      /* ignore */
+                                    } finally {
+                                      setSavingRates(false);
+                                    }
+                                  }}
+                                  className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded cursor-pointer disabled:opacity-50"
+                                >
+                                  {savingRates ? 'Saving...' : 'Save Rates'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
