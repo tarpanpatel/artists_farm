@@ -28,14 +28,5 @@ This document tracks identified bugs, pending backend API integrations, and upco
   - **Action:** Mirror the existing `database.php` dev-vs-production detection pattern. On `localhost`/`127.0.0.1`/XAMPP, poll Telegram's `getUpdates` (triggered on page load or a short interval — no public HTTPS endpoint needed, works everywhere). On the real domain, register a proper webhook (instant, no polling delay). Both paths feed the same internal "new Telegram message/button-tap received" handler so the rest of the system (pairing codes, Mark Fulfilled callbacks) doesn't need to know which mode is active.
   - **Partial:** the Setup Wizard's pairing-code detection implements an on-demand `getUpdates` poll (`pollAndMatchPairingCodes` in `php/telegram/pairing.php`), but that's scoped to pairing only, not the general environment-conditional dispatcher described here. A real production webhook path (`telegram_webhook.php`) already existed pre-session for button callbacks; the local/production auto-switch for it is still not built.
 
-### Guest ID Verification & Check-in Compliance (Telegram-Integrated)
-
-**Design intent (2026-08-04):** Managed as its own compliance-tracking system (same "list of items with a status" shape as the Expenses management pages), not folded into the general check-in form. Guest count (from `guests.no_of_guests`) determines how many ID documents are required per booking — a booking isn't "complete" until every guest on it has an uploaded ID.
-
-- [ ] **Next-Morning Pending Reminder**
-  - **Problem:** If IDs weren't uploaded at check-in time, nobody currently gets reminded to go back and complete it.
-  - **Action:** Reuses the Shared Reminder/Nudge Engine's `last_reminder_at` pattern, but with a fixed "next morning" trigger instead of a rolling N-minute interval — needs its own scheduled check (e.g. "guests with `id_verification_status = 'Pending'` and `checkin_date` before today, not yet reminded today"), sent to the **Admin** chat, referencing the specific guest/room. Same underlying gap as the rest of the Reminder Engine and the iCal sync task above: no real background worker exists yet, so this needs that same eventual cron solution — a page-load-triggered check doesn't reliably fire "next morning" the way a real scheduled job would.
-  - **Action:** Staff resolves a pending reminder by opening that booking's "Complete Check-in" flow from the app and uploading the outstanding ID(s), which flips `id_verification_status` to `Complete` and stops further reminders for that booking.
-
 ---
 *Last Updated: August 2026*
