@@ -18,6 +18,9 @@ function ensureIdVerificationSchema($pdo) {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_status` VARCHAR(20) DEFAULT 'Pending'");
     } catch (PDOException $e) {}
     try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_last_reminder_at` DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS guest_id_documents (
             id INT AUTO_INCREMENT PRIMARY KEY,
             guest_id INT NOT NULL,

@@ -201,6 +201,14 @@ $defaultTemplates = [
         'description' => 'Sent to Admin with the uploaded ID photo(s) attached the moment a booking\'s check-in verification is completed.',
         'available_variables' => '{guest_name},{room_name},{doc_count}',
         'content' => "✅ <b>CHECK-IN VERIFICATION COMPLETE</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n🪪 <b>ID Document(s):</b> {doc_count}"
+    ],
+    'checkin_verification_reminder' => [
+        'template_key' => 'checkin_verification_reminder',
+        'title' => 'Next-Morning Pending ID Verification',
+        'category' => 'Guest Check-in',
+        'description' => 'Daily nudge sent to Admin for bookings still missing required ID documents the morning after check-in.',
+        'available_variables' => '{guest_name},{room_name},{uploaded_count},{required_count},{checkin_date}',
+        'content' => "🪪 <b>ID VERIFICATION STILL PENDING</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n🚪 <b>Room:</b> {room_name}\n📅 <b>Checked In:</b> {checkin_date}\n📋 <b>Uploaded:</b> {uploaded_count}/{required_count}\n━━━━━━━━━━━━━━━━━━\n👉 <i>Open Complete Check-in for this booking to finish it.</i>"
     ]
 ];
 
