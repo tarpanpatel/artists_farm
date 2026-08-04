@@ -9,6 +9,7 @@
  */
 
 require_once __DIR__ . '/sender.php';
+require_once __DIR__ . '/webhook_handler.php';
 require_once __DIR__ . '/../modules/module_manager.php';
 
 if (!function_exists('ensurePairingTables')) {
@@ -25,8 +26,13 @@ if (!function_exists('ensurePairingTables')) {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 paired_at TIMESTAMP NULL DEFAULT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS telegram_bot_state (
-                id INT PRIMARY KEY,
+            // Keyed by SHA1(bot_token) rather than a single fixed row: each bot
+            // token is an independent Telegram account with its own unrelated
+            // update_id sequence (properties can bring their own bot), so a
+            // shared cursor across tokens would desync and silently drop
+            // updates for whichever token isn't "in sync" with the others.
+            $pdo->exec("CREATE TABLE IF NOT EXISTS telegram_bot_offsets (
+                bot_token_hash CHAR(40) PRIMARY KEY,
                 last_update_id BIGINT NOT NULL DEFAULT 0
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         } catch (Exception $e) {
@@ -56,16 +62,23 @@ if (!function_exists('generatePairingCode')) {
     }
 }
 
-// One-shot poll of the bot's getUpdates, matching any still-pending codes
-// (across all properties, since the platform bot is shared) against new
-// message text. Safe to call on every status check — cheap no-op once no
-// pending codes remain unmatched.
+// One-shot poll of the shared bot's getUpdates - the local/dev substitute for
+// Telegram's production webhook, since XAMPP has no public HTTPS endpoint for
+// Telegram to call. Matches any still-pending pairing codes against new
+// message text, AND dispatches any button-tap (callback_query) updates
+// through the same handleTelegramCallbackQuery() the production webhook uses,
+// so pairing and "Mark Served"-style callbacks share one receive path
+// regardless of which triggered it (a status check while the Setup Wizard is
+// open, or the standalone poll_telegram_updates.php cron worker). Safe to
+// call repeatedly - cheap no-op once there's nothing new.
 if (!function_exists('pollAndMatchPairingCodes')) {
     function pollAndMatchPairingCodes($pdo, $token) {
         if (empty($token)) return;
         ensurePairingTables($pdo);
 
-        $offsetStmt = $pdo->query("SELECT last_update_id FROM telegram_bot_state WHERE id = 1");
+        $tokenHash = sha1($token);
+        $offsetStmt = $pdo->prepare("SELECT last_update_id FROM telegram_bot_offsets WHERE bot_token_hash = ?");
+        $offsetStmt->execute([$tokenHash]);
         $offset = (int)($offsetStmt->fetchColumn() ?: 0);
 
         $url = "https://api.telegram.org/bot{$token}/getUpdates?offset=" . ($offset + 1) . "&timeout=0&limit=50";
@@ -88,6 +101,12 @@ if (!function_exists('pollAndMatchPairingCodes')) {
             if (isset($update['update_id']) && $update['update_id'] > $maxUpdateId) {
                 $maxUpdateId = $update['update_id'];
             }
+
+            if (!empty($update['callback_query'])) {
+                handleTelegramCallbackQuery($pdo, $update['callback_query']);
+                continue;
+            }
+
             $msg = $update['message'] ?? $update['channel_post'] ?? null;
             if (!$msg || empty($msg['text']) || empty($msg['chat']['id'])) continue;
             $text = trim($msg['text']);
@@ -100,8 +119,8 @@ if (!function_exists('pollAndMatchPairingCodes')) {
         }
 
         if ($maxUpdateId > $offset) {
-            $up = $pdo->prepare("INSERT INTO telegram_bot_state (id, last_update_id) VALUES (1, ?) ON DUPLICATE KEY UPDATE last_update_id = VALUES(last_update_id)");
-            $up->execute([$maxUpdateId]);
+            $up = $pdo->prepare("INSERT INTO telegram_bot_offsets (bot_token_hash, last_update_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_update_id = VALUES(last_update_id)");
+            $up->execute([$tokenHash, $maxUpdateId]);
         }
     }
 }
