@@ -1301,6 +1301,7 @@ ${itemsStr}
           onUpdateConfig={setTelegramConfig}
           dispatchLogs={telegramLogs}
           onSendTestNotification={handleSendTestNotification}
+          kitchenModuleEnabled={kitchenEnabled}
         />
 
         <DemoDataModal
@@ -1555,6 +1556,7 @@ ${itemsStr}
                   onSendTestNotification={handleSendTestNotification}
                   isEmbedded={true}
                   onLogAudit={logAudit}
+                  kitchenModuleEnabled={kitchenEnabled}
                 />
               )}
 

@@ -57,6 +57,7 @@ interface TelegramNotificationModalProps {
   onSendTestNotification: () => void;
   isEmbedded?: boolean;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
+  kitchenModuleEnabled?: boolean;
 }
 
 // Identifies which templates are kitchen-related (hidden if kitchen module disabled)
@@ -346,6 +347,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   onSendTestNotification,
   isEmbedded = false,
   onLogAudit,
+  kitchenModuleEnabled,
 }) => {
   const [config, setConfig] = useState<TelegramConfig>(telegramConfig);
   const getLoggedInUserName = () => {
@@ -367,7 +369,12 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
-  const [kitchenEnabled, setKitchenEnabled] = useState(true);
+  // Already known by the parent (App.tsx computes this from preloadedData for
+  // every other component that needs it) - no reason for this modal to run
+  // its own get_property_modules fetch just to re-derive the same value,
+  // especially since it's always mounted in the background regardless of
+  // whether it's actually open.
+  const kitchenEnabled = kitchenModuleEnabled ?? true;
 
   // Per-property Telegram connection settings (bot token, groups, per-template
   // routing) — shared between the Connection Settings drawer and the per-template
@@ -377,37 +384,17 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [tgSaved, setTgSaved] = useState(false);
   const [tgRoutingSaving, setTgRoutingSaving] = useState(false);
 
-  // Fetch property modules to check if kitchen is enabled
-  const fetchPropertyModules = async () => {
-    try {
-      const propertySlug = getPropertySlug();
-      const response = await fetch(`/php/api/router.php?action=get_property_modules&property_slug=${propertySlug}`, {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (data.success || data.status === 'success') {
-        const modules = data.data || [];
-        const kitchen = modules.find((m: any) => m.module_slug === 'kitchen');
-        setKitchenEnabled(kitchen ? kitchen.is_enabled : true);
-      }
-    } catch (err) {
-      console.error('Failed to fetch property modules:', err);
-      setKitchenEnabled(true); // Default to enabled on error
-    }
-  };
-
-  useEffect(() => {
-    fetchPropertyModules();
-  }, [isOpen]);
-
   // Live template content/metadata from system_telegram_templates - the catalog
   // previously only ever showed the hardcoded FALLBACK_TEMPLATES below, so any
   // template added directly to the DB (or edited by a tenant) never appeared
   // here even though it worked correctly at send time via resolveTelegramTemplate.
   const [dbTemplates, setDbTemplates] = useState<DbTelegramTemplate[]>([]);
   useEffect(() => {
-    fetchTemplatesFromDB().then(setDbTemplates);
-  }, []);
+    // This modal is always mounted in the background (visibility toggled via
+    // isOpen), so gate on it actually being open rather than fetching the
+    // whole templates catalog on every single page load.
+    if (isOpen) fetchTemplatesFromDB().then(setDbTemplates);
+  }, [isOpen]);
 
   // Filter templates based on enabled modules, merged with live DB content/
   // metadata. FALLBACK_TEMPLATES stays the source of truth for inline button
