@@ -368,12 +368,30 @@ export async function deleteExpenseFromDB(id: string): Promise<boolean> {
   }
 }
 
-export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' = 'misc'): Promise<string | null> {
+function dataUriToBlob(dataUri: string): Blob {
+  const [header, base64] = dataUri.split(',');
+  const mime = header.match(/data:(.*?);base64/)?.[1] || 'image/jpeg';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+// Accepts a File directly (preferred - skips the base64 round-trip entirely)
+// or a base64 data URI (for call sites that already hold one for a preview).
+// Either way this sends multipart/form-data, not JSON - a base64 data URI is
+// ~33% larger than the raw bytes, and json_decode()-ing that whole string
+// server-side was a real, measured contributor to upload latency.
+export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' = 'misc'): Promise<string | null> {
   try {
+    const formData = new FormData();
+    formData.append('image', image instanceof File ? image : dataUriToBlob(image));
+    formData.append('folder', folder);
     const res = await apiFetch(UPLOAD_BASE, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64DataUri, folder }),
+      body: formData,
     });
     const json = await res.json();
     if (json.status === 'success' && json.url) {

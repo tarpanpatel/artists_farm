@@ -58,33 +58,26 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
 
   const docForIndex = (index: number) => documents.find((d) => d.guestIndex === index);
 
-  const handleFileSelected = (index: number, file: File) => {
+  const handleFileSelected = async (index: number, file: File) => {
     setErrorMsg(null);
     setSuccessMsg(null);
     setUploadingIndex(index);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const dataUri = reader.result as string;
-      const uploadedUrl = await uploadImageDB(dataUri, 'id_documents');
-      if (!uploadedUrl) {
-        setErrorMsg('Failed to upload the photo. Please try again.');
-        setUploadingIndex(null);
-        return;
-      }
-      const result = await saveIdDocumentToDB(guest.id, index, uploadedUrl);
-      if (result.success) {
-        const refreshed = await fetchIdDocumentsFromDB(guest.id);
-        setDocuments(refreshed);
-      } else {
-        setErrorMsg(result.message || 'Failed to save the uploaded ID document.');
-      }
+    // Upload the File directly - no FileReader/base64 round-trip needed since
+    // this flow never previews the image, only uploads it.
+    const uploadedUrl = await uploadImageDB(file, 'id_documents');
+    if (!uploadedUrl) {
+      setErrorMsg('Failed to upload the photo. Please try again.');
       setUploadingIndex(null);
-    };
-    reader.onerror = () => {
-      setErrorMsg('Could not read the selected file. Please try again.');
-      setUploadingIndex(null);
-    };
-    reader.readAsDataURL(file);
+      return;
+    }
+    const result = await saveIdDocumentToDB(guest.id, index, uploadedUrl);
+    if (result.success) {
+      const refreshed = await fetchIdDocumentsFromDB(guest.id);
+      setDocuments(refreshed);
+    } else {
+      setErrorMsg(result.message || 'Failed to save the uploaded ID document.');
+    }
+    setUploadingIndex(null);
   };
 
   const handleDelete = async (docId: number) => {

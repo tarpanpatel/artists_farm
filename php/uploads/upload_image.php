@@ -1,8 +1,8 @@
 <?php
 /**
  * Image Upload Endpoint
- * Receives base64 image data, resizes/crops it, saves to disk, returns URL.
- * POST body: { "image": "data:image/png;base64,...", "folder": "menu" | "catalog" }
+ * Receives a multipart/form-data image upload, resizes/crops it, saves to disk, returns URL.
+ * POST fields: image=<file>, folder=menu|catalog|misc|id_documents
  * Response: { "status": "success", "url": "/artist_farm/uploads/images/menu/abc123.jpg" }
  */
 
@@ -21,36 +21,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
-if (empty($input['image'])) {
+if (empty($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
     echo json_encode(['status' => 'error', 'message' => 'No image data provided']);
     exit;
 }
 
-$folder = in_array($input['folder'] ?? '', ['menu', 'catalog', 'misc', 'id_documents']) ? $input['folder'] : 'misc';
+$folder = in_array($_POST['folder'] ?? '', ['menu', 'catalog', 'misc', 'id_documents']) ? $_POST['folder'] : 'misc';
 $isIdDocument = $folder === 'id_documents';
-$targetWidth = ($input['folder'] === 'catalog') ? 300 : 400;
-$targetHeight = ($input['folder'] === 'catalog') ? 100 : 300;
+$targetWidth = ($folder === 'catalog') ? 300 : 400;
+$targetHeight = ($folder === 'catalog') ? 100 : 300;
 
-// Parse data URI
-$dataUri = $input['image'];
-if (!preg_match('/^data:image\/(\w+);base64,/', $dataUri, $matches)) {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid data URI format']);
+$tmpPath = $_FILES['image']['tmp_name'];
+$imageInfo = @getimagesize($tmpPath);
+if ($imageInfo === false) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid image data']);
     exit;
 }
 
-$ext = strtolower($matches[1]);
-if ($ext === 'jpeg') $ext = 'jpg';
-if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-    $ext = 'jpg';
-}
-
-$base64Data = substr($dataUri, strpos($dataUri, ',') + 1);
-$binaryData = base64_decode($base64Data);
-if ($binaryData === false) {
-    echo json_encode(['status' => 'error', 'message' => 'Failed to decode base64 data']);
-    exit;
-}
+$mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+$ext = $mimeToExt[$imageInfo['mime']] ?? 'jpg';
 
 // Create uploads directory
 $uploadDir = __DIR__ . '/images/' . $folder;
@@ -62,8 +51,9 @@ if (!is_dir($uploadDir)) {
 $filename = bin2hex(random_bytes(12)) . '.' . $ext;
 $filepath = $uploadDir . '/' . $filename;
 
-// Create image from binary
-$imageSource = @imagecreatefromstring($binaryData);
+// Create image straight from the uploaded temp file - no base64_decode() or
+// json_decode() of a giant string in between, unlike the old data-URI flow.
+$imageSource = @imagecreatefromstring(file_get_contents($tmpPath));
 if (!$imageSource) {
     echo json_encode(['status' => 'error', 'message' => 'Failed to create image from data']);
     exit;
