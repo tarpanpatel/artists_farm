@@ -8,13 +8,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ### Enhancements & Platform Optimization
 
-- [ ] **Automated iCal Sync Background Worker**
-  - **Action:** Set up a scheduled cron task or server background worker to automatically trigger `ical_sync.php` at regular intervals (e.g. every 15 minutes) for all connected Airbnb/Booking.com calendars.
-
-- [ ] **Expense Item Icons in Frontend Dropdowns**
-  - **Problem:** `getExpenseItemIcon()` (added in `src/utils/expenseIcons.ts`) currently only renders icons in `DefaultExpensesManager.tsx`'s card grid (Root Admin view). Wherever a guest-facing/staff-facing dropdown lists expense/misc-charge items — e.g. `GuestManagement.tsx`'s charge-category picker, `MiscChargesManagement.tsx`, `ExpenseItemsManagement.tsx` — options are still plain text.
-  - **Action:** Since `StyledSelect` already accepts `React.ReactNode` for an option's `label`, wire `getExpenseItemIcon(item.label, item.category)` into each of those option lists the same way, so the icon shows consistently everywhere an expense item appears, not just the admin management screen.
-
 - [ ] **GST Billing Support**
   - **Problem:** No way to generate a GST-compliant bill for guests who need one (common for business travelers billing their company). No GSTIN field exists anywhere in the backend yet.
   - **Action:** Add a GSTIN field on `properties` (the property's own registration number, needed on any GST invoice regardless of guest) and an optional per-guest/per-receipt GSTIN + billing name (for guests who want the invoice addressed to their company, not themselves personally) - likely on `guests` or captured at checkout time on the receipt record. Frontend: an optional "GST Bill" toggle in the checkout/receipt flow that, when the guest provides a GSTIN, generates a proper tax invoice (property GSTIN, guest/company GSTIN, tax breakdown - CGST/SGST or IGST depending on same-state vs. inter-state) instead of the regular receipt. Needs the correct GST rate(s) for this business category - not hardcoded, should come from a config value so it can be updated if rates change.
