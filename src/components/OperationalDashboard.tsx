@@ -12,7 +12,8 @@ import {
   IndianRupee,
   Plus,
   ExternalLink,
-  Pencil
+  Pencil,
+  IdCard
 } from 'lucide-react';
 import { Guest, Order } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -20,6 +21,7 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
+import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { useToast } from './ToastContext';
 
 interface OperationalDashboardProps {
@@ -38,6 +40,7 @@ interface OperationalDashboardProps {
   onUpdateRoomName?: (newName: string) => void;
   onUpdateBooking?: (guest: Guest) => Promise<void>;
   onDeleteBooking?: (guestId: string) => Promise<void>;
+  onGuestVerificationUpdated?: (guestId: string) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
 }
@@ -58,6 +61,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onUpdateRoomName,
   onUpdateBooking,
   onDeleteBooking,
+  onGuestVerificationUpdated,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
 }) => {
@@ -76,6 +80,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSavingBooking, setIsSavingBooking] = useState(false);
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
+  const [showCheckinVerification, setShowCheckinVerification] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
@@ -530,6 +535,27 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
             </div>
 
+            <button
+              onClick={() => setShowCheckinVerification(true)}
+              className={`w-full mb-4 px-4 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                selectedBooking.idVerificationStatus === 'Complete'
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                  : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+              }`}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <IdCard className="w-4 h-4" />
+                Check-in ID Verification
+              </span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                selectedBooking.idVerificationStatus === 'Complete'
+                  ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
+              }`}>
+                {selectedBooking.idVerificationStatus === 'Complete' ? 'Complete' : 'Pending'}
+              </span>
+            </button>
+
             <div className="space-y-4 mb-6">
               <div>
                 <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Guest Name</label>
@@ -669,6 +695,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Check-in ID Verification Modal */}
+          {showCheckinVerification && (
+            <CheckinVerificationModal
+              guest={selectedBooking}
+              isOpen={showCheckinVerification}
+              onClose={() => setShowCheckinVerification(false)}
+              onVerificationComplete={(guestId) => {
+                onGuestVerificationUpdated?.(guestId);
+                setSelectedBooking((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));
+              }}
+            />
           )}
         </div>
       )}

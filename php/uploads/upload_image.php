@@ -27,7 +27,8 @@ if (empty($input['image'])) {
     exit;
 }
 
-$folder = in_array($input['folder'] ?? '', ['menu', 'catalog', 'misc']) ? $input['folder'] : 'misc';
+$folder = in_array($input['folder'] ?? '', ['menu', 'catalog', 'misc', 'id_documents']) ? $input['folder'] : 'misc';
+$isIdDocument = $folder === 'id_documents';
 $targetWidth = ($input['folder'] === 'catalog') ? 300 : 400;
 $targetHeight = ($input['folder'] === 'catalog') ? 100 : 300;
 
@@ -71,8 +72,28 @@ if (!$imageSource) {
 $origWidth = imagesx($imageSource);
 $origHeight = imagesy($imageSource);
 
-// Center-crop then resize
-$canvas = imagecreatetruecolor($targetWidth, $targetHeight);
+if ($isIdDocument) {
+    // ID photos must stay legible (text/photo on a card) - downscale only if
+    // oversized, never crop, unlike the menu/catalog thumbnails below.
+    $maxDim = 1600;
+    if ($origWidth > $maxDim || $origHeight > $maxDim) {
+        if ($origWidth >= $origHeight) {
+            $canvasWidth = $maxDim;
+            $canvasHeight = intval($origHeight * ($maxDim / $origWidth));
+        } else {
+            $canvasHeight = $maxDim;
+            $canvasWidth = intval($origWidth * ($maxDim / $origHeight));
+        }
+    } else {
+        $canvasWidth = $origWidth;
+        $canvasHeight = $origHeight;
+    }
+} else {
+    $canvasWidth = $targetWidth;
+    $canvasHeight = $targetHeight;
+}
+
+$canvas = imagecreatetruecolor($canvasWidth, $canvasHeight);
 if ($canvas === false) {
     imagedestroy($imageSource);
     echo json_encode(['status' => 'error', 'message' => 'Failed to create canvas']);
@@ -83,34 +104,42 @@ if ($canvas === false) {
 imagealphablending($canvas, false);
 imagesavealpha($canvas, true);
 
-// Calculate crop region (center crop to match target aspect ratio)
-$targetRatio = $targetWidth / $targetHeight;
-$sourceRatio = $origWidth / $origHeight;
-
-if ($sourceRatio > $targetRatio) {
-    // Source is wider - crop width
-    $cropHeight = $origHeight;
-    $cropWidth = intval($origHeight * $targetRatio);
-    $cropX = intval(($origWidth - $cropWidth) / 2);
-    $cropY = 0;
+if ($isIdDocument) {
+    imagecopyresampled($canvas, $imageSource, 0, 0, 0, 0, $canvasWidth, $canvasHeight, $origWidth, $origHeight);
 } else {
-    // Source is taller - crop height
-    $cropWidth = $origWidth;
-    $cropHeight = intval($origWidth / $targetRatio);
-    $cropX = 0;
-    $cropY = intval(($origHeight - $cropHeight) / 2);
+    // Calculate crop region (center crop to match target aspect ratio)
+    $targetRatio = $targetWidth / $targetHeight;
+    $sourceRatio = $origWidth / $origHeight;
+
+    if ($sourceRatio > $targetRatio) {
+        // Source is wider - crop width
+        $cropHeight = $origHeight;
+        $cropWidth = intval($origHeight * $targetRatio);
+        $cropX = intval(($origWidth - $cropWidth) / 2);
+        $cropY = 0;
+    } else {
+        // Source is taller - crop height
+        $cropWidth = $origWidth;
+        $cropHeight = intval($origWidth / $targetRatio);
+        $cropX = 0;
+        $cropY = intval(($origHeight - $cropHeight) / 2);
+    }
+
+    imagecopyresampled($canvas, $imageSource, 0, 0, $cropX, $cropY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
 }
 
-imagecopyresampled($canvas, $imageSource, 0, 0, $cropX, $cropY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
-
-// Save as JPEG (best compatibility) with quality 85
+// Save as JPEG (best compatibility). ID photos use higher quality since legibility matters.
+$jpegQuality = $isIdDocument ? 92 : 85;
 $saved = false;
-if ($ext === 'png') {
+if ($ext === 'png' && !$isIdDocument) {
     $saved = imagepng($canvas, $filepath, 6); // compression level 6
 } else {
-    $saved = imagejpeg($canvas, $filepath, 85);
+    // Rename before writing, not after - filepath must point at the real file
+    // on disk when we save (a save-then-rename would leave filesize()/the
+    // returned URL pointing at a path that was never actually written).
     $filepath = str_replace('.png', '.jpg', $filepath);
     $filename = str_replace('.png', '.jpg', $filename);
+    $saved = imagejpeg($canvas, $filepath, $jpegQuality);
 }
 
 imagedestroy($imageSource);
@@ -121,11 +150,12 @@ if (!$saved) {
     exit;
 }
 
-// Build URL - relative to site root
-$siteRoot = dirname(dirname(__DIR__));
-$docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
-$relativePath = str_replace($docRoot, '', $filepath);
-$url = '/' . ltrim(str_replace('\\', '/', str_replace($docRoot, '', $filepath)), '/');
+// Build URL from SCRIPT_NAME (the URL path Apache actually used to reach this
+// file) rather than diffing against DOCUMENT_ROOT - on Windows, DOCUMENT_ROOT
+// uses forward slashes while __DIR__-derived paths use backslashes, so the
+// string diff never matched and silently returned an absolute filesystem path.
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/php/uploads/upload_image.php'));
+$url = $scriptDir . '/images/' . $folder . '/' . $filename;
 
 // File size
 $fileSize = filesize($filepath);
@@ -134,8 +164,8 @@ echo json_encode([
     'status' => 'success',
     'url' => $url,
     'filename' => $filename,
-    'width' => $targetWidth,
-    'height' => $targetHeight,
+    'width' => $canvasWidth,
+    'height' => $canvasHeight,
     'size' => $fileSize
 ]);
 ?>

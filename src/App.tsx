@@ -928,6 +928,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
     logAudit(`Deleted booking: ${target?.guestName || guestId} (${target?.roomNumber || 'unknown room'})`);
   };
 
+  const handleGuestVerificationUpdated = (guestId: string) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.id === guestId ? { ...g, idVerificationStatus: 'Complete' } : g))
+    );
+  };
+
   const handleCheckoutGuest = async (receipt: BillingReceipt) => {
     setReceipts((prev) => [receipt, ...prev]);
     setGuests((prev) =>
@@ -1333,6 +1339,9 @@ ${itemsStr}
                   onSetActiveMenuItemKey={setActiveMenuItemKey}
                   isTestingMode={isTestingMode}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  onUpdateBooking={handleUpdateGuest}
+                  onDeleteBooking={handleDeleteGuest}
+                  onGuestVerificationUpdated={handleGuestVerificationUpdated}
                   />
                 </ErrorBoundary>
               ) : null}
@@ -1378,6 +1387,9 @@ ${itemsStr}
                       isTestingMode={isTestingMode}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
                       hideHeader={true}
+                      onUpdateBooking={handleUpdateGuest}
+                      onDeleteBooking={handleDeleteGuest}
+                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1390,6 +1402,7 @@ ${itemsStr}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
                       onUpdateBooking={handleUpdateGuest}
                       onDeleteBooking={handleDeleteGuest}
+                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
                     />
                   </ErrorBoundary>
                 )

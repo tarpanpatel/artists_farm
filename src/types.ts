@@ -15,6 +15,7 @@ export interface Guest {
   foodBill?: number;
   totalAmount?: number;
   paymentStatus?: string;
+  idVerificationStatus?: 'Pending' | 'Complete';
 }
 
 export interface BillingReceipt {

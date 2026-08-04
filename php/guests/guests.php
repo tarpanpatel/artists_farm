@@ -13,6 +13,24 @@ function convertSnakeToCamel($array) {
     return $result;
 }
 
+function ensureIdVerificationSchema($pdo) {
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_status` VARCHAR(20) DEFAULT 'Pending'");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS guest_id_documents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            guest_id INT NOT NULL,
+            property_id INT NOT NULL,
+            guest_index INT NOT NULL,
+            file_path VARCHAR(500) NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            uploaded_by VARCHAR(255) DEFAULT '',
+            UNIQUE KEY guest_slot (guest_id, guest_index)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {}
+}
+
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
@@ -215,6 +233,95 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([date('Y-m-d H:i:s'), $input['id'], $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
+            }
+            break;
+
+        case 'get_id_documents':
+            ensureIdVerificationSchema($pdo);
+            $guestId = $_GET['guest_id'] ?? '';
+            if (!$guestId) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'guest_id is required']);
+                break;
+            }
+            $stmt = $pdo->prepare("SELECT id, guest_index, file_path, uploaded_at FROM guest_id_documents WHERE guest_id = ? AND property_id = ? ORDER BY guest_index ASC");
+            $stmt->execute([$guestId, $propertyId]);
+            $docs = array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC));
+            echo json_encode(['status' => 'success', 'data' => $docs]);
+            break;
+
+        case 'upload_id_document':
+            ensureIdVerificationSchema($pdo);
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = $input['guest_id'] ?? null;
+                $guestIndex = isset($input['guest_index']) ? intval($input['guest_index']) : null;
+                $filePath = $input['file_path'] ?? null;
+                if (!$guestId || $guestIndex === null || !$filePath) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'guest_id, guest_index, and file_path are required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO guest_id_documents (guest_id, property_id, guest_index, file_path, uploaded_by)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE file_path = VALUES(file_path), uploaded_at = CURRENT_TIMESTAMP, uploaded_by = VALUES(uploaded_by)
+                    ");
+                    $stmt->execute([$guestId, $propertyId, $guestIndex, $filePath, $_SESSION['username'] ?? '']);
+                    echo json_encode(['status' => 'success', 'message' => 'ID document saved']);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to save ID document: ' . $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_id_document':
+            ensureIdVerificationSchema($pdo);
+            if ($request_method === 'POST' || $request_method === 'DELETE') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $docId = $input['id'] ?? null;
+                if (!$docId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                $stmt = $pdo->prepare("DELETE FROM guest_id_documents WHERE id = ? AND property_id = ?");
+                $stmt->execute([$docId, $propertyId]);
+                echo json_encode(['status' => 'success', 'message' => 'ID document removed']);
+            }
+            break;
+
+        case 'complete_checkin_verification':
+            ensureIdVerificationSchema($pdo);
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = $input['guest_id'] ?? null;
+                if (!$guestId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'guest_id is required']);
+                    break;
+                }
+                $stmt = $pdo->prepare("SELECT guest_name, no_of_guests FROM guests WHERE id = ? AND property_id = ?");
+                $stmt->execute([$guestId, $propertyId]);
+                $guest = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$guest) {
+                    http_response_code(404);
+                    echo json_encode(['status' => 'error', 'message' => 'Guest not found']);
+                    break;
+                }
+                $required = max(1, intval($guest['no_of_guests'] ?? 1));
+                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
+                $countStmt->execute([$guestId, $propertyId]);
+                $uploadedCount = intval($countStmt->fetchColumn());
+                if ($uploadedCount < $required) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => "Only {$uploadedCount} of {$required} required ID document(s) uploaded"]);
+                    break;
+                }
+                $pdo->prepare("UPDATE guests SET id_verification_status = 'Complete' WHERE id = ? AND property_id = ?")->execute([$guestId, $propertyId]);
+                echo json_encode(['status' => 'success', 'message' => 'Check-in verification complete']);
             }
             break;
 

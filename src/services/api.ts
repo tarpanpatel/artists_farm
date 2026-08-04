@@ -368,7 +368,7 @@ export async function deleteExpenseFromDB(id: string): Promise<boolean> {
   }
 }
 
-export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'catalog' | 'misc' = 'misc'): Promise<string | null> {
+export async function uploadImageDB(base64DataUri: string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' = 'misc'): Promise<string | null> {
   try {
     const res = await apiFetch(UPLOAD_BASE, {
       method: 'POST',
@@ -724,6 +724,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           foodBill: Number(g.totalFood || g.total_food || 0),
           totalAmount: Number(g.totalCharge || g.total_charge || 0),
           paymentStatus: g.paymentStatus || g.payment_status || g.status || 'Pending',
+          idVerificationStatus: g.idVerificationStatus || g.id_verification_status || 'Pending',
         });
       }
 
@@ -856,6 +857,69 @@ export async function deleteGuestFromDB(guestId: string): Promise<boolean> {
   } catch (err) {
     console.error('Failed to delete guest/booking in DB:', err);
     return false;
+  }
+}
+
+export interface GuestIdDocument {
+  id: number;
+  guestIndex: number;
+  filePath: string;
+  uploadedAt: string;
+}
+
+export async function fetchIdDocumentsFromDB(guestId: string | number): Promise<GuestIdDocument[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_id_documents&guest_id=${guestId}`);
+    const json = await res.json();
+    return json.status === 'success' && Array.isArray(json.data) ? json.data : [];
+  } catch (err) {
+    console.error('Failed to fetch ID documents:', err);
+    return [];
+  }
+}
+
+export async function saveIdDocumentToDB(guestId: string | number, guestIndex: number, filePath: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=upload_id_document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guest_id: guestId, guest_index: guestIndex, file_path: filePath }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message };
+  } catch (err) {
+    console.error('Failed to save ID document:', err);
+    return { success: false, message: 'Network error while saving ID document' };
+  }
+}
+
+export async function deleteIdDocumentFromDB(docId: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_id_document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: docId }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete ID document:', err);
+    return false;
+  }
+}
+
+export async function completeCheckinVerificationDB(guestId: string | number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=complete_checkin_verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guest_id: guestId }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message };
+  } catch (err) {
+    console.error('Failed to complete check-in verification:', err);
+    return { success: false, message: 'Network error while completing verification' };
   }
 }
 
