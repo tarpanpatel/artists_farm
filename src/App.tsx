@@ -1430,6 +1430,8 @@ ${itemsStr}
                     onSetActiveMenuItemKey={setActiveMenuItemKey}
                     selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    propertyGstin={preloadedData.currentProperty?.gstin || ''}
+                    propertyName={preloadedData.currentProperty?.name || ''}
                     onNavigateToBilling={(guestId) => {
                       // Navigate to billing view for guest
                     }}
