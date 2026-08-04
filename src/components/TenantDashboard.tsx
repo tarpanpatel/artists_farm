@@ -29,6 +29,7 @@ interface Property {
   is_active: number;
   room_count?: number;
   status?: string;
+  gstin?: string;
 }
 
 interface TenantInfo {
@@ -78,6 +79,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
   // Edit form state
   const [editName, setEditName] = useState('');
+  const [editGstin, setEditGstin] = useState('');
   const [editLoading, setEditLoading] = useState(false);
 
   const showSuccess = (msg: string) => {
@@ -212,6 +214,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         body: JSON.stringify({
           property_id: modal.property.id,
           name: editName.trim(),
+          gstin: editGstin.trim(),
         }),
       });
       const data = await res.json();
@@ -458,7 +461,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       </a>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => { setEditName(property.name); setModal({ type: 'edit', property }); }}
+                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setModal({ type: 'edit', property }); }}
                           className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                           title="Edit"
                         >
@@ -627,6 +630,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   onChange={e => setEditName(e.target.value)}
                   className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">GSTIN (optional)</label>
+                <input
+                  type="text"
+                  value={editGstin}
+                  onChange={e => setEditGstin(e.target.value.toUpperCase())}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Printed on GST tax invoices at checkout.</p>
               </div>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
