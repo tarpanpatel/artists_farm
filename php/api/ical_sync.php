@@ -392,6 +392,13 @@ class ICalSyncManager {
     }
 }
 
+// Only handle as an HTTP request when actually invoked over HTTP - the cron
+// worker (php/cron/sync_all_icals.php) requires this file for the
+// ICalSyncManager class definition alone and must not trigger this dispatch.
+if (php_sapi_name() === 'cli') {
+    return;
+}
+
 // Handle API requests
 $action = $_GET['action'] ?? '';
 
