@@ -16,6 +16,7 @@ import { AuditLogsView } from './components/AuditLogsView';
 import { DataExportCenter } from './components/DataExportCenter';
 import { MenuManager } from './components/MenuManager';
 import { MiscChargesManagement } from './components/MiscChargesManagement';
+import { ServiceRequestsManagement } from './components/ServiceRequestsManagement';
 import { ICalSyncManager } from './components/ICalSyncManager';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { DemoDataModal } from './components/DemoDataModal';
@@ -133,6 +134,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
+        service_requests: { tab: 'service_requests', key: 'service_requests' },
       };
 
       if (hash && routeMap[hash]) {
@@ -309,6 +311,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         menu_manager: 'edit_food_menu',
         telegram: 'telegram',
         misc_charges: 'misc_charges',
+        service_requests: 'service_requests',
       };
       setActiveMenuItemKey(defaults[tab] || tab);
     }
@@ -656,7 +659,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
-        'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group'
+        'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
+        'service_requests'
       ]);
 
       if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
@@ -706,6 +710,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
         ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
         ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
+        service_requests: { tab: 'service_requests', key: 'service_requests' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
@@ -1521,6 +1526,16 @@ ${itemsStr}
                     menu={menu}
                     auditLogs={auditLogs}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'service_requests' && (
+                <ErrorBoundary section="Service Requests">
+                  <ServiceRequestsManagement
+                    rooms={preloadedData.currentProperty?.rooms || []}
+                    isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                    onDispatchTelegram={dispatchTelegramAlert}
                   />
                 </ErrorBoundary>
               )}
