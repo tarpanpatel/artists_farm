@@ -132,6 +132,18 @@ if (!in_array($action, ['get_audit_logs', 'fetch_logs'])) { // Skip verbose get 
 $propertyId = getCurrentPropertyId($pdo);
 $currentProperty = getCurrentProperty($pdo); // Get the full property details
 
+// PHP's default file-based session handler holds an exclusive lock on the
+// session file for the entire request. With multiple tabs/windows open on
+// the same login, every concurrent request serializes behind whichever one
+// is currently running - a single slow request blocks every other tab's
+// request, even totally unrelated ones, until it finishes. All session
+// reads needed for auth/property resolution are done by this point, and the
+// only action that still needs to write session data is login_user, so it's
+// safe to release the lock for everything else.
+if ($action !== 'login_user') {
+    session_write_close();
+}
+
 // Actions that belong entirely to food service: kitchen orders, the food menu
 // & recipes, and the whole stock/requisitions/kitchen-purchases inventory
 // system (php/inventory/inventory.php has no non-food inventory concept).
