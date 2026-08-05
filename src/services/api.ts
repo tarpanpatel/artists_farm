@@ -23,7 +23,7 @@ export const API_ROOT_BASE = _base;
 // NOTE: API_KEY removed from frontend - use session auth instead (cookies)
 
 // Path segments that are real app directories/routes, never a property slug.
-const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm', 'login', 'platform_property_management', 'tenant_dashboard']);
+const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'artists_farm', 'login', 'platform_property_management', 'tenant_dashboard', 'root_dashboard']);
 
 /**
  * Identifies which property (e.g. "goa", "jaipur") this browser tab is on, mirroring the
@@ -37,10 +37,17 @@ const RESERVED_PATH_SEGMENTS = new Set(['php', 'dist', 'assets', 'icons', 'api',
 export function getPropertySlug(): string {
   if (typeof window === 'undefined') return 'default';
 
+  const pathname = window.location.pathname.replace(/#.*$/, '');
+  
+  // If we are on a reserved route, return that route name instead of checking query params
+  if (pathname.includes('/root_dashboard/')) return 'root_dashboard';
+  if (pathname.includes('/platform_property_management/')) return 'platform_property_management';
+  if (pathname.includes('/tenant_dashboard/')) return 'tenant_dashboard';
+  if (pathname.includes('/login/')) return 'login';
+
   const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
   if (fromQuery) return fromQuery.toLowerCase();
 
-  const pathname = window.location.pathname.replace(/#.*$/, '');
   const segments = pathname.split('/').filter(Boolean).filter((seg) => !seg.includes('.'));
 
   // For URLs like /artists_farm/vrikshawan/resort-hut/ or /vrikshawan/resort-hut/
@@ -71,10 +78,16 @@ export function getPropertySlug(): string {
 export function getPropertyAndRoomSlugs(): { propertySlug: string; roomSlug: string | null; tenantSlug: string | null } {
   if (typeof window === 'undefined') return { propertySlug: 'default', roomSlug: null, tenantSlug: null };
 
+  const pathname = window.location.pathname.replace(/#.*$/, '');
+  
+  // If we are on a reserved route, return that route name instead of checking query params
+  if (pathname.includes('/root_dashboard/')) return { propertySlug: 'root_dashboard', roomSlug: null, tenantSlug: null };
+  if (pathname.includes('/platform_property_management/')) return { propertySlug: 'platform_property_management', roomSlug: null, tenantSlug: null };
+  if (pathname.includes('/tenant_dashboard/')) return { propertySlug: 'tenant_dashboard', roomSlug: null, tenantSlug: null };
+  if (pathname.includes('/login/')) return { propertySlug: 'login', roomSlug: null, tenantSlug: null };
+
   const fromQuery = new URLSearchParams(window.location.search).get('property_slug');
   if (fromQuery) return { propertySlug: fromQuery.toLowerCase(), roomSlug: null, tenantSlug: null };
-
-  const pathname = window.location.pathname.replace(/#.*$/, '');
   const segments = pathname.split('/').filter(Boolean).filter((seg) => !seg.includes('.'));
 
   const validSegments: string[] = [];
