@@ -147,6 +147,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage);
 
+                    // WhatsApp booking confirmation direct to the guest (staff-facing
+                    // Telegram notification above is separate from this). Phased
+                    // rollout - only fires for the tenant currently enabled, see
+                    // isWhatsAppEnabledForProperty()'s docblock in sender.php.
+                    require_once __DIR__ . '/../whatsapp/sender.php';
+                    if (isWhatsAppEnabledForProperty($pdo, $propertyId)) {
+                        $checkinDateFormatted = date('d M Y', strtotime($checkinDate));
+                        $roomLabel = $input['room_number'] ?? $input['roomNumber'] ?? 'your assigned room';
+                        sendWhatsAppTemplateMessage($phone, 'new_booking_cofirmation', [$guestName, $checkinDateFormatted, $roomLabel]);
+                    }
+
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully']);
                 } catch (PDOException $e) {
                     http_response_code(500);
