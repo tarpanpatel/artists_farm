@@ -488,7 +488,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200">
                 <Grid className="w-4 h-4" />
               </span>
-              <h2 className="text-sm sm:text-base font-extrabold text-gray-900 tracking-tight">System Menu Manager</h2>
+              <h2 className="text-sm sm:text-base font-bold text-gray-900 tracking-tight">System Menu Manager</h2>
             </div>
             <p className="text-[11px] text-gray-500 mt-0.5">
               Reorder main navigation items with drag & drop, configure access control (RBAC), and manage kitchen food catalog
@@ -586,7 +586,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <GripVertical className="w-4 h-4 text-slate-300 hover:text-slate-600 shrink-0" />
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
                         {item.category}
                       </span>
                     </div>
@@ -650,7 +650,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                   <div>
                     <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
-                    <p className="text-emerald-700 font-extrabold text-sm mt-0.5">₹{item.price.toFixed(2)}</p>
+                    <p className="text-emerald-700 font-semibold text-sm mt-0.5">₹{item.price.toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -858,7 +858,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </label>
 
               <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Custom Link (Optional)</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Custom Link (Optional)</p>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">External URL / Custom Link</label>
                   <input
@@ -1047,7 +1047,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <ShieldCheck className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">Passcode Required</h3>
+                <h3 className="font-semibold text-slate-900 text-sm">Passcode Required</h3>
                 <p className="text-slate-500 text-xs">Enter any staff passcode to proceed</p>
               </div>
             </div>

@@ -351,7 +351,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
       {/* Top Title */}
       <div>
-        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
           Operational Expenses Ledger
         </h2>
         <p className="text-xs text-gray-500 mt-1">
@@ -743,7 +743,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           highlightOnHover
           subHeader={
             <div className="w-full flex items-center justify-between py-2">
-              <h3 className="font-extrabold text-slate-800 dark:text-white text-sm">
+              <h3 className="font-semibold text-slate-800 dark:text-white text-sm">
                 Cost Logs for {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
               <span className="font-mono text-slate-400 font-bold text-xs">{filteredEntries.length} entries</span>

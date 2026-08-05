@@ -437,7 +437,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <IndianRupee className="w-5 h-5 text-blue-600" />
               {mode === 'edit-only' ? 'Edit Guest Booking & Billing Details' : 'Guest Billing & Final Checkout Settlement'}
             </h2>
@@ -462,7 +462,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               
               {/* Accommodation & Booking Dates */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
                   <Home className="w-4 h-4 text-blue-600" />
                   <span>Accommodation Invoice Breakdown</span>
                 </div>
@@ -505,7 +505,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center font-bold">
                     <span className="text-slate-700 dark:text-slate-300">Advance Paid:</span>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm">+₹{advancePaid.toFixed(2)}</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Received By (Booking)</label>
@@ -521,7 +521,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 flex justify-between items-center text-xs font-bold border border-amber-200 dark:border-amber-800">
                   <span className="text-slate-700 dark:text-slate-300">Pending Lodging Due:</span>
-                  <span className="text-amber-700 dark:text-amber-400 text-sm font-extrabold">₹{lodgingPendingDue.toFixed(2)}</span>
+                  <span className="text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -529,11 +529,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {kitchenModuleEnabled && (
                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-cyan-600" />
                       Food Orders & Incidentals Log
                     </span>
-                    <span className="text-xs font-extrabold text-cyan-700 dark:text-cyan-400">
+                    <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">
                       Subtotal: ₹{foodTotal.toFixed(2)}
                     </span>
                   </div>
@@ -566,7 +566,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         type="button"
                         onClick={handleAddIncidentalItem}
                         disabled={!selectedMenuId}
-                        className="w-full py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        className="w-full py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Insert
@@ -600,7 +600,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                                   >
                                     -
                                   </button>
-                                  <span className="font-extrabold text-xs px-1">{item.quantity}</span>
+                                  <span className="font-semibold text-xs px-1">{item.quantity}</span>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateIncidentalQty(item.id, 1)}
@@ -633,7 +633,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Strategy Type Custom Adjustments */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
-                <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
                   ➕ Add Custom Adjustments
                 </span>
 
@@ -685,13 +685,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       value={adjAmount}
                       onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Number(e.target.value))}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 font-extrabold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl"
+                      className="w-full px-3 py-2 font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-extrabold rounded-xl transition-all cursor-pointer text-xs"
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl transition-all cursor-pointer text-xs"
                   >
                     Apply Adjustment
                   </button>
@@ -724,7 +724,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Final Checkout Split Settlement Box */}
               <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border-2 border-emerald-500/80 p-5 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
                   <span>Final Checkout Split Settlement</span>
                 </div>
@@ -993,7 +993,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="flex-1 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer"
+            className="flex-1 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer"
           >
             Cancel
           </button>
@@ -1001,7 +1001,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             <button
               type="button"
               onClick={() => setIsPrintModalOpen(true)}
-              className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+              className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
             >
               <Printer className="w-4 h-4" /> Preview & Share Bill
             </button>
@@ -1010,7 +1010,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             type="button"
             onClick={handleSaveOrCheckout}
             disabled={isProcessing || (mode === 'edit-and-checkout' && !isSplitMatching)}
-            className={`flex-2 py-3 text-white font-extrabold text-xs rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 ${
+            className={`flex-2 py-3 text-white font-semibold text-xs rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 ${
               mode === 'edit-only'
                 ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
                 : !isSplitMatching

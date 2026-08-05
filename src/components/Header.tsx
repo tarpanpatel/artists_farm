@@ -224,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({
                               </p>
                             </div>
                             <span
-                              className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                              className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                                 ord.status === 'Pending'
                                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300'
                                   : ord.status === 'Preparing'
@@ -283,7 +283,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   Phone: {guest.phoneNumber}
                                 </p>
                               </div>
-                              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${badgeStyle}`}>
+                              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStyle}`}>
                                 {badgeText}
                               </span>
                             </div>
@@ -306,7 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 Upcoming tomorrow
                               </p>
                             </div>
-                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
                               Checking in Tomorrow
                             </span>
                           </div>
