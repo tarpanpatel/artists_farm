@@ -28,6 +28,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { StyledSelect } from './StyledSelect';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB } from '../services/api';
+import { t } from '../i18n/en';
 
 interface StaffManagementProps {
   activeMenuItemKey?: string;
@@ -601,7 +602,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '150px',
                     cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold">💳 Cash Handler</span>
+                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-semibold">💳 Cash Handler</span>
                     ) : (
                       <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">No Finances</span>
                     ),
@@ -784,7 +785,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Authorization Role</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('team_role', 'Team Role')}</label>
                         <StyledSelect
                           value={newRole}
                           onChange={(val) => setNewRole(val as any)}
@@ -1046,7 +1047,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               ← Prev
             </button>
-            <div className="font-extrabold text-sm text-slate-800 dark:text-white">
+            <div className="font-bold text-sm text-slate-800 dark:text-white">
               {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </div>
             <div className="flex items-center gap-2">
@@ -1080,7 +1081,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <th
                         key={`num-${d.dayNum}`}
                         className={`px-2 py-2 min-w-[36px] max-w-[40px] text-[11px] border-r border-gray-200 dark:border-slate-700/60 ${
-                          d.isToday ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-extrabold' : ''
+                          d.isToday ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-bold' : ''
                         }`}
                       >
                         {d.dayNum}
@@ -1094,7 +1095,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <th
                         key={`name-${d.dayNum}`}
                         className={`px-2 py-1.5 border-r border-gray-200 dark:border-slate-700/60 ${
-                          d.isToday ? 'bg-amber-100/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-extrabold' : ''
+                          d.isToday ? 'bg-amber-100/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold' : ''
                         }`}
                       >
                         {d.dayName}
@@ -1128,19 +1129,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             }`}
                           >
                             {status === 'Present' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold text-xs shadow-2xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs shadow-2xs">
                                 P
                               </span>
                             )}
 
                             {status === 'Absent' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-extrabold text-xs shadow-2xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-bold text-xs shadow-2xs">
                                 A
                               </span>
                             )}
 
                             {status === 'Half Day' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-extrabold text-xs shadow-2xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-bold text-xs shadow-2xs">
                                 L
                               </span>
                             )}
@@ -1163,7 +1164,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           {/* MONTHLY PAYOUT CALCULATOR */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors">
             <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
-              <h3 className="font-extrabold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
+              <h3 className="font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
                 <IndianRupee className="w-4 h-4" />
                 Monthly Payout Calculator
               </h3>
@@ -1194,7 +1195,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   sortable: true,
                   center: true,
                   width: '110px',
-                  cell: (row: any) => <><span className="font-extrabold text-gray-800 dark:text-gray-200">{row.presentDays}</span><span className="text-gray-400 dark:text-gray-500"> days</span></>,
+                  cell: (row: any) => <><span className="font-bold text-gray-800 dark:text-gray-200">{row.presentDays}</span><span className="text-gray-400 dark:text-gray-500"> days</span></>,
                 },
                 {
                   name: 'Total Earned (₹)',
@@ -1242,7 +1243,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   sortable: true,
                   right: true,
                   width: '140px',
-                  cell: (row: any) => <span className="font-extrabold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+                  cell: (row: any) => <span className="font-bold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
                 },
                 {
                   name: 'Actions',
@@ -1326,7 +1327,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             {/* Advances History for this month */}
             {monthAdvances.length > 0 && (
               <div className="border-t border-amber-200 dark:border-amber-800/40 px-4 py-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Advances This Month</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Advances This Month</p>
                 <div className="space-y-1">
                   {monthAdvances.map((adv) => (
                     <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
@@ -1647,7 +1648,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Give Advance — {advanceStaff.name}</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Give Advance — {advanceStaff.name}</h3>
               <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>

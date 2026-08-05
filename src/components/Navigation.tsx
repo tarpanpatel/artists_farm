@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { t } from '../i18n/en';
 
 export type TabType =
   | 'dashboard'
@@ -238,7 +239,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           id: item.tabKey,
           tabKey: item.tabKey,
           uniqueKey: item.uniqueKey || item.tabKey,
-          label: item.title,
+          label: t(item.uniqueKey || item.tabKey || '', item.title),
           icon: getIconComponent(item.iconName),
           badge: badge?.text || null,
           badgeClass: badge?.className,
