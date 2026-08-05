@@ -222,7 +222,7 @@ export interface SalaryEntry {
 
 export interface StaffAdvance {
   id: string;
-  staffId: string;
+  staffId?: string | null; // null for rows predating this column (e.g. kitchen-purchase reimbursement credits, matched by staffName instead)
   staffName: string;
   amount: number;
   date: string;

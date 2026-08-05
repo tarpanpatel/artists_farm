@@ -1480,6 +1480,59 @@ export async function deletePayeeDB(id: string): Promise<boolean> {
   }
 }
 
+export async function fetchStaffAdvancesFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_staff_advances`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch staff advances from DB:', err);
+  }
+  return [];
+}
+
+// Returns the DB-assigned id (staff_advances.id is an auto-increment column
+// backing an existing table, not a client-generated one) on success, or null.
+export async function addStaffAdvanceToDB(advance: {
+  staffId: string;
+  staffName: string;
+  amount: number;
+  date: string;
+  month: string;
+  reason: string;
+  addedBy: string;
+}): Promise<string | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_staff_advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(advance),
+    });
+    const json = await res.json();
+    return json.status === 'success' ? String(json.id) : null;
+  } catch (err) {
+    console.error('Failed to add staff advance to DB:', err);
+    return null;
+  }
+}
+
+export async function deleteStaffAdvanceFromDB(id: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_staff_advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete staff advance in DB:', err);
+    return false;
+  }
+}
+
 export async function saveReceiptToDB(receipt: any): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=save_receipt`, {

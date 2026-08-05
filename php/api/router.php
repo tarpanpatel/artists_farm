@@ -1090,6 +1090,9 @@ switch ($action) {
     case 'get_payees':
     case 'add_payee':
     case 'delete_payee':
+    case 'get_staff_advances':
+    case 'add_staff_advance':
+    case 'delete_staff_advance':
     case 'get_attendance':
     case 'log_attendance':
         handleStaffRequests($pdo, $request_method, $action, $propertyId);

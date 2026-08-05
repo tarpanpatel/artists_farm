@@ -44,6 +44,31 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
+        // Staff advances (Monthly Payout Calculator "+ Advance") - was localStorage-only
+        // before, which meant it never synced across devices and could silently vanish.
+        // This table already exists in production for a different purpose (inventory.php
+        // writes negative "reimbursement credit" rows here when a staff member pays for a
+        // kitchen purchase out of pocket) - CREATE baseline matches that existing schema
+        // exactly, and the ALTERs below add what the advance-giving flow additionally
+        // needs, rather than standing up a second, competing table.
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_advances` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `property_id` INT NOT NULL DEFAULT 1,
+            `staff_name` VARCHAR(100) NOT NULL,
+            `amount` DECIMAL(10,2) NOT NULL,
+            `reason` TEXT,
+            `date` VARCHAR(50) NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        $advanceAlterCols = [
+            "ALTER TABLE `staff_advances` ADD COLUMN IF NOT EXISTS `staff_id` VARCHAR(50) DEFAULT NULL",
+            "ALTER TABLE `staff_advances` ADD COLUMN IF NOT EXISTS `month_key` VARCHAR(7) DEFAULT NULL",
+            "ALTER TABLE `staff_advances` ADD COLUMN IF NOT EXISTS `added_by` VARCHAR(150) DEFAULT ''",
+        ];
+        foreach ($advanceAlterCols as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+
         // Seed staff only if testing mode is enabled - production databases should start clean
         $check = $pdo->prepare("SELECT COUNT(*) FROM staff_users WHERE property_id = ?");
         $check->execute([$propertyId]);
@@ -276,6 +301,60 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt = $pdo->prepare("DELETE FROM payee_entities WHERE id = ? AND property_id = ?");
                     $stmt->execute([$input['id'], $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Payee deleted successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'get_staff_advances':
+            try {
+                // month falls back to the first 7 chars of `date` (YYYY-MM) for rows
+                // that predate month_key - namely the kitchen-purchase reimbursement
+                // credits inventory.php has always written directly to this table.
+                $stmt = $pdo->prepare("SELECT id, staff_id as staffId, staff_name as staffName, amount, date, COALESCE(month_key, LEFT(date, 7)) as month, reason, added_by as addedBy FROM staff_advances WHERE property_id = ? ORDER BY date DESC, id DESC");
+                $stmt->execute([$propertyId]);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as &$row) {
+                    $row['id'] = (string)$row['id'];
+                    $row['amount'] = floatval($row['amount']);
+                }
+                echo json_encode(['status' => 'success', 'data' => $rows]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_staff_advance':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO staff_advances (property_id, staff_id, staff_name, amount, date, month_key, reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([
+                        $propertyId,
+                        $input['staffId'] ?? null,
+                        $input['staffName'],
+                        floatval($input['amount'] ?? 0),
+                        $input['date'] ?? date('Y-m-d'),
+                        $input['month'] ?? date('Y-m'),
+                        $input['reason'] ?? '',
+                        $input['addedBy'] ?? '',
+                    ]);
+                    $newId = (string)$pdo->lastInsertId();
+                    echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Advance recorded successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_staff_advance':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM staff_advances WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['id'], $propertyId]);
+                    echo json_encode(['status' => 'success', 'message' => 'Advance deleted successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

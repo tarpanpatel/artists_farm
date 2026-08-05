@@ -27,7 +27,7 @@ import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { StyledSelect } from './StyledSelect';
-import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB } from '../services/api';
+import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
 import { t } from '../i18n/en';
 
 interface StaffManagementProps {
@@ -98,10 +98,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Monthly Payout Calculator State
-  const [advances, setAdvances] = useState<StaffAdvance[]>(() => {
-    try { return JSON.parse(localStorage.getItem('staff_advances') || '[]'); } catch { return []; }
-  });
+  // Monthly Payout Calculator State - advances live in the DB (staff_advances
+  // table), not localStorage, so they're durable and shared across every
+  // device/terminal a property's admins use, and properly tied to a staff_id.
+  const [advances, setAdvances] = useState<StaffAdvance[]>([]);
   const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
   const [advanceStaff, setAdvanceStaff] = useState<StaffMember | null>(null);
   const [advanceAmount, setAdvanceAmount] = useState<number>(0);
@@ -112,9 +112,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     fetchCashDrawerSummaryFromDB().then(data => {
       if (Array.isArray(data)) setDrawerSummary(data);
     }).catch(() => {});
+    fetchStaffAdvancesFromDB().then(data => {
+      if (Array.isArray(data)) setAdvances(data);
+    }).catch(() => {});
   }, []);
-
-  useEffect(() => { localStorage.setItem('staff_advances', JSON.stringify(advances)); }, [advances]);
 
   // Per-staff pay tracking
   const [paidStaff, setPaidStaff] = useState<Set<string>>(new Set());
@@ -125,11 +126,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [searchPayout, setSearchPayout] = useState('');
   const [searchStaff, setSearchStaff] = useState('');
 
-  const handleGiveAdvance = () => {
+  const handleGiveAdvance = async () => {
     if (!advanceStaff || advanceAmount <= 0) return;
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-    const newAdvance: StaffAdvance = {
-      id: `adv-${Date.now()}`,
+    const advancePayload = {
       staffId: advanceStaff.id,
       staffName: advanceStaff.name,
       amount: advanceAmount,
@@ -138,6 +138,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       reason: advanceReason || 'Cash advance',
       addedBy: 'Admin',
     };
+    const newId = await addStaffAdvanceToDB(advancePayload);
+    if (!newId) {
+      showToast('Unable to save the advance to the database.', { type: 'error' });
+      return;
+    }
+    const newAdvance: StaffAdvance = { id: newId, ...advancePayload };
     setAdvances((prev) => [...prev, newAdvance]);
     setIsAdvanceModalOpen(false);
 
@@ -246,7 +252,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     });
     const totalEarned = Math.round(dailyWage * presentDays * 100) / 100;
     const moneyOwed = Math.round((s.monthlySalary - totalEarned) * 100) / 100;
-    const staffAdvances = monthAdvances.filter((a) => a.staffId === s.id).reduce((sum, a) => sum + a.amount, 0);
+    // staffId matches new advances; name fallback covers rows that predate it -
+    // namely the out-of-pocket kitchen-purchase reimbursement credits
+    // inventory.php writes directly, which only ever recorded a staff name.
+    const staffAdvances = monthAdvances
+      .filter((a) => (a.staffId ? a.staffId === s.id : a.staffName === s.name))
+      .reduce((sum, a) => sum + a.amount, 0);
     const ds = drawerSummary.find(d => d.staffId === s.id || d.username === s.name || d.staffName === s.name);
     const cashCollected = ds?.cashCollected ?? 0;
     const handovers = ds?.drawerHandovers ?? 0;
@@ -1220,7 +1231,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   sortable: true,
                   right: true,
                   width: '120px',
-                  cell: (row: any) => <span className="font-bold text-red-600 dark:text-red-400">{row.advances > 0 ? `- ₹${row.advances.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '- ₹0.00'}</span>,
+                  cell: (row: any) => {
+                    // Negative = a reimbursement credit (e.g. staff paid for a kitchen
+                    // purchase out of pocket), which increases payout rather than
+                    // reducing it - shown in green with a + sign, not hidden as ₹0.00.
+                    const isCredit = row.advances < 0;
+                    return (
+                      <span className={`font-bold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    );
+                  },
                 },
                 {
                   name: 'Pending Payout (₹)',
@@ -1320,7 +1341,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <span className="text-red-600 dark:text-red-400">- ₹{adv.amount.toLocaleString('en-IN')}</span>
                       <span className="text-gray-400 dark:text-gray-500">{adv.reason}</span>
                       <button
-                        onClick={() => setAdvances((prev) => prev.filter((a) => a.id !== adv.id))}
+                        onClick={async () => {
+                          const ok = await deleteStaffAdvanceFromDB(adv.id);
+                          if (ok) {
+                            setAdvances((prev) => prev.filter((a) => a.id !== adv.id));
+                          } else {
+                            showToast('Unable to delete the advance from the database.', { type: 'error' });
+                          }
+                        }}
                         className="text-red-400 hover:text-red-600 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
