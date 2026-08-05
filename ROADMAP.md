@@ -12,6 +12,12 @@ Kitchen Live Orders currently shows served items struck-through inside their ori
 ### Staff Advances: move off localStorage onto the database
 Staff advances (Monthly Payout Calculator, "+ Advance") are stored entirely in browser localStorage (`staff_advances`), not in any DB table. Consequences: doesn't sync across devices/terminals (an advance given from one browser is invisible on another), fragile (cleared browser data or a new device silently loses the record), and feeds directly into the real pendingPayout (money owed) calculation - so losing it has real financial consequences, not just a display glitch. Symptom already seen live: a stale/orphaned advance entry whose staffId no longer matches any current staff member, so it can never be attributed to a row in the payout table above and just sits in the flat "Advances This Month" list underneath, disconnected. Needs a real `staff_advances` table + API (mirroring the pattern used for petty cash/financial ledger entries) so advances are durable, property-scoped, and properly tied to a staff_id foreign key.
 
+### WhatsApp Business API Integration
+Add WhatsApp as a notification/alert channel alongside the existing Telegram integration (same event types: new bookings, kitchen orders, service requests, financial transactions, etc.), likely via the WhatsApp Business Platform (Cloud API). Registered sender to use:
+- Display name: Artists Farm
+- Number: +91 99831 96863
+- Phone Number ID: 1232057176655692
+
 ### Data Export Center: whole-year and custom date-range exports
 The Data Export & Backup Center (Accommodations Booking Spreadsheet, Property Maintenance & Utilities Logs, Payroll & Salaries Registry, Master Transaction Ledger) currently only exports one calendar month at a time (Target Statement Month + Year pickers). Add two more export scopes: a full calendar year in one export, and an arbitrary custom date range (start date -> end date) for ad-hoc reporting periods that don't align to a month or year boundary.
 
