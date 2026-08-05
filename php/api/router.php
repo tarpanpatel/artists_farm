@@ -976,6 +976,7 @@ switch ($action) {
     case 'update_guest':
     case 'checkout_guest':
     case 'delete_guest':
+    case 'mark_c_form_filed':
     case 'get_id_documents':
     case 'upload_id_document':
     case 'delete_id_document':

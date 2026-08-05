@@ -34,6 +34,19 @@ function ensureIdVerificationSchema($pdo) {
     } catch (PDOException $e) {}
 }
 
+// Foreign-guest flag + C-Form (FRRO) filing tracking. C-Form must be filed
+// within 24h of check-in for foreign nationals - is_foreign_guest is set by
+// staff at registration, c_form_filed_at is stamped once staff confirms they
+// submitted it on the government portal (this app doesn't file it for them).
+function ensureComplianceSchema($pdo) {
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `is_foreign_guest` TINYINT(1) DEFAULT 0");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `c_form_filed_at` DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+}
+
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
@@ -70,9 +83,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'add_guest':
             if ($request_method === 'POST') {
+                ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -86,6 +100,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $input['booking_source'] ?? '',
                         intval($input['no_of_guests'] ?? 1),
                         $propertyId,
+                        !empty($input['is_foreign_guest']) ? 1 : 0,
                     ]);
                     $newId = $pdo->lastInsertId();
                     $advance = floatval($input['advance_paid'] ?? 0);
@@ -139,6 +154,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'update_guest':
             if ($request_method === 'POST') {
+                ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
                     $guestId = $input['id'];
@@ -165,7 +181,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $pendingAmount = max(0, $totalCharge - $advancePaid);
 
                     if ($roomId !== null) {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
@@ -177,11 +193,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $totalCharge,
                             $advancePaid,
                             $pendingAmount,
+                            !empty($input['is_foreign_guest']) ? 1 : 0,
                             $guestId,
                             $propertyId,
                         ]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
@@ -192,6 +209,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $totalCharge,
                             $advancePaid,
                             $pendingAmount,
+                            !empty($input['is_foreign_guest']) ? 1 : 0,
                             $guestId,
                             $propertyId,
                         ]);
@@ -268,6 +286,29 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([date('Y-m-d H:i:s'), $input['id'], $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
+            }
+            break;
+
+        case 'mark_c_form_filed':
+            if ($request_method === 'POST') {
+                ensureComplianceSchema($pdo);
+                $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = $input['id'] ?? null;
+                if (!$guestId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                try {
+                    // Un-filing (staff caught a mistake) just clears the timestamp again.
+                    $filed = !array_key_exists('filed', $input) || !empty($input['filed']);
+                    $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$filed ? date('Y-m-d H:i:s') : null, $guestId, $propertyId]);
+                    echo json_encode(['status' => 'success', 'message' => $filed ? 'Marked as filed' : 'Marked as not filed']);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to update C-Form status: ' . $e->getMessage()]);
+                }
             }
             break;
 

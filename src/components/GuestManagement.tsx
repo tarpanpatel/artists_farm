@@ -132,6 +132,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [checkoutTime, setCheckoutTime] = useState('11:00');
   const [notes, setNotes] = useState('');
   const [showGuestNotes, setShowGuestNotes] = useState(false);
+  const [isForeignGuest, setIsForeignGuest] = useState(false);
   const [showDynamicIncidentals, setShowDynamicIncidentals] = useState(false);
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
@@ -809,10 +810,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               roomRate: bookingRoomTariff,
               advanceAmount: bookingAdvance,
               notes: showGuestNotes ? notes : '',
+              isForeignGuest,
             };
 
             onAddGuest(guestObj);
             setCreatedBooking(guestObj);
+            setIsForeignGuest(false);
             showToast('Guest booked successfully!', { type: 'success' });
           }}>
             {/* Row 0: Guest Name (Full width) */}
@@ -1003,6 +1006,23 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     rows={2}
                     className="w-full mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                   />
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isForeignGuest}
+                    onChange={(e) => setIsForeignGuest(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-bold">Foreign National Guest</span>
+                </label>
+                {isForeignGuest && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                    C-Form must be filed with FRRO within 24 hours of check-in. A reminder will appear on the dashboard.
+                  </p>
                 )}
               </div>
 

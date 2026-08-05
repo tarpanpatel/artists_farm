@@ -743,6 +743,8 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           totalAmount: Number(g.totalCharge || g.total_charge || 0),
           paymentStatus: g.paymentStatus || g.payment_status || g.status || 'Pending',
           idVerificationStatus: g.idVerificationStatus || g.id_verification_status || 'Pending',
+          isForeignGuest: !!(g.isForeignGuest ?? g.is_foreign_guest),
+          cFormFiledAt: g.cFormFiledAt || g.c_form_filed_at || null,
         });
       }
 
@@ -770,6 +772,7 @@ export async function addGuestToDB(guest: {
   advance_paid?: number;
   total_charge?: number;
   pending_amount?: number;
+  is_foreign_guest?: boolean;
 }): Promise<string | null> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_guest`, {
@@ -798,6 +801,7 @@ export async function updateGuestInDB(guest: {
   base_room_rent?: number;
   total_charge?: number;
   advance_paid?: number;
+  is_foreign_guest?: boolean;
 }): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_guest`, {
@@ -824,6 +828,21 @@ export async function checkoutGuestInDB(guestId: string): Promise<boolean> {
     return json.status === 'success';
   } catch (err) {
     console.error('Failed to checkout guest in DB:', err);
+    return false;
+  }
+}
+
+export async function markCFormFiled(guestId: string, filed: boolean = true): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=mark_c_form_filed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: guestId, filed }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to update C-Form filing status:', err);
     return false;
   }
 }

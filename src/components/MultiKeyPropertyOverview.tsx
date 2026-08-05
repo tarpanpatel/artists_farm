@@ -59,6 +59,7 @@ interface MultiKeyPropertyOverviewProps {
   onUpdateBooking?: (guest: any) => Promise<void>;
   onDeleteBooking?: (guestId: string) => Promise<void>;
   onGuestVerificationUpdated?: (guestId: string) => void;
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   onAddMenuItem?: (item: any) => void;
   onUpdateStock?: (item: any) => void;
   onAddInventoryItem?: (item: any) => void;
@@ -87,6 +88,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onUpdateBooking,
   onDeleteBooking,
   onGuestVerificationUpdated,
+  onCFormFiledUpdated,
   onAddMenuItem,
   onUpdateStock,
   onAddInventoryItem,
@@ -307,6 +309,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   onUpdateBooking={onUpdateBooking}
                   onDeleteBooking={onDeleteBooking}
                   onGuestVerificationUpdated={onGuestVerificationUpdated}
+                  onCFormFiledUpdated={onCFormFiledUpdated}
                   onDispatchTelegram={onDispatchTelegram}
                   activeMenuItemKey={activeMenuItemKey}
                   onUpdateRoomName={async (newName) => {

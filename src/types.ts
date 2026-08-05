@@ -16,6 +16,8 @@ export interface Guest {
   totalAmount?: number;
   paymentStatus?: string;
   idVerificationStatus?: 'Pending' | 'Complete';
+  isForeignGuest?: boolean;
+  cFormFiledAt?: string | null;
 }
 
 export interface BillingReceipt {

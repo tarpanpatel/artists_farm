@@ -18,7 +18,7 @@ import {
 import { Guest, Order } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
-import { getPropertySlug } from '../services/api';
+import { getPropertySlug, markCFormFiled } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
@@ -41,6 +41,7 @@ interface OperationalDashboardProps {
   onUpdateBooking?: (guest: Guest) => Promise<void>;
   onDeleteBooking?: (guestId: string) => Promise<void>;
   onGuestVerificationUpdated?: (guestId: string) => void;
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
 }
@@ -62,6 +63,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onUpdateBooking,
   onDeleteBooking,
   onGuestVerificationUpdated,
+  onCFormFiledUpdated,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
 }) => {
@@ -285,6 +287,42 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   ];
   const totalAlerts = alertGroups.reduce((sum, group) => sum + group.items.length, 0);
 
+  // --- C-Form (FRRO) filing tracker: foreign guests must be filed within
+  // 24h of check-in. Ticks every minute so the countdown stays live without
+  // re-rendering the whole dashboard constantly. ---
+  const [cFormNow, setCFormNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setCFormNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+  const [cFormSavingId, setCFormSavingId] = useState<string | null>(null);
+  const cFormPending = guests.filter(
+    (g) => g.isForeignGuest && g.status === 'Active' && !g.cFormFiledAt
+  );
+  const formatCFormDue = (checkinDate: string): { label: string; overdue: boolean } => {
+    const checkin = new Date((checkinDate || '').replace(' ', 'T'));
+    if (isNaN(checkin.getTime())) return { label: 'Due date unknown', overdue: true };
+    const dueAt = checkin.getTime() + 24 * 60 * 60 * 1000;
+    const diffMs = dueAt - cFormNow;
+    const overdue = diffMs < 0;
+    const abs = Math.abs(diffMs);
+    const hours = Math.floor(abs / (60 * 60 * 1000));
+    const minutes = Math.floor((abs % (60 * 60 * 1000)) / 60000);
+    const span = `${hours}h ${minutes}m`;
+    return { label: overdue ? `Overdue by ${span}` : `Due in ${span}`, overdue };
+  };
+  const handleMarkCFormFiled = async (guestId: string) => {
+    setCFormSavingId(guestId);
+    const ok = await markCFormFiled(guestId, true);
+    if (ok) {
+      onCFormFiledUpdated?.(guestId, new Date().toISOString());
+      showToast('C-Form marked as filed', { type: 'success' });
+    } else {
+      showToast('Failed to update C-Form status', { type: 'error' });
+    }
+    setCFormSavingId(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Room Info Header - Compact Layout */}
@@ -429,6 +467,53 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* C-Form (FRRO) Filing Tracker for foreign guests */}
+      {cFormPending.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            C-Form Filing Due
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+              {cFormPending.length}
+            </span>
+          </h3>
+          <ul className="space-y-1.5">
+            {cFormPending.map((g) => {
+              const due = formatCFormDue(g.checkinDate);
+              return (
+                <li
+                  key={g.id}
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 ${
+                    due.overdue
+                      ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
+                      : 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
+                  }`}
+                >
+                  <button
+                    onClick={() => setSelectedBooking(g)}
+                    className="text-left cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{g.guestName}</p>
+                    <p className={`text-xs font-medium ${due.overdue ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                      {due.label}
+                    </p>
+                  </button>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer whitespace-nowrap shrink-0">
+                    <input
+                      type="checkbox"
+                      disabled={cFormSavingId === g.id}
+                      onChange={() => handleMarkCFormFiled(g.id)}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 cursor-pointer"
+                    />
+                    Mark filed
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

@@ -954,6 +954,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       no_of_guests: newGuest.numberOfGuests || 0,
       base_room_rent: newGuest.roomRate || 0,
       advance_paid: newGuest.advanceAmount || 0,
+      is_foreign_guest: newGuest.isForeignGuest || false,
     }).then((dbId) => {
       if (dbId) {
         setGuests((prev) => prev.map((g) => g.id === newGuest.id ? { ...g, id: dbId } : g));
@@ -982,6 +983,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       base_room_rent: g.base_room_rent ?? g.baseRoomRent ?? updatedGuest.roomRate ?? 0,
       total_charge: g.total_charge ?? g.totalCharge ?? updatedGuest.totalAmount ?? 0,
       advance_paid: g.advance_paid ?? g.advancePaid ?? updatedGuest.advanceAmount ?? 0,
+      is_foreign_guest: g.is_foreign_guest ?? updatedGuest.isForeignGuest ?? false,
     });
     if (!ok) throw new Error('Failed to update booking');
     setGuests((prev) =>
@@ -1001,6 +1003,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const handleGuestVerificationUpdated = (guestId: string) => {
     setGuests((prev) =>
       prev.map((g) => (g.id === guestId ? { ...g, idVerificationStatus: 'Complete' } : g))
+    );
+  };
+
+  const handleCFormFiledUpdated = (guestId: string, filedAt: string | null) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.id === guestId ? { ...g, cFormFiledAt: filedAt } : g))
     );
   };
 
@@ -1389,6 +1397,7 @@ ${itemsStr}
                   onUpdateBooking={handleUpdateGuest}
                   onDeleteBooking={handleDeleteGuest}
                   onGuestVerificationUpdated={handleGuestVerificationUpdated}
+                  onCFormFiledUpdated={handleCFormFiledUpdated}
                   />
                 </ErrorBoundary>
               ) : null}
@@ -1437,6 +1446,7 @@ ${itemsStr}
                       onUpdateBooking={handleUpdateGuest}
                       onDeleteBooking={handleDeleteGuest}
                       onGuestVerificationUpdated={handleGuestVerificationUpdated}
+                      onCFormFiledUpdated={handleCFormFiledUpdated}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1450,6 +1460,7 @@ ${itemsStr}
                       onUpdateBooking={handleUpdateGuest}
                       onDeleteBooking={handleDeleteGuest}
                       onGuestVerificationUpdated={handleGuestVerificationUpdated}
+                      onCFormFiledUpdated={handleCFormFiledUpdated}
                     />
                   </ErrorBoundary>
                 )
