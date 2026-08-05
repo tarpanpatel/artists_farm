@@ -968,8 +968,19 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
 
         <div className="flex items-center gap-2">
           <button
+            onClick={handleTest}
+            className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 ${
+              testSent
+                ? 'bg-emerald-600 hover:bg-emerald-500'
+                : 'bg-indigo-600 hover:bg-indigo-500'
+            }`}
+          >
+            <Send className="w-4 h-4" />
+            <span>{testSent ? 'Ping Sent Successfully!' : 'Send Test Telegram Ping'}</span>
+          </button>
+          <button
             onClick={() => setShowSetupWizard(true)}
-            className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
             <Rocket className="w-4 h-4" />
             <span>Telegram Setup</span>
