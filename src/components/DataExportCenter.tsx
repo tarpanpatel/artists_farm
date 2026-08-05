@@ -50,6 +50,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonthNum);
   const [selectedYear, setSelectedYear] = useState<number>(currentYearNum);
+  const [exportRangeType, setExportRangeType] = useState<'month' | 'year' | 'custom'>('month');
+  const [customStartDate, setCustomStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customEndDate, setCustomEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
 
   const monthsList = [
@@ -84,7 +87,38 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     setTimeout(() => setDownloadSuccessMsg(null), 4000);
   };
 
-  const monthName = monthsList.find((m) => m.num === Number(selectedMonth))?.name || 'Month';
+  const getFilteredData = <T extends Record<string, any>>(items: T[], dateField: string): T[] => {
+    return items.filter((item) => {
+      const dateVal = item[dateField];
+      if (!dateVal) return false;
+      
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return false;
+
+      if (exportRangeType === 'month') {
+        return d.getFullYear() === Number(selectedYear) && (d.getMonth() + 1) === Number(selectedMonth);
+      } else if (exportRangeType === 'year') {
+        return d.getFullYear() === Number(selectedYear);
+      } else { // custom range
+        const start = new Date(customStartDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        return d >= start && d <= end;
+      }
+    });
+  };
+
+  const getFilenameSuffix = () => {
+    if (exportRangeType === 'month') {
+      const name = monthsList.find((m) => m.num === Number(selectedMonth))?.name || 'Month';
+      return `${name}_${selectedYear}`;
+    } else if (exportRangeType === 'year') {
+      return `${selectedYear}`;
+    } else {
+      return `${customStartDate}_to_${customEndDate}`;
+    }
+  };
 
   // 1. Export Bookings / Accommodations
   const exportBookings = () => {
@@ -103,7 +137,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Payment Status',
     ];
 
-    const rows = guests.map((g) => [
+    const filteredGuests = getFilteredData(guests, 'checkinDate');
+
+    const rows = filteredGuests.map((g) => [
       `"${g.guestName}"`,
       `"${g.roomNumber}"`,
       `"${g.bookingSource}"`,
@@ -119,7 +155,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_BOOKINGS_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_BOOKINGS_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 2. Export Kitchen Purchases / Inventory
@@ -145,7 +181,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_KITCHEN_PURCHASES_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_KITCHEN_PURCHASES_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 3. Export Farm Maintenance & Upkeep Expenses
@@ -160,7 +196,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Amount (INR)',
     ];
 
-    const rows = expenses.map((exp) => [
+    const filteredExpenses = getFilteredData(expenses, 'date');
+
+    const rows = filteredExpenses.map((exp) => [
       `"${exp.id}"`,
       `"${exp.date}"`,
       `"${exp.category}"`,
@@ -171,7 +209,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_FARM_UPKEEP_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_FARM_UPKEEP_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 4. Export Payroll & Salaries
@@ -185,17 +223,19 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Payment Status',
     ];
 
+    const filteredAttendance = getFilteredData(attendance, 'date');
+
     const rows = staff.map((s) => [
       `"${s.id}"`,
       `"${s.name}"`,
       `"${s.role}"`,
       s.monthlySalary,
-      attendance.filter((a) => a.staffId === s.id && a.status === 'Present').length,
+      filteredAttendance.filter((a) => a.staffId === s.id && a.status === 'Present').length,
       `"${s.status}"`,
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_SALARIES_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_SALARIES_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 5. Export Master Transaction Ledger
@@ -211,8 +251,12 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
     const ledgerRows: string[][] = [];
 
+    const filteredGuestsForAdvance = getFilteredData(guests, 'checkinDate');
+    const filteredGuestsForCheckout = getFilteredData(guests, 'checkoutDate');
+    const filteredExpenses = getFilteredData(expenses, 'date');
+
     // Add Guest Income
-    guests.forEach((g) => {
+    filteredGuestsForAdvance.forEach((g) => {
       if (g.advanceAmount > 0) {
         ledgerRows.push([
           `"${g.checkinDate || ''}"`,
@@ -223,6 +267,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           `${g.advanceAmount}`,
         ]);
       }
+    });
+
+    filteredGuestsForCheckout.forEach((g) => {
       if (g.paymentStatus === 'Checked Out' && g.totalAmount > 0) {
         ledgerRows.push([
           `"${g.checkoutDate || ''}"`,
@@ -236,7 +283,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     });
 
     // Add Expenses
-    expenses.forEach((e) => {
+    filteredExpenses.forEach((e) => {
       ledgerRows.push([
         `"${e.date}"`,
         `"Petty Cash (${e.category})"`,
@@ -248,7 +295,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     });
 
     const csvContent = [headers.join(','), ...ledgerRows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_MASTER_LEDGER_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_MASTER_LEDGER_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 6. Export Billing Receipts
@@ -270,7 +317,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Paid At',
     ];
 
-    const rows = receipts.map((r) => [
+    const filteredReceipts = getFilteredData(receipts, 'checkinDate');
+
+    const rows = filteredReceipts.map((r) => [
       `"${r.id}"`,
       `"${r.guestName}"`,
       `"${r.roomNumber}"`,
@@ -288,7 +337,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_RECEIPTS_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_RECEIPTS_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 7. Export Kitchen Orders
@@ -304,7 +353,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Total Amount (INR)',
     ];
 
-    const rows = orders.map((o) => [
+    const filteredOrders = getFilteredData(orders, 'orderTime');
+
+    const rows = filteredOrders.map((o) => [
       `"${o.id}"`,
       `"${o.guestName}"`,
       `"${o.roomNumber}"`,
@@ -316,7 +367,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_ORDERS_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_ORDERS_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 8. Export Menu Catalog
@@ -338,7 +389,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_MENU_CATALOG_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_MENU_CATALOG_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 9. Export Audit Logs
@@ -356,7 +407,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'IP Address',
     ];
 
-    const rows = auditLogs.map((l) => [
+    const filteredLogs = getFilteredData(auditLogs, 'timestamp');
+
+    const rows = filteredLogs.map((l) => [
       `"${l.id}"`,
       `"${l.timestamp}"`,
       `"${l.user}"`,
@@ -370,7 +423,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_AUDIT_LOGS_${monthName}_${selectedYear}.csv`, csvContent);
+    triggerDownload(`Farm_Report_AUDIT_LOGS_${getFilenameSuffix()}.csv`, csvContent);
   };
 
   // 10. Export Full SQL Database Snapshot Backup (Server-Side)
@@ -414,36 +467,121 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
       {/* Control Card & Dropdowns */}
       <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-2xs space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-dashed border-gray-200">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span>Target Statement Month</span>
-            </label>
-            <StyledSelect
-              value={String(selectedMonth)}
-              onChange={(val) => setSelectedMonth(Number(val))}
-              options={monthsList.map((m) => ({
-                value: String(m.num),
-                label: m.name,
-              }))}
-            />
-          </div>
+        {/* Segment Tabs Selector */}
+        <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
+          <button
+            onClick={() => setExportRangeType('month')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              exportRangeType === 'month'
+                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+            }`}
+          >
+            Single Month
+          </button>
+          <button
+            onClick={() => setExportRangeType('year')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              exportRangeType === 'year'
+                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+            }`}
+          >
+            Whole Year
+          </button>
+          <button
+            onClick={() => setExportRangeType('custom')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              exportRangeType === 'custom'
+                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+            }`}
+          >
+            Custom Range
+          </button>
+        </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span>Target Statement Year</span>
-            </label>
-            <StyledSelect
-              value={String(selectedYear)}
-              onChange={(val) => setSelectedYear(Number(val))}
-              options={yearsList.map((y) => ({
-                value: String(y),
-                label: String(y),
-              }))}
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-dashed border-gray-200">
+          {exportRangeType === 'month' && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span>Target Month</span>
+                </label>
+                <StyledSelect
+                  value={String(selectedMonth)}
+                  onChange={(val) => setSelectedMonth(Number(val))}
+                  options={monthsList.map((m) => ({
+                    value: String(m.num),
+                    label: m.name,
+                  }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span>Target Year</span>
+                </label>
+                <StyledSelect
+                  value={String(selectedYear)}
+                  onChange={(val) => setSelectedYear(Number(val))}
+                  options={yearsList.map((y) => ({
+                    value: String(y),
+                    label: String(y),
+                  }))}
+                />
+              </div>
+            </>
+          )}
+
+          {exportRangeType === 'year' && (
+            <div className="col-span-2 max-w-sm">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span>Target Year</span>
+              </label>
+              <StyledSelect
+                value={String(selectedYear)}
+                onChange={(val) => setSelectedYear(Number(val))}
+                options={yearsList.map((y) => ({
+                  value: String(y),
+                  label: String(y),
+                }))}
+              />
+            </div>
+          )}
+
+          {exportRangeType === 'custom' && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span>Start Date</span>
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span>End Date</span>
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-xs"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Export Cards List */}
