@@ -543,7 +543,7 @@ switch ($action) {
                 (SELECT COALESCE(SUM(
                     CASE
                         WHEN p.property_type = 'MULTI_KEY' THEN
-                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0)
                         ELSE 1
                     END
                 ), 0) FROM properties p WHERE p.tenant_id = t.id AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM') AND p.is_active = 1) AS slots_used
@@ -580,7 +580,7 @@ switch ($action) {
             // Return only top-level properties (not MULTI_KEY_ROOM sub-rooms), include room count
             $stmt = $pdo->prepare("
                 SELECT p.*,
-                    (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM') as room_count
+                    (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0) as room_count
                 FROM properties p
                 WHERE p.tenant_id = ? AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM')
                 ORDER BY p.name ASC
@@ -635,7 +635,7 @@ switch ($action) {
                     p.id, p.name, p.slug, p.property_type, p.is_active,
                     CASE
                         WHEN p.property_type = 'MULTI_KEY' THEN
-                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0)
                         ELSE 1
                     END AS slots_used
                 FROM properties p
@@ -699,7 +699,7 @@ switch ($action) {
                 SELECT COALESCE(SUM(
                     CASE
                         WHEN p.property_type = 'MULTI_KEY' THEN
-                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
+                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0)
                         ELSE 1
                     END
                 ), 0) as used_slots
