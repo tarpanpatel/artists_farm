@@ -32,14 +32,15 @@ interface GstRatesConfig {
 }
 
 // Indian hotel GST slabs as of 2026: rooms billed <=1000/night are exempt,
-// 1001-7500 is 12%, above 7500 is 18%; restaurant/food service is a flat 5%.
-// Kept as the fallback default - Root Admin can override via system_settings
-// (key "gst_rates_config") without a code change if rates change.
+// 1001-7500 is 5% (no input tax credit), above 7500 is 18% (full input tax
+// credit); restaurant/food service is a flat 5%. Kept as the fallback default
+// - Root Admin can override via system_settings (key "gst_rates_config")
+// without a code change if rates change.
 const DEFAULT_GST_RATES: GstRatesConfig = {
   accLowMax: 1000,
   accMidMax: 7500,
   accLowRate: 0,
-  accMidRate: 12,
+  accMidRate: 5,
   accHighRate: 18,
   foodRate: 5,
 };
@@ -83,6 +84,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const { showToast } = useToast();
 
   // Base State
+  const [editGuestName, setEditGuestName] = useState('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [roomCharges, setRoomCharges] = useState(0);
   const [checkinDate, setCheckinDate] = useState('');
   const [checkoutDate, setCheckoutDate] = useState('');
@@ -214,6 +217,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // Initialize form with guest data when modal opens
   useEffect(() => {
     if (guest && isOpen) {
+      setEditGuestName(guest.guestName || '');
+      setEditPhoneNumber(guest.phoneNumber || '');
       setCheckinDate(toInputDateFormat(guest.checkinDate));
       setCheckoutDate(toInputDateFormat(guest.expectedCheckout || guest.checkoutDate));
       setRoomCharges(guest.roomRate || guest.totalAmount || 0);
@@ -387,6 +392,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
         onUpdateGuest({
           ...guest,
+          guestName: editGuestName.trim() || guest.guestName,
+          phoneNumber: editPhoneNumber.trim() || guest.phoneNumber,
           checkinDate: checkinDate || guest.checkinDate,
           expectedCheckout: checkoutDate || guest.expectedCheckout,
           roomRate: roomCharges,
@@ -442,7 +449,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {mode === 'edit-only' ? 'Edit Guest Booking & Billing Details' : 'Guest Billing & Final Checkout Settlement'}
             </h2>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-              Room: {guest.roomNumber} • Guest: {guest.guestName} ({guest.phoneNumber})
+              Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
             </p>
           </div>
           <button
@@ -465,6 +472,27 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
                   <Home className="w-4 h-4 text-blue-600" />
                   <span>Accommodation Invoice Breakdown</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Guest Name</label>
+                    <input
+                      type="text"
+                      value={editGuestName}
+                      onChange={(e) => setEditGuestName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={editPhoneNumber}
+                      onChange={(e) => setEditPhoneNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
