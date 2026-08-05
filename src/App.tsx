@@ -1514,6 +1514,9 @@ ${itemsStr}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyName={preloadedData.currentProperty?.name || ''}
+                    propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                    propertyPhone={preloadedData.currentProperty?.phone || ''}
+                    propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                     onNavigateToBilling={(guestId) => {
                       // Navigate to billing view for guest
                     }}

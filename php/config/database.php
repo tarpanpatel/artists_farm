@@ -84,6 +84,21 @@ try {
       ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
       ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
 
+    // WhatsApp booking-confirmation voucher: per-property Maps link (captured
+    // at property creation, editable later in the tenant's own dashboard) and
+    // an optional custom message template - reuses the existing `phone`
+    // column for contact number(s), same one create_property_for_tenant
+    // already populates. NULL template = fall back to the generic default
+    // built into the voucher-sharing code, matching the same "tenant may
+    // customize, sensible default if they don't" shape as Telegram templates.
+    $propertyWhatsAppCols = [
+        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",
+        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `whatsapp_voucher_template` TEXT DEFAULT NULL",
+    ];
+    foreach ($propertyWhatsAppCols as $sql) {
+        try { $pdo->exec($sql); } catch (PDOException $e) {}
+    }
+
     // Initialize all required database tables
     initializeDatabaseTables($pdo);
 

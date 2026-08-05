@@ -33,6 +33,7 @@ import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
 import { GuestHistory } from './GuestHistory';
@@ -64,6 +65,9 @@ interface GuestManagementProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
+  propertyMapsLink?: string;
+  propertyPhone?: string;
+  propertyWhatsappTemplate?: string;
 }
 
 
@@ -108,6 +112,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
+  propertyMapsLink = '',
+  propertyPhone = '',
+  propertyWhatsappTemplate = '',
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
@@ -1958,7 +1965,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </button>
               <a
                 href={`https://api.whatsapp.com/send?phone=${createdBooking.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + createdBooking.phoneNumber.replace(/\D/g, '') : createdBooking.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                  `🏨 *BOOKING CONFIRMATION VOUCHER*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${createdBooking.guestName}\n🏠 *Assigned Room:* ${createdBooking.roomNumber}\n📅 *Check-In:* ${createdBooking.checkinDate}\n📅 *Check-Out:* ${createdBooking.expectedCheckout}\n👥 *Number of Guests:* ${createdBooking.numberOfGuests}\n💰 *Room Tariff:* ₹${(createdBooking.roomRate || 0).toFixed(2)}\n💰 *Advance Paid:* ₹${(createdBooking.advanceAmount || 0).toFixed(2)}\n━━━━━━━━━━━━━━━━\nWe look forward to welcoming you to Artists Farm Resort!`
+                  renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+                    guest_name: createdBooking.guestName,
+                    room_name: createdBooking.roomNumber,
+                    property_name: propertyName || 'us',
+                    checkin_date: createdBooking.checkinDate,
+                    checkout_date: createdBooking.expectedCheckout,
+                    guest_count: String(createdBooking.numberOfGuests ?? 1),
+                    room_tariff: (createdBooking.roomRate || 0).toFixed(2),
+                    advance_paid: (createdBooking.advanceAmount || 0).toFixed(2),
+                    maps_link: propertyMapsLink,
+                    contact_phone: propertyPhone,
+                  })
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1991,7 +2009,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div className="space-y-3 pt-2 font-mono">
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="font-extrabold text-base text-black uppercase">
-                  ARTISTS FARM RESORT
+                  {propertyName || 'Booking Confirmation'}
                 </h3>
                 <p className="text-[11px] text-black font-medium">Booking Confirmation Voucher</p>
               </div>

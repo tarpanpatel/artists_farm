@@ -743,6 +743,17 @@ switch ($action) {
                 $sets[] = 'telegram_template_customization_enabled = ?';
                 $params[] = $input['telegram_template_customization_enabled'] ? 1 : 0;
             }
+            if (array_key_exists('google_maps_link', $input)) {
+                $sets[] = 'google_maps_link = ?';
+                $params[] = trim($input['google_maps_link']) ?: null;
+            }
+            if (array_key_exists('whatsapp_voucher_template', $input)) {
+                // Empty string means "reset to the built-in default" - stored as NULL,
+                // not an empty template, so the frontend's fallback logic kicks in.
+                $trimmedTemplate = trim($input['whatsapp_voucher_template']);
+                $sets[] = 'whatsapp_voucher_template = ?';
+                $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
+            }
 
             if (empty($sets)) {
                 echo json_encode(['success' => false, 'message' => 'No fields to update']);
