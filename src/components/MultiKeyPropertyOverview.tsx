@@ -3,6 +3,7 @@ import { Plus, Trash2, GripVertical, Loader, AlertCircle, BarChart3, Users, Doll
 import { navigateToRoomHash } from '../services/api';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
+import { PropertySetupWizard } from './PropertySetupWizard';
 import { useConfirm } from './ConfirmDialogContext';
 
 interface Room {
@@ -116,6 +117,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   // of Y units available" and to grey out Add Unit once the tenant's plan
   // is exhausted, not just this one property's own 10-room ceiling.
   const [slotUsage, setSlotUsage] = useState<{ total_slots: number; used_slots: number; remaining_slots: number } | null>(null);
+  const [staffCount, setStaffCount] = useState<number>(0);
 
   // Guards against firing a duplicate/overlapping load for the same
   // propertyId - StrictMode's dev-only double-invoke and rapid re-renders
@@ -153,6 +155,12 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             .then((slotData) => { if (slotData.success) setSlotUsage(slotData.data); })
             .catch(() => {});
         }
+        if (propData.data.slug) {
+          fetch(`/php/api/router.php?action=get_staff&property_slug=${propData.data.slug}`, { credentials: 'include' })
+            .then((r) => r.json())
+            .then((staffData) => { if (staffData.status === 'success' && Array.isArray(staffData.data)) setStaffCount(staffData.data.length); })
+            .catch(() => {});
+        }
       }
 
       const overviewData = await overviewRes.json();
@@ -164,6 +172,28 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       setError('Failed to load property data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/php/api/router.php?action=update_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId, address, google_maps_link: googleMapsLink }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await loadData();
+        return true;
+      }
+      setError(data.message || 'Failed to save address');
+      return false;
+    } catch (err) {
+      console.error('Failed to save address:', err);
+      setError('Failed to save address');
+      return false;
     }
   };
 
@@ -381,6 +411,20 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
+      )}
+
+      {/* Setup checklist - dashboard route only (hideHeader=true), hides
+          itself once address, staff, and units are all in place. */}
+      {hideHeader && (
+        <PropertySetupWizard
+          address={property.address || ''}
+          googleMapsLink={property.google_maps_link || ''}
+          staffCount={staffCount}
+          roomCount={property.rooms.length}
+          onSaveLocation={handleSaveLocation}
+          onGoToStaff={() => setActiveTab?.('staff')}
+          onAddUnit={() => setShowAddRoomModal(true)}
+        />
       )}
 
       {/* Header - hide on dashboard overview. Add Room now lives in the

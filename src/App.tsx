@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -452,7 +453,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { refreshStaff, refreshAttendance } = useStaff();
+  const { staff, refreshStaff, refreshAttendance } = useStaff();
 
   const handleResetTestDatabase = async () => {
     const confirmed = await confirm({
@@ -1398,6 +1399,28 @@ ${itemsStr}
         {isAuthenticated && (
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
+
+              {/* Setup-incomplete banner - the full checklist already lives on
+                  the dashboard itself (PropertySetupWizard), so this only
+                  shows elsewhere, as a reminder + shortcut back to it. */}
+              {preloadedData.isMultiKeyProperty && activeTab !== 'dashboard' && (
+                !preloadedData.currentProperty?.address?.trim() ||
+                staff.length <= 1 ||
+                (preloadedData.currentProperty?.rooms?.length || 0) === 0
+              ) && (
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Property setup is incomplete.
+                  </div>
+                  <button
+                    onClick={() => handleNavigateTab('dashboard')}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0 cursor-pointer"
+                  >
+                    Complete Setup
+                  </button>
+                </div>
+              )}
 
               {/* MultiKey room view - takes priority over everything */}
               {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
