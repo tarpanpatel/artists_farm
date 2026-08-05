@@ -242,50 +242,45 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       g.idVerificationStatus === 'Complete' &&
       (g.totalAmount || 0) <= (g.advanceAmount || 0)
   );
-  const alertGroups: Array<{
-    key: string;
-    label: string;
-    colorClasses: string;
-    items: Guest[];
-    detail: (g: Guest) => string;
-  }> = [
-    {
-      key: 'overdue-checkin',
-      label: 'Overdue Check-in',
-      colorClasses: 'border-red-200 bg-red-50 text-red-800',
-      items: overdueCheckins,
-      detail: (g) => `Expected ${formatAlertDate(g.checkinDate)}`,
-    },
-    {
-      key: 'overdue-checkout',
-      label: 'Overdue Checkout',
-      colorClasses: 'border-red-200 bg-red-50 text-red-800',
-      items: overdueCheckouts,
-      detail: (g) => `Due ${formatAlertDate(g.expectedCheckout)}`,
-    },
-    {
-      key: 'checkin-pending',
-      label: 'Check-in Pending',
-      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
-      items: checkinPending,
-      detail: () => 'ID verification needed',
-    },
-    {
-      key: 'id-missing-after-checkout',
-      label: 'ID Missing (Checked Out)',
-      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
-      items: idMissingAfterCheckout,
-      detail: () => 'Checked out without ID on file',
-    },
-    {
-      key: 'unsettled-bill',
-      label: 'Unsettled Bill',
-      colorClasses: 'border-amber-200 bg-amber-50 text-amber-800',
-      items: unsettledBills,
-      detail: (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`,
-    },
-  ];
-  const totalAlerts = alertGroups.reduce((sum, group) => sum + group.items.length, 0);
+  // A guest can independently match more than one of the checks below (most
+  // commonly: checked out with no ID on file AND still owing money). Rather
+  // than listing that guest once per matching category, merge everything
+  // that applies to a given guest into a single row with one badge per
+  // reason - so "same guest" alerts always read together, not scattered
+  // across sections.
+  type AlertReason = { label: string; detail: string };
+  type GuestAlert = { guest: Guest; severity: 'red' | 'amber'; reasons: AlertReason[] };
+  const guestAlertMap = new Map<string, GuestAlert>();
+  const addAlertReason = (
+    list: Guest[],
+    label: string,
+    severity: 'red' | 'amber',
+    detail: (g: Guest) => string
+  ) => {
+    list.forEach((g) => {
+      const existing = guestAlertMap.get(g.id);
+      if (existing) {
+        existing.reasons.push({ label, detail: detail(g) });
+        if (severity === 'red') existing.severity = 'red';
+      } else {
+        guestAlertMap.set(g.id, { guest: g, severity, reasons: [{ label, detail: detail(g) }] });
+      }
+    });
+  };
+  addAlertReason(overdueCheckins, 'Overdue Check-in', 'red', (g) => `Expected ${formatAlertDate(g.checkinDate)}`);
+  addAlertReason(overdueCheckouts, 'Overdue Checkout', 'red', (g) => `Due ${formatAlertDate(g.expectedCheckout)}`);
+  addAlertReason(checkinPending, 'Check-in Pending', 'amber', () => 'ID verification needed');
+  addAlertReason(idMissingAfterCheckout, 'ID Missing', 'amber', () => 'Checked out without ID on file');
+  addAlertReason(
+    unsettledBills,
+    'Unsettled Bill',
+    'amber',
+    (g) => `Owes ₹${((g.totalAmount || 0) - (g.advanceAmount || 0)).toLocaleString('en-IN')}`
+  );
+  const combinedAlerts = Array.from(guestAlertMap.values()).sort((a, b) =>
+    a.severity === b.severity ? 0 : a.severity === 'red' ? -1 : 1
+  );
+  const totalAlerts = combinedAlerts.length;
 
   // --- C-Form (FRRO) filing tracker: foreign guests must be filed within
   // 24h of check-in. Ticks every minute so the countdown stays live without
@@ -357,13 +352,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }
                 }}
                 autoFocus
-                className="text-2xl font-extrabold text-gray-900 border-b-2 border-blue-600 focus:outline-none"
+                className="text-2xl font-bold text-gray-900 border-b-2 border-blue-600 focus:outline-none"
               />
             ) : (
               <div className="flex items-center gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">{roomName}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{roomName}</h3>
                     <button
                       onClick={() => {
                         setIsEditingRoomName(true);
@@ -401,7 +396,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <AlertTriangle className="w-4 h-4 text-red-600" />
             Alerts
             {totalAlerts > 0 && (
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
                 {totalAlerts}
               </span>
             )}
@@ -409,32 +404,31 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           {totalAlerts === 0 ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">No outstanding issues.</p>
           ) : (
-            <div className="space-y-4">
-              {alertGroups
-                .filter((group) => group.items.length > 0)
-                .map((group) => (
-                  <div key={group.key}>
-                    <p className="text-xs font-bold text-gray-600 dark:text-gray-300 mb-1.5">
-                      {group.label} ({group.items.length})
-                    </p>
-                    <ul className="space-y-1.5">
-                      {group.items.map((g) => (
-                        <li key={g.id}>
-                          <button
-                            onClick={() => setSelectedBooking(g)}
-                            className={`w-full flex items-center justify-between gap-3 rounded-lg border p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity ${group.colorClasses}`}
-                          >
-                            <span className="text-sm font-bold">
-                              {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
-                            </span>
-                            <span className="text-xs font-medium whitespace-nowrap">{group.detail(g)}</span>
-                          </button>
-                        </li>
+            <ul className="space-y-1.5">
+              {combinedAlerts.map(({ guest: g, severity, reasons }) => (
+                <li key={g.id}>
+                  <button
+                    onClick={() => setSelectedBooking(g)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-lg border p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity ${
+                      severity === 'red'
+                        ? 'border-red-200 bg-red-50 text-red-800'
+                        : 'border-amber-200 bg-amber-50 text-amber-800'
+                    }`}
+                  >
+                    <span className="text-sm font-bold">
+                      {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
+                    </span>
+                    <span className="text-xs font-medium text-right space-y-0.5">
+                      {reasons.map((r, i) => (
+                        <div key={i} className="whitespace-nowrap">
+                          {r.label} — {r.detail}
+                        </div>
                       ))}
-                    </ul>
-                  </div>
-                ))}
-            </div>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
           {clearedGuests.length > 0 && (
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
@@ -539,7 +533,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     <p className="text-xs text-gray-500">{g.roomNumber}</p>
                   </div>
                   {verified ? (
-                    <span className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                       ID Verified
                     </span>
                   ) : (
@@ -548,7 +542,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setSelectedBooking(g);
                         setShowCheckinVerification(true);
                       }}
-                      className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer whitespace-nowrap"
+                      className="text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer whitespace-nowrap"
                     >
                       ⚠️ ID Upload Pending
                     </button>
@@ -566,7 +560,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Kitchen Queue</p>
-              <p className="text-lg font-extrabold text-gray-900 mt-1">
+              <p className="text-lg font-bold text-gray-900 mt-1">
                 {pendingOrders.length} Tickets
                 </p>
                 <p className="text-xs text-amber-600 font-semibold mt-0.5">Active Kitchen KDS</p>
@@ -579,7 +573,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Requisitions</p>
-                <p className="text-lg font-extrabold text-gray-900 mt-1">
+                <p className="text-lg font-bold text-gray-900 mt-1">
                   {stockAlerts.length} Thresholds
                 </p>
                 <p className="text-xs text-red-600 font-semibold mt-0.5">Low Stock Warnings</p>
@@ -612,7 +606,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <span className="text-gray-500 font-medium flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" /> Resident Name:
                   </span>
-                  <span className="font-extrabold text-gray-900 text-sm">{activeGuest.guestName}</span>
+                  <span className="font-bold text-gray-900 text-sm">{activeGuest.guestName}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
@@ -685,7 +679,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       </div>
 
                       <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           ord.status === 'Pending'
                             ? 'bg-amber-100 text-amber-800 border border-amber-300'
                             : ord.status === 'Preparing'
