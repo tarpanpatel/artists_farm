@@ -18,7 +18,7 @@ import {
   Layers,
   ArrowUpRight
 } from 'lucide-react';
-import { getPropertySlug, getPropertyAndRoomSlugs } from '../services/api';
+import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
@@ -94,7 +94,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
   const generateExportUrl = () => {
     const { propertySlug, roomSlug } = getPropertyAndRoomSlugs();
-    let url = `${window.location.origin}/artists_farm/php/api/ical_export.php?property=${propertySlug}`;
+    let url = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}`;
     if (roomSlug) {
       url += `&room=${roomSlug}`;
     }
@@ -628,7 +628,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {propertyRooms.map((room) => {
               const propertySlug = getPropertySlug();
-              const roomExportUrl = `${window.location.origin}/artists_farm/php/api/ical_export.php?property=${propertySlug}&room=${room.slug}`;
+              const roomExportUrl = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}&room=${room.slug}`;
               const isCopied = copiedUrls.has(room.id);
 
               const platform = roomImportPlatforms[room.id] || 'Airbnb';
