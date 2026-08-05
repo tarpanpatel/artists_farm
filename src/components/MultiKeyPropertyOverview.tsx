@@ -426,7 +426,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             </div>
           </div>
         </div>
-      )})
+      )}
 
       {/* Rooms List */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
