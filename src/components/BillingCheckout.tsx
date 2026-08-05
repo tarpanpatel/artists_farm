@@ -432,9 +432,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     {roomStatusLabel}
                   </p>
                 </div>
-                <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
-                  Total: ₹{group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0).toFixed(2)}
-                </span>
+                {(() => {
+                  const groupTotal = group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0);
+                  // Same "Refund Due" relabeling as the per-guest card below -
+                  // a raw negative number here read as a bug, not a refund.
+                  return (
+                    <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                      {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Guest Card(s) stacked inside Room Column */}

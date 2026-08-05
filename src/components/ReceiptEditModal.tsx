@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, User, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, ShieldAlert, Share2, Printer } from 'lucide-react';
-import { Guest, BillingReceipt } from '../types';
+import { X, IndianRupee, Home, User, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, ShieldAlert, Share2, Printer, QrCode } from 'lucide-react';
+import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { fetchMenuFromDB } from '../services/api';
+import { fetchMenuFromDB, fetchPayeesFromDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useStaff } from '../contexts/StaffContext';
 import * as htmlToImage from 'html-to-image';
 
 interface ReceiptEditModalProps {
@@ -64,6 +65,7 @@ interface SplitPaymentRow {
   mode: 'Cash' | 'UPI' | 'Card' | 'Bank Transfer';
   amount: number;
   refNo?: string;
+  payToId?: string; // staff/payee id whose QR code this UPI row goes to
 }
 
 export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
@@ -79,9 +81,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   propertyGstin = '',
   propertyName = '',
 }) => {
-  const { activeRole } = useAuth();
+  const { activeRole, currentUser } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
   const { showToast } = useToast();
+  const { staff } = useStaff();
+  // Only staff marked as a cash handler can be attributed as having
+  // received money - a free-text field let anyone type any name, which
+  // isn't real accountability for who actually took the payment.
+  const cashHandlers = staff.filter((s) => s.isFinancialHandler);
 
   // Base State
   const [editGuestName, setEditGuestName] = useState('');
@@ -142,7 +149,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [incidentals, setIncidentals] = useState<IncidentalItem[]>([]);
 
   // Custom Adjustments State
-  const [adjType, setAdjType] = useState<'charge' | 'discount'>('charge');
+  // No default - staff must explicitly pick a strategy before adding an
+  // adjustment, rather than silently inheriting "charge" if they don't touch
+  // the dropdown.
+  const [adjType, setAdjType] = useState<'charge' | 'discount' | ''>('');
   const [adjReasonCharge, setAdjReasonCharge] = useState('Misc');
   const [adjReasonDiscount, setAdjReasonDiscount] = useState('');
   const [adjAmount, setAdjAmount] = useState<number | ''>('');
@@ -196,6 +206,32 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     }
   }, [kitchenModuleEnabled, isOpen]);
 
+  // Vendors/third parties with a QR code on file - lets a UPI split row be
+  // paid straight into their account instead of always the property's own.
+  const [payees, setPayees] = useState<PayeeEntity[]>([]);
+  useEffect(() => {
+    if (isOpen) {
+      fetchPayeesFromDB().then((data) => setPayees(Array.isArray(data) ? data : []));
+    }
+  }, [isOpen]);
+
+  // Which row's QR code is currently expanded for scanning (only one at a
+  // time - keeps the split matrix from turning into a wall of QR images).
+  const [visibleQrRowId, setVisibleQrRowId] = useState<string | null>(null);
+
+  // Anyone a UPI split row can be paid to: staff cash handlers (personal QR)
+  // plus vendors/third parties (PayeeEntity) - only those with a QR code on
+  // file, since picking someone without one wouldn't show anything useful.
+  const payToOptions = useMemo(() => {
+    const staffOptions = cashHandlers
+      .filter((s) => s.qrCodeUrl)
+      .map((s) => ({ id: `staff-${s.id}`, name: s.name, qrCodeUrl: s.qrCodeUrl!, group: 'Staff' }));
+    const payeeOptions = payees
+      .filter((p) => p.qrCodeUrl)
+      .map((p) => ({ id: `payee-${p.id}`, name: p.name, qrCodeUrl: p.qrCodeUrl!, group: p.type === 'Vendor' ? 'Vendors' : 'Third Parties' }));
+    return [...staffOptions, ...payeeOptions];
+  }, [cashHandlers, payees]);
+
   // GST rates are a config value (system_settings key "gst_rates_config"), not
   // hardcoded - falls back to DEFAULT_GST_RATES until a Root Admin overrides it.
   useEffect(() => {
@@ -229,11 +265,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setGuestGstin('');
       setGuestBillingName('');
       setAdvanceReceivedBy('');
+      setDeskCashier(currentUser?.name || 'Root Admin');
 
       const lodgingDue = (guest.roomRate || guest.totalAmount || 0) - (guest.advanceAmount || 0);
       setSplitRows([{ id: '1', mode: 'Cash', amount: Math.max(0, lodgingDue) }]);
     }
-  }, [guest, isOpen]);
+  }, [guest, isOpen, currentUser]);
 
   if (!isOpen || !guest) return null;
 
@@ -284,8 +321,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const gstSgst = taxType === 'cgst_sgst' ? gstAmount / 2 : 0;
   const gstIgst = taxType === 'igst' ? gstAmount : 0;
 
-  // Grand Target Due
+  // Grand Target Due = what's left to collect right now (after the advance).
   const grandTargetDue = subtotalBeforeGst + gstAmount;
+  // Grand Total = the true, full invoice value for the entire stay - what
+  // the guest would have paid start to finish, advance included. Shown
+  // separately so "the bill" and "what's still owed today" are never
+  // conflated into one number.
+  const grandTotalFullStay = grandTargetDue + advancePaid;
 
   // Total entered in Split Rows
   const totalSplitSum = splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
@@ -326,7 +368,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // Add Custom Adjustment
   const handleAddAdjustment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adjAmount || Number(adjAmount) <= 0) return;
+    if (!adjType || !adjAmount || Number(adjAmount) <= 0) return;
 
     const reason = adjType === 'charge' ? adjReasonCharge : (adjReasonDiscount.trim() || 'Discount Rebate');
     const newAdj: ManualAdjustment = {
@@ -339,6 +381,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     setAdjustments(prev => [...prev, newAdj]);
     setAdjAmount('');
     setAdjReasonDiscount('');
+    setAdjType('');
   };
 
   const handleRemoveAdjustment = (id: string) => {
@@ -347,11 +390,27 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // Split Payment Rows Handlers
   const handleAddSplitRow = () => {
-    setSplitRows(prev => [...prev, { id: String(Date.now()), mode: 'Cash', amount: 0 }]);
+    // New row starts pre-filled with whatever's still unaccounted for, not 0 -
+    // staff shouldn't have to do the subtraction themselves.
+    const remaining = Math.max(0, grandTargetDue - totalSplitSum);
+    setSplitRows(prev => [...prev, { id: String(Date.now()), mode: 'Cash', amount: remaining }]);
   };
 
   const handleUpdateSplitRow = (id: string, field: keyof SplitPaymentRow, val: any) => {
-    setSplitRows(prev => prev.map(r => r.id === id ? { ...r, [field]: val } : r));
+    setSplitRows(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, [field]: val } : r);
+      // Editing any row's amount (other than the last) auto-balances the
+      // LAST row to make the total match what's actually due, instead of
+      // leaving staff to do the subtraction and re-type it themselves.
+      if (field === 'amount' && updated.length > 1) {
+        const lastIdx = updated.length - 1;
+        if (updated[lastIdx].id !== id) {
+          const sumExceptLast = updated.slice(0, lastIdx).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+          updated[lastIdx] = { ...updated[lastIdx], amount: Math.max(0, grandTargetDue - sumExceptLast) };
+        }
+      }
+      return updated;
+    });
   };
 
   const handleRemoveSplitRow = (id: string) => {
@@ -541,12 +600,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Received By (Booking)</label>
-                    <input
-                      type="text"
+                    <StyledSelect
                       value={advanceReceivedBy}
-                      onChange={(e) => setAdvanceReceivedBy(e.target.value)}
-                      placeholder="Staff member name"
-                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg"
+                      onChange={setAdvanceReceivedBy}
+                      placeholder="-- Choose cash handler --"
+                      options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
                     />
                   </div>
                 </div>
@@ -675,6 +733,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <StyledSelect
                       value={adjType}
                       onChange={(val) => setAdjType(val as 'charge' | 'discount')}
+                      placeholder="-- Choose --"
                       options={[
                         { value: 'charge', label: 'Extra Incidentals Charge (+)' },
                         { value: 'discount', label: 'Discount Rebate (-)' },
@@ -682,7 +741,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     />
                   </div>
 
-                  {adjType === 'charge' ? (
+                  {adjType === 'charge' && (
                     <div>
                       <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Charge Category</label>
                       <StyledSelect
@@ -696,7 +755,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         ]}
                       />
                     </div>
-                  ) : (
+                  )}
+                  {adjType === 'discount' && (
                     <div>
                       <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Discount Label</label>
                       <input
@@ -714,16 +774,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       value={adjAmount}
-                      onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
                       placeholder="0.00"
+                      inputMode="decimal"
                       className="w-full px-3 py-2 font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl transition-all cursor-pointer text-xs"
+                    disabled={!adjType || !adjAmount || Number(adjAmount) <= 0}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all cursor-pointer text-xs"
                   >
                     Apply Adjustment
                   </button>
@@ -939,10 +1002,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   )}
 
-                  {/* Grand Target Due Header */}
-                  <div className="border-t-2 border-emerald-300 dark:border-emerald-700 pt-2 flex justify-between items-center text-sm font-extrabold">
-                    <span className="text-slate-900 dark:text-white">Grand Target Due:</span>
-                    <span className="text-emerald-700 dark:text-emerald-400 text-lg">₹{grandTargetDue.toFixed(2)}</span>
+                  {/* Grand Total (full stay, advance included) vs. what's
+                      still owed right now - kept as two distinct numbers so
+                      "the bill" and "the pending payment" are never the same
+                      line. */}
+                  <div className="border-t-2 border-emerald-300 dark:border-emerald-700 pt-2 space-y-1">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                      <span>Grand Total (Full Stay):</span>
+                      <span>₹{grandTotalFullStay.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-extrabold">
+                      <span className="text-slate-900 dark:text-white">Grand Target Due (Pending Today):</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 text-lg">₹{grandTargetDue.toFixed(2)}</span>
+                    </div>
                   </div>
 
                   <div className="flex justify-between items-center text-[11px] pt-1">
@@ -953,14 +1025,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                {/* Desk Cashier Selector */}
+                {/* Desk Cashier - always whoever is actually logged in, not
+                    freely editable, so checkout accountability can't be
+                    misattributed to someone who wasn't at the desk. */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Desk Cashier Handling Checkout</label>
                   <input
                     type="text"
                     value={deskCashier}
-                    onChange={(e) => setDeskCashier(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl"
+                    readOnly
+                    disabled
+                    className="w-full px-3 py-1.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 cursor-not-allowed"
                   />
                 </div>
 
@@ -978,37 +1053,74 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    {splitRows.map((row) => (
-                      <div key={row.id} className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.amount}
-                          onChange={(e) => handleUpdateSplitRow(row.id, 'amount', Number(e.target.value))}
-                          placeholder="Amount (₹)"
-                          className="flex-1 px-3 py-1.5 text-xs font-extrabold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl"
-                        />
-                        <StyledSelect
-                          value={row.mode}
-                          onChange={(val) => handleUpdateSplitRow(row.id, 'mode', val as any)}
-                          options={[
-                            { value: 'Cash', label: 'Cash' },
-                            { value: 'UPI', label: 'UPI' },
-                            { value: 'Card', label: 'Card' },
-                            { value: 'Bank Transfer', label: 'Bank Transfer' },
-                          ]}
-                        />
-                        {splitRows.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSplitRow(row.id)}
-                            className="text-red-500 hover:text-red-700 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                    {splitRows.map((row) => {
+                      const selectedPayTo = payToOptions.find((p) => p.id === row.payToId);
+                      return (
+                      <div key={row.id} className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            inputMode="decimal"
+                            value={row.amount}
+                            onChange={(e) => handleUpdateSplitRow(row.id, 'amount', Math.max(0, Number(e.target.value)))}
+                            placeholder="Amount (₹)"
+                            className="flex-1 px-3 py-1.5 text-xs font-extrabold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl"
+                          />
+                          <StyledSelect
+                            value={row.mode}
+                            onChange={(val) => handleUpdateSplitRow(row.id, 'mode', val as any)}
+                            options={[
+                              { value: 'Cash', label: 'Cash' },
+                              { value: 'UPI', label: 'UPI' },
+                              { value: 'Card', label: 'Card' },
+                              { value: 'Bank Transfer', label: 'Bank Transfer' },
+                            ]}
+                          />
+                          {splitRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSplitRow(row.id)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* UPI rows: choose whose account this goes to (own
+                            staff or a vendor/payee) and reveal their QR to
+                            scan - lets a payment be taken directly into a
+                            vendor's account rather than always the desk's. */}
+                        {row.mode === 'UPI' && (
+                          <div className="flex items-center gap-2 pl-1">
+                            <StyledSelect
+                              value={row.payToId || ''}
+                              onChange={(val) => { handleUpdateSplitRow(row.id, 'payToId', val); setVisibleQrRowId(null); }}
+                              placeholder="-- Pay to --"
+                              className="flex-1"
+                              options={payToOptions.map((p) => ({ value: p.id, label: p.name, group: p.group }))}
+                            />
+                            <button
+                              type="button"
+                              disabled={!selectedPayTo}
+                              onClick={() => setVisibleQrRowId((prev) => (prev === row.id ? null : row.id))}
+                              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                            >
+                              <QrCode className="w-3.5 h-3.5" /> {visibleQrRowId === row.id ? 'Hide QR' : 'Show QR'}
+                            </button>
+                          </div>
+                        )}
+                        {row.mode === 'UPI' && visibleQrRowId === row.id && selectedPayTo && (
+                          <div className="flex flex-col items-center gap-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                            <img src={selectedPayTo.qrCodeUrl} alt={`${selectedPayTo.name} UPI QR code`} className="w-32 h-32 object-contain" />
+                            <span className="text-[10px] font-bold text-slate-500">{selectedPayTo.name}</span>
+                          </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

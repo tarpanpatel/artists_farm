@@ -23,6 +23,20 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Number inputs site-wide: no spin/increment arrows - staff type the amount
+   directly (money/quantity fields), the +/- steppers only invite mis-taps.
+   type="number" already forces a numeric keypad on mobile; this just hides
+   the desktop spinner UI without touching each field individually. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Flowbite Dark Mode UI Overrides */
 .dark body,
 html.dark {
