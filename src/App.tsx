@@ -38,6 +38,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
+import { Smartphone, Download, X as CloseIcon } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
@@ -475,6 +476,41 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const { orders, addOrder, updateOrderStatus } = useKitchenContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+      showToast("✔ Artists Farm App installed successfully on your device!", { type: 'success' });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [showToast]);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
   // Sandbox / Testing Mode State & Handlers
   const [isTestingMode, setIsTestingMode] = useState<boolean>(isTestingModeActive());
 
@@ -550,13 +586,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Hydrate nav menu from DB on startup
   useEffect(() => {
-    if (!isTestingModeActive()) {
-      fetch('/php/api/clean_all_demo.php', { method: 'POST', credentials: 'include' })
-        .then(() => refreshStaff())
-        .catch(() => refreshStaff());
-    } else {
-      refreshStaff();
-    }
+    refreshStaff();
     fetchNavMenuFromDB().then((data) => {
       if (data && data.length > 0) {
         // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
@@ -1642,6 +1672,33 @@ ${itemsStr}
         {/* Unauthenticated: show login-only content */}
         {!isAuthenticated && (
           <div className="flex-1" />
+        )}
+
+        {showInstallBanner && (
+          <div className="fixed bottom-6 right-6 left-6 md:left-auto md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-50 flex items-center gap-4 transition-all duration-300 animate-slide-in">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Artists Farm App</h4>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Use it directly from your desktop or mobile homescreen</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleInstallApp}
+                className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Install</span>
+              </button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer animate-none"
+              >
+                <CloseIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
 
         <GlobalModal />

@@ -74,6 +74,19 @@ window.addEventListener('click', (e) => {
   }
 }, true);
 
+// Register Service Worker for PWA support. sw.js lives at the site root
+// (not inside any tenant/property path), so it must be registered with an
+// absolute path - a path built from the current URL (e.g.
+// /artists_farm/vrikshawan/goa-homes/sw.js) doesn't correspond to a real
+// file and 404s through the SPA fallback instead.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.error('Service worker registration failed:', err);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

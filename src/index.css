@@ -642,6 +642,14 @@ html.dark .payees-registry-table tr:hover {
   animation: toast-in 0.2s ease-out;
 }
 
+@keyframes slide-in {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+
 /* Telegram notification template manager overrides */
 .active-template-item {
   background-color: #0284c7 !important; /* sky-600 */
@@ -683,3 +691,17 @@ html.dark .category-tab-active {
   border-color: #38bdf8 !important;
 }
 
+/* Global Font Weight Mapping: Caps font weights at 600 (semibold) system-wide */
+.font-bold,
+.font-extrabold,
+.font-black,
+strong,
+b,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600 !important;
+}
