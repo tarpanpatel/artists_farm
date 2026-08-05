@@ -542,21 +542,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
           )}
         </div>
-
-        {isAttendancePage && (
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
-            <button
-              onClick={() => setActiveSubTab('calendar')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                activeSubTab === 'calendar'
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              Attendance Calendar
-            </button>
-          </div>
-        )}
       </div>
 
       {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
