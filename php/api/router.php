@@ -53,6 +53,43 @@ try {
     }
 } catch (Exception $e) {}
 
+/**
+ * Every property a tenant creates should immediately show the tenant
+ * themselves as a Super Admin in that property's own staff directory
+ * (Staff & Payees Control) - otherwise the "who's on staff" dropdown
+ * looks empty even though the tenant can already log in and manage the
+ * property. staff_users is scoped per-property (unlike `users`, which is
+ * platform/tenant-wide), so this needs to run once per property, not
+ * once per tenant. Idempotent - safe to call even if a row already
+ * exists for this tenant+property (e.g. a retried request).
+ */
+if (!function_exists('ensureTenantOwnerStaffRow')) {
+    function ensureTenantOwnerStaffRow(PDO $pdo, $tenantId, $propertyId) {
+        try {
+            $tenantStmt = $pdo->prepare("SELECT name, phone FROM tenants WHERE id = ?");
+            $tenantStmt->execute([$tenantId]);
+            $tenant = $tenantStmt->fetch();
+            if (!$tenant) return;
+
+            $phoneDigits = preg_replace('/\D/', '', $tenant['phone'] ?? '');
+            $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
+            if (strlen($phoneDigits) !== 10) return; // no valid phone on file yet - nothing to seed
+
+            $existing = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND username = ? LIMIT 1");
+            $existing->execute([$propertyId, $phoneDigits]);
+            if ($existing->fetch()) return;
+
+            $pdo->prepare("
+                INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, passcode)
+                VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, '123456')
+            ")->execute(["owner-{$propertyId}", $propertyId, $phoneDigits, $tenant['name'], $phoneDigits, $phoneDigits]);
+        } catch (Exception $e) {
+            // Non-fatal - property creation itself should still succeed even
+            // if this best-effort directory seeding fails for some reason.
+        }
+    }
+}
+
 // === Global Error & Exception Handlers ===
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     if (error_reporting() & $errno) {
@@ -747,12 +784,14 @@ switch ($action) {
                     $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, status, is_active, tailwind_color_scheme) VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, 'active', 1, 'blue')")
                         ->execute([$tenant_id, $roomName, $roomSlug, $parentId]);
                 }
+                ensureTenantOwnerStaffRow($pdo, $tenant_id, $parentId);
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => "Multi-key property created with {$room_count} room(s)", 'property_id' => $parentId]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'SINGLE', 'active', 1, 'blue', ?, ?)");
                 $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
                 $propertyId = $pdo->lastInsertId();
+                ensureTenantOwnerStaffRow($pdo, $tenant_id, $propertyId);
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => 'Property created successfully', 'property_id' => $propertyId]);
             }
@@ -923,6 +962,10 @@ switch ($action) {
             if (array_key_exists('google_maps_link', $input)) {
                 $sets[] = 'google_maps_link = ?';
                 $params[] = trim($input['google_maps_link']) ?: null;
+            }
+            if (array_key_exists('address', $input)) {
+                $sets[] = 'address = ?';
+                $params[] = trim($input['address']) ?: null;
             }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,

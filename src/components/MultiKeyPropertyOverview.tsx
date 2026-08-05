@@ -112,6 +112,10 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const [newRoom, setNewRoom] = useState({ name: '', slug: '' });
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
+  // Tenant-wide slot usage (all properties combined) - used to show "X out
+  // of Y units available" and to grey out Add Unit once the tenant's plan
+  // is exhausted, not just this one property's own 10-room ceiling.
+  const [slotUsage, setSlotUsage] = useState<{ total_slots: number; used_slots: number; remaining_slots: number } | null>(null);
 
   // Guards against firing a duplicate/overlapping load for the same
   // propertyId - StrictMode's dev-only double-invoke and rapid re-renders
@@ -143,6 +147,12 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       const propData = await propRes.json();
       if (propData.success) {
         setProperty(propData.data);
+        if (propData.data.tenant_id) {
+          fetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${propData.data.tenant_id}`, { credentials: 'include' })
+            .then((r) => r.json())
+            .then((slotData) => { if (slotData.success) setSlotUsage(slotData.data); })
+            .catch(() => {});
+        }
       }
 
       const overviewData = await overviewRes.json();
@@ -373,21 +383,14 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
         </div>
       )}
 
-      {/* Header - hide on dashboard overview */}
+      {/* Header - hide on dashboard overview. Add Room now lives in the
+          Rooms List section below, always visible regardless of hideHeader. */}
       {!hideHeader && (
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{property.name}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{property.address || 'No address'}</p>
         </div>
-        <button
-          onClick={() => setShowAddRoomModal(true)}
-          disabled={property.room_count >= 10}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Room
-        </button>
       </div>
       )}
 
@@ -438,11 +441,40 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
       {/* Rooms List */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Rooms</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rooms</h2>
+          <div className="flex items-center gap-3">
+            {slotUsage && (
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                slotUsage.remaining_slots <= 0
+                  ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+              }`}>
+                {slotUsage.used_slots} of {slotUsage.total_slots} units used
+              </span>
+            )}
+            <button
+              onClick={() => setShowAddRoomModal(true)}
+              disabled={property.room_count >= 10 || (!!slotUsage && slotUsage.remaining_slots <= 0)}
+              title={!!slotUsage && slotUsage.remaining_slots <= 0 ? "You've used all the units on your plan - upgrade to add more" : undefined}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add New Unit
+            </button>
+          </div>
+        </div>
 
-        {property.rooms.length === 0 ? (
-          <p className="text-center text-gray-600 dark:text-gray-400 py-8">No rooms yet. Add one to get started!</p>
-        ) : (
+        {property.rooms.length === 0 && (
+          <div className="flex items-start gap-3 p-3 mb-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              No units yet. Add your first room to start taking bookings.
+            </p>
+          </div>
+        )}
+
+        {property.rooms.length === 0 ? null : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {property.rooms.map((room) => {
               const roomData = overview?.rooms.find(r => r.id === room.id);
