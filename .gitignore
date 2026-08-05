@@ -22,6 +22,7 @@ artists_farm.zip
 production_export.sql
 vite-log.txt
 php/config/db_pass.php
+php/config/whatsapp_token.php
 .env
 .env.local
 .env.*.local
