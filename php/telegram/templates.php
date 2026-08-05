@@ -32,7 +32,7 @@ if (!class_exists('TelegramTemplates')) {
                     $stmt->execute([$templateKey]);
                     $dbContent = $stmt->fetchColumn();
                     if ($dbContent && !empty(trim($dbContent))) {
-                        return $dbContent;
+                        return self::restoreEmojis($dbContent);
                     }
                 }
             } catch (Exception $e) {
@@ -56,7 +56,50 @@ if (!class_exists('TelegramTemplates')) {
                 'service_request_fulfilled_edit' => "✅ <b>SERVICE REQUEST FULFILLED</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n👤 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {fulfill_time}",
             ];
 
+            // Make defaults emojis bulletproof too just in case
+            foreach ($defaults as $k => $val) {
+                $defaults[$k] = self::restoreEmojis($val);
+            }
             return $defaults[$templateKey] ?? "Alert Notification ({$templateKey}) triggered.";
+        }
+
+        public static function restoreEmojis(string $text): string {
+            if (empty($text)) {
+                return $text;
+            }
+            $replacements = [
+                '/\?\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT/i' => '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>',
+                '/\?\s*(<b>)?Guest:(<\/b>)?/i' => '👤 <b>Guest:</b>',
+                '/\?\s*(<b>)?ACCOMMODATION LOGISTICS/i' => '🏠 <b>ACCOMMODATION LOGISTICS</b>',
+                '/\?\s*(<b>)?FINAL ITEMIZED KOT/i' => '🍽️ <b>FINAL ITEMIZED KOT</b>',
+                '/\?\s*(<b>)?FINAL PAYOUT SPLIT/i' => '💳 <b>FINAL PAYOUT SPLIT</b>',
+                '/\?\s*(<b>)?Desk Cashier Executing/i' => '👤 <i>Desk Cashier Executing</i>',
+                '/\?\s*(<b>)?NEW FINANCIAL TRANSACTION/i' => '💰 <b>NEW FINANCIAL TRANSACTION</b>',
+                '/\?\s*(<b>)?Cashier:(<\/b>)?/i' => '👤 <b>Cashier:</b>',
+                '/\?\s*(<b>)?TOTAL CREDITED/i' => '🟢 <b>TOTAL CREDITED</b>',
+                '/\?\s*(<b>)?UPCOMING ARRIVALS TOMORROW/i' => '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>',
+                '/\?\s*(<b>)?DISH READY TO SERVE/i' => '🍽️ <b>DISH READY TO SERVE</b>',
+                '/\?\s*(<b>)?Order Ticket:(<\/b>)?/i' => '🏷️ <b>Order Ticket:</b>',
+                '/\?\s*(<b>)?NEW ORDER/i' => '🔔 <b>NEW ORDER</b>',
+                '/\?\s*(<b>)?DISH SERVED/i' => '✅ <b>DISH SERVED</b>',
+                '/\?\s*(<b>)?MATERIAL REQUEST/i' => '📦 <b>MATERIAL REQUEST</b>',
+                '/\?\s*(<b>)?Processed By:(<\/b>)?/i' => '👤 <b>Processed By:</b>',
+                '/\?\s*(<b>)?Global Status:(<\/b>)?/i' => '🟢 <b>Global Status:</b>',
+                '/\?\s*(<b>)?STAFF MEAL REQUEST/i' => '🍱 <b>STAFF MEAL REQUEST</b>',
+                '/\?\s*(<b>)?MATERIAL REQUISITION APPROVED/i' => '✅ <b>MATERIAL REQUISITION APPROVED</b>',
+                '/\?\s*(<b>)?FULLY ITEMIZED SETTLEMENT BILL/i' => '🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>',
+                '/\?\s*(<b>)?KITCHEN ORDER/i' => '🍽️ <b>KITCHEN ORDER</b>',
+                '/\?\s*(<b>)?STAFF DUTY MEAL DISPATCHED/i' => '🍛 <b>STAFF DUTY MEAL DISPATCHED</b>',
+                '/\?\s*(<b>)?NEW MATERIAL REQUISITION SHEET/i' => '📦 <b>NEW MATERIAL REQUISITION SHEET</b>',
+                '/\?\s*(<b>)?LOW STOCK WARNING ALERT/i' => '⚠️ <b>LOW STOCK WARNING ALERT</b>',
+                '/\?\s*(<b>)?PETTY CASH/i' => '💰 <b>PETTY CASH</b>',
+                '/\?\s*(<b>)?ORDER COMPLETED/i' => '✅ <b>ORDER COMPLETED</b>',
+            ];
+            
+            foreach ($replacements as $pattern => $replacement) {
+                $text = preg_replace($pattern, $replacement, $text);
+            }
+            return $text;
         }
 
         // =========================================================================

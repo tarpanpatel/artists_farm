@@ -16,6 +16,7 @@ import {
   Bot,
   Key,
   ShieldOff,
+  Save,
 } from 'lucide-react';
 import {
   fetchTelegramBotIdentity,
@@ -26,22 +27,22 @@ import {
   fetchTelegramConfigDB,
   saveTelegramConfigDB,
 } from '../services/api';
+import { PropertyTelegramConfig, TelegramGroup } from '../types';
 
 interface WizardStep {
-  key: 'kitchen' | 'admin' | 'finance';
+  key: 'settings' | 'kitchen' | 'admin' | 'finance';
   label: string;
   icon: React.ElementType;
 }
 
 const STEPS: WizardStep[] = [
+  { key: 'settings', label: 'Bot & Settings', icon: Bot },
   { key: 'kitchen', label: 'Kitchen', icon: ChefHat },
   { key: 'admin', label: 'Admin', icon: ShieldCheck },
   { key: 'finance', label: 'Finance', icon: Wallet },
 ];
 
-// Who typically belongs in each group — shown while creating it, since that's the
-// moment a tenant is actually deciding who to invite, not three steps later.
-const ROLE_GUIDANCE: Record<WizardStep['key'], string> = {
+const ROLE_GUIDANCE = {
   kitchen: 'Add cooks, kitchen helpers, the kitchen manager who takes orders, whoever handles requisitions/purchases, and servers.',
   admin: 'Add the property manager, housekeeping, inventory manager, and reception staff.',
   finance: 'Add only staff who handle money coming in or going out — keep this group tight.',
@@ -67,10 +68,6 @@ const EMPTY_STEP_STATE: StepState = {
   errorMessage: null,
 };
 
-// Small illustrative mockups of the actual Telegram/BotFather conversation, since
-// this is a real external app switch a first-time tenant has never done before —
-// plain text instructions alone ("send /newbot") are easy to fumble without seeing
-// roughly what the screen looks like. No real screenshots/external assets used.
 const TelegramBubble: React.FC<{ text: React.ReactNode; outgoing?: boolean; mono?: boolean }> = ({ text, outgoing, mono }) => (
   <div className={`flex ${outgoing ? 'justify-end' : 'justify-start'}`}>
     <div
@@ -91,175 +88,12 @@ const TelegramMockScreen: React.FC<{ children: React.ReactNode }> = ({ children 
   </div>
 );
 
-// Simple approximation of the Telegram app icon (blue circle + paper-plane mark) so
-// tenants recognize what to tap on their home screen — not the trademarked asset,
-// just a recognizable illustrative shape, same spirit as the chat-bubble mockups above.
 const TelegramAppIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
   <svg width={size} height={size} viewBox="0 0 40 40" className="shrink-0">
     <circle cx="20" cy="20" r="20" fill="#29A9EA" />
     <path d="M9 20.5l19-7.5-3 17-6-4.5-3 3-1-5.5 11-9-14 6.5z" fill="white" opacity="0.95" />
   </svg>
 );
-
-const BotFatherGuide: React.FC<{ onTokenSaved: () => void }> = ({ onTokenSaved }) => {
-  const [tokenInput, setTokenInput] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  const handleSaveToken = async () => {
-    const trimmed = tokenInput.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    try {
-      const config = await fetchTelegramConfigDB();
-      const ok = await saveTelegramConfigDB({ ...config, botToken: trimmed });
-      if (!ok) {
-        setSaveError('Could not save the token — please try again.');
-        return;
-      }
-      // Verify the token actually works (Telegram's getMe) rather than just
-      // trusting it saved - a typo'd token would otherwise fail silently and
-      // just leave the tenant stuck back on this same screen with no reason why.
-      const identity = await fetchTelegramBotIdentity();
-      if (identity?.username) {
-        setSaveSuccess(true);
-        onTokenSaved();
-      } else {
-        setSaveError("Saved, but Telegram didn't recognize that token — double-check you copied the whole thing from BotFather.");
-      }
-    } catch {
-      setSaveError('Could not save the token — please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-  <div className="space-y-4">
-    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-bold">
-      <Bot className="w-4 h-4" />
-      No Telegram bot is connected yet — this is a one-time setup, done once for the whole platform.
-    </div>
-
-    <div className="space-y-2">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">1</span>
-        Open Telegram and start a chat with <span className="font-mono">BotFather</span>
-      </div>
-      <TelegramMockScreen>
-        <div className="flex items-center gap-3 px-1 py-1">
-          <TelegramAppIcon />
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">That's the Telegram app icon — tap it, or use the button below.</span>
-        </div>
-        <a
-          href="https://t.me/BotFather?text=%2Fnewbot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] px-3 py-2 rounded-lg transition-all"
-        >
-          <Send className="w-3.5 h-3.5" /> Open Telegram → BotFather (with /newbot ready to send)
-        </a>
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-300 dark:border-slate-600 mt-1">
-          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">Or search "BotFather" manually if the button doesn't open the app.</span>
-        </div>
-      </TelegramMockScreen>
-    </div>
-
-    <div className="space-y-2">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">2</span>
-        Tap send on <span className="font-mono">/newbot</span> (already typed for you), then answer the prompts
-      </div>
-      <TelegramMockScreen>
-        <TelegramBubble outgoing mono text="/newbot" />
-        <TelegramBubble text="Alright, a new bot. How are we going to call it?" />
-        <TelegramBubble outgoing text="Artists Farm Bot" />
-        <TelegramBubble text="Now let's choose a username (must end in 'bot')." />
-        <TelegramBubble outgoing mono text="artists_farm_bot" />
-      </TelegramMockScreen>
-    </div>
-
-    <div className="space-y-2">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">3</span>
-        Copy the API token it gives you
-      </div>
-      <TelegramMockScreen>
-        <TelegramBubble
-          text={
-            <>
-              Done! Use this token to access the HTTP API:
-              <br />
-              <span className="inline-flex items-center gap-1 mt-1 font-mono font-bold text-sky-700 dark:text-sky-300">
-                <Key className="w-3 h-3" /> 123456789:AAH...
-              </span>
-            </>
-          }
-        />
-      </TelegramMockScreen>
-    </div>
-
-    <div className="space-y-2">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 text-red-500 text-[11px] flex items-center justify-center shrink-0">4</span>
-        Critical: send <span className="font-mono">/setprivacy</span>, pick your bot, choose <b>Disable</b>
-      </div>
-      <TelegramMockScreen>
-        <TelegramBubble outgoing mono text="/setprivacy" />
-        <TelegramBubble text="Choose a bot to change group messages settings." />
-        <TelegramBubble outgoing text="@artists_farm_bot" />
-        <div className="flex justify-end">
-          <div className="bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded-lg px-3 py-1 text-[11px] font-bold text-sky-700 dark:text-sky-400 flex items-center gap-1">
-            <ShieldOff className="w-3 h-3" /> Disable
-          </div>
-        </div>
-        <TelegramBubble text="Success! Group Privacy is disabled." />
-      </TelegramMockScreen>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-6.5">
-        Without this, Telegram only forwards commands to the bot — it won't see the pairing codes tenants send as plain messages, and pairing will silently never work.
-      </p>
-    </div>
-
-    <div className="pt-1 space-y-2">
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] flex items-center justify-center shrink-0">5</span>
-        Paste that token here
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={tokenInput}
-          onChange={(e) => setTokenInput(e.target.value)}
-          placeholder="123456789:AAH..."
-          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
-        />
-        <button
-          onClick={handleSaveToken}
-          disabled={saving || !tokenInput.trim()}
-          className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-          Save
-        </button>
-      </div>
-      {saveSuccess && (
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 className="w-3.5 h-3.5" /> Bot connected! Continuing…
-        </div>
-      )}
-      {saveError && (
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
-          <X className="w-3.5 h-3.5 shrink-0" /> {saveError}
-        </div>
-      )}
-    </div>
-  </div>
-  );
-};
 
 interface TelegramSetupWizardProps {
   isOpen: boolean;
@@ -279,6 +113,13 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   const [botUsername, setBotUsername] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [wizardConfig, setWizardConfig] = useState<PropertyTelegramConfig | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
+  const [savingToken, setSavingToken] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showBotFatherGuide, setShowBotFatherGuide] = useState(false);
+
   const currentStep = STEPS[currentIndex];
   const currentState = stepStates[currentStep.key] ?? EMPTY_STEP_STATE;
 
@@ -296,22 +137,26 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     }
   };
 
-  // Fetch the shared bot's @username once, on open, so instructions never hardcode a bot name.
-  // Also re-run after a token is saved inline (see BotFatherGuide) so the wizard
-  // transitions straight into the normal flow without ever leaving the popup.
   const refreshBotIdentity = () => {
     fetchTelegramBotIdentity().then((identity) => setBotUsername(identity?.username ?? null));
   };
+
+  const loadConfig = async () => {
+    try {
+      const cfg = await fetchTelegramConfigDB();
+      setWizardConfig(cfg);
+      setTokenInput(cfg.botToken || '');
+    } catch (e) {
+      console.error('Failed to load Telegram Config:', e);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
+    loadConfig();
     refreshBotIdentity();
   }, [isOpen]);
 
-  // Pre-mark any group already connected from a previous session (or the manual
-  // Connection Settings editor) as done, so the progress circles reflect reality
-  // the moment the wizard opens instead of looking unstarted until re-paired here.
-  // Gates the pairing-code effect below via configLoaded so it can't race this and
-  // clobber an already-connected step with a freshly generated (unnecessary) code.
   const [configLoaded, setConfigLoaded] = useState(false);
   useEffect(() => {
     if (!isOpen) return;
@@ -320,6 +165,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
       setStepStates((prev) => {
         const next = { ...prev };
         for (const step of STEPS) {
+          if (step.key === 'settings') continue;
           const existing = config.groups.find((g) => g.key === step.key && g.chatId);
           if (existing && next[step.key]?.status !== 'connected') {
             next[step.key] = { ...EMPTY_STEP_STATE, status: 'connected', chatId: existing.chatId };
@@ -331,10 +177,11 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     });
   }, [isOpen]);
 
-  // Auto-generate a pairing code the moment a step becomes active (if it doesn't have one yet).
   useEffect(() => {
     if (!isOpen || !configLoaded) return;
     clearPolling();
+    if (currentStep.key === 'settings') return;
+
     const state = stepStates[currentStep.key];
     if (!state || state.status === 'idle') {
       startPairing();
@@ -389,7 +236,62 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     if (!currentState.chatId) return;
     setCurrentState({ testSending: true });
     const result = await sendTelegramTestMessage(currentState.chatId);
-    setCurrentState({ testSending: false, testSent: result.success, errorMessage: result.success ? null : result.message || 'Test send failed.' });
+    setCurrentState({
+      testSending: false,
+      testSent: result.success,
+      errorMessage: result.success ? null : result.message || 'Test send failed.',
+    });
+  };
+
+  const handleReSetup = async () => {
+    setCurrentState({ status: 'idle', chatId: null, code: null, testSent: false, testSending: false, errorMessage: null });
+    try {
+      const config = await fetchTelegramConfigDB();
+      const updatedGroups = config.groups.map(g => g.key === currentStep.key ? { ...g, chatId: '' } : g);
+      await saveTelegramConfigDB({ ...config, groups: updatedGroups });
+    } catch (e) {
+      console.error('Failed to clear group chat ID in DB:', e);
+    }
+    startPairing();
+  };
+
+  const handleSaveToken = async () => {
+    const trimmed = tokenInput.trim();
+    if (!trimmed || !wizardConfig) return;
+    setSavingToken(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      const ok = await saveTelegramConfigDB({ ...wizardConfig, botToken: trimmed });
+      if (!ok) {
+        setSaveError('Could not save the token — please try again.');
+        return;
+      }
+      const identity = await fetchTelegramBotIdentity();
+      if (identity?.username) {
+        setSaveSuccess(true);
+        setBotUsername(identity.username);
+        setWizardConfig({ ...wizardConfig, botToken: trimmed });
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveError("Saved, but Telegram didn't recognize that token — double-check you copied the whole thing from BotFather.");
+      }
+    } catch {
+      setSaveError('Could not save the token — please try again.');
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const handleUpdateConfigField = async (field: keyof PropertyTelegramConfig, value: any) => {
+    if (!wizardConfig) return;
+    const updated = { ...wizardConfig, [field]: value };
+    setWizardConfig(updated);
+    try {
+      await saveTelegramConfigDB(updated);
+    } catch (e) {
+      console.error('Failed to save updated config field:', e);
+    }
   };
 
   const handleCopyCode = () => {
@@ -417,7 +319,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
   if (!isOpen) return null;
 
   const isLastStep = currentIndex === STEPS.length - 1;
-  const isConnected = currentState.status === 'connected';
+  const isConnected = currentState.status === 'connected' || currentState.chatId !== null;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
@@ -429,8 +331,8 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <Rocket className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white m-0">Quick Telegram Setup</h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">Connect 3 groups in under a minute</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white m-0">Telegram Setup</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">Configure bot settings and pairing alerts</p>
             </div>
           </div>
           <button
@@ -441,17 +343,18 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           </button>
         </div>
 
-        {/* Progress: circles with text */}
+        {/* Progress Navigation */}
         <div className="flex items-center justify-center gap-2 px-6 pt-5 pb-2">
           {STEPS.map((step, idx) => {
-            const done = stepStates[step.key]?.status === 'connected';
+            const isSett = step.key === 'settings';
+            const done = isSett ? !!wizardConfig?.botToken : stepStates[step.key]?.status === 'connected' || !!stepStates[step.key]?.chatId;
             const active = idx === currentIndex;
             const StepIcon = step.icon;
             return (
               <React.Fragment key={step.key}>
                 {idx > 0 && (
                   <div
-                    className={`h-0.5 w-8 sm:w-12 rounded-full ${
+                    className={`h-0.5 w-6 sm:w-10 rounded-full ${
                       done || idx <= currentIndex ? 'bg-sky-500' : 'bg-slate-200 dark:bg-slate-700'
                     }`}
                   />
@@ -471,7 +374,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                         : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-400'
                     }`}
                   >
-                    {done ? <CheckCircle2 className="w-4.5 h-4.5" /> : <StepIcon className="w-4.5 h-4.5" />}
+                    {done && !isSett ? <CheckCircle2 className="w-4.5 h-4.5" /> : <StepIcon className="w-4.5 h-4.5" />}
                   </div>
                   <span
                     className={`text-[10px] font-bold ${
@@ -486,82 +389,170 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           })}
         </div>
         <div className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
-          Staff can be in more than one group if they wear multiple hats.
+          Configure general notification preferences and link groups.
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
-            Step {currentIndex + 1} of {STEPS.length} — Connect your <span className="font-bold text-slate-700 dark:text-slate-200">{currentStep.label}</span> Telegram group
-          </div>
-
-          <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2 text-[11px] text-sky-800 dark:text-sky-300">
-            <span className="font-bold">Who belongs here: </span>
-            {ROLE_GUIDANCE[currentStep.key]}
-          </div>
-
-          {!botUsername ? (
-            <BotFatherGuide onTokenSaved={refreshBotIdentity} />
-          ) : (
-            <>
-              <ol className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200 list-none">
-                <li className="flex gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">1</span>
-                  <span>In Telegram, create a new group{propertyName ? ` (e.g. "${propertyName} - ${currentStep.label}")` : ''}.</span>
-                </li>
-                <li className="flex gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">2</span>
-                  <span>
-                    Tap the group name → <b>Add Members</b> → search{' '}
-                    <span className="font-mono font-bold text-sky-700 dark:text-sky-400">@{botUsername}</span> → tap it to add.
-                  </span>
-                </li>
-                <li className="flex gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">3</span>
-                  <span>Send this code as a message in the group:</span>
-                </li>
-              </ol>
-
-              {/* Code display */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-slate-900 dark:bg-black rounded-xl px-4 py-3 font-mono text-sky-400 text-sm font-bold tracking-wide text-center border border-slate-700">
-                  {currentState.status === 'generating' || !currentState.code ? (
-                    <Loader2 className="w-4 h-4 animate-spin inline-block text-slate-400" />
-                  ) : (
-                    currentState.code
-                  )}
+          {currentStep.key === 'settings' ? (
+            <div className="space-y-4">
+              {/* Enabled toggle */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">Enable Telegram Notifications</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Toggle to enable or disable all Telegram notifications.
+                  </div>
                 </div>
                 <button
-                  onClick={handleCopyCode}
-                  disabled={!currentState.code}
-                  className="w-11 h-11 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 flex items-center justify-center cursor-pointer"
-                  title="Copy code"
+                  type="button"
+                  onClick={() => handleUpdateConfigField('enabled', !wizardConfig?.enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                    wizardConfig?.enabled ? 'bg-emerald-500' : 'bg-slate-600'
+                  }`}
                 >
-                  <Copy className="w-4 h-4" />
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      wizardConfig?.enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
                 </button>
               </div>
 
-              {/* Live status */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-                {currentState.status === 'waiting' && (
-                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Waiting for the code to arrive…
+              {/* Bot API Token */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Bot API Token</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    placeholder="Enter Bot Token (Leave empty to use platform default)"
+                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveToken}
+                    disabled={savingToken}
+                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save
+                  </button>
+                </div>
+                {saveSuccess && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Bot configured successfully!
                   </div>
                 )}
-                {currentState.status === 'confirming' && (
-                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Code received — connecting…
+                {saveError && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                    <X className="w-3.5 h-3.5 shrink-0" /> {saveError}
                   </div>
                 )}
-                {currentState.status === 'connected' && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Connected!
+
+                {/* Collapsible/Guided Block */}
+                {(!botUsername || showBotFatherGuide) && (
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center">
+                      <span>🤖 How to create a Telegram Bot:</span>
+                      {botUsername && (
+                        <button
+                          type="button"
+                          onClick={() => setShowBotFatherGuide(false)}
+                          className="text-[10px] text-slate-500 hover:text-slate-700 cursor-pointer"
+                        >
+                          Hide Guide
+                        </button>
+                      )}
                     </div>
+                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400">
+                      <div>
+                        1. Open <a href="https://t.me/BotFather?text=%2Fnewbot" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline font-bold">BotFather</a> and send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/newbot</code>.
+                      </div>
+                      <div>
+                        2. Choose a display name, then choose a unique username ending in <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">bot</code>.
+                      </div>
+                      <div>
+                        3. Copy the token generated (looks like <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">123456:ABC...</code>) and paste it above.
+                      </div>
+                      <div>
+                        4. <b>Critical Step:</b> send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/setprivacy</code> to BotFather, select your bot, and choose <b>Disable</b>.
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {botUsername && !showBotFatherGuide && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBotFatherGuide(true)}
+                    className="text-xs font-bold text-sky-600 hover:underline cursor-pointer block mt-1"
+                  >
+                    💡 Show BotFather setup guide
+                  </button>
+                )}
+              </div>
+
+              {/* Auto-Reminder Interval */}
+              <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  Auto-Reminder Interval (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={wizardConfig?.reminderThresholdMinutes ?? 5}
+                  onChange={(e) => handleUpdateConfigField('reminderThresholdMinutes', Math.max(1, Number(e.target.value) || 5))}
+                  className="w-24 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Minutes to wait before an unaddressed order/dish gets nudged again.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Group steps */}
+              <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                Pair your <span className="font-bold text-slate-700 dark:text-slate-200">{currentStep.label}</span> Telegram group
+              </div>
+
+              <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2 text-[11px] text-sky-800 dark:text-sky-300">
+                <span className="font-bold">Who belongs here: </span>
+                {ROLE_GUIDANCE[currentStep.key as keyof typeof ROLE_GUIDANCE]}
+              </div>
+
+              {!botUsername && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl p-4 text-center space-y-2 text-xs text-amber-800 dark:text-amber-300">
+                  <span>Please configure your Bot API Token in the <b>Bot & Settings</b> step first before pairing groups.</span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentIndex(0)}
+                    className="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg block mx-auto cursor-pointer"
+                  >
+                    Go to Settings
+                  </button>
+                </div>
+              )}
+
+              {botUsername && isConnected && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Successfully Connected!</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Your <b>{currentStep.label}</b> group chat is linked to the bot.
+                    </p>
+                    <div className="mt-2 text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-1.5 px-3 rounded-lg inline-block select-all">
+                      Chat ID: {currentState.chatId}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex flex-col gap-2">
                     <button
+                      type="button"
                       onClick={handleSendTest}
                       disabled={currentState.testSending}
                       className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -569,6 +560,15 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       {currentState.testSent ? 'Test Message Sent ✓ (send again)' : 'Send Test Message'}
                     </button>
+                    
+                    <button
+                      type="button"
+                      onClick={handleReSetup}
+                      className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer"
+                    >
+                      🔄 Re-setup / Re-pair Group
+                    </button>
+
                     {currentState.testSent && (
                       <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                         Check your Telegram group — the test message should be there.
@@ -580,30 +580,87 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       </div>
                     )}
                   </div>
-                )}
-                {currentState.status === 'expired' && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold text-amber-600 dark:text-amber-400">This code expired.</div>
+                </div>
+              )}
+
+              {botUsername && !isConnected && (
+                <>
+                  <ol className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200 list-none">
+                    <li className="flex gap-2.5">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">1</span>
+                      <span>In Telegram, create a new group{propertyName ? ` (e.g. "${propertyName} - ${currentStep.label}")` : ''}.</span>
+                    </li>
+                    <li className="flex gap-2.5">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">2</span>
+                      <span>
+                        Tap the group name → <b>Add Members</b> → search{' '}
+                        <span className="font-mono font-bold text-sky-700 dark:text-sky-400">@{botUsername}</span> → tap it to add.
+                      </span>
+                    </li>
+                    <li className="flex gap-2.5">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">3</span>
+                      <span>Send this code as a message in the group:</span>
+                    </li>
+                  </ol>
+
+                  {/* Code display */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-slate-900 dark:bg-black rounded-xl px-4 py-3 font-mono text-sky-400 text-sm font-bold tracking-wide text-center border border-slate-700">
+                      {currentState.status === 'generating' || !currentState.code ? (
+                        <Loader2 className="w-4 h-4 animate-spin inline-block text-slate-400" />
+                      ) : (
+                        currentState.code
+                      )}
+                    </div>
                     <button
-                      onClick={startPairing}
-                      className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
+                      onClick={handleCopyCode}
+                      disabled={!currentState.code}
+                      className="w-11 h-11 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 flex items-center justify-center cursor-pointer"
+                      title="Copy code"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> Generate a new code
+                      <Copy className="w-4 h-4" />
                     </button>
                   </div>
-                )}
-                {currentState.status === 'error' && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold text-red-600 dark:text-red-400">{currentState.errorMessage}</div>
-                    <button
-                      onClick={startPairing}
-                      className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" /> Try again
-                    </button>
+
+                  {/* Live status */}
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                    {currentState.status === 'waiting' && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Waiting for the code to arrive…
+                      </div>
+                    )}
+                    {currentState.status === 'confirming' && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Code received — connecting…
+                      </div>
+                    )}
+                    {currentState.status === 'expired' && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400">This code expired.</div>
+                        <button
+                          onClick={startPairing}
+                          className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Generate a new code
+                        </button>
+                      </div>
+                    )}
+                    {currentState.status === 'error' && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-red-600 dark:text-red-400">{currentState.errorMessage}</div>
+                        <button
+                          onClick={startPairing}
+                          className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Try again
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -618,7 +675,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             <ArrowLeft className="w-3.5 h-3.5" /> Back
           </button>
           <div className="flex items-center gap-3">
-            {!isLastStep && (
+            {currentStep.key !== 'settings' && !isConnected && (
               <button
                 onClick={skipStep}
                 className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
@@ -628,7 +685,6 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             )}
             <button
               onClick={goNext}
-              disabled={!isLastStep && !isConnected}
               className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
             >
               {isLastStep ? 'Finish' : 'Next'} <ArrowRight className="w-3.5 h-3.5" />
@@ -639,3 +695,4 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
     </div>
   );
 };
+
