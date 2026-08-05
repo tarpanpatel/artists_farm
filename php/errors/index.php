@@ -157,6 +157,11 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
                         <span id="badge-telegram" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
                     </button>
 
+                    <button onclick="switchPortal('whatsapp', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+                        <span class="flex items-center gap-2.5"><svg class="icon text-green-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 3.11L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>WhatsApp API</span>
+                        <span id="badge-whatsapp" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
+                    </button>
+
                     <button onclick="switchPortal('security', this)" class="nav-portal-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
                         <span class="flex items-center gap-2.5"><svg class="icon text-purple-400 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>Security Audits</span>
                         <span id="badge-security" class="px-2 py-0.5 text-[10px] rounded-full bg-gray-800 text-gray-300 font-mono">0</span>
@@ -252,7 +257,7 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
     }
 
         function getUnseenCounts(logs) {
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
         logs.forEach(l => {
             const p = (l.portal || '').toLowerCase();
             if (!counts.hasOwnProperty(p)) return;
@@ -395,7 +400,7 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
             }
         } else {
             // Fallback: count only if server didn't provide counts
-            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
+            const counts = { requests: 0, php: 0, sql: 0, js: 0, telegram: 0, whatsapp: 0, security: 0, 404: 0, staff_activity: 0, login: 0 };
             allLogs.forEach(l => {
                 const p = (l.portal || '').toLowerCase();
                 if (counts[p] !== undefined) counts[p]++;
