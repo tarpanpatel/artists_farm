@@ -12,8 +12,8 @@ Kitchen Live Orders currently shows served items struck-through inside their ori
 ### Staff Advances: move off localStorage onto the database
 Staff advances (Monthly Payout Calculator, "+ Advance") are stored entirely in browser localStorage (`staff_advances`), not in any DB table. Consequences: doesn't sync across devices/terminals (an advance given from one browser is invisible on another), fragile (cleared browser data or a new device silently loses the record), and feeds directly into the real pendingPayout (money owed) calculation - so losing it has real financial consequences, not just a display glitch. Symptom already seen live: a stale/orphaned advance entry whose staffId no longer matches any current staff member, so it can never be attributed to a row in the payout table above and just sits in the flat "Advances This Month" list underneath, disconnected. Needs a real `staff_advances` table + API (mirroring the pattern used for petty cash/financial ledger entries) so advances are durable, property-scoped, and properly tied to a staff_id foreign key.
 
-### WhatsApp Business API Integration - IN PROGRESS, blocked on template approval
-Guest-facing notifications via WhatsApp (booking confirmation first; food order updates and final bill/checkout planned next), via the WhatsApp Business Platform (Meta Graph API). Alongside, not replacing, the existing Telegram integration (which is staff/admin-facing, not guest-facing).
+### WhatsApp Business API Integration - booking confirmation LIVE, 2 templates left
+Guest-facing notifications via WhatsApp, via the WhatsApp Business Platform (Meta Graph API). Alongside, not replacing, the existing Telegram integration (which is staff/admin-facing, not guest-facing).
 
 Registered sender:
 - Display name: Artists Farm
@@ -21,11 +21,9 @@ Registered sender:
 - Phone Number ID: 1232057176655692
 
 Status:
-- `php/whatsapp/sender.php` built (mirrors `php/telegram/sender.php`'s shape) - `sendWhatsAppTemplateMessage()`, phone number normalization to E.164 (assumes +91 when no country code given), permanent token read from `WHATSAPP_ACCESS_TOKEN` env var or untracked `php/config/whatsapp_token.php` (same pattern as `DB_PASSWORD`).
-- Wired into `add_guest` (`php/guests/guests.php`) - fires a `new_booking_cofirmation` template send right after the existing Telegram admin notification, using the guest's phone/name/checkin date/room.
-- Verified end-to-end against the real Meta API: auth, request shape, and phone normalization all confirmed correct (got back a specific, well-formed API error rather than a connection/auth failure).
-- Currently blocked: the `new_booking_cofirmation` template is still "In review" in WhatsApp Manager - Meta's Send API only recognizes Approved templates. Once it flips to Approved, retest the same way; expected to work immediately since everything else already checked out.
-- Next once this one's confirmed working: `food_order_update` and `checkout_bill` templates (specs already drafted, not yet created in WhatsApp Manager) for the other two guest-facing notification points.
+- `php/whatsapp/sender.php` built (mirrors `php/telegram/sender.php`'s shape) - `sendWhatsAppTemplateMessage()`, phone number normalization to E.164, permanent token read from `WHATSAPP_ACCESS_TOKEN` env var or untracked `php/config/whatsapp_token.php` (same pattern as `DB_PASSWORD`).
+- **Booking confirmation: done and confirmed live.** `new_booking_cofirmation` template approved by Meta and wired into `add_guest` - real message sent and accepted (HTTP 200, `message_status: accepted`) on the first live retest after approval.
+- Remaining: `food_order_update` and `checkout_bill` templates (specs already drafted) - need creating in WhatsApp Manager (Utility category, same process as the first one) and wiring into the kitchen order-status-change and checkout flows respectively.
 
 ### Data Export Center: whole-year and custom date-range exports
 The Data Export & Backup Center (Accommodations Booking Spreadsheet, Property Maintenance & Utilities Logs, Payroll & Salaries Registry, Master Transaction Ledger) currently only exports one calendar month at a time (Target Statement Month + Year pickers). Add two more export scopes: a full calendar year in one export, and an arbitrary custom date range (start date -> end date) for ad-hoc reporting periods that don't align to a month or year boundary.
