@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Create root admin session for this property
               const user: StaffMember = {
                 id: session.username,
-                name: session.username,
+                name: session.name || session.username,
                 username: session.username,
                 role: 'root_admin', // Root admin has full access to any property
                 phone: session.phone_number || session.username || '',
@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const user: StaffMember = {
               id: session.username,
-              name: session.username,
+              name: session.name || session.username,
               username: session.username,
               role: session.role || 'Staff',
               phone: session.phone_number || session.username || '',

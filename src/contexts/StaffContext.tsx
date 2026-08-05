@@ -14,7 +14,7 @@ interface StaffContextValue {
   staffLoading: boolean;
   refreshAttendance: () => void;
   refreshStaff: () => void;
-  addStaff: (member: StaffMember) => void;
+  addStaff: (member: StaffMember) => Promise<boolean>;
   updateStaff: (id: string, updated: Partial<StaffMember>) => void;
   recordAttendance: (record: AttendanceRecord) => void;
 }
@@ -50,12 +50,16 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
           id: u.id,
           name: u.fullName || u.name || u.username,
           role: u.role || 'Staff',
-          phone: u.phone || '',
+          phone: u.phone || u.username || '',
           monthlySalary: u.monthlySalary || 0,
           status: u.status || 'Active',
           passcode: u.passcode,
           qrCodeUrl: u.qrCodeUrl,
           isFinancialHandler: u.isFinancialHandler,
+          // Username - the login phone number, distinct from `name`. Was
+          // previously dropped here entirely, leaving every `.username`
+          // read on a StaffMember silently undefined.
+          username: u.username || u.phone || '',
         })));
       }
       setStaffLoading(false);
@@ -82,18 +86,26 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     });
   }, []);
 
-  const addStaff = (member: StaffMember) => {
-    setStaff((prev) => [...prev, member]);
-    addStaffUserDB({
+  const addStaff = async (member: StaffMember): Promise<boolean> => {
+    // Username must be the login phone number, never the Staff Name - the
+    // backend validates it as a 10-digit number and silently rejects
+    // anything else, so this used to fail to persist while the UI still
+    // looked like it succeeded (member was already in local state).
+    const saved = await addStaffUserDB({
       id: member.id,
-      username: member.name,
+      username: member.phone,
       fullName: member.name,
       role: member.role,
       phone: member.phone,
+      passcode: member.passcode,
       monthlySalary: member.monthlySalary,
       status: member.status,
     });
-    onLogAudit?.(`Added new staff member: ${member.name} (${member.role})`);
+    if (saved) {
+      setStaff((prev) => [...prev, member]);
+      onLogAudit?.(`Added new staff member: ${member.name} (${member.role})`);
+    }
+    return saved;
   };
 
   const updateStaff = (id: string, updated: Partial<StaffMember>) => {

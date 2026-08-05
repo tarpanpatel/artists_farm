@@ -4,6 +4,7 @@ import { AlertCircle, Lock, Phone, KeyRound, Building2 } from 'lucide-react';
 interface LoginPageProps {
   onLoginSuccess: (userData: {
     username: string;
+    name?: string;
     role: string;
     is_platform_admin: boolean;
     default_tenant_id?: number;
@@ -64,6 +65,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (data.success && data.user) {
         const sessionData = {
           username: data.user.username,
+          name: data.user.name,
           role: data.user.role,
           is_platform_admin: data.user.is_platform_admin,
           default_tenant_id: data.user.default_tenant_id,

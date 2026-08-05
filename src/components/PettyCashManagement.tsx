@@ -250,7 +250,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
     addPettyCash(entry);
 
-    const handler = financialHandlers.find((h: any) => h.username === formState.paidBy);
+    const handler = financialHandlers.find((h: any) => h.name === formState.paidBy);
     if (formState.drawerAmount && Number(formState.drawerAmount) > 0) {
       addDrawerEntryToDB({
         staff_id: handler?.id || '',
@@ -560,7 +560,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <StyledSelect
                 value={formState.paidBy}
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
-                options={financialHandlers.map(h => ({ value: h.username, label: h.username }))}
+                options={financialHandlers.map(h => ({ value: h.name, label: h.name }))}
               />
             </div>
           </div>

@@ -186,12 +186,14 @@ export interface PettyCashEntry {
 
 export interface StaffMember {
   id: string;
+  // Staff Name - the human-readable display name. Never the login phone number.
   name: string;
   role: 'Manager' | 'Chef' | 'Housekeeping' | 'Farm Supervisor' | 'Kitchen Assistant' | 'Super Admin' | 'Admin' | 'Staff' | 'Staff Supervisor' | 'Staff Kitchen' | 'Front Desk' | string;
   phone: string;
   monthlySalary: number;
   status: string;
   // Optional fields populated from UserAccount / DB
+  // Username - the 10-digit phone number used to log in. Distinct from `name`.
   username?: string;
   passcode?: string;
   passcodePin?: string;
@@ -254,6 +256,11 @@ export interface PayeeEntity {
 
 export interface UserAccount {
   id: string;
+  // Staff Name - human-readable display name, shown everywhere a person needs
+  // to be identified (dropdowns, tables, attribution). Never the phone number.
+  fullName: string;
+  // Username - the 10-digit phone number used to log in. Never shown as a
+  // person's display name.
   username: string;
   role: string;
   passcodePin: string;

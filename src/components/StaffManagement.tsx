@@ -26,6 +26,7 @@ import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, 
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
 import { t } from '../i18n/en';
@@ -49,6 +50,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { currentUser } = useAuth();
   const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
@@ -68,6 +70,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Form States
   // 1. Create User
+  const [newFullName, setNewFullName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
   const [newRole, setNewRole] = useState<UserAccount['role']>('');
@@ -81,6 +84,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // 3. Update User
   const [selectedUpdateUserId, setSelectedUpdateUserId] = useState('');
+  const [updateFullName, setUpdateFullName] = useState('');
+  const [updateUsername, setUpdateUsername] = useState('');
   const [updateRole, setUpdateRole] = useState<UserAccount['role'] | ''>('');
   const [updatePasscode, setUpdatePasscode] = useState('');
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
@@ -183,6 +188,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [role, setRole] = useState<StaffMember['role']>('');
   const [phone, setPhone] = useState('');
   const [monthlySalary, setMonthlySalary] = useState(25000);
+  const [rosterPasscode, setRosterPasscode] = useState('');
 
   // Edit Staff Roster State
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
@@ -194,7 +200,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   useEffect(() => {
     setUsers(staff.map((member) => ({
       id: member.id,
-      username: member.name,
+      fullName: member.name,
+      username: member.username || member.phone || '',
       role: member.role,
       passcodePin: member.passcode || '',
       isFinancialHandler: Boolean(member.isFinancialHandler),
@@ -267,7 +274,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, cashCollected, handovers, outOfPocket, netDrawer, pendingPayout };
   });
 
-  const filteredUsers = users.filter(u => !searchUsers || u.username.toLowerCase().includes(searchUsers.toLowerCase()) || u.role.toLowerCase().includes(searchUsers.toLowerCase()));
+  const filteredUsers = users.filter(u => !searchUsers || u.fullName.toLowerCase().includes(searchUsers.toLowerCase()) || u.username.toLowerCase().includes(searchUsers.toLowerCase()) || u.role.toLowerCase().includes(searchUsers.toLowerCase()));
   const filteredPayees = payees.filter(p => !searchPayees || p.name.toLowerCase().includes(searchPayees.toLowerCase()) || p.type.toLowerCase().includes(searchPayees.toLowerCase()));
   const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
   const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
@@ -275,7 +282,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Handlers for Control Center
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername || !newPasscode) return;
+    if (!newFullName.trim() || !newUsername || !newPasscode) return;
     if (!/^\d{10}$/.test(newUsername)) {
       showToast('Username must be a 10-digit phone number.', { type: 'error' });
       return;
@@ -286,6 +293,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     }
     const newUser: UserAccount = {
       id: `usr-${Date.now().toString().slice(-4)}`,
+      fullName: newFullName.trim(),
       username: newUsername,
       role: newRole,
       passcodePin: newPasscode,
@@ -296,7 +304,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const saved = await addStaffUserDB({
       id: newUser.id,
       username: newUser.username,
-      fullName: newUser.username,
+      fullName: newUser.fullName,
       role: newUser.role,
       passcode: newUser.passcodePin,
       phone: newUser.username,
@@ -309,6 +317,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       return;
     }
     refreshStaff?.();
+    showToast('Staff login account created successfully!', { type: 'success' });
+    setNewFullName('');
     setNewUsername('');
     setNewPasscode('');
     setNewQrCodeUrl('');
@@ -362,17 +372,27 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleUpdateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUpdateUserId) return;
-    const currentUser = users.find((user) => user.id === selectedUpdateUserId);
-    if (!currentUser) return;
+    const targetUser = users.find((user) => user.id === selectedUpdateUserId);
+    if (!targetUser) return;
+    if (!updateFullName.trim()) {
+      showToast('Staff Name is required.', { type: 'error' });
+      return;
+    }
+    if (updateUsername && !/^\d{10}$/.test(updateUsername)) {
+      showToast('Username must be a 10-digit phone number.', { type: 'error' });
+      return;
+    }
     if (updatePasscode && !/^\d{6}$/.test(updatePasscode)) {
       showToast('Passcode must be exactly 6 digits.', { type: 'error' });
       return;
     }
     const saved = await updateStaffUserDB(selectedUpdateUserId, {
-      role: updateRole || currentUser.role,
-      passcode: updatePasscode || currentUser.passcodePin,
+      fullName: updateFullName.trim(),
+      username: updateUsername || targetUser.username,
+      role: updateRole || targetUser.role,
+      passcode: updatePasscode || targetUser.passcodePin,
       isFinancialHandler: updateIsFinancialHandler,
-      qrCodeUrl: updateQrCodeUrl || currentUser.qrCodeUrl,
+      qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
     });
     if (!saved) {
       showToast('Unable to update the user in the database.', { type: 'error' });
@@ -380,6 +400,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     }
     refreshStaff?.();
     setSelectedUpdateUserId('');
+    setUpdateFullName('');
+    setUpdateUsername('');
     setUpdatePasscode('');
     setUpdateRole('');
     setUpdateQrCodeUrl('');
@@ -472,9 +494,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setIsBulkSelectEnabled(true);
   };
 
-  const handleAddStaffSubmit = (e: React.FormEvent) => {
+  const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
+    if (!/^\d{10}$/.test(phone)) {
+      showToast('Phone number must be a 10-digit mobile number.', { type: 'error' });
+      return;
+    }
+    if (!/^\d{6}$/.test(rosterPasscode)) {
+      showToast('Passcode must be exactly 6 digits.', { type: 'error' });
+      return;
+    }
 
     const newStaff: StaffMember = {
       id: `st-${Date.now().toString().slice(-4)}`,
@@ -483,12 +513,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       phone,
       monthlySalary: Number(monthlySalary),
       status: 'Active',
+      passcode: rosterPasscode,
     };
 
-    addStaff(newStaff);
+    const saved = await addStaff(newStaff);
+    if (!saved) {
+      showToast('Unable to save the staff member to the database.', { type: 'error' });
+      return;
+    }
     setIsModalOpen(false);
     setName('');
     setPhone('');
+    setRosterPasscode('');
   };
 
   const totalPayroll = staff.reduce((acc, s) => acc + s.monthlySalary, 0);
@@ -579,10 +615,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <DataTable
                 columns={[
                   {
+                    name: 'Staff Name',
+                    selector: (row: any) => row.fullName,
+                    sortable: true,
+                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.fullName}</span>,
+                  },
+                  {
                     name: 'Username',
                     selector: (row: any) => row.username,
                     sortable: true,
-                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.username}</span>,
+                    width: '130px',
+                    cell: (row: any) => <span className="font-mono text-slate-500 dark:text-slate-400">{row.username}</span>,
                   },
                   {
                     name: 'Role Group',
@@ -617,7 +660,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     name: 'Actions',
                     right: true,
                     width: '120px',
-                    cell: (row: any) => row.username === 'Tarpan' ? (
+                    cell: (row: any) => currentUser?.id === row.id ? (
                       <span className="text-slate-400 italic text-[11px]">Active Session</span>
                     ) : (
                       <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">Delete</button>
@@ -631,7 +674,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 highlightOnHover
                 subHeader={
                   <div className="w-full flex items-center py-2">
-                    <input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by username or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                    <input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
                   </div>
                 }
                 customStyles={{
@@ -745,7 +788,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
                   }`}
                 >
-                  ⚙ Update Passcode / QR Code
+                  ⚙ Update Staff Account
                 </button>
               </div>
 
@@ -753,6 +796,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               <div className="p-5">
                 {userFormTab === 'create' ? (
                   <form onSubmit={handleCreateUser} className="space-y-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newFullName}
+                        onChange={(e) => setNewFullName(e.target.value)}
+                        placeholder="e.g. Ratan Singh"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
@@ -826,23 +880,48 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </form>
                 ) : (
                   <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
+                      <StyledSelect
+                        value={selectedUpdateUserId}
+                        onChange={(uid) => {
+                          setSelectedUpdateUserId(uid);
+                          const target = users.find((u) => u.id === uid);
+                          if (target) {
+                            setUpdateFullName(target.fullName);
+                            setUpdateUsername(target.username);
+                            setUpdateRole(target.role);
+                            setUpdateIsFinancialHandler(target.isFinancialHandler);
+                          }
+                        }}
+                        placeholder="-- Choose User Profile --"
+                        options={users.map((u) => ({ value: u.id, label: `${u.fullName} - ${u.username} (${u.role})` }))}
+                      />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
-                        <StyledSelect
-                          value={selectedUpdateUserId}
-                          onChange={(uid) => {
-                            setSelectedUpdateUserId(uid);
-                            const target = users.find((u) => u.id === uid);
-                            if (target) {
-                              setUpdateRole(target.role);
-                              setUpdateIsFinancialHandler(target.isFinancialHandler);
-                            }
-                          }}
-                          placeholder="-- Choose User Profile --"
-                          options={users.map((u) => ({ value: u.id, label: `${u.username} (${u.role})` }))}
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Name</label>
+                        <input
+                          type="text"
+                          value={updateFullName}
+                          onChange={(e) => setUpdateFullName(e.target.value)}
+                          placeholder="e.g. Ratan Singh"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                         />
                       </div>
+                      <div>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          value={updateUsername}
+                          onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="10-digit mobile number"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 6-Digit Passcode PIN (Leave blank to keep current)</label>
                         <input
@@ -1594,7 +1673,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <form onSubmit={handleAddStaffSubmit} className="space-y-3">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Full Name *</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Staff Name *</label>
                 <input
                   type="text"
                   required
@@ -1615,14 +1694,28 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Phone Number *</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Phone Number (Login Username) *</label>
                 <input
-                  type="text"
+                  type="tel"
                   required
+                  maxLength={10}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98281 00011"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit mobile number"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg font-mono focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">6-Digit Passcode PIN *</label>
+                <input
+                  type="password"
+                  required
+                  maxLength={6}
+                  value={rosterPasscode}
+                  onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-center font-mono font-bold tracking-widest focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 

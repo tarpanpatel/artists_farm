@@ -73,7 +73,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
     const entry = {
       staff_id: selectedStaffId,
-      staff_name: staffMember.username,
+      staff_name: staffMember.staffName,
       type: activeForm,
       amount: Number(amount),
       handed_to: activeForm === 'handover' ? handedTo : undefined,

@@ -32,6 +32,9 @@ try {
         if (!in_array('default_tenant_id', $cols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN `default_tenant_id` INT DEFAULT NULL");
         }
+        if (!in_array('full_name', $cols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+        }
     }
 } catch (Exception $e) {}
 
@@ -65,7 +68,7 @@ $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanD
 try {
     // 1. Search in `users` table (Platform Super Admins, Tenant Admins)
     $stmt = $pdo->prepare("
-        SELECT id, username, phone_number, password, passcode, role, is_platform_admin, default_tenant_id
+        SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id
         FROM users
         WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
         LIMIT 1
@@ -107,7 +110,7 @@ try {
                 'user' => [
                     'id' => $user['id'],
                     'username' => $user['username'],
-                    'name' => $user['username'],
+                    'name' => $user['full_name'] ?: $user['username'],
                     'role' => $role,
                     'is_platform_admin' => $is_platform_admin,
                     'default_tenant_id' => $user['default_tenant_id'] ?? null,

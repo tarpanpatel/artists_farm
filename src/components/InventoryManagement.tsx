@@ -1314,8 +1314,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   onChange={setSelectedPaidByStaff}
                   placeholder="-- Paid By --"
                   options={cashHandlers.map(u => ({
-                    value: u.username || u.name,
-                    label: `${u.name || u.username} (${u.role})`,
+                    value: u.name,
+                    label: `${u.name} (${u.role})`,
                   }))}
                 />
               ) : (
