@@ -4,6 +4,17 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---
 
+## 🔴 Top Priority
+
+### Soft-deleted multi-key rooms still counted against tenant slot usage
+Deleting a room in a multi-key property (`Delete room` on the Operational Dashboard / Rooms grid) soft-deletes it - `deleteMultiKeyRoom()` in `php/api/multikey_properties.php` sets `is_deleted = 1` and preserves booking history, it never actually removes the row. The property's own dashboard correctly hides it afterward (`getMultiKeyProperty()`'s room query filters `AND is_deleted = 0`), but the **tenant-level Slot Usage widget does not**: `get_tenant_properties` in `php/api/router.php` (~line 406) computes `room_count` via `(SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')` with no `is_deleted` filter, so every soft-deleted room permanently inflates that property's counted room total forever.
+
+Confirmed live on the Vrikshawan tenant: Goa Homes shows exactly 4 active rooms on its own dashboard (Room 101-104), but the Tenant Manager's Slot Usage panel (`TenantDashboard.tsx`) reports "Goa Homes: 5 rooms = 5 slots" - one extra from a room deleted at some point in the past. Combined with Resort Hut's 1 slot, the tenant's total reads "6/5 slots used" / "No slots remaining", which is actively wrong (true usage is 5/5) and blocks the **Add Property** button on both the tenant's own panel and the root admin's "Add Property" modal for that tenant. This isn't cosmetic - it can lock a paying tenant out of provisioning a property they're actually still entitled to.
+
+Fix: add `AND r.is_deleted = 0` to the `room_count` subquery at `router.php:406`, matching the filter `getMultiKeyProperty()` already uses. Worth double-checking `create_multikey_property`'s slot-check logic (`router.php` ~line 541, `$slotsNeeded = ($property_type === 'MULTI_KEY') ? $room_count : 1`) and any other place `room_count`/slot totals get computed for the same missing filter, since this was clearly copy-pasted without the guard in at least one place already.
+
+---
+
 ## 🟢 Open Items
 
 ### iCal Feed URL broken on Vite dev server (wrong base path)
