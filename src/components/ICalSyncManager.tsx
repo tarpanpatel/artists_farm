@@ -352,7 +352,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
               <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               <span>iCal & OTA Channel Integration Keys</span>
             </h1>
@@ -392,7 +392,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               <Globe className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">
             {calendars.length} <span className="text-xs font-semibold text-slate-500">Active</span>
           </p>
           <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
@@ -408,7 +408,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">
             15 Min <span className="text-xs font-semibold text-slate-500">Interval</span>
           </p>
           <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
@@ -424,7 +424,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               <CheckCircle2 className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             100% <span className="text-xs font-semibold text-slate-500">Operational</span>
           </p>
           <p className="text-[10px] text-slate-500 font-semibold">Zero availability conflicts</p>
@@ -439,7 +439,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 <Share2 className="w-4 h-4 text-sky-600" />
               </div>
             </div>
-            <p className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">OTA Feed URL</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">OTA Feed URL</p>
           </div>
           <button
             onClick={() => copyToClipboard(exportUrl, 'main_export')}
@@ -493,7 +493,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         {/* Data Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-extrabold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider">
+            <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider">
               <tr>
                 <th className="p-4">Channel / Platform</th>
                 <th className="p-4">Endpoint URL (.ics)</th>
@@ -514,11 +514,11 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                     {/* Platform & Name */}
                     <td className="p-4">
                       <div className="flex items-center gap-2.5">
-                        <span className={`px-2.5 py-1 rounded-full border text-[10px] font-extrabold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
+                        <span className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                           {badge.name}
                         </span>
-                        <span className="font-extrabold text-slate-900 dark:text-white text-xs truncate max-w-[200px]">
+                        <span className="font-semibold text-slate-900 dark:text-white text-xs truncate max-w-[200px]">
                           {cal.service_name}
                         </span>
                       </div>
@@ -617,42 +617,10 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         </div>
       </div>
 
-      {/* Master Export iCal Integration Details (Flowbite Card Style) */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-indigo-600" />
-              <span>Resort Master Export Calendar Feed</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Provide this standard iCal feed URL to external travel portals (Airbnb, Booking.com, MakeMyTrip) to block booked resort dates automatically.
-            </p>
-          </div>
-
-          <button
-            onClick={() => copyToClipboard(exportUrl, 'main_export')}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
-          >
-            {copiedExport ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            <span>{copiedExport ? 'Export Link Copied' : 'Copy Export Link'}</span>
-          </button>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-            Public iCal Feed Export URL
-          </span>
-          <div className="font-mono text-xs text-slate-800 dark:text-slate-200 break-all select-all">
-            {exportUrl}
-          </div>
-        </div>
-      </div>
-
       {/* Per-Room iCal Configuration for MultiKey Properties */}
       {propertyRooms.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <span>Room-by-Room iCal Sync Settings ({propertyRooms.length} Rooms)</span>
           </h3>
@@ -682,7 +650,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                     <div>
-                      <h4 className="font-extrabold text-base text-slate-900 dark:text-white">{room.name}</h4>
+                      <h4 className="font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
                       <p className="text-[10px] text-slate-400 font-mono">Room Slug: {room.slug}</p>
                     </div>
                     <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
@@ -701,7 +669,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                           const isCopiedUrl = copiedUrls.has(cal.id);
                           return (
                             <div key={cal.id} className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-extrabold flex items-center gap-1 shrink-0 ${badge.bg}`}>
+                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1 shrink-0 ${badge.bg}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                                 {badge.name}
                               </span>
@@ -815,7 +783,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
                 <span>Connect New iCal Feed</span>
               </h3>
@@ -863,7 +831,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
               {propertyRooms.length > 0 && (
                 <div>
-                  <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
                     2. Target Room Assignment
                   </label>
                   <StyledSelect
