@@ -12,20 +12,20 @@ Kitchen Live Orders currently shows served items struck-through inside their ori
 ### Staff Advances: move off localStorage onto the database
 Staff advances (Monthly Payout Calculator, "+ Advance") are stored entirely in browser localStorage (`staff_advances`), not in any DB table. Consequences: doesn't sync across devices/terminals (an advance given from one browser is invisible on another), fragile (cleared browser data or a new device silently loses the record), and feeds directly into the real pendingPayout (money owed) calculation - so losing it has real financial consequences, not just a display glitch. Symptom already seen live: a stale/orphaned advance entry whose staffId no longer matches any current staff member, so it can never be attributed to a row in the payout table above and just sits in the flat "Advances This Month" list underneath, disconnected. Needs a real `staff_advances` table + API (mirroring the pattern used for petty cash/financial ledger entries) so advances are durable, property-scoped, and properly tied to a staff_id foreign key.
 
-### WhatsApp Business API Integration
-Add WhatsApp as a notification/alert channel alongside the existing Telegram integration (same event types: new bookings, kitchen orders, service requests, financial transactions, etc.), via the WhatsApp Business Platform (Meta Graph API).
+### WhatsApp Business API Integration - IN PROGRESS, blocked on template approval
+Guest-facing notifications via WhatsApp (booking confirmation first; food order updates and final bill/checkout planned next), via the WhatsApp Business Platform (Meta Graph API). Alongside, not replacing, the existing Telegram integration (which is staff/admin-facing, not guest-facing).
 
 Registered sender:
 - Display name: Artists Farm
 - Number: +91 99831 96863
 - Phone Number ID: 1232057176655692
 
-Implementation notes:
-- No SDK/Composer needed - native PHP cURL is enough (mirrors the existing `php/telegram/sender.php` pattern).
-- Send endpoint: `POST https://graph.facebook.com/v20.0/1232057176655692/messages`
-- Required headers: `Authorization: Bearer {permanent-access-token}` and `Content-Type: application/json`.
-- Body shape: `{"messaging_product":"whatsapp","to":"<recipient>","type":"text","text":{"body":"<message>"}}`
-- Access token must be a long-lived **System User** token (generated from Meta Business Settings) - default tokens expire in 24h and aren't viable for an unattended server. Store it the same way `DB_PASSWORD` is handled (env var / untracked config file), never hardcoded or committed.
+Status:
+- `php/whatsapp/sender.php` built (mirrors `php/telegram/sender.php`'s shape) - `sendWhatsAppTemplateMessage()`, phone number normalization to E.164 (assumes +91 when no country code given), permanent token read from `WHATSAPP_ACCESS_TOKEN` env var or untracked `php/config/whatsapp_token.php` (same pattern as `DB_PASSWORD`).
+- Wired into `add_guest` (`php/guests/guests.php`) - fires a `new_booking_cofirmation` template send right after the existing Telegram admin notification, using the guest's phone/name/checkin date/room.
+- Verified end-to-end against the real Meta API: auth, request shape, and phone normalization all confirmed correct (got back a specific, well-formed API error rather than a connection/auth failure).
+- Currently blocked: the `new_booking_cofirmation` template is still "In review" in WhatsApp Manager - Meta's Send API only recognizes Approved templates. Once it flips to Approved, retest the same way; expected to work immediately since everything else already checked out.
+- Next once this one's confirmed working: `food_order_update` and `checkout_bill` templates (specs already drafted, not yet created in WhatsApp Manager) for the other two guest-facing notification points.
 
 ### Data Export Center: whole-year and custom date-range exports
 The Data Export & Backup Center (Accommodations Booking Spreadsheet, Property Maintenance & Utilities Logs, Payroll & Salaries Registry, Master Transaction Ledger) currently only exports one calendar month at a time (Target Statement Month + Year pickers). Add two more export scopes: a full calendar year in one export, and an arbitrary custom date range (start date -> end date) for ad-hoc reporting periods that don't align to a month or year boundary.
