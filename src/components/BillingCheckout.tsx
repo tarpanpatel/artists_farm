@@ -52,7 +52,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'checkin_today' | 'checkout_today' | 'upcoming' | 'past_bookings'>('checkin_today');
+  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
   const [selectedGuestForCheckout, setSelectedGuestForCheckout] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,8 +68,22 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return `${y}-${m}-${day}`;
   }, []);
 
-  // Helper to categorize guest into tabs
-  const getGuestTabCategory = (g: Guest) => {
+  // Format date for display
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '—';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '—';
+      return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    } catch {
+      return '—';
+    }
+  };
+
+  // Fine-grained status (used for per-guest badges, and to derive the
+  // coarser tab category below) - distinguishes checking-in-today from
+  // checking-out-today, even though both now share one "Today" tab.
+  const getGuestDetailedStatus = (g: Guest) => {
     const statusStr = String(g.status || '');
     if (statusStr === 'CheckedOut' || statusStr === 'Cancelled') return 'past_bookings';
 
@@ -96,9 +110,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return 'past_bookings';
   };
 
+  // Tab category: check-in-today and checkout-today are merged into one
+  // "Today" tab - that's the single "what needs attention right now" view;
+  // splitting it in two meant checking two tabs to see everything happening
+  // today.
+  const getGuestTabCategory = (g: Guest): 'today' | 'upcoming' | 'past_bookings' => {
+    const detailed = getGuestDetailedStatus(g);
+    if (detailed === 'checkin_today' || detailed === 'checkout_today') return 'today';
+    return detailed;
+  };
+
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
-    const cat = getGuestTabCategory(guest);
+    const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
       return { key: 'staying', label: 'Checked In Today', color: 'bg-emerald-600 text-white dark:bg-emerald-600' };
     } else if (cat === 'checkout_today') {
@@ -145,7 +169,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Calculate count for each tab
   const tabCounts = useMemo(() => {
-    const res = { checkin_today: 0, checkout_today: 0, upcoming: 0, past_bookings: 0 };
+    const res = { today: 0, upcoming: 0, past_bookings: 0 };
     uniqueGuests.forEach((g) => {
       const cat = getGuestTabCategory(g);
       res[cat] = (res[cat] || 0) + 1;
@@ -187,10 +211,24 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     });
   }, [guests, activeTab, selectedRoomFilter, rooms, todayStr]);
 
-  // Group guests by room for ALL properties (Single property is treated as a 1-room unit)
-  const groupedByRoom = useMemo(() => {
-    const effectiveRooms = rooms.length > 0 
-      ? rooms 
+  // Search applied once, up front, so every view built from it (room-grid,
+  // date-grouped) reflects the same filtered set.
+  const searchedGuests = useMemo(
+    () =>
+      targetGuests.filter((g) =>
+        g.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        g.phoneNumber.includes(searchTerm) ||
+        g.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [targetGuests, searchTerm]
+  );
+
+  // Group an arbitrary guest list by room (Single property is treated as a
+  // 1-room unit). Extracted as its own function - not just for the main
+  // room-grid view, but reused per-date-section in the Upcoming tab below.
+  const buildRoomGroups = (guestList: Guest[]): GroupedRoomBooking[] => {
+    const effectiveRooms = rooms.length > 0
+      ? rooms
       : [{ id: 1, name: 'Main Property / Villa', slug: 'main-villa' }];
 
     const matchedGuestIds = new Set<string>();
@@ -198,7 +236,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       .filter((room) => selectedRoomFilter === 'all' || room.name === selectedRoomFilter || room.slug === selectedRoomFilter)
       .map((room) => {
         const roomNum = room.name.match(/\d+/)?.[0];
-        const matched = targetGuests.filter((g) => {
+        const matched = guestList.filter((g) => {
           const gRoomId = (g as any).roomId || (g as any).room_id;
           if (gRoomId && Number(gRoomId) === Number(room.id)) return true;
 
@@ -228,7 +266,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
     // Group any unmatched guests under "Other / Unassigned Rooms"
     if (selectedRoomFilter === 'all') {
-      const unmatched = targetGuests.filter((g) => !matchedGuestIds.has(g.id));
+      const unmatched = guestList.filter((g) => !matchedGuestIds.has(g.id));
       if (unmatched.length > 0) {
         grouped.push({
           roomId: 9999,
@@ -240,21 +278,44 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
 
     return grouped;
-  }, [rooms, targetGuests, selectedRoomFilter]);
+  };
 
-  // Apply search filter
+  // Today / Past Bookings: room-first grid, same as always.
   const filteredGroups = useMemo(
-    () =>
-      groupedByRoom.map((group) => ({
-        ...group,
-        guests: group.guests.filter((g) =>
-          g.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          g.phoneNumber.includes(searchTerm) ||
-          g.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
-        ),
-      })),
-    [groupedByRoom, searchTerm]
+    () => buildRoomGroups(searchedGuests),
+    [searchedGuests, rooms, selectedRoomFilter]
   );
+
+  // Upcoming: date-first, rooms within each date - "what's happening when"
+  // matters more than "what's in room X" when you're planning ahead, unlike
+  // Today/Past where the room is the more useful anchor.
+  const upcomingByDate = useMemo(() => {
+    if (activeTab !== 'upcoming') return [];
+
+    const byDate = new Map<string, Guest[]>();
+    searchedGuests.forEach((g) => {
+      const checkin = (g.checkinDate || '').split(' ')[0].split('T')[0];
+      if (!byDate.has(checkin)) byDate.set(checkin, []);
+      byDate.get(checkin)!.push(g);
+    });
+
+    const tomorrowStr = (() => {
+      const d = new Date(todayStr);
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })();
+
+    return Array.from(byDate.keys())
+      .sort()
+      .map((dateStr) => ({
+        dateStr,
+        label: dateStr === tomorrowStr ? 'Tomorrow' : formatDate(dateStr),
+        roomGroups: buildRoomGroups(byDate.get(dateStr)!),
+      }));
+  }, [activeTab, searchedGuests, rooms, selectedRoomFilter, todayStr]);
 
   // Calculate totals for a guest
   const calculateGuestTotal = (guest: Guest): number => {
@@ -280,18 +341,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     setReceiptModalOpen(true);
   };
 
-  // Format date for display
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '—';
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return '—';
-      return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-    } catch {
-      return '—';
-    }
-  };
-
   // Calculate nights
   const calculateNights = (checkin: string, checkout: string): number => {
     if (!checkin || !checkout) return 0;
@@ -308,6 +357,176 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   const totalFilteredGuestsCount = filteredGroups.reduce((acc, g) => acc + g.guests.length, 0);
 
+  // Renders the room-column grid for a given set of room groups - shared by
+  // the main Today/Past view and each date-section under Upcoming, so the
+  // room card itself (guest list, financials, actions) only exists once.
+  const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+      {groups.map((group) => {
+        const checkedInInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'staying').length;
+        const upcomingInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'upcoming').length;
+
+        let roomStatusLabel = '';
+        if (checkedInInRoom > 0) {
+          roomStatusLabel = `${checkedInInRoom} checked in${upcomingInRoom > 0 ? ` (${upcomingInRoom} upcoming)` : ''}`;
+        } else if (upcomingInRoom > 0) {
+          roomStatusLabel = `Vacant today (${upcomingInRoom} upcoming)`;
+        } else {
+          roomStatusLabel = `${group.guests.length} booking(s)`;
+        }
+
+        return (
+          <div
+            key={`${group.roomId}-${group.roomSlug}`}
+            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between"
+          >
+            {/* Room Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                  <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  {group.roomName}
+                </h3>
+                <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                  {roomStatusLabel}
+                </p>
+              </div>
+              {(() => {
+                const groupTotal = group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0);
+                // Same "Refund Due" relabeling as the per-guest card below -
+                // a raw negative number here read as a bug, not a refund.
+                return (
+                  <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                    {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
+                  </span>
+                );
+              })()}
+            </div>
+
+            {/* Guest Card(s) stacked inside Room Column */}
+            <div className="p-4 space-y-4">
+              {group.guests.map((guest) => {
+                const amountDue = calculateGuestTotal(guest);
+                const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
+                const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : 'Same day stay';
+                const stayStatus = getGuestStayStatus(guest);
+                const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
+
+                return (
+                  <div
+                    key={guest.id}
+                    className="bg-slate-50/80 dark:bg-slate-900/50 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-400 dark:hover:border-blue-500/50 transition-all flex flex-col justify-between space-y-3"
+                  >
+                    {/* Top Header: Guest Name & Status Badge */}
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                            {guest.guestName}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {guest.phoneNumber || 'No contact'}
+                          </p>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
+                          {stayStatus.label}
+                        </span>
+                      </div>
+
+                      {/* Stay Dates */}
+                      <div className="mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
+                          <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span>{formatDate(guest.checkinDate)} → {formatDate(guest.expectedCheckout)}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
+                          {nightsDisplay}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial Breakdown */}
+                    <div className="space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
+                      {guest.roomRate ? (
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
+                          <span>Room Charges:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.roomRate.toFixed(2)}</span>
+                        </div>
+                      ) : null}
+                      {guest.foodBill > 0 && (
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
+                          <span>Food & Incidentals:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {guest.advanceAmount > 0 && (
+                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-[11px]">
+                          <span>Less: Advance Paid</span>
+                          <span className="font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {amountDue < 0 ? 'Refund Due to Guest:' : 'Amount Due:'}
+                        </span>
+                        <span className={amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}>
+                          ₹{Math.abs(amountDue).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {canCheckout ? (
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <button
+                          onClick={() => handleEditGuest(guest)}
+                          disabled={isProcessing}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleEditAndCheckoutGuest(guest)}
+                          disabled={isProcessing}
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Checkout
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pt-0.5">
+                        <button
+                          onClick={() => handleEditGuest(guest)}
+                          disabled={isProcessing}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Edit Booking
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Guest Notes */}
+                    {guest.notes && (
+                      <div className="p-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg flex gap-1.5 text-[10px]">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-amber-800 dark:text-amber-200 line-clamp-2">
+                          <span className="font-bold">Notes:</span> {guest.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -323,30 +542,16 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
           <button
-            onClick={() => setActiveTab('checkin_today')}
+            onClick={() => setActiveTab('today')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'checkin_today'
+              activeTab === 'today'
                 ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-600/30'
                 : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            <span>Check In Today</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'checkin_today' ? 'bg-white/20 text-white font-extrabold' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold'}`}>
-              {tabCounts.checkin_today}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('checkout_today')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'checkout_today'
-                ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-600/30'
-                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>Checkout Today</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'checkout_today' ? 'bg-white/20 text-white font-extrabold' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold'}`}>
-              {tabCounts.checkout_today}
+            <span>Today</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'today' ? 'bg-white/20 text-white font-extrabold' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold'}`}>
+              {tabCounts.today}
             </span>
           </button>
 
@@ -401,171 +606,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </div>
       </div>
 
-      {/* Room Groups Grid (Convert room blocks into side-by-side columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-        {filteredGroups.map((group) => {
-          const checkedInInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'staying').length;
-          const upcomingInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'upcoming').length;
-
-          let roomStatusLabel = '';
-          if (checkedInInRoom > 0) {
-            roomStatusLabel = `${checkedInInRoom} checked in${upcomingInRoom > 0 ? ` (${upcomingInRoom} upcoming)` : ''}`;
-          } else if (upcomingInRoom > 0) {
-            roomStatusLabel = `Vacant today (${upcomingInRoom} upcoming)`;
-          } else {
-            roomStatusLabel = `${group.guests.length} booking(s)`;
-          }
-
-          return (
-            <div
-              key={`${group.roomId}-${group.roomSlug}`}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between"
-            >
-              {/* Room Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                    <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    {group.roomName}
-                  </h3>
-                  <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
-                    {roomStatusLabel}
-                  </p>
-                </div>
-                {(() => {
-                  const groupTotal = group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0);
-                  // Same "Refund Due" relabeling as the per-guest card below -
-                  // a raw negative number here read as a bug, not a refund.
-                  return (
-                    <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
-                      {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
-                    </span>
-                  );
-                })()}
-              </div>
-
-              {/* Guest Card(s) stacked inside Room Column */}
-              <div className="p-4 space-y-4">
-                {group.guests.map((guest) => {
-                  const amountDue = calculateGuestTotal(guest);
-                  const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
-                  const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : 'Same day stay';
-                  const stayStatus = getGuestStayStatus(guest);
-                  const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
-
-                  return (
-                    <div
-                      key={guest.id}
-                      className="bg-slate-50/80 dark:bg-slate-900/50 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-400 dark:hover:border-blue-500/50 transition-all flex flex-col justify-between space-y-3"
-                    >
-                      {/* Top Header: Guest Name & Status Badge */}
-                      <div>
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
-                              {guest.guestName}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {guest.phoneNumber || 'No contact'}
-                            </p>
-                          </div>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
-                            {stayStatus.label}
-                          </span>
-                        </div>
-
-                        {/* Stay Dates */}
-                        <div className="mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-                            <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                            <span>{formatDate(guest.checkinDate)} → {formatDate(guest.expectedCheckout)}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
-                            {nightsDisplay}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Financial Breakdown */}
-                      <div className="space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
-                        {guest.roomRate ? (
-                          <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                            <span>Room Charges:</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.roomRate.toFixed(2)}</span>
-                          </div>
-                        ) : null}
-                        {guest.foodBill > 0 && (
-                          <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                            <span>Food & Incidentals:</span>
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {guest.advanceAmount > 0 && (
-                          <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-[11px]">
-                            <span>Less: Advance Paid</span>
-                            <span className="font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                          <span className="text-slate-700 dark:text-slate-300">
-                            {amountDue < 0 ? 'Refund Due to Guest:' : 'Amount Due:'}
-                          </span>
-                          <span className={amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}>
-                            ₹{Math.abs(amountDue).toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      {canCheckout ? (
-                        <div className="grid grid-cols-2 gap-2 pt-0.5">
-                          <button
-                            onClick={() => handleEditGuest(guest)}
-                            disabled={isProcessing}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleEditAndCheckoutGuest(guest)}
-                            disabled={isProcessing}
-                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
-                          >
-                            <LogOut className="w-3.5 h-3.5" />
-                            Checkout
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="pt-0.5">
-                          <button
-                            onClick={() => handleEditGuest(guest)}
-                            disabled={isProcessing}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Edit Booking
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Guest Notes */}
-                      {guest.notes && (
-                        <div className="p-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg flex gap-1.5 text-[10px]">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                          <p className="text-amber-800 dark:text-amber-200 line-clamp-2">
-                            <span className="font-bold">Notes:</span> {guest.notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+      {/* Upcoming: date-first sections, each with its own room grid.
+          Today/Past Bookings: a single room-first grid, as before. */}
+      {activeTab === 'upcoming' ? (
+        <div className="space-y-8">
+          {upcomingByDate.map((dateGroup) => (
+            <div key={dateGroup.dateStr}>
+              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                {dateGroup.label}
+              </h3>
+              {renderRoomGroupsGrid(dateGroup.roomGroups)}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        renderRoomGroupsGrid(filteredGroups)
+      )}
 
       {/* Empty Search Result */}
       {filteredGroups.length === 0 && (
