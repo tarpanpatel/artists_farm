@@ -466,7 +466,8 @@ function getMultiKeyProperty($pdo) {
     try {
         // Get parent MultiKey property
         $stmt = $pdo->prepare("
-            SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at
+            SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at,
+                   phone, google_maps_link, whatsapp_voucher_template, gstin
             FROM properties
             WHERE id = ? AND property_type = 'MULTI_KEY'
         ");

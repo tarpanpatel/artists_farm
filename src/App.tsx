@@ -1496,6 +1496,10 @@ ${itemsStr}
                       onDeleteBooking={handleDeleteGuest}
                       onGuestVerificationUpdated={handleGuestVerificationUpdated}
                       onCFormFiledUpdated={handleCFormFiledUpdated}
+                      propertyName={preloadedData.currentProperty?.name || ''}
+                      propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                      propertyPhone={preloadedData.currentProperty?.phone || ''}
+                      propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                     />
                   </ErrorBoundary>
                 )

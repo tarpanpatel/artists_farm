@@ -27,6 +27,10 @@ interface MultiKeyProperty {
   created_at: string;
   room_count: number;
   rooms: Room[];
+  phone?: string;
+  google_maps_link?: string;
+  whatsapp_voucher_template?: string;
+  gstin?: string;
   shared_data: {
     staff?: any[];
     kitchen?: any;
@@ -312,6 +316,10 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   onCFormFiledUpdated={onCFormFiledUpdated}
                   onDispatchTelegram={onDispatchTelegram}
                   activeMenuItemKey={activeMenuItemKey}
+                  propertyName={property.name}
+                  propertyMapsLink={property.google_maps_link || ''}
+                  propertyPhone={property.phone || ''}
+                  propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
                       const response = await fetch('/artists_farm/php/api/router.php?action=update_room_name', {

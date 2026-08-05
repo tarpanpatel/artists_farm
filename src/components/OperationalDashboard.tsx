@@ -13,8 +13,11 @@ import {
   Plus,
   ExternalLink,
   Pencil,
-  IdCard
+  IdCard,
+  Share2,
+  Printer
 } from 'lucide-react';
+import * as htmlToImage from 'html-to-image';
 import { Guest, Order } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -23,6 +26,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { useToast } from './ToastContext';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -44,6 +48,10 @@ interface OperationalDashboardProps {
   onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
+  propertyName?: string;
+  propertyMapsLink?: string;
+  propertyPhone?: string;
+  propertyWhatsappTemplate?: string;
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
@@ -66,8 +74,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onCFormFiledUpdated,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
+  propertyName = '',
+  propertyMapsLink = '',
+  propertyPhone = '',
+  propertyWhatsappTemplate = '',
 }) => {
   const { showToast } = useToast();
+  const [isSharingPng, setIsSharingPng] = useState(false);
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -132,6 +145,66 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     });
 
     return blockedStrings;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const dateOnly = dateStr.split(' ')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  // WhatsApp share - same wa.me + per-property customizable template as the
+  // post-booking confirmation voucher and the TodayOverview calendar's
+  // Booking Details modal, so it's reachable from here too.
+  const buildWhatsAppShareUrl = (guest: Guest) => {
+    const digits = (guest.phoneNumber || '').replace(/\D/g, '');
+    const phone = digits.length === 10 ? '91' + digits : digits;
+    const message = renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+      guest_name: guest.guestName,
+      room_name: guest.roomNumber || roomName || '',
+      property_name: propertyName || 'us',
+      checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
+      checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || ''),
+      guest_count: String((guest as any).no_of_guests ?? (guest as any).numberOfGuests ?? 1),
+      room_tariff: ((guest as any).per_night_charges || (guest as any).roomRate || 0).toFixed(2),
+      advance_paid: ((guest as any).advance_paid || (guest as any).advanceAmount || (guest as any).advance || 0).toFixed(2),
+      maps_link: propertyMapsLink || '',
+      contact_phone: propertyPhone || '',
+    });
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  };
+
+  // "Share Voucher (PNG)" - same html-to-image pattern used on the booking
+  // confirmation voucher, the billing receipt, and the TodayOverview
+  // calendar's Booking Details modal.
+  const handleShareVoucherPng = async () => {
+    const voucherBox = document.getElementById('printableRoomBookingContent');
+    if (!voucherBox) return;
+    const actionsBar = document.getElementById('printableRoomBookingActionsBar');
+    if (actionsBar) actionsBar.style.display = 'none';
+    setIsSharingPng(true);
+
+    try {
+      const blob = await htmlToImage.toBlob(voucherBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      if (!blob) return;
+      const file = new File([blob], `Booking_${selectedBooking?.guestName || 'Details'}_${Date.now()}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Booking Details' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `Booking_${selectedBooking?.guestName || 'Details'}_${Date.now()}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      }
+    } catch (err) {
+      showToast('Failed to generate image: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
+    } finally {
+      if (actionsBar) actionsBar.style.display = '';
+      setIsSharingPng(false);
+    }
   };
 
   // Update edit state when booking is selected
@@ -848,7 +921,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Booking Details Modal - Editable */}
       {selectedBooking && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div id="printableRoomBookingContent" className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit Booking</h2>
               <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
@@ -919,45 +992,67 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (!selectedBooking || !onUpdateBooking) return;
-                  setIsSavingBooking(true);
-                  try {
-                    await onUpdateBooking({
-                      ...selectedBooking,
-                      guestName: editGuestName,
-                      phoneNumber: editPhone,
-                      checkinDate: editCheckin,
-                      expectedCheckout: editCheckout,
-                      ...( { no_of_guests: editNoOfGuests } as any),
-                    });
-                    showToast('Booking updated successfully', { type: 'success' });
-                    setSelectedBooking(null);
-                  } catch (err) {
-                    showToast('Failed to update booking. Please try again.', { type: 'error' });
-                  } finally {
-                    setIsSavingBooking(false);
-                  }
-                }}
-                disabled={isSavingBooking || !onUpdateBooking}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
-              >
-                {isSavingBooking ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
-              >
-                Delete
-              </button>
+            <div id="printableRoomBookingActionsBar">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedBooking(null)}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!selectedBooking || !onUpdateBooking) return;
+                    setIsSavingBooking(true);
+                    try {
+                      await onUpdateBooking({
+                        ...selectedBooking,
+                        guestName: editGuestName,
+                        phoneNumber: editPhone,
+                        checkinDate: editCheckin,
+                        expectedCheckout: editCheckout,
+                        ...( { no_of_guests: editNoOfGuests } as any),
+                      });
+                      showToast('Booking updated successfully', { type: 'success' });
+                      setSelectedBooking(null);
+                    } catch (err) {
+                      showToast('Failed to update booking. Please try again.', { type: 'error' });
+                    } finally {
+                      setIsSavingBooking(false);
+                    }
+                  }}
+                  disabled={isSavingBooking || !onUpdateBooking}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
+                >
+                  {isSavingBooking ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
+                >
+                  Delete
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <a
+                  href={buildWhatsAppShareUrl(selectedBooking)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share via WhatsApp
+                </a>
+                <button
+                  onClick={handleShareVoucherPng}
+                  disabled={isSharingPng}
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  {isSharingPng ? 'Preparing…' : 'Share PNG'}
+                </button>
+              </div>
             </div>
           </div>
 
