@@ -6,11 +6,8 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Guest History Data Table (per property)
-A dedicated page, scoped to an individual property, listing all past and current guests in a React data table. Columns: check-in date, check-out date, phone number, payment/advance taken, additional charges, and the other guest fields already tracked (status, room, notes, etc.). Read-only history/reporting view, not a booking editor.
-
-### Competitive Feature Audit vs myhomestay.ai
-Compare this app against https://myhomestay.ai/features and confirm parity - identify any features listed there that this app is missing.
+### PWA / Add to Home Screen App Installation
+Add support for Progressive Web App (PWA) installation. When accessed on a mobile device or desktop browser, display a premium, non-intrusive prompt/notification to "Add to Home Screen" or "Install App". Clicking it will trigger the browser's native PWA installation flow.
 
 ### Plain-Language UI Text + Centralized Strings File
 UI copy is currently hardcoded inline across ~52 component files (e.g. "Authorization Role" in StaffManagement.tsx), written in formal/jargon-y English that's unfriendly to staff who aren't fluent readers. Two-part effort:

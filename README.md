@@ -1,34 +1,170 @@
-# The Artists' Farm - Property Management System
+# Artists Farm — Hospitality Operations Platform
 
-## Overview
-This repository contains the source code for the comprehensive property management and operational platform built for **The Artists' Farm**, an exclusive countryside vacation rental and Bed & Breakfast (B&B) property located in Rajasthan.
+Artists Farm is a multi-tenant hospitality operations platform for vacation rentals, boutique stays, and B&B properties. It supports both single-key properties (one active booking at a time) and multi-key properties with independently managed rooms.
 
-Designed specifically for a single-key property model (hosting one exclusive set of guests at a time), the system acts as an all-in-one hospitality operations dashboard. It streamlines everything from guest coordination and live kitchen orders to staff management and financial tracking, ensuring a seamless, highly personalized, and uninterrupted guest experience.
+The application combines front-desk operations, food service, finance, staff coordination, property administration, and operational reporting in one web dashboard.
 
-## Key Features & Modules
+## What it does
 
-* **Exclusive Guest Management**: Tailored for single-group bookings, this module handles guest profiles, stay tracking, and specialized hospitality requirements, ensuring dedicated attention to the current occupants without the clutter of multi-room management.
-* **Operational & Analytics Dashboards**: Provides real-time metrics, system overviews, and operational statistics (via `OperationalDashboard`, `AnalyticsDashboard`, and `AuditLogsView`) to monitor the daily performance of the property.
-* **Kitchen & Menu Operations**: Manages food and beverage inventories, live kitchen orders, and digital menus, allowing the staff to efficiently cater to the specific culinary preferences of the residing guests.
-* **Finance, Billing & Petty Cash**: Tracks ledger entries, billing receipts, petty cash, and miscellaneous charges using dedicated financial modules to maintain transparent and accurate accounting.
-* **Inventory & Staff Tracking**: Monitors physical stock and supplies while coordinating staff duties, ensuring the property is perfectly maintained and staffed for the guests' needs.
-* **Telegram Notification Integration**: Features an automated alert system integrated directly with Telegram. It pushes real-time updates and notifications regarding operations, kitchen orders, and system alerts to management and staff.
-* **System Diagnostics & Customization**: Includes a dedicated error-handling center (`TelescopeErrorCenter`) and backend logging for operational stability, along with a Navigation Menu Editor and custom CSS overrides for UI tailoring.
+- Manage tenants, properties, licences, modules, and property-level settings.
+- Run single-key and multi-key properties; multi-key rooms can each have one active booking.
+- Register guests, collect ID documents, track check-ins, complete verification, and perform checkout with receipts.
+- Manage menu items, kitchen orders, staff meals, stock requests, purchases, wastage, recipes, and inventory.
+- Track petty cash, expense items, cash drawer activity, miscellaneous charges, salary payments, and financial ledgers.
+- Manage staff, users, roles, attendance, payees, and permissions.
+- Handle service requests, iCal synchronisation, Telegram notifications, audit logs, diagnostics, data export, themes, and custom navigation.
 
-## Technology Stack
+## Architecture
 
-**Frontend**
-* **Framework**: React
-* **Language**: TypeScript
-* **Build Tool**: Vite
-* **Styling**: Custom CSS with dynamic override capabilities
+```
+Browser
+  └─ React + TypeScript application (src/)
+       └─ PHP API client (src/services/api.ts)
+            └─ PHP API router (php/api/router.php)
+                 ├─ Domain modules: guests, kitchen, inventory, finance, staff, billing
+                 ├─ Platform modules: tenants, properties, licences, themes, configuration
+                 └─ MySQL database
+```
 
-**Backend & Database**
-* **Server Logic**: PHP (API endpoints and routing)
-* **Database**: Relational SQL Database (`schema.sql` and `seed.sql` provided)
-* **Architecture**: RESTful API architecture connecting the React frontend to PHP operational scripts.
+### Frontend
 
-**Deployment & Tooling**
-* **Package Management**: npm / bun
-* **Deployment Automation**: Pre-configured deployment scripts utilizing SFTP (`deploy-sftp.mjs`) and PowerShell (`deploy.ps1`) for seamless live server updates.
-* **Data Utilities**: Automated scripts (`clone-db.mjs`, `clone-images.mjs`) for database replication and media asset migrations.
+- **React 19** with **TypeScript**
+- **Vite** for local development and production builds
+- **Tailwind CSS** plus application CSS overrides
+- **Lucide React** for icons
+- Context providers for authentication, modules, staff, kitchen, inventory, finance, and configuration data
+
+The primary frontend entry points are:
+
+- `src/main.tsx` — browser bootstrap and global client-side error capture.
+- `src/App.tsx` — application composition, screen state, and feature orchestration.
+- `src/services/api.ts` — API calls, property resolution, and client-side data mapping.
+- `src/components/DataLoader.tsx` — loads property, enabled modules, navigation, and Telegram configuration before rendering the app.
+
+### Backend
+
+The PHP backend is organised by domain. `php/api/router.php` is the central action dispatcher; frontend calls use the form:
+
+```
+/php/api/router.php?action={action}
+```
+
+Major backend directories:
+
+- `php/config/` — database connection, property resolution, testing sandbox, and system configuration.
+- `php/guests/`, `php/billing/`, `php/kitchen/`, `php/inventory/`, `php/finance/`, `php/staff/` — operational modules.
+- `php/modules/`, `php/licenses/`, `php/theme/`, `php/service_requests/` — platform and property configuration.
+- `php/telegram/`, `php/cron/` — Telegram integration and scheduled tasks.
+- `php/database/`, `php/schema/` — migrations, schema utilities, and configuration seeding.
+
+## Multi-tenant and multi-key routing
+
+The application resolves the current property from an explicit query parameter, request header, or URL. The normal tenant/property URL shape is:
+
+```
+/artists_farm/{tenant_slug}/{property_slug}/
+```
+
+For multi-key properties, room selection is kept in the URL hash, for example:
+
+```
+/artists_farm/{tenant_slug}/{property_slug}/#room-101
+```
+
+Property resolution is enforced on the backend so that an unknown explicit property or tenant request does not silently fall back to another property's data.
+
+## Local development
+
+### Prerequisites
+
+- Node.js and npm
+- PHP 8.2+
+- MySQL/MariaDB
+- Apache/XAMPP for the PHP application
+
+### Install and run the frontend
+
+```bash
+npm install
+npm run dev
+```
+
+Vite runs on port `3000` and proxies `/php` API requests to the local Apache instance. The current proxy configuration expects the PHP application under `/artists_farm-ai2/php`; update `vite.config.ts` if your local folder name differs.
+
+### Configure the database
+
+Database configuration is in `php/config/database.php`.
+
+- Local development uses the MySQL `root` account with no password by default and the `artists_farm_resort` database.
+- Production reads `DB_PASSWORD` from the environment, or from the untracked `php/config/db_pass.php` file.
+- The backend runs its table-initialisation/migration helpers during connection setup.
+
+### Production build
+
+```bash
+npm run build
+```
+
+The build is written to `dist/`. `index.php` serves that compiled application and rewrites asset paths so the SPA works from nested tenant/property URLs.
+
+## Authentication and security model
+
+- Login uses PHP sessions and cookie-based browser authentication.
+- API write operations require an authenticated session or server-side API key, subject to the router's public-action rules.
+- API requests are scoped to the resolved property.
+- SQL access is expected to use prepared statements.
+- The frontend no longer embeds an API key.
+- A testing mode can direct requests to a separate test database where available.
+
+## Operations and integrations
+
+- **Telegram:** property-level bot configuration, pairing, templates, alerts, test messages, polling, and webhooks.
+- **iCal:** import/export and scheduled synchronisation tools.
+- **Auditing:** browser and PHP errors, operational activity, and API requests are recorded through the Telescope-style logging utilities.
+- **Deployment:** SFTP and PowerShell deployment utilities are included in the project root. See `DEPLOYMENT.md` and related deployment guides.
+
+## Project conventions
+
+- Use Lucide React for UI icons.
+- Use Tailwind utilities and include dark-mode styling for new UI.
+- Display dates as `DD/MM/YYYY` unless a time is specifically needed.
+- Database fields use `snake_case`; API/client models use `camelCase`.
+- Preserve multi-key booking integrity: one active booking per room.
+- Pass feature callbacks explicitly from `App.tsx` through components where business behaviour depends on them.
+
+Detailed implementation conventions are maintained in `CLAUDE.md`.
+
+## Repository layout
+
+```
+src/                 React application
+  components/        Dashboard and operational UI
+  contexts/          Shared client-side state providers
+  services/          API and theme services
+  utils/             Logging, client detection, and UI helpers
+php/                 PHP/MySQL backend
+  api/               Central router and supporting endpoints
+  config/            Database and property-resolution configuration
+  cron/              Scheduled tasks
+  database/          Migrations and initialisation
+  uploads/           User-uploaded images and ID documents
+api/                 Legacy/platform authentication endpoints
+dist/                Generated production frontend build
+assets/, icons/      Static assets
+```
+
+## Validation
+
+There is currently no configured automated test suite. Before deployment, validate the affected frontend flow in the browser, check the Network and Console panels, run the TypeScript check, and lint PHP syntax:
+
+```bash
+npm exec tsc -- --noEmit
+C:\xampp\php\php.exe -l php\api\router.php
+```
+
+## Documentation
+
+- `CLAUDE.md` — implementation rules and project conventions.
+- `DEPLOYMENT.md`, `DEPLOYMENT_GUIDE.md`, `DEPLOY_TO_PRODUCTION.md` — deployment guidance.
+- `MONITORING.md`, `USER_PROBLEM_DETECTION.md` — monitoring and diagnostics.
+- `ROADMAP.md` — current roadmap status.
