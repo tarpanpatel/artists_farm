@@ -404,31 +404,54 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           {totalAlerts === 0 ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">No outstanding issues.</p>
           ) : (
-            <ul className="space-y-1.5">
-              {combinedAlerts.map(({ guest: g, severity, reasons }) => (
-                <li key={g.id}>
-                  <button
-                    onClick={() => setSelectedBooking(g)}
-                    className={`w-full flex items-center justify-between gap-3 rounded-lg border p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity ${
-                      severity === 'red'
-                        ? 'border-red-200 bg-red-50 text-red-800'
-                        : 'border-amber-200 bg-amber-50 text-amber-800'
-                    }`}
-                  >
-                    <span className="text-sm font-bold">
-                      {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
-                    </span>
-                    <span className="text-xs font-medium text-right space-y-0.5">
-                      {reasons.map((r, i) => (
-                        <div key={i} className="whitespace-nowrap">
-                          {r.label} — {r.detail}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700">
+                    <th className="pb-2 pr-3">Guest / Room</th>
+                    <th className="pb-2 pr-3">Issue</th>
+                    <th className="pb-2 w-36">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-700/60">
+                  {combinedAlerts.map(({ guest: g, severity, reasons }) => (
+                    <tr
+                      key={g.id}
+                      className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
+                    >
+                      <td className="py-2.5 pr-3 align-top">
+                        <div className={`text-sm font-bold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                          {g.guestName}
                         </div>
-                      ))}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{g.roomNumber}</div>
+                      </td>
+                      <td className="py-2.5 pr-3 align-top">
+                        <div className="space-y-0.5">
+                          {reasons.map((r, i) => (
+                            <div
+                              key={i}
+                              className={`text-xs font-medium whitespace-nowrap ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
+                            >
+                              {r.label} — {r.detail}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-2.5 align-top">
+                        <button
+                          onClick={() => setSelectedBooking(g)}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
+                            severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                          }`}
+                        >
+                          View &amp; Resolve
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {clearedGuests.length > 0 && (
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
