@@ -6,8 +6,11 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### PWA / Add to Home Screen App Installation
-Add support for Progressive Web App (PWA) installation. When accessed on a mobile device or desktop browser, display a premium, non-intrusive prompt/notification to "Add to Home Screen" or "Install App". Clicking it will trigger the browser's native PWA installation flow.
+### Kitchen Orders: running "served" history, sunk to the bottom
+Kitchen Live Orders currently shows served items struck-through inside their original order card. There used to be a running table (react-data-table-component, same pattern as Guest History) listing every dish served since the guest checked in, with served rows sinking to the bottom instead of staying pinned inside their order card - so staff can see the full serving history for a stay at a glance, not just per-order. Restore that view.
+
+### Data Export Center: whole-year and custom date-range exports
+The Data Export & Backup Center (Accommodations Booking Spreadsheet, Property Maintenance & Utilities Logs, Payroll & Salaries Registry, Master Transaction Ledger) currently only exports one calendar month at a time (Target Statement Month + Year pickers). Add two more export scopes: a full calendar year in one export, and an arbitrary custom date range (start date -> end date) for ad-hoc reporting periods that don't align to a month or year boundary.
 
 ### Plain-Language UI Text + Centralized Strings File
 UI copy is currently hardcoded inline across ~52 component files (e.g. "Authorization Role" in StaffManagement.tsx), written in formal/jargon-y English that's unfriendly to staff who aren't fluent readers. Two-part effort:
