@@ -28,6 +28,7 @@ interface Property {
   currency?: string;
   timezone?: string;
   parent_property_id?: number;
+  telegram_template_customization_enabled?: number;
 }
 
 interface PlatformPropertyManagementProps {
@@ -208,6 +209,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           slug: editingProperty.slug,
           color_scheme: editingProperty.tailwind_color_scheme,
           status: editingProperty.status,
+          telegram_template_customization_enabled: !!editingProperty.telegram_template_customization_enabled,
         }),
       });
 
@@ -961,6 +963,23 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
+              </div>
+
+              <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Allow Telegram Template Customization
+                  </span>
+                  <ToggleSwitch
+                    enabled={!!editingProperty.telegram_template_customization_enabled}
+                    onChange={(enabled) =>
+                      setEditingProperty({ ...editingProperty, telegram_template_customization_enabled: enabled ? 1 : 0 })
+                    }
+                  />
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  All templates are designed here at the root admin level. When off, this property's Super Admin can view templates and the live preview but can't edit the wording.
+                </p>
               </div>
 
               {showPropertyModal === 'add' && (

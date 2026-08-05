@@ -80,7 +80,7 @@ $is_authenticated_user = isset($_SESSION['username']);
 $is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
 
 // Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
-$platform_admin_actions = ['toggle_property_module', 'update_property', 'delete_property', 'create_tenant'];
+$platform_admin_actions = ['toggle_property_module', 'update_property', 'edit_property', 'delete_property', 'create_tenant'];
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
 
@@ -739,6 +739,10 @@ switch ($action) {
                 $sets[] = 'gstin = ?';
                 $params[] = trim($input['gstin']) ?: null;
             }
+            if (array_key_exists('telegram_template_customization_enabled', $input)) {
+                $sets[] = 'telegram_template_customization_enabled = ?';
+                $params[] = $input['telegram_template_customization_enabled'] ? 1 : 0;
+            }
 
             if (empty($sets)) {
                 echo json_encode(['success' => false, 'message' => 'No fields to update']);
@@ -831,7 +835,7 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("
                 UPDATE properties
-                SET name = ?, slug = ?, tailwind_color_scheme = ?, status = ?
+                SET name = ?, slug = ?, tailwind_color_scheme = ?, status = ?, telegram_template_customization_enabled = ?
                 WHERE id = ?
             ");
             $ok = $stmt->execute([
@@ -839,6 +843,7 @@ switch ($action) {
                 $input['slug'] ?? '',
                 $input['color_scheme'] ?? 'blue',
                 $input['status'] ?? 'active',
+                !empty($input['telegram_template_customization_enabled']) ? 1 : 0,
                 $property_id
             ]);
             echo json_encode(['success' => $ok, 'message' => $ok ? 'Property updated' : 'Failed']);

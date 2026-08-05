@@ -30,6 +30,7 @@ interface Property {
   room_count?: number;
   status?: string;
   gstin?: string;
+  telegram_template_customization_enabled?: number;
 }
 
 interface TenantInfo {
@@ -80,6 +81,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   // Edit form state
   const [editName, setEditName] = useState('');
   const [editGstin, setEditGstin] = useState('');
+  const [editTelegramTemplateCustomization, setEditTelegramTemplateCustomization] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
 
   const showSuccess = (msg: string) => {
@@ -215,6 +217,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           property_id: modal.property.id,
           name: editName.trim(),
           gstin: editGstin.trim(),
+          telegram_template_customization_enabled: editTelegramTemplateCustomization,
         }),
       });
       const data = await res.json();
@@ -461,7 +464,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       </a>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setModal({ type: 'edit', property }); }}
+                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setModal({ type: 'edit', property }); }}
                           className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                           title="Edit"
                         >
@@ -642,6 +645,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 />
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Printed on GST tax invoices at checkout.</p>
               </div>
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editTelegramTemplateCustomization}
+                  onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Allow Telegram Template Customization</span>
+                  <span className="block text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                    When off, this property's Super Admin can view templates and the live preview but can't edit the wording. All templates are otherwise designed here at the root admin level.
+                  </span>
+                </span>
+              </label>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
               <button onClick={() => setModal({ type: 'none' })} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-colors">Cancel</button>

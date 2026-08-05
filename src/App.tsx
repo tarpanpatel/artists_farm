@@ -1347,6 +1347,7 @@ ${itemsStr}
           dispatchLogs={telegramLogs}
           onSendTestNotification={handleSendTestNotification}
           kitchenModuleEnabled={kitchenEnabled}
+          templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
         />
 
         <DemoDataModal
@@ -1614,6 +1615,7 @@ ${itemsStr}
                   isEmbedded={true}
                   onLogAudit={logAudit}
                   kitchenModuleEnabled={kitchenEnabled}
+                  templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
                 />
               )}
 

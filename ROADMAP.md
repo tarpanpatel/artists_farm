@@ -6,7 +6,11 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-Nothing currently open — see git history (`git log -p ROADMAP.md`) for what's shipped and how.
+### Guest History Data Table (per property)
+A dedicated page, scoped to an individual property, listing all past and current guests in a React data table. Columns: check-in date, check-out date, phone number, payment/advance taken, additional charges, and the other guest fields already tracked (status, room, notes, etc.). Read-only history/reporting view, not a booking editor.
+
+### Competitive Feature Audit vs myhomestay.ai
+Compare this app against https://myhomestay.ai/features and confirm parity - identify any features listed there that this app is missing.
 
 ---
 *Last Updated: August 2026*

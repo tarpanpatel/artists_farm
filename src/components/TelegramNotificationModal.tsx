@@ -29,6 +29,7 @@ import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTe
 import { TelegramConnectionSettings } from './TelegramConnectionSettings';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface TelegramInlineButton {
   id: string;
@@ -58,6 +59,7 @@ interface TelegramNotificationModalProps {
   isEmbedded?: boolean;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
   kitchenModuleEnabled?: boolean;
+  templateCustomizationEnabled?: boolean;
 }
 
 // Identifies which templates are kitchen-related (hidden if kitchen module disabled)
@@ -75,6 +77,61 @@ const KITCHEN_TEMPLATE_KEYS = new Set([
   'webhook_dish_served_edit',
   'webhook_order_completed',
 ]);
+
+const EMOJI_REPLACEMENTS = [
+  { search: /\?\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT/gi, replace: '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>' },
+  { search: /\?\s*(<b>)?Guest:(<\/b>)?/gi, replace: '👤 <b>Guest:</b>' },
+  { search: /\?\s*(<b>)?ACCOMMODATION LOGISTICS/gi, replace: '🏠 <b>ACCOMMODATION LOGISTICS</b>' },
+  { search: /\?\s*(<b>)?FINAL ITEMIZED KOT/gi, replace: '🍽️ <b>FINAL ITEMIZED KOT</b>' },
+  { search: /\?\s*(<b>)?FINAL PAYOUT SPLIT/gi, replace: '💳 <b>FINAL PAYOUT SPLIT</b>' },
+  { search: /\?\s*(<b>)?Desk Cashier Executing/gi, replace: '👤 <i>Desk Cashier Executing</i>' },
+  { search: /\?\s*(<b>)?NEW FINANCIAL TRANSACTION/gi, replace: '💰 <b>NEW FINANCIAL TRANSACTION</b>' },
+  { search: /\?\s*(<b>)?Cashier:(<\/b>)?/gi, replace: '👤 <b>Cashier:</b>' },
+  { search: /\?\s*(<b>)?TOTAL CREDITED/gi, replace: '🟢 <b>TOTAL CREDITED</b>' },
+  { search: /\?\s*(<b>)?UPCOMING ARRIVALS TOMORROW/gi, replace: '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>' },
+  { search: /\?\s*(<b>)?DISH READY TO SERVE/gi, replace: '🍽️ <b>DISH READY TO SERVE</b>' },
+  { search: /\?\s*(<b>)?Order Ticket:(<\/b>)?/gi, replace: '🏷️ <b>Order Ticket:</b>' },
+  { search: /\?\s*(<b>)?NEW ORDER/gi, replace: '🔔 <b>NEW ORDER</b>' },
+  { search: /\?\s*(<b>)?DISH SERVED/gi, replace: '✅ <b>DISH SERVED</b>' },
+  { search: /\?\s*(<b>)?MATERIAL REQUEST/gi, replace: '📦 <b>MATERIAL REQUEST</b>' },
+  { search: /\?\s*(<b>)?Processed By:(<\/b>)?/gi, replace: '👤 <b>Processed By:</b>' },
+  { search: /\?\s*(<b>)?Global Status:(<\/b>)?/gi, replace: '🟢 <b>Global Status:</b>' },
+  { search: /\?\s*(<b>)?STAFF MEAL REQUEST/gi, replace: '🍱 <b>STAFF MEAL REQUEST</b>' },
+  { search: /\?\s*(<b>)?MATERIAL REQUISITION APPROVED/gi, replace: '✅ <b>MATERIAL REQUISITION APPROVED</b>' },
+  { search: /\?\s*(<b>)?FULLY ITEMIZED SETTLEMENT BILL/gi, replace: '🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>' },
+  { search: /\?\s*(<b>)?KITCHEN ORDER/gi, replace: '🍽️ <b>KITCHEN ORDER</b>' },
+  { search: /\?\s*(<b>)?STAFF DUTY MEAL DISPATCHED/gi, replace: '🍛 <b>STAFF DUTY MEAL DISPATCHED</b>' },
+  { search: /\?\s*(<b>)?NEW MATERIAL REQUISITION SHEET/gi, replace: '📦 <b>NEW MATERIAL REQUISITION SHEET</b>' },
+  { search: /\?\s*(<b>)?LOW STOCK WARNING ALERT/gi, replace: '⚠️ <b>LOW STOCK WARNING ALERT</b>' },
+  { search: /\?\s*(<b>)?PETTY CASH/gi, replace: '💰 <b>PETTY CASH</b>' },
+  { search: /\?\s*(<b>)?ORDER COMPLETED/gi, replace: '✅ <b>ORDER COMPLETED</b>' },
+  { search: /\?\s*(<b>)?FINANCIAL TRANSACTION \(DRAWER ADJUSTMENT\)/gi, replace: '🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>' },
+  { search: /\?\s*(<b>)?Staff Handler:(<\/b>)?/gi, replace: '👤 <b>Staff Handler:</b>' },
+  { search: /\?\s*(<b>)?Action Type:(<\/b>)?/gi, replace: '🔄 <b>Action Type:</b>' },
+  { search: /\?\s*(<b>)?Remarks:(<\/b>)?/gi, replace: '📝 <b>Remarks:</b>' },
+  { search: /\?\s*(<b>)?AMOUNT MOVEMENT:(<\/b>)?/gi, replace: '💰 <b>AMOUNT MOVEMENT:</b>' },
+  { search: /\?\s*(<b>)?Resident:(<\/b>)?/gi, replace: '👤 <b>Resident:</b>' },
+  { search: /\?\s*(<b>)?Receipt:(<\/b>)?/gi, replace: '🆔 <b>Receipt:</b>' },
+  { search: /\?\s*(<b>)?Advance Paid:(<\/b>)?/gi, replace: '💰 <b>Advance Paid:</b>' },
+  { search: /\?\s*(<b>)?Final Balance Due:(<\/b>)?/gi, replace: '🔴 <b>Final Balance Due:</b>' },
+  { search: /\?\s*(<b>)?Total Bill:(<\/b>)?/gi, replace: '💵 <b>Total Bill:</b>' },
+  { search: /\?\s*(<b>)?Payment Mode:(<\/b>)?/gi, replace: '💳 <b>Payment Mode:</b>' },
+  { search: /\?\s*(<b>)?Room:(<\/b>)?/gi, replace: '🚪 <b>Room:</b>' },
+  { search: /\?\s*(<b>)?ID Document\(s\):(<\/b>)?/gi, replace: '🪪 <b>ID Document(s):</b>' },
+  { search: /\?\s*(<b>)?ID VERIFICATION STILL PENDING/gi, replace: '🪪 <b>ID VERIFICATION STILL PENDING</b>' },
+  { search: /\?\s*(<b>)?Type:(<\/b>)?/gi, replace: '🧾 <b>Type:</b>' },
+  { search: /\?\s*(<b>)?Fulfill Time:(<\/b>)?/gi, replace: '🕒 <b>Fulfill Time:</b>' },
+  { search: /\?\s*(<b>)?Fulfillment Time:(<\/b>)?/gi, replace: '📅 <b>Fulfillment Time:</b>' },
+];
+
+export function restoreEmojis(text: string): string {
+  if (!text) return text;
+  let cleaned = text;
+  for (const item of EMOJI_REPLACEMENTS) {
+    cleaned = cleaned.replace(item.search, item.replace);
+  }
+  return cleaned;
+}
 
 // Fallback templates used only when DB fetch returns empty
 const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
@@ -348,7 +405,14 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   isEmbedded = false,
   onLogAudit,
   kitchenModuleEnabled,
+  templateCustomizationEnabled = false,
 }) => {
+  const { activeRole } = useAuth();
+  const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
+  // All templates are designed at the root admin level; a property's Super
+  // Admin can only edit them here if the root admin has explicitly turned on
+  // customization for this property.
+  const canEditTemplates = isRootAdmin || templateCustomizationEnabled;
   const [config, setConfig] = useState<TelegramConfig>(telegramConfig);
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
@@ -369,6 +433,58 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [showBotSettings, setShowBotSettings] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
+  const [activeCategory, setActiveCategory] = useState<'All' | 'Kitchen' | 'Admin' | 'Finances'>('All');
+
+  const getTemplateGroup = (tpl: TelegramTemplateExtended): 'Kitchen' | 'Admin' | 'Finances' => {
+    const key = tpl.dbKey.toLowerCase();
+    const cat = tpl.category.toLowerCase();
+    
+    if (
+      key.includes('kitchen') || 
+      key.includes('meal') || 
+      key.includes('requisition') || 
+      key.includes('stock') || 
+      key.includes('order') || 
+      key.includes('dish') || 
+      key.includes('served') ||
+      cat.includes('kitchen') || 
+      cat.includes('ordering') ||
+      cat.includes('inventory') ||
+      cat.includes('requisition') ||
+      cat.includes('meal')
+    ) {
+      return 'Kitchen';
+    }
+    
+    if (
+      key.includes('finance') || 
+      key.includes('billing') || 
+      key.includes('expense') || 
+      key.includes('revenue') || 
+      key.includes('credit') || 
+      key.includes('drawer') || 
+      key.includes('cash') ||
+      cat.includes('billing') ||
+      cat.includes('financial') ||
+      cat.includes('finance')
+    ) {
+      return 'Finances';
+    }
+    
+    return 'Admin';
+  };
+
+  const displayedTemplates = templatesList.filter((tpl) => {
+    if (activeCategory === 'All') return true;
+    return getTemplateGroup(tpl) === activeCategory;
+  });
+
+  useEffect(() => {
+    if (displayedTemplates.length > 0 && !displayedTemplates.some(t => t.id === activeTemplateId)) {
+      setActiveTemplateId(displayedTemplates[0].id);
+    }
+  }, [activeCategory, displayedTemplates, activeTemplateId]);
+
   // Already known by the parent (App.tsx computes this from preloadedData for
   // every other component that needs it) - no reason for this modal to run
   // its own get_property_modules fetch just to re-derive the same value,
@@ -412,7 +528,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         eventName: db.title,
         category: db.category,
         description: db.description,
-        template: db.content,
+        template: restoreEmojis(db.content),
         variables: db.variables.length > 0 ? db.variables : tpl.variables,
       };
     });
@@ -424,15 +540,12 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         category: db.category,
         description: db.description,
         variables: db.variables,
-        template: db.content,
+        template: restoreEmojis(db.content),
       });
     }
-    const filtered = merged.filter(
-      (tpl) => !(!kitchenEnabled && KITCHEN_TEMPLATE_KEYS.has(tpl.dbKey))
-    );
-    setTemplatesList(filtered);
-    if (filtered.length > 0 && !filtered.find((t) => t.id === activeTemplateId)) {
-      setActiveTemplateId(filtered[0].id);
+    setTemplatesList(merged);
+    if (merged.length > 0 && !merged.find((t) => t.id === activeTemplateId)) {
+      setActiveTemplateId(merged[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kitchenEnabled, dbTemplates]);
@@ -628,6 +741,37 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     }
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const varName = e.dataTransfer.getData('text/plain');
+    if (!varName) return;
+
+    const cleanedVar = varName.replace(/[{}]/g, '');
+
+    let range: Range | null = null;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    } else if ((e as any).rangeParent) {
+      range = document.createRange();
+      range.setStart((e as any).rangeParent, (e as any).rangeOffset);
+      range.setEnd((e as any).rangeParent, (e as any).rangeOffset);
+    }
+
+    if (range && editableRef.current) {
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      const chipHtml = `<span class="var-chip" contenteditable="false" data-var="${cleanedVar}" style="display: inline-flex; align-items: center; padding: 2px 6px; margin: 0 2px; border-radius: 6px; background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-family: monospace; font-weight: 700; font-size: 11px; user-select: none;">{${cleanedVar}}</span>&nbsp;`;
+      document.execCommand('insertHTML', false, chipHtml);
+      
+      const html = editableRef.current.innerHTML;
+      updateTemplateWithHistory(visualHtmlToTelegramHtml(html));
+    }
+  };
+
   // Insert Link Modal / Prompt
   const handleInsertLink = () => {
     const url = prompt('Enter link URL (e.g., https://artistsfarm.com):', 'https://');
@@ -818,17 +962,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSetupWizard(true)}
-            className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
             <Rocket className="w-4 h-4" />
-            <span>Quick Setup Wizard</span>
-          </button>
-          <button
-            onClick={() => setShowBotSettings(!showBotSettings)}
-            className="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Bot className="w-4 h-4 text-sky-600" />
-            <span>Connection Settings</span>
+            <span>Telegram Setup</span>
           </button>
           {!isEmbedded && onClose && (
             <button
@@ -841,34 +978,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
       </div>
 
-      {/* Connection Settings Drawer: per-property bot token, group chats & routing */}
-      {showBotSettings && (
-        <div className="space-y-2">
-          <div className="flex justify-end">
-            <button
-              onClick={handleTest}
-              className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{testSent ? 'Ping Dispatched!' : 'Send Test Ping'}</span>
-            </button>
-          </div>
-          {tgSettings ? (
-            <TelegramConnectionSettings
-              config={tgSettings}
-              onChange={updateTgSettings}
-              onSave={() => saveTgSettings()}
-              saving={tgSaving}
-              saved={tgSaved}
-            />
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 py-4">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading Telegram settings…
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Main 2-Column Catalog Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column: Templates Catalog (4 Cols) */}
@@ -878,12 +987,36 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Templates Catalog
             </h3>
             <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
-              {templatesList.length} items
+              {displayedTemplates.length} items
             </span>
           </div>
 
-          <div className="max-h-[640px] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-700/60">
-            {templatesList.map((tpl) => {
+          {/* Catalog Categories Switcher */}
+          <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/40 text-xs">
+            {(['All', 'Kitchen', 'Admin', 'Finances'] as const).map((cat) => {
+              const count = cat === 'All' 
+                ? templatesList.length 
+                : templatesList.filter(t => getTemplateGroup(t) === cat).length;
+              const isActiveTab = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setActiveCategory(cat)}
+                  className={`flex-1 py-2 font-bold text-center cursor-pointer transition-colors border-b-2 text-[11px] ${
+                    isActiveTab
+                      ? 'category-tab-active border-sky-600 text-sky-700 dark:text-sky-400 bg-white dark:bg-slate-800'
+                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-700/60">
+            {displayedTemplates.map((tpl) => {
               const isActive = tpl.id === activeTemplateId;
               return (
                 <div
@@ -891,12 +1024,12 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   onClick={() => setActiveTemplateId(tpl.id)}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isActive
-                      ? 'bg-sky-50 dark:bg-sky-950/60 border-l-4 border-sky-600'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'active-template-item bg-sky-600 text-white border-l-4 border-sky-400'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white'
                   }`}
                 >
-                  <div className="font-bold text-xs text-slate-900 dark:text-white">{tpl.eventName}</div>
-                  <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="font-bold text-xs">{tpl.eventName}</div>
+                  <div className={`text-[10px] font-medium mt-0.5 ${isActive ? 'template-category text-sky-100' : 'text-slate-500 dark:text-slate-400'}`}>
                     {tpl.category}
                   </div>
                 </div>
@@ -907,6 +1040,16 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
 
         {/* Right Column: Active Template Editor & Live Preview (8 Cols) */}
         <div className="lg:col-span-8 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 sm:p-5 space-y-4">
+          {!canEditTemplates && (
+            <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3.5 py-3">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 dark:text-amber-300 m-0">
+                Templates are designed at the root admin level. Ask your root admin to enable customization for this property if you need to edit wording here.
+              </p>
+            </div>
+          )}
+          {canEditTemplates && (
+          <>
           {/* Active Template Header & Save Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
             <div>
@@ -947,7 +1090,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 onChange={(value) => setTemplateRouting(currentTpl.dbKey, value)}
                 disabled={tgRoutingSaving}
                 options={[
-                  { value: '', label: 'Not sent' },
+                  { value: '', label: tgSettings.groups.filter(g => g.chatId).length === 0 ? 'No groups found' : 'Not sent' },
                   ...tgSettings.groups.map((g) => ({ value: g.key, label: g.name })),
                 ]}
               />
@@ -955,23 +1098,32 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               <span className="text-[11px] text-slate-400">Loading…</span>
             )}
             {tgRoutingSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />}
-            {tgSettings && tgSettings.groups.length === 0 && (
-              <span className="text-[10px] text-slate-500 shrink-0">Add a group in Connection Settings first</span>
+            {tgSettings && tgSettings.groups.filter(g => g.chatId).length === 0 && (
+              <button
+                type="button"
+                onClick={() => setShowSetupWizard(true)}
+                className="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer bg-transparent border-0 p-0 shrink-0"
+              >
+                Configure groups in Telegram Setup first
+              </button>
             )}
           </div>
 
           {/* Insert Available Variables */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-              Insert Available Variables (Click to Add at Cursor):
+              Insert Available Variables (Drag and drop onto Visual Editor or click to insert):
             </label>
             <div className="flex flex-wrap gap-1.5">
               {currentTpl.variables.map((v) => (
                 <button
                   key={v}
                   type="button"
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('text/plain', v)}
                   onClick={() => handleInsertVariable(v.replace(/[{}]/g, ''))}
-                  className="text-[11px] font-mono bg-sky-100 dark:bg-sky-900/60 hover:bg-sky-200 dark:hover:bg-sky-800 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 px-2.5 py-1 rounded-lg transition-all cursor-pointer active:scale-95 font-bold shadow-xs"
+                  className="variable-chip text-[11px] font-mono border px-2.5 py-1 rounded-lg transition-all cursor-grab active:cursor-grabbing active:scale-95 font-bold shadow-xs"
+                  title="Drag and drop or click to insert variable"
                 >
                   + {v}
                 </button>
@@ -1120,6 +1272,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 contentEditable
                 onInput={handleEditableInput}
                 onKeyDown={handleKeyDown}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
                 className="w-full min-h-[160px] p-3.5 rounded-b-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-sans leading-relaxed shadow-inner overflow-y-auto"
                 style={{ whiteSpace: 'pre-wrap' }}
               />
@@ -1140,8 +1294,11 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Inline Keyboard Buttons Section */}
           <div className="p-3.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex flex-col gap-0.5">
                 <span>🔘 Telegram Inline Keyboard Buttons</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  URLs open web pages. Callbacks (e.g., <code>mark_served_40</code>) trigger backend scripts directly from Telegram.
+                </span>
               </span>
               <button
                 type="button"
@@ -1209,6 +1366,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               </div>
             )}
           </div>
+          </>
+          )}
 
           {/* Live Dark Telegram Preview */}
           <div className="space-y-1.5 pt-1">
