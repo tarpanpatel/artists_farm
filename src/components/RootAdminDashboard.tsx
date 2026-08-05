@@ -1,9 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send } from 'lucide-react';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
+import { TelegramNotificationModal } from './TelegramNotificationModal';
+import { StyledSelect } from './StyledSelect';
+import { TelegramConfig } from '../types';
+import { AuthProvider } from '../contexts/AuthContext';
+
+// TelegramNotificationModal requires this prop but never actually reads it
+// (its real "Send to:" routing state is fetched internally) - a stable
+// no-op value avoids passing a fresh object/function on every render.
+const NOOP_TELEGRAM_CONFIG: TelegramConfig = {
+  botToken: '',
+  chatId: '',
+  botUsername: '',
+  enabledEvents: {
+    kotOrders: false,
+    guestCheckout: false,
+    materialRequisitions: false,
+    lowStockAlerts: false,
+    pettyCashExpenses: false,
+  },
+};
+const noop = () => {};
 
 interface RootAdminDashboardProps {
   username: string;
@@ -11,9 +32,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'telegram_templates';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'telegram_templates'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -28,6 +49,8 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   });
   const [navItems, setNavItems] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [telegramProperties, setTelegramProperties] = useState<Array<{ id: number; name: string; slug: string }>>([]);
+  const [telegramRefSlug, setTelegramRefSlug] = useState<string>('');
 
   // Keep the URL hash and localStorage in sync with the active section
   useEffect(() => {
@@ -75,6 +98,38 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     }
   }, [activeSection]);
 
+  // TelegramNotificationModal resolves its own "Send to:" routing config
+  // internally (via getPropertySlug(), which checks a `property_slug` query
+  // param first) on mount only, and is force-remounted below via a `key` tied
+  // to telegramRefSlug whenever the reference property changes. The query
+  // param has to be written *before* that state update triggers the remount,
+  // not in a separate effect afterward - otherwise the remounted instance's
+  // mount-time fetch could race ahead of the URL update and read the old slug.
+  const selectTelegramRefProperty = (slug: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('property_slug', slug);
+    window.history.replaceState(null, '', url.toString());
+    setTelegramRefSlug(slug);
+  };
+
+  // Load the property list when Telegram Templates section opens, and default
+  // to the first property so the "Send to:" group routing has something to
+  // work against (that routing is per-property; template wording itself
+  // isn't - it's a single shared table for the whole platform).
+  useEffect(() => {
+    if (activeSection === 'telegram_templates' && telegramProperties.length === 0) {
+      fetch('/php/api/router.php?action=get_all_properties', { credentials: 'include' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.data)) {
+            setTelegramProperties(data.data);
+            if (data.data.length > 0) selectTelegramRefProperty(data.data[0].slug);
+          }
+        })
+        .catch((err) => console.error('Failed to load properties:', err));
+    }
+  }, [activeSection, telegramProperties.length]);
+
   const menuItems = [
     {
       id: 'dashboard',
@@ -105,6 +160,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       label: 'Appearance',
       icon: Palette,
       section: 'appearance' as SectionType,
+    },
+    {
+      id: 'telegram_templates',
+      label: 'Telegram Templates',
+      icon: Send,
+      section: 'telegram_templates' as SectionType,
     },
   ];
 
@@ -215,6 +276,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'edit_main_menu' && 'Edit Main Menu'}
                 {activeSection === 'default_expenses' && 'Default Expenses (MultiKey)'}
                 {activeSection === 'appearance' && 'Appearance Settings'}
+                {activeSection === 'telegram_templates' && 'Telegram Templates'}
               </h2>
               <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
                 {activeSection === 'dashboard' && 'System overview and analytics'}
@@ -222,6 +284,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'edit_main_menu' && 'Global navigation menu for all properties'}
                 {activeSection === 'default_expenses' && 'System expense categories and defaults'}
                 {activeSection === 'appearance' && 'Customize theme colors and CSS styling'}
+                {activeSection === 'telegram_templates' && 'One shared template set for the whole platform - edit wording here, choose a property below to configure its group routing'}
               </p>
             </div>
           </div>
@@ -313,6 +376,47 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Appearance Settings Section */}
           {activeSection === 'appearance' && (
             <AppearanceSettings activeRole={activeRole} />
+          )}
+
+          {/* Telegram Templates Section */}
+          {activeSection === 'telegram_templates' && (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+                  Configure "Send to:" routing for:
+                </label>
+                <div className="w-full sm:w-64">
+                  <StyledSelect
+                    value={telegramRefSlug}
+                    onChange={selectTelegramRefProperty}
+                    options={telegramProperties.map((p) => ({ value: p.slug, label: p.name }))}
+                  />
+                </div>
+              </div>
+
+              {telegramRefSlug && (
+                // RootAdminDashboard sits outside the property-scoped AuthProvider
+                // tree (needed so TelegramNotificationModal's useAuth() call
+                // doesn't crash), but the reference property picked above can
+                // have its own real Super Admin browser session already saved
+                // in localStorage from someone actually logging into it - that
+                // session would otherwise take priority and lock the editor.
+                // templateCustomizationEnabled=true sidesteps that entirely:
+                // reaching this dashboard at all already means root admin.
+                <AuthProvider>
+                  <TelegramNotificationModal
+                    key={telegramRefSlug}
+                    isEmbedded
+                    telegramConfig={NOOP_TELEGRAM_CONFIG}
+                    onUpdateConfig={noop}
+                    dispatchLogs={[]}
+                    onSendTestNotification={noop}
+                    kitchenModuleEnabled={true}
+                    templateCustomizationEnabled={true}
+                  />
+                </AuthProvider>
+              )}
+            </div>
           )}
         </div>
       </main>
