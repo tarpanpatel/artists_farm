@@ -53,6 +53,7 @@ interface GuestManagementProps {
   onAddGuest: (guest: Guest) => void;
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
+  onDeleteGuest?: (guestId: string) => Promise<void>;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   isMultiKeyProperty?: boolean;
@@ -100,6 +101,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   onAddGuest,
   onCheckoutGuest,
   onUpdateGuest,
+  onDeleteGuest,
   activeMenuItemKey,
   onDispatchTelegram,
   isMultiKeyProperty = false,
@@ -1133,6 +1135,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 rooms={rooms}
                 isMultiKeyProperty={isMultiKeyProperty}
                 kitchenModuleEnabled={true}
+                onUpdateGuest={onUpdateGuest}
+                onDeleteGuest={onDeleteGuest}
+                propertyName={propertyName}
+                propertyMapsLink={propertyMapsLink}
+                propertyPhone={propertyPhone}
+                propertyWhatsappTemplate={propertyWhatsappTemplate}
               />
             </div>
           </div>

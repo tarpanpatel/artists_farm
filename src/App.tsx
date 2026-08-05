@@ -1447,6 +1447,11 @@ ${itemsStr}
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
                         onUpdateGuest={handleUpdateGuest}
+                        onDeleteGuest={handleDeleteGuest}
+                        propertyName={preloadedData.currentProperty?.name || ''}
+                        propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyPhone={preloadedData.currentProperty?.phone || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                       />
                     </ErrorBoundary>
                     <ErrorBoundary section="Multi-Key Property Overview">
@@ -1504,6 +1509,7 @@ ${itemsStr}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
                     onUpdateGuest={handleUpdateGuest}
+                    onDeleteGuest={handleDeleteGuest}
                     activeMenuItemKey={activeMenuItemKey}
                     onDispatchTelegram={dispatchTelegramAlert}
                     menu={menu}
