@@ -35,6 +35,7 @@ import { StyledSelect } from './StyledSelect';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
+import { GuestHistory } from './GuestHistory';
 
 interface Room {
   id: number;
@@ -717,6 +718,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       g.phoneNumber.includes(searchTerm);
     return matchesStatus && matchesSearch;
   });
+
+  if (activeMenuItemKey === 'guest_history') {
+    return <GuestHistory guests={guests} />;
+  }
 
   if (activeMenuItemKey === 'guest_registration') {
     return (

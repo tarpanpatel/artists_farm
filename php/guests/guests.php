@@ -51,6 +51,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
             try {
+                $pdo->exec("INSERT IGNORE INTO nav_menu_items (id, property_id, title, tab_key, unique_key, category, icon_name, display_order) VALUES ('nav-history', 1, 'Guest History', 'guests', 'guest_history', 'Residents & Billing', 'History', 5)");
+            } catch (Exception $e) {}
+            try {
                 $stmt = $pdo->prepare("
                     SELECT g.*, COALESCE(r.name, 'Unassigned') as roomNumber
                     FROM guests g
