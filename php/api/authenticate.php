@@ -35,6 +35,9 @@ try {
         if (!in_array('full_name', $cols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
         }
+        if (!in_array('must_change_passcode', $cols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
+        }
     }
 } catch (Exception $e) {}
 
@@ -68,7 +71,7 @@ $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanD
 try {
     // 1. Search in `users` table (Platform Super Admins, Tenant Admins)
     $stmt = $pdo->prepare("
-        SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id
+        SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
         FROM users
         WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
         LIMIT 1
@@ -114,6 +117,7 @@ try {
                     'role' => $role,
                     'is_platform_admin' => $is_platform_admin,
                     'default_tenant_id' => $user['default_tenant_id'] ?? null,
+                    'must_change_passcode' => (bool)($user['must_change_passcode'] ?? false),
                 ]
             ]);
             exit;
@@ -149,6 +153,7 @@ try {
                     'name' => $staff['full_name'] ?: $staff['username'],
                     'role' => $staff['role'] ?: 'Staff',
                     'property_id' => $staff['property_id'],
+                    'must_change_passcode' => false,
                 ]
             ]);
             exit;

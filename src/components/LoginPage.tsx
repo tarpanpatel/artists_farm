@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2 } from 'lucide-react';
+import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck } from 'lucide-react';
 
 interface LoginPageProps {
   onLoginSuccess: (userData: {
@@ -16,6 +16,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // First-login mandatory passcode change - set when the account was created
+  // with a temporary passcode (e.g. new tenant welcome emails/WhatsApp
+  // shares) and hasn't been changed yet.
+  const [mustChangePasscode, setMustChangePasscode] = useState(false);
+  const [pendingSession, setPendingSession] = useState<Parameters<LoginPageProps['onLoginSuccess']>[0] | null>(null);
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [isSavingPasscode, setIsSavingPasscode] = useState(false);
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numeric digits, max 10
@@ -71,6 +80,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           default_tenant_id: data.user.default_tenant_id,
         };
 
+        if (data.user.must_change_passcode) {
+          // Don't establish the session yet - hold onto it until a new
+          // passcode is set, matching the "temporary credentials can't be
+          // used past first login" requirement.
+          setPendingSession(sessionData);
+          setMustChangePasscode(true);
+          setIsLoading(false);
+          return;
+        }
+
         // Store session
         localStorage.setItem('artists_farm_user_session', JSON.stringify(sessionData));
 
@@ -88,6 +107,136 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       setIsLoading(false);
     }
   };
+
+  const handleSetNewPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!/^\d{6}$/.test(newPasscode)) {
+      setError('New passcode must be exactly 6 digits');
+      return;
+    }
+    if (newPasscode !== confirmPasscode) {
+      setError('Passcodes do not match');
+      return;
+    }
+    if (newPasscode === passcode) {
+      setError('New passcode must be different from the temporary one');
+      return;
+    }
+
+    setIsSavingPasscode(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=force_set_passcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: pendingSession?.username || mobileNumber,
+          current_passcode: passcode,
+          new_passcode: newPasscode,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success && pendingSession) {
+        localStorage.setItem('artists_farm_user_session', JSON.stringify(pendingSession));
+        onLoginSuccess(pendingSession);
+      } else {
+        setError(data.message || 'Failed to set new passcode. Please try again.');
+      }
+    } catch (err) {
+      console.error('Set passcode error:', err);
+      setError('Failed to set new passcode. Please try again.');
+    } finally {
+      setIsSavingPasscode(false);
+    }
+  };
+
+  if (mustChangePasscode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-md">
+              <ShieldCheck className="w-8 h-8 text-white" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
+            Set a New Passcode
+          </h1>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center mb-8">
+            You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
+          </p>
+
+          <form onSubmit={handleSetNewPasscode} className="space-y-5">
+            {error && (
+              <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs font-medium text-red-800 dark:text-red-300">{error}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                New 6-Digit Passcode
+              </label>
+              <div className="relative">
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="password"
+                  value={newPasscode}
+                  onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="• • • • • •"
+                  maxLength={6}
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono text-center tracking-[0.4em] font-bold text-lg placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                  disabled={isSavingPasscode}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                Confirm New Passcode
+              </label>
+              <div className="relative">
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="password"
+                  value={confirmPasscode}
+                  onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="• • • • • •"
+                  maxLength={6}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono text-center tracking-[0.4em] font-bold text-lg placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                  disabled={isSavingPasscode}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingPasscode || newPasscode.length !== 6 || confirmPasscode.length !== 6}
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isSavingPasscode ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Set Passcode & Continue</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">

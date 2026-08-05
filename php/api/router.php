@@ -26,6 +26,32 @@ require_once __DIR__ . '/../theme/theme_settings.php';
 require_once __DIR__ . '/configuration.php';
 require_once __DIR__ . '/multikey_properties.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
+require_once __DIR__ . '/../utils/mailer.php';
+require_once __DIR__ . '/../utils/welcome_template.php';
+
+// Self-healing column check for `users`, run unconditionally (not tied to
+// any one action) so every action can rely on full_name/must_change_passcode
+// existing - login_user's own copy of this check only ran for that action,
+// which is what let create_tenant hit "Unknown column 'full_name'" the first
+// time it ran against a database that had never called login_user yet.
+try {
+    $usersTableCheck = $pdo->query("SHOW TABLES LIKE 'users'");
+    if ($usersTableCheck->rowCount() > 0) {
+        $usersCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('full_name', $usersCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+        }
+        if (!in_array('must_change_passcode', $usersCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
+        }
+        if (!in_array('phone_number', $usersCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
+        }
+        if (!in_array('passcode', $usersCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
+        }
+    }
+} catch (Exception $e) {}
 
 // === Global Error & Exception Handlers ===
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
@@ -194,6 +220,12 @@ switch ($action) {
                 if (!in_array('passcode', $cols)) {
                     $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
                 }
+                if (!in_array('full_name', $cols)) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+                }
+                if (!in_array('must_change_passcode', $cols)) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
+                }
             }
             $stmt = $pdo->query("SHOW TABLES LIKE 'staff_users'");
             if ($stmt->rowCount() > 0) {
@@ -213,7 +245,7 @@ switch ($action) {
         try {
             // 1. Search in users table (Platform & Tenant Admins)
             $stmt = $pdo->prepare("
-                SELECT id, username, phone_number, password, passcode, role, is_platform_admin, default_tenant_id
+                SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
                 FROM users
                 WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
                 LIMIT 1
@@ -255,9 +287,11 @@ switch ($action) {
                         'user' => [
                             'id' => $user['id'],
                             'username' => $user['username'],
+                            'name' => $user['full_name'] ?: $user['username'],
                             'role' => $role,
                             'is_platform_admin' => $is_platform_admin,
                             'default_tenant_id' => $user['default_tenant_id'] ?? null,
+                            'must_change_passcode' => (bool)($user['must_change_passcode'] ?? false),
                         ]
                     ]);
                     exit;
@@ -290,9 +324,11 @@ switch ($action) {
                         'user' => [
                             'id' => $staff['id'],
                             'username' => $staff['username'],
+                            'name' => $staff['full_name'] ?: $staff['username'],
                             'role' => $staff['role'] ?: 'Staff',
                             'is_platform_admin' => false,
                             'default_tenant_id' => null,
+                            'must_change_passcode' => false,
                         ]
                     ]);
                     exit;
@@ -317,6 +353,7 @@ switch ($action) {
                         'role' => 'root_admin',
                         'is_platform_admin' => true,
                         'default_tenant_id' => null,
+                        'must_change_passcode' => false,
                     ]
                 ]);
                 exit;
@@ -330,6 +367,60 @@ switch ($action) {
         }
         exit;
 
+    // First-login mandatory passcode change (see must_change_passcode on the
+    // users/staff_users tables, set when an account is created with a
+    // temporary passcode - e.g. new tenant welcome emails). Requires the
+    // caller to prove they know the CURRENT passcode, same as any password
+    // change - it's not gated behind session auth alone since force_set_passcode
+    // is called mid-login, before a full session may exist for the property.
+    case 'force_set_passcode':
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $identifier = trim($input['username'] ?? '');
+        $currentPasscode = trim($input['current_passcode'] ?? '');
+        $newPasscode = trim($input['new_passcode'] ?? '');
+
+        if (!$identifier || !$currentPasscode || !$newPasscode) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Username, current passcode, and new passcode are required']);
+            exit;
+        }
+        if (!preg_match('/^\d{6}$/', $newPasscode)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'New passcode must be exactly 6 digits']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("SELECT id, passcode FROM users WHERE username = ? LIMIT 1");
+            $stmt->execute([$identifier]);
+            $user = $stmt->fetch();
+
+            if ($user && ($user['passcode'] ?? '') === $currentPasscode) {
+                $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 0 WHERE id = ?")
+                    ->execute([$newPasscode, $user['id']]);
+                echo json_encode(['success' => true, 'message' => 'Passcode updated successfully']);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("SELECT id, passcode FROM staff_users WHERE username = ? LIMIT 1");
+            $stmt->execute([$identifier]);
+            $staff = $stmt->fetch();
+
+            if ($staff && ($staff['passcode'] ?? '') === $currentPasscode) {
+                $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE id = ?")
+                    ->execute([$newPasscode, $staff['id']]);
+                echo json_encode(['success' => true, 'message' => 'Passcode updated successfully']);
+                exit;
+            }
+
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     // --- PLATFORM ADMIN ENDPOINTS ---
     case 'create_tenant':
         $input = json_decode(file_get_contents('php://input'), true);
@@ -337,6 +428,10 @@ switch ($action) {
         $slug = $input['slug'] ?? '';
         $email = $input['email'] ?? '';
         $phone = $input['phone'] ?? '';
+        // Frontend passes window.location.origin + '/artists_farm/' so the
+        // welcome message links back to wherever this instance is actually
+        // hosted, rather than us guessing from server headers.
+        $loginUrl = $input['login_url'] ?? '/artists_farm/';
 
         if (!$name || !$slug) {
             http_response_code(400);
@@ -352,20 +447,102 @@ switch ($action) {
             $stmt->execute([$name, $slug, $email ?: null, $phone ?: null]);
             $tenant_id = $pdo->lastInsertId();
 
-            echo json_encode(['success' => true, 'message' => 'Tenant created successfully', 'tenant_id' => $tenant_id]);
+            $response = ['success' => true, 'message' => 'Tenant created successfully', 'tenant_id' => $tenant_id];
+
+            // Auto-create the tenant's own super_admin login, same phone +
+            // 6-digit-passcode convention as everywhere else in the app -
+            // without this, a newly created tenant has no way to log in at
+            // all until someone manually creates a users row for them.
+            $phoneDigits = preg_replace('/\D/', '', $phone);
+            $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
+
+            if (strlen($phoneDigits) === 10) {
+                $existing = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+                $existing->execute([$phoneDigits]);
+
+                if (!$existing->fetch()) {
+                    $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+                    $pdo->prepare("
+                        INSERT INTO users (username, full_name, phone_number, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode)
+                        VALUES (?, ?, ?, ?, 'super_admin', 0, ?, 1)
+                    ")->execute([$phoneDigits, $name, $phoneDigits, $tempPasscode, $tenant_id]);
+
+                    $renderedMessage = renderTenantWelcomeTemplate(getTenantWelcomeTemplate($pdo), [
+                        'tenant_name' => $name,
+                        'login_url' => $loginUrl,
+                        'username' => $phoneDigits,
+                        'temp_passcode' => $tempPasscode,
+                    ]);
+
+                    $response['login_credentials'] = [
+                        'username' => $phoneDigits,
+                        'temp_passcode' => $tempPasscode,
+                        'login_url' => $loginUrl,
+                    ];
+                    $response['rendered_message'] = $renderedMessage;
+                    $response['whatsapp_phone'] = $phoneDigits;
+
+                    if ($email) {
+                        $emailResult = sendSmtpEmail($pdo, $email, "Welcome to Artists Farm, {$name}!", nl2br(htmlspecialchars($renderedMessage)));
+                        $response['email_sent'] = $emailResult['success'];
+                        $response['email_error'] = $emailResult['success'] ? null : $emailResult['error'];
+                    } else {
+                        $response['email_sent'] = false;
+                        $response['email_error'] = 'No email address provided for this tenant.';
+                    }
+                } else {
+                    $response['login_note'] = "A login account with username {$phoneDigits} already exists - skipped creating a duplicate.";
+                }
+            } else {
+                $response['login_note'] = 'No valid 10-digit phone number provided - skipped creating a login account. Add one later via Root Admin.';
+            }
+
+            echo json_encode($response);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
 
+    // Root Admin "Send Test Email" button - tries connecting/sending with the
+    // form's current values directly, so an admin can verify SMTP credentials
+    // work before committing them to system_settings.
+    case 'send_test_email':
+        $isRootAdminForTest = (isset($_SESSION['role']) && $_SESSION['role'] === 'root_admin')
+            || (isset($_SERVER['HTTP_X_USER_ROLE']) && $_SERVER['HTTP_X_USER_ROLE'] === 'root_admin');
+        if (!$isRootAdminForTest) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Only root administrators can test email settings']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $to = trim($input['to'] ?? '');
+        if (!$to) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Recipient email is required']);
+            exit;
+        }
+        $overrideSettings = [
+            'host' => $input['smtp_host'] ?? '',
+            'port' => (int)($input['smtp_port'] ?? 587),
+            'username' => $input['smtp_username'] ?? '',
+            'password' => $input['smtp_password'] ?? '',
+            'from_email' => $input['smtp_from_email'] ?? '',
+            'from_name' => $input['smtp_from_name'] ?? 'Artists Farm',
+            'encryption' => $input['smtp_encryption'] ?? 'tls',
+        ];
+        $result = sendSmtpEmail($pdo, $to, 'Artists Farm - SMTP Test', '<p>This is a test email from your Artists Farm Root Admin dashboard. If you received this, SMTP is configured correctly.</p>', $overrideSettings);
+        echo json_encode(['success' => $result['success'], 'message' => $result['success'] ? 'Test email sent successfully' : $result['error']]);
+        exit;
+
     case 'get_all_tenants':
         try {
             $stmt = $pdo->query("
-                SELECT t.*, 
+                SELECT t.*,
                 (SELECT COALESCE(SUM(
-                    CASE 
-                        WHEN p.property_type = 'MULTI_KEY' THEN 
+                    CASE
+                        WHEN p.property_type = 'MULTI_KEY' THEN
                             (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM')
                         ELSE 1
                     END

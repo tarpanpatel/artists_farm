@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail } from 'lucide-react';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
+import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { StyledSelect } from './StyledSelect';
 import { TelegramConfig } from '../types';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -32,9 +33,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'telegram_templates';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'telegram_templates' | 'email_settings';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'telegram_templates'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'telegram_templates', 'email_settings'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -167,6 +168,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: Send,
       section: 'telegram_templates' as SectionType,
     },
+    {
+      id: 'email_settings',
+      label: 'Email Settings',
+      icon: Mail,
+      section: 'email_settings' as SectionType,
+    },
   ];
 
   const handleTelescopeOpen = () => {
@@ -277,6 +284,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'default_expenses' && 'Default Expenses (MultiKey)'}
                 {activeSection === 'appearance' && 'Appearance Settings'}
                 {activeSection === 'telegram_templates' && 'Telegram Templates'}
+                {activeSection === 'email_settings' && 'Email Settings'}
               </h2>
               <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
                 {activeSection === 'dashboard' && 'System overview and analytics'}
@@ -285,6 +293,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'default_expenses' && 'System expense categories and defaults'}
                 {activeSection === 'appearance' && 'Customize theme colors and CSS styling'}
                 {activeSection === 'telegram_templates' && 'One shared template set for the whole platform - edit wording here, choose a property below to configure its group routing'}
+                {activeSection === 'email_settings' && 'SMTP connection and the tenant welcome email/WhatsApp message template'}
               </p>
             </div>
           </div>
@@ -418,6 +427,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               )}
             </div>
           )}
+
+          {/* Email Settings Section */}
+          {activeSection === 'email_settings' && <EmailSettingsPanel />}
         </div>
       </main>
     </div>

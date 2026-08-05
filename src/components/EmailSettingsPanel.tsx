@@ -1,0 +1,324 @@
+import React, { useState, useEffect } from 'react';
+import { Mail, Send, Loader, CheckCircle2, XCircle } from 'lucide-react';
+import { StyledSelect } from './StyledSelect';
+import { TENANT_WELCOME_VARIABLES, DEFAULT_TENANT_WELCOME_TEMPLATE, renderTenantWelcomeTemplate } from '../utils/tenantWelcomeTemplate';
+
+/**
+ * Root Admin panel: SMTP connection details (used to send tenant welcome
+ * emails - see php/utils/mailer.php) plus the editable welcome message
+ * template shared by both the email and the "Share via WhatsApp" button on
+ * the Add Tenant flow. Settings live in the generic `system_settings`
+ * key/value store (php/api/configuration.php), same place Appearance/Custom
+ * CSS already persist to.
+ */
+export const EmailSettingsPanel: React.FC = () => {
+  const [host, setHost] = useState('');
+  const [port, setPort] = useState('587');
+  const [smtpUsername, setSmtpUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [fromName, setFromName] = useState('Artists Farm');
+  const [fromEmail, setFromEmail] = useState('');
+  const [encryption, setEncryption] = useState<'tls' | 'ssl' | 'none'>('tls');
+  const [template, setTemplate] = useState('');
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const [testEmail, setTestEmail] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/php/api/router.php?action=get_system_settings', { credentials: 'include' });
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const d = json.data;
+          setHost(d.smtp_host || '');
+          setPort(d.smtp_port || '587');
+          setSmtpUsername(d.smtp_username || '');
+          setPassword(d.smtp_password || '');
+          setFromName(d.smtp_from_name || 'Artists Farm');
+          setFromEmail(d.smtp_from_email || '');
+          setEncryption((d.smtp_encryption as any) || 'tls');
+          setTemplate(d.tenant_welcome_template || '');
+        }
+      } catch (err) {
+        console.error('Failed to load email settings:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
+  const saveSetting = async (key: string, value: string) => {
+    const res = await fetch('/php/api/router.php?action=save_system_settings', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setting_key: key, setting_value: value }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveStatus('idle');
+    try {
+      const results = await Promise.all([
+        saveSetting('smtp_host', host),
+        saveSetting('smtp_port', port),
+        saveSetting('smtp_username', smtpUsername),
+        saveSetting('smtp_password', password),
+        saveSetting('smtp_from_name', fromName),
+        saveSetting('smtp_from_email', fromEmail),
+        saveSetting('smtp_encryption', encryption),
+        saveSetting('tenant_welcome_template', template),
+      ]);
+      setSaveStatus(results.every(Boolean) ? 'success' : 'error');
+    } catch (err) {
+      console.error('Failed to save email settings:', err);
+      setSaveStatus('error');
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveStatus('idle'), 4000);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testEmail) return;
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/php/api/router.php?action=send_test_email', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: testEmail,
+          smtp_host: host,
+          smtp_port: port,
+          smtp_username: smtpUsername,
+          smtp_password: password,
+          smtp_from_name: fromName,
+          smtp_from_email: fromEmail,
+          smtp_encryption: encryption,
+        }),
+      });
+      const json = await res.json();
+      setTestResult({ success: !!json.success, message: json.message || (json.success ? 'Sent!' : 'Failed to send') });
+    } catch (err) {
+      setTestResult({ success: false, message: 'Failed to reach the server' });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-slate-400 text-sm">Loading email settings...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* SMTP Connection */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+          <Mail className="w-4 h-4 text-indigo-500" /> SMTP Connection
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Used to send the tenant welcome email (login link, username, temporary passcode) when a new tenant is created.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Host</label>
+            <input
+              type="text"
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              placeholder="smtp.example.com"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Port</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={port}
+              onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))}
+              placeholder="587"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Username</label>
+            <input
+              type="text"
+              value={smtpUsername}
+              onChange={(e) => setSmtpUsername(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">From Name</label>
+            <input
+              type="text"
+              value={fromName}
+              onChange={(e) => setFromName(e.target.value)}
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">From Email</label>
+            <input
+              type="email"
+              value={fromEmail}
+              onChange={(e) => setFromEmail(e.target.value)}
+              placeholder="noreply@example.com"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Encryption</label>
+            <StyledSelect
+              value={encryption}
+              onChange={(val) => setEncryption(val as any)}
+              options={[
+                { value: 'tls', label: 'STARTTLS (port 587)' },
+                { value: 'ssl', label: 'Implicit TLS/SSL (port 465)' },
+                { value: 'none', label: 'None' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+          >
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </button>
+          {saveStatus === 'success' && (
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+              <XCircle className="w-3.5 h-3.5" /> Failed to save
+            </span>
+          )}
+
+          <div className="flex items-center gap-2 ml-auto">
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="test@example.com"
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={handleSendTest}
+              disabled={isTesting || !testEmail}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              {isTesting ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Send Test Email
+            </button>
+          </div>
+        </div>
+        {testResult && (
+          <p className={`text-xs font-semibold mt-2 ${testResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            {testResult.message}
+          </p>
+        )}
+      </div>
+
+      {/* Welcome Template */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Tenant Welcome Message</h3>
+          <button
+            type="button"
+            onClick={() => setTemplate('')}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+          >
+            Reset to default
+          </button>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Sent as the welcome email and used to build the "Share via WhatsApp" message when a new tenant is created.
+        </p>
+
+        <textarea
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          placeholder={DEFAULT_TENANT_WELCOME_TEMPLATE}
+          rows={10}
+          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-2">
+          Blank = use the default shown above as a placeholder. Click a variable to insert it:
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {TENANT_WELCOME_VARIABLES.map((v) => (
+            <button
+              key={v.token}
+              type="button"
+              onClick={() => setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + v.token)}
+              title={v.label}
+              className="text-[10px] font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
+            >
+              + {v.token}
+            </button>
+          ))}
+        </div>
+
+        <details className="text-xs">
+          <summary className="cursor-pointer text-slate-500 dark:text-slate-400 font-semibold">Preview with sample data</summary>
+          <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
+            {renderTenantWelcomeTemplate(template || DEFAULT_TENANT_WELCOME_TEMPLATE, {
+              tenant_name: 'Vrikshawan',
+              login_url: 'https://example.com/artists_farm/',
+              username: '9876543210',
+              temp_passcode: '482913',
+            })}
+          </pre>
+        </details>
+
+        <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+          >
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

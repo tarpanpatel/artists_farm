@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 
@@ -64,6 +64,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
+  // Populated after a successful "Add Tenant" - keeps the modal open to show
+  // the generated login credentials + a "Share via WhatsApp" button, instead
+  // of just closing and leaving the admin to dig the credentials up later.
+  const [newTenantCredentials, setNewTenantCredentials] = useState<{
+    username: string;
+    tempPasscode: string;
+    loginUrl: string;
+    renderedMessage: string;
+    whatsappPhone: string;
+    emailSent: boolean;
+    emailError: string | null;
+    loginNote: string | null;
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -396,7 +409,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newTenant),
+        body: JSON.stringify({ ...newTenant, login_url: window.location.origin + '/artists_farm/' }),
       });
 
       const data = await response.json();
@@ -408,11 +421,26 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           max_properties: 1,
           is_active: 1,
         }]);
-        setShowAddTenantModal(false);
         setNewTenant({ name: '', slug: '', email: '', phone: '' });
-        // Show success toast
-        setSuccessMessage(`Tenant "${newTenant.name}" created successfully!`);
-        setTimeout(() => setSuccessMessage(null), 3000);
+
+        if (data.login_credentials) {
+          // Keep the modal open on a "credentials" view instead of closing -
+          // this is the only moment the temporary passcode is ever shown.
+          setNewTenantCredentials({
+            username: data.login_credentials.username,
+            tempPasscode: data.login_credentials.temp_passcode,
+            loginUrl: data.login_credentials.login_url,
+            renderedMessage: data.rendered_message || '',
+            whatsappPhone: data.whatsapp_phone || data.login_credentials.username,
+            emailSent: !!data.email_sent,
+            emailError: data.email_error || null,
+            loginNote: data.login_note || null,
+          });
+        } else {
+          setShowAddTenantModal(false);
+          setSuccessMessage(`Tenant "${newTenant.name}" created successfully!${data.login_note ? ' ' + data.login_note : ''}`);
+          setTimeout(() => setSuccessMessage(null), 4000);
+        }
       } else {
         setError(data.message || 'Failed to create tenant');
       }
@@ -1047,21 +1075,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
               {editingProperty.property_type === 'MULTI_KEY' && showPropertyModal === 'add' && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      value={editingProperty.address || ''}
-                      onChange={(e) =>
-                        setEditingProperty({ ...editingProperty, address: e.target.value })
-                      }
-                      placeholder="Property address"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                    />
-                  </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1204,97 +1217,166 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showAddTenantModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-              Add New Tenant
-            </h3>
+            {newTenantCredentials ? (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Tenant Created
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  This is the only time the temporary passcode is shown - share it now.
+                </p>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Tenant Name
-                </label>
-                <input
-                  type="text"
-                  value={newTenant.name}
-                  onChange={(e) =>
-                    setNewTenant({ ...newTenant, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="e.g., Vrikshawan"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Slug (Username)
-                </label>
-                <input
-                  type="text"
-                  value={newTenant.slug}
-                  onChange={(e) =>
-                    setNewTenant({ ...newTenant, slug: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="e.g., vrikshawan"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={newTenant.email}
-                  onChange={(e) =>
-                    setNewTenant({ ...newTenant, email: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="tenant@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="text"
-                  value={newTenant.phone}
-                  onChange={(e) =>
-                    setNewTenant({ ...newTenant, phone: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  placeholder="+91 9876543210"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowAddTenantModal(false);
-                  setNewTenant({ name: '', slug: '', email: '', phone: '' });
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTenant}
-                disabled={operationLoading}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {operationLoading ? (
-                  <>
-                    <Loader className="w-3 h-3 animate-spin" />
-                    Creating...
-                  </>
+                {newTenantCredentials.loginNote ? (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 mb-4">
+                    {newTenantCredentials.loginNote}
+                  </div>
                 ) : (
-                  'Create'
+                  <>
+                    <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-2 mb-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 dark:text-gray-400">Username</span>
+                        <span className="font-mono font-bold text-gray-900 dark:text-white">{newTenantCredentials.username}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500 dark:text-gray-400">Temporary Passcode</span>
+                        <span className="font-mono font-bold text-gray-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center gap-2 text-xs font-semibold mb-4 ${newTenantCredentials.emailSent ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {newTenantCredentials.emailSent ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                      {newTenantCredentials.emailSent ? 'Welcome email sent' : `Email not sent${newTenantCredentials.emailError ? ` - ${newTenantCredentials.emailError}` : ''}`}
+                    </div>
+
+                    <div className="flex gap-2 mb-2">
+                      <a
+                        href={`https://api.whatsapp.com/send?phone=91${newTenantCredentials.whatsappPhone}&text=${encodeURIComponent(newTenantCredentials.renderedMessage)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Share2 className="w-4 h-4" /> Share via WhatsApp
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(newTenantCredentials.renderedMessage)}
+                        title="Copy message"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
                 )}
-              </button>
-            </div>
+
+                <button
+                  onClick={() => {
+                    setShowAddTenantModal(false);
+                    setNewTenantCredentials(null);
+                  }}
+                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mt-2"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                  Add New Tenant
+                </h3>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Tenant Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.name}
+                      onChange={(e) =>
+                        setNewTenant({ ...newTenant, name: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      placeholder="e.g., Vrikshawan"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Slug (Username)
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.slug}
+                      onChange={(e) =>
+                        setNewTenant({ ...newTenant, slug: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      placeholder="e.g., vrikshawan"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={newTenant.email}
+                      onChange={(e) =>
+                        setNewTenant({ ...newTenant, email: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      placeholder="tenant@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Phone (also becomes their login username)
+                    </label>
+                    <input
+                      type="text"
+                      value={newTenant.phone}
+                      onChange={(e) =>
+                        setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
+                      }
+                      maxLength={10}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowAddTenantModal(false);
+                      setNewTenant({ name: '', slug: '', email: '', phone: '' });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddTenant}
+                    disabled={operationLoading}
+                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {operationLoading ? (
+                      <>
+                        <Loader className="w-3 h-3 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create'
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
