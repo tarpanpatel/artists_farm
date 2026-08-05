@@ -1936,14 +1936,14 @@ export function App() {
       return <LoginPage onLoginSuccess={handleLoginSuccess} />;
     }
 
-    // User is logged in at root
+    // User is logged in at root - platform admins get exactly one canonical URL
+    // for their dashboard (/root_dashboard/), matching the redirect handleLoginSuccess
+    // and the /login/ path already use. Rendering it inline here too meant the same
+    // content lived at two URLs (bare root AND /root_dashboard/), so bookmarks/links
+    // to the bare root silently worked when they shouldn't have been a valid page.
     if (userSession.is_platform_admin) {
-      return (
-        <PlatformPropertyManagement
-          username={userSession.username}
-          onLogout={() => setUserSession(null)}
-        />
-      );
+      window.location.href = '/artists_farm/root_dashboard/';
+      return <LoadingScreen message="Redirecting to root admin dashboard..." />;
     }
 
     // Tenant manager - render dashboard directly
