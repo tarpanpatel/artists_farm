@@ -90,6 +90,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // isn't real accountability for who actually took the payment.
   const cashHandlers = staff.filter((s) => s.isFinancialHandler);
 
+  // Local override of the `mode` prop - lets "Save and Proceed to Checkout"
+  // transition the same open modal from editing straight into the final
+  // checkout settlement screen, instead of only ever reflecting whatever
+  // mode it was opened in.
+  const [internalMode, setInternalMode] = useState(mode);
+  useEffect(() => {
+    if (isOpen) setInternalMode(mode);
+  }, [isOpen, mode]);
+
   // Base State
   const [editGuestName, setEditGuestName] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
@@ -160,7 +169,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // GST State
   const [gstEnabled, setGstEnabled] = useState(false);
-  const [taxType, setTaxType] = useState<'cgst_sgst' | 'igst'>('cgst_sgst');
+  // Inter-state (IGST) billing was removed as an option - guests are always
+  // billed same-state (CGST+SGST split), so there's nothing left to toggle.
   const [guestGstin, setGuestGstin] = useState('');
   const [guestBillingName, setGuestBillingName] = useState('');
   const [gstRates, setGstRates] = useState<GstRatesConfig>(DEFAULT_GST_RATES);
@@ -261,7 +271,6 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setIncidentals([]);
       setAdjustments([]);
       setGstEnabled(false);
-      setTaxType('cgst_sgst');
       setGuestGstin('');
       setGuestBillingName('');
       setAdvanceReceivedBy('');
@@ -315,11 +324,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const gstFoodAmount = (gstEnabled && kitchenModuleEnabled) ? foodTotal * (gstFoodRate / 100) : 0;
 
   const gstAmount = gstAccommodationAmount + gstFoodAmount;
-  // Same-state stays split the tax evenly into CGST+SGST; inter-state stays
-  // (guest billed from another state) charge the full amount as IGST instead.
-  const gstCgst = taxType === 'cgst_sgst' ? gstAmount / 2 : 0;
-  const gstSgst = taxType === 'cgst_sgst' ? gstAmount / 2 : 0;
-  const gstIgst = taxType === 'igst' ? gstAmount : 0;
+  // Tax is always split evenly into CGST+SGST (same-state billing only - see
+  // the removed inter-state/IGST option above).
+  const gstCgst = gstAmount / 2;
+  const gstSgst = gstAmount / 2;
 
   // Grand Target Due = what's left to collect right now (after the advance).
   const grandTargetDue = subtotalBeforeGst + gstAmount;
@@ -447,23 +455,30 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     }
   };
 
-  const handleSaveOrCheckout = () => {
-    if (mode === 'edit-only') {
-      if (onUpdateGuest && guest) {
-        const updatedFoodBill = (guest.foodBill || 0) + foodTotal;
-        const totalChargesCalculated = roomCharges + updatedFoodBill + extraCharges - discounts + gstAmount;
+  // Shared by both "Save Booking Changes" and "Save and Proceed to Checkout" -
+  // pushes the current edits back to the guest record. Returns whether there
+  // was anything to save.
+  const saveGuestEdits = (): boolean => {
+    if (!onUpdateGuest || !guest) return false;
+    const updatedFoodBill = (guest.foodBill || 0) + foodTotal;
+    const totalChargesCalculated = roomCharges + updatedFoodBill + extraCharges - discounts + gstAmount;
 
-        onUpdateGuest({
-          ...guest,
-          guestName: editGuestName.trim() || guest.guestName,
-          phoneNumber: editPhoneNumber.trim() || guest.phoneNumber,
-          checkinDate: checkinDate || guest.checkinDate,
-          expectedCheckout: checkoutDate || guest.expectedCheckout,
-          roomRate: roomCharges,
-          foodBill: updatedFoodBill,
-          totalAmount: totalChargesCalculated,
-        });
-      }
+    onUpdateGuest({
+      ...guest,
+      guestName: editGuestName.trim() || guest.guestName,
+      phoneNumber: editPhoneNumber.trim() || guest.phoneNumber,
+      checkinDate: checkinDate || guest.checkinDate,
+      expectedCheckout: checkoutDate || guest.expectedCheckout,
+      roomRate: roomCharges,
+      foodBill: updatedFoodBill,
+      totalAmount: totalChargesCalculated,
+    });
+    return true;
+  };
+
+  const handleSaveOrCheckout = () => {
+    if (internalMode === 'edit-only') {
+      saveGuestEdits();
       onClose();
     } else {
       const receipt: BillingReceipt = {
@@ -490,8 +505,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         gstFoodRate,
         gstAccommodationAmount,
         gstFoodAmount,
-        gstTaxType: taxType,
-        gstIgst,
+        gstTaxType: 'cgst_sgst',
         guestGstin: guestGstin || undefined,
         guestBillingName: guestBillingName || undefined,
       };
@@ -499,6 +513,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       onCheckout(receipt);
       onClose();
     }
+  };
+
+  // Saves the current edits without closing, then flips this same modal
+  // into checkout mode - staff no longer have to save, close, and reopen
+  // through a different entry point to go straight to final settlement.
+  const handleSaveAndProceedToCheckout = () => {
+    saveGuestEdits();
+    setInternalMode('edit-and-checkout');
   };
 
   return (
@@ -509,7 +531,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <IndianRupee className="w-5 h-5 text-blue-600" />
-              {mode === 'edit-only' ? 'Edit Guest Booking & Billing Details' : 'Guest Billing & Final Checkout Settlement'}
+              {internalMode === 'edit-only' ? 'Edit Guest Booking & Billing Details' : 'Guest Billing & Final Checkout Settlement'}
             </h2>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
               Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
@@ -886,30 +908,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         </div>
                       )}
 
-                      {/* Same State (CGST+SGST) vs Inter-State (IGST) */}
-                      <div className="flex items-center gap-3 pt-1">
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input type="radio" checked={taxType === 'cgst_sgst'} onChange={() => setTaxType('cgst_sgst')} />
-                          <span>Same State (CGST+SGST)</span>
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input type="radio" checked={taxType === 'igst'} onChange={() => setTaxType('igst')} />
-                          <span>Inter-State (IGST)</span>
-                        </label>
-                      </div>
-
                       <div className="border-t border-dashed border-blue-200 dark:border-blue-700 pt-1 mt-1 flex justify-between font-extrabold text-[11px]">
-                        {taxType === 'cgst_sgst' ? (
-                          <>
-                            <span>CGST (50%) / SGST (50%):</span>
-                            <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>IGST:</span>
-                            <span>₹{gstIgst.toFixed(2)}</span>
-                          </>
-                        )}
+                        <span>CGST (50%) / SGST (50%):</span>
+                        <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
                       </div>
 
                       {/* Optional guest/company GSTIN for a proper tax invoice */}
@@ -1041,14 +1042,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 {/* Split Distribution Matrix */}
                 <div className="space-y-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center gap-2">
                     <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase">Split Distribution Matrix</span>
                     <button
                       type="button"
                       onClick={handleAddSplitRow}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800"
+                      className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg cursor-pointer shrink-0"
                     >
-                      + Add Row
+                      <Plus className="w-3.5 h-3.5" /> Add Row
                     </button>
                   </div>
 
@@ -1141,7 +1142,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           >
             Cancel
           </button>
-          {mode === 'edit-and-checkout' && (
+          {internalMode === 'edit-and-checkout' && (
             <button
               type="button"
               onClick={() => setIsPrintModalOpen(true)}
@@ -1153,9 +1154,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           <button
             type="button"
             onClick={handleSaveOrCheckout}
-            disabled={isProcessing || (mode === 'edit-and-checkout' && !isSplitMatching)}
+            disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
             className={`flex-2 py-3 text-white font-semibold text-xs rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 ${
-              mode === 'edit-only'
+              internalMode === 'edit-only'
                 ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
                 : !isSplitMatching
                 ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-75'
@@ -1164,14 +1165,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           >
             <CheckCircle2 className="w-4 h-4" />
             {isProcessing
-              ? (mode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-              : mode === 'edit-only'
+              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+              : internalMode === 'edit-only'
               ? 'Save Booking Changes'
               : !isSplitMatching
               ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
               : 'Checkout & Close Booking'
             }
           </button>
+          {internalMode === 'edit-only' && (
+            <button
+              type="button"
+              onClick={handleSaveAndProceedToCheckout}
+              disabled={isProcessing}
+              className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Save and Proceed to Checkout
+            </button>
+          )}
         </div>
 
       </div>
@@ -1336,23 +1347,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   )}
                   <div className="border-t border-dashed border-slate-300 pt-1">
-                    {taxType === 'cgst_sgst' ? (
-                      <>
-                        <div className="flex justify-between text-black text-[11px] font-bold">
-                          <span>CGST (50% split):</span>
-                          <span>₹{gstCgst.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-black text-[11px] font-bold">
-                          <span>SGST (50% split):</span>
-                          <span>₹{gstSgst.toFixed(2)}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between text-black text-[11px] font-bold">
-                        <span>IGST:</span>
-                        <span>₹{gstIgst.toFixed(2)}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>CGST (50% split):</span>
+                      <span>₹{gstCgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-black text-[11px] font-bold">
+                      <span>SGST (50% split):</span>
+                      <span>₹{gstSgst.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               )}
