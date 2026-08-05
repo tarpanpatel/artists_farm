@@ -270,7 +270,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     : gstRates.accLowRate;
   const gstFoodRate = gstRates.foodRate;
 
-  const gstAccommodationAmount = gstEnabled ? lodgingPendingDue * (gstAccommodationRate / 100) : 0;
+  // GST is owed on the full accommodation invoice value, not on whatever
+  // happens to still be outstanding after subtracting an advance - a guest
+  // who paid a bigger advance doesn't thereby owe less tax. Base it on
+  // roomCharges (the actual charge for the stay), not lodgingPendingDue.
+  const gstAccommodationAmount = gstEnabled ? roomCharges * (gstAccommodationRate / 100) : 0;
   const gstFoodAmount = (gstEnabled && kitchenModuleEnabled) ? foodTotal * (gstFoodRate / 100) : 0;
 
   const gstAmount = gstAccommodationAmount + gstFoodAmount;
