@@ -22,8 +22,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Audit Logs & Receipts View (`AuditLogsView.tsx`)
 - ✅ Menu Manager (`MenuManager.tsx`)
 - ✅ Analytics Dashboard (`AnalyticsDashboard.tsx`)
+- ✅ iCal Sync Manager (`ICalSyncManager.tsx`)
 
-Remaining: ~42 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~41 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
