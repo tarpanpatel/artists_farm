@@ -55,8 +55,11 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Demo Data Modal (`DemoDataModal.tsx`)
 - ✅ Login Modal (`LoginModal.tsx`)
 - ✅ Telegram Connection Settings (`TelegramConnectionSettings.tsx`)
+- ✅ Root App Shell (`App.tsx`)
 
-All 55 component files are now i18n-extracted (or verified to have no static UI text). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+All 56 component files are now i18n-extracted (or verified to have no static UI text). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+
+Note: duplicate-key sweep passed clean for the latest batch; the earlier 5-key regression was from overlapping commits and is already resolved.
 
 ---
 *Last Updated: August 2026*
