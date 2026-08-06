@@ -331,24 +331,13 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'get_attendance':
-            $count = 0;
-            try { $stmt = $pdo->prepare("SELECT COUNT(*) FROM staff_attendance WHERE property_id = ?"); $stmt->execute([$propertyId]); $count = $stmt->fetchColumn(); } catch (PDOException $e) {}
-            if ($count == 0) {
-                $seedAttendance = [
-                    ['2026-07-14','7','Present'],['2026-07-14','8','Present'],['2026-07-14','11','Present'],
-                    ['2026-07-14','12','Present'],['2026-07-14','13','Present'],['2026-07-14','15','Present'],
-                    ['2026-07-14','16','Present'],['2026-07-14','17','Present'],['2026-07-14','18','Present'],
-                    ['2026-07-14','19','Present'],['2026-07-14','20','Present'],
-                    ['2026-07-15','7','Present'],['2026-07-15','8','Present'],['2026-07-15','11','Half Day'],
-                    ['2026-07-15','12','Present'],['2026-07-15','13','Absent'],['2026-07-15','15','Present'],
-                    ['2026-07-15','16','Present'],['2026-07-15','17','Present'],['2026-07-15','18','Present'],
-                    ['2026-07-15','19','Absent'],['2026-07-15','20','Present'],
-                ];
-                $stmt = $pdo->prepare("INSERT INTO staff_attendance (attendance_date, user_id, status, property_id) VALUES (?, ?, ?, ?)");
-                foreach ($seedAttendance as $a) {
-                    try { $stmt->execute([$a[0], $a[1], $a[2], $propertyId]); } catch (PDOException $e) {}
-                }
-            }
+            // No seeding here on purpose - this used to auto-insert 22 canned rows
+            // (property 1/Jaipur's real staff IDs and names, hardcoded July 2026
+            // dates) into whichever property's Attendance Calendar was opened
+            // first with zero rows on file. That planted fake attendance history
+            // for staff who don't work at that property into every new property
+            // on the platform, silently, on a page view. A property with no
+            // marked attendance yet should show nothing, not fabricated data.
             try {
                 $stmt = $pdo->prepare("SELECT a.id, a.attendance_date as date, a.user_id as staffId, u.username as staffName, a.status
                                     FROM staff_attendance a
@@ -365,11 +354,23 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'log_attendance':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                $staffId = $input['staffId'] ?? $input['user_id'] ?? null;
+                // No fallback to a hardcoded user id here on purpose - a dev-only
+                // default (user 7, "Tarpan", property 1's own Super Admin) was
+                // exactly how the auto-seed bug above planted attendance for
+                // staff who don't belong to the property marking it. A request
+                // missing staffId is a real bug on the caller's side to surface,
+                // not something to paper over with a guess.
+                if ($staffId === null) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'staffId is required']);
+                    break;
+                }
                 try {
                     $stmt = $pdo->prepare("INSERT INTO staff_attendance (attendance_date, user_id, status, marked_by, property_id) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['date'] ?? date('Y-m-d'),
-                        $input['staffId'] ?? $input['user_id'] ?? 7,
+                        $staffId,
                         $input['status'] ?? 'Present',
                         $input['marked_by'] ?? 'Tarpan',
                         $propertyId
