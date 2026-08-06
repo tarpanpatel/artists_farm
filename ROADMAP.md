@@ -30,8 +30,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Today Overview (`TodayOverview.tsx`)
 - ✅ Data Export Center (`DataExportCenter.tsx`)
 - ✅ Telegram Setup Wizard (`TelegramSetupWizard.tsx`)
+- ✅ Guest Billing & Checkout (`BillingCheckout.tsx`)
 
-Remaining: ~34 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~33 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
