@@ -866,7 +866,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                             {t('help_label', 'Help?')}
                           </span>
-                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/help:block whitespace-nowrap bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
+                          {/* Right-anchored (not centered) and width-capped with normal
+                              wrapping - this badge sits near the right edge of its form
+                              column, so a centered/nowrap tooltip bled off the right side
+                              of the viewport (and widened the whole page with a horizontal
+                              scrollbar). Growing left from a fixed right edge, capped at
+                              max-w, stays on-screen regardless of where the badge sits. */}
+                          <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/help:block max-w-[180px] w-max bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
                             {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
                           </span>
                         </span>
@@ -983,7 +989,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                             {t('help_label', 'Help?')}
                           </span>
-                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/help:block whitespace-nowrap bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
+                          {/* Right-anchored (not centered) and width-capped with normal
+                              wrapping - this badge sits near the right edge of its form
+                              column, so a centered/nowrap tooltip bled off the right side
+                              of the viewport (and widened the whole page with a horizontal
+                              scrollbar). Growing left from a fixed right edge, capped at
+                              max-w, stays on-screen regardless of where the badge sits. */}
+                          <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/help:block max-w-[180px] w-max bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
                             {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
                           </span>
                         </span>
