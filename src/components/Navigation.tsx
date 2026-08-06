@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
-import { t } from '../i18n/en';
 
 export type TabType =
   | 'dashboard'
@@ -239,7 +238,13 @@ export const Navigation: React.FC<NavigationProps> = ({
           id: item.tabKey,
           tabKey: item.tabKey,
           uniqueKey: item.uniqueKey || item.tabKey,
-          label: t(item.uniqueKey || item.tabKey || '', item.title),
+          // item.title is the DB-backed value NavMenuEditor writes ("Click title to
+          // rename") - it must win outright, not just as a t() fallback. en.ts has
+          // entries for several of these same uniqueKeys (from the i18n extraction
+          // pass finding this same default text elsewhere), so routing this through
+          // t(item.uniqueKey, item.title) silently returned the frozen en.ts string
+          // and made every Root Admin rename of a built-in item a no-op.
+          label: item.title,
           icon: getIconComponent(item.iconName),
           badge: badge?.text || null,
           badgeClass: badge?.className,
@@ -273,7 +278,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           >
             <div className="flex items-center gap-2.5 truncate">
               <ItemIcon className={`w-4 h-4 shrink-0 ${depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
-              <span className="truncate">{t(node.uniqueKey || node.tabKey || '', node.title)}</span>
+              <span className="truncate">{node.title}</span>
             </div>
             <div className="flex items-center gap-1">
               {badge && (
@@ -326,7 +331,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'
             }`}
           />
-          <span className="truncate">{t(node.uniqueKey || node.tabKey || '', node.title)}</span>
+          <span className="truncate">{node.title}</span>
         </div>
         {badge && (
           <span

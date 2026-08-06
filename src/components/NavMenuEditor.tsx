@@ -809,7 +809,14 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <p className="text-slate-400 text-xs">{t('nav_menu_empty_subtitle', 'Click "Add Item" to start building your menu')}</p>
           </div>
         ) : (
-          <ul data-sortable className="flex flex-col">
+          // key={containerKey} forces React to fully discard and rebuild this whole
+          // tree after every drag instead of diffing against it. SortableJS moves
+          // the actual <li>/<ul> DOM nodes directly (outside React's knowledge) on
+          // drop, including across parents via the shared `group` - without a
+          // remount, React's next reconciliation still holds the pre-drag tree
+          // shape and tries to removeChild a node from what it thinks is still its
+          // parent, which throws "not a child of this node" once React tries.
+          <ul key={containerKey} data-sortable className="flex flex-col">
             {tree.map(item => renderTreeItem(item, 0))}
           </ul>
         )}
