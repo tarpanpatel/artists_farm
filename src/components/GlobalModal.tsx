@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
+import { t } from '../i18n/en';
 
 type ModalType = 'alert' | 'confirm' | 'success' | 'error';
 
@@ -20,7 +21,7 @@ export const GlobalModal = () => {
     window.alert = (message: any) => {
       setModal({
         type: 'alert',
-        title: 'Notification',
+        title: t('global_modal_notification_title'),
         message: String(message),
       });
     };
@@ -34,7 +35,7 @@ export const GlobalModal = () => {
     (window as any).showConfirm = (message: string, onConfirm: () => void, onCancel?: () => void) => {
       setModal({
         type: 'confirm',
-        title: 'Please Confirm',
+        title: t('global_modal_confirm_title'),
         message,
         onConfirm,
         onCancel,
@@ -44,7 +45,7 @@ export const GlobalModal = () => {
     (window as any).showAlert = (message: string, type: ModalType = 'alert', title?: string) => {
       setModal({
         type,
-        title: title || (type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Notification'),
+        title: title || (type === 'error' ? t('global_modal_error_title') : type === 'success' ? t('global_modal_success_title') : t('global_modal_notification_title')),
         message,
       });
     };
@@ -94,22 +95,22 @@ export const GlobalModal = () => {
                 onClick={handleClose}
                 className="px-4 py-2 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
               >
-                Cancel
+                {t('cancel_button')}
               </button>
               <button
                 onClick={handleConfirm}
                 className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors"
               >
-                Confirm
+                {t('confirm_button')}
               </button>
             </>
           ) : (
-            <button
-              onClick={handleClose}
-              className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors"
-            >
-              Okay
-            </button>
+              <button
+                onClick={handleClose}
+                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors"
+              >
+                {t('okay_button')}
+              </button>
           )}
         </div>
       </div>

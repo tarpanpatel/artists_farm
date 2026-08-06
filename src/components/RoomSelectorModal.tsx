@@ -1,5 +1,6 @@
 import React from 'react';
 import { Building2, X, ArrowRight } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface Room {
   id: number;
@@ -39,10 +40,10 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                Select Room for New Guest
+                {t('select_room_heading')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Choose a room to register the guest in
+                {t('select_room_subtext')}
               </p>
             </div>
           </div>
@@ -60,7 +61,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
           {activeRooms.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium">No active rooms available</p>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">{t('no_active_rooms_text')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
@@ -102,7 +103,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
         {/* Footer Info */}
         <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-            💡 Tip: Select a room above to register the guest in that specific room. You can always change the room assignment later.
+            💡 {t('room_selector_tip')}
           </p>
         </div>
 
@@ -112,7 +113,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
           disabled={isLoading}
           className="w-full py-2.5 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-100 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Cancel Room Selection
+          {t('cancel_room_selection_button')}
         </button>
       </div>
     </div>

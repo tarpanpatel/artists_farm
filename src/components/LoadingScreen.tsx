@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, AlertCircle } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface LoadingScreenProps {
   message?: string;
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({
-  message = 'Loading application...'
+  message = t('loading_screen_default_message')
 }) => {
   const [showTimeout, setShowTimeout] = useState(false);
 
@@ -38,7 +39,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         {/* Message */}
         <div className="text-center">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Artists Farm
+            {t('artists_farm_brand')}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {message}
@@ -58,14 +59,14 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             <div className="flex gap-2 items-start mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
               <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                Loading is taking longer than expected. Click below to go home.
+                {t('loading_timeout_message')}
               </p>
             </div>
             <a
               href="/artists_farm/"
               className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors"
             >
-              ← Go Home
+              {t('go_home_button')}
             </a>
           </div>
         )}

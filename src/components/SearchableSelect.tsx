@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { t } from '../i18n/en';
 
 interface Option {
   value: string;
@@ -21,7 +22,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Search...',
+  placeholder = t('searchable_select_placeholder'),
   className = '',
   inputClassName = '',
   dropdownClassName = '',
@@ -63,7 +64,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       {isOpen && (
         <div className={`absolute z-50 mt-1 w-full border rounded-lg shadow-lg bg-white dark:bg-slate-800 max-h-60 overflow-y-auto ${dropdownClassName}`}>
           {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-slate-400">No matches</div>
+            <div className="px-3 py-2 text-xs text-slate-400">{t('no_matches_text')}</div>
           ) : (
             filtered.map(opt => (
               <div
