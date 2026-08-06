@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "flowbite-react/plugin/tailwindcss";
-@source "../.flowbite-react/class-list.json";
 @import "./theme-overrides.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -39,7 +37,7 @@ input[type='number'] {
   appearance: textfield;
 }
 
-/* Flowbite Dark Mode UI Overrides */
+/* Dark Mode UI Overrides */
 .dark body,
 html.dark {
   color-scheme: dark;

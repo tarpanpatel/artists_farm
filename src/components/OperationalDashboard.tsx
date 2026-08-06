@@ -682,7 +682,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
       )}
 
-      {/* Flowbite Content Cards Grid */}
+      {/* Content Cards Grid */}
       <div className={`grid grid-cols-1 ${kitchenModuleEnabled ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
         {/* Resident Card */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5 flex flex-col justify-between">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tooltip, Badge } from 'flowbite-react';
+import { Tooltip } from './Tooltip';
 import DataTable from 'react-data-table-component';
 import {
   Calendar as CalendarIcon,
@@ -859,13 +859,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        {/* Real flowbite-react Tooltip - Popper-positioned, so it
-                            auto-flips/shifts to stay on-screen regardless of where
-                            this badge sits, instead of a hand-rolled CSS tooltip. */}
                         <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <Badge color="gray" className="cursor-help">
+                          <span className="inline-flex items-center rounded-lg bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                             {t('help_label', 'Help?')}
-                          </Badge>
+                          </span>
                         </Tooltip>
                       </div>
                     </div>
@@ -972,13 +969,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        {/* Real flowbite-react Tooltip - Popper-positioned, so it
-                            auto-flips/shifts to stay on-screen regardless of where
-                            this badge sits, instead of a hand-rolled CSS tooltip. */}
                         <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <Badge color="gray" className="cursor-help">
+                          <span className="inline-flex items-center rounded-lg bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                             {t('help_label', 'Help?')}
-                          </Badge>
+                          </span>
                         </Tooltip>
                       </div>
                     </div>

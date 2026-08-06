@@ -9,7 +9,6 @@ dist/
 !tsconfig*.json
 !vite.config.*
 !tailwind.config.*
-!.flowbite-react/class-list.json
 test_*.php
 fix_*.php
 temp_*.sql

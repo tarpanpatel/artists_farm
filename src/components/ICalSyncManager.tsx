@@ -280,7 +280,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     }, 2000);
   };
 
-  // Helper function to format platform pill badges Flowbite style
+  // Helper function to format platform pill badges
   const getPlatformBadge = (serviceName: string) => {
     const lower = serviceName.toLowerCase();
     if (lower.includes('airbnb')) {
@@ -348,7 +348,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
   return (
     <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
-      {/* Flowbite Header Banner */}
+      {/* Header Banner */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
         {/* Breadcrumb Navigation */}
         <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center">
@@ -391,7 +391,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         </div>
       </div>
 
-      {/* Top 4 Metric KPI Cards (Flowbite Layout Inspiration) */}
+      {/* Top 4 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Connected Channels */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
@@ -460,7 +460,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         </div>
       </div>
 
-      {/* Main Content Area: Flowbite API Data Table */}
+      {/* Main Content Area: API Data Table */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
         {/* Table Filter Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">

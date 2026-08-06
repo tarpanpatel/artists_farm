@@ -150,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Flowbite Style Logo */}
+          {/* Logo */}
           <div className="pos-logo-container flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-bold">
               <Building2 className="w-5 h-5" />
@@ -376,7 +376,7 @@ export const Header: React.FC<HeaderProps> = ({
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
           </button>
 
-          {/* Flowbite User Profile */}
+          {/* User Profile */}
           {isAuthenticated ? (
             <div className="pos-user-profile-badge flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-slate-700">
               <img
