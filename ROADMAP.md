@@ -51,8 +51,12 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Loading/Error/Settings/Modal shared components (`LoadingSpinner`, `ErrorBoundary`, `AppearanceSettings`, `InvalidPropertyPage`, `LoadingScreen`, `SearchableSelect`, `GlobalModal`, `RoomSelectorModal`, `MultiKeyRoomDrawer`, `ConfirmDialogContext`, `StyledSelect`, `DataLoader`)
 - ✅ Property Setup Wizard (`PropertySetupWizard.tsx`)
 - ✅ No static UI text (nothing to extract): `ToggleSwitch.tsx`, `ToastContext.tsx`
+- ✅ Date Range Picker (`DateRangePicker.tsx`)
+- ✅ Demo Data Modal (`DemoDataModal.tsx`)
+- ✅ Login Modal (`LoginModal.tsx`)
+- ✅ Telegram Connection Settings (`TelegramConnectionSettings.tsx`)
 
-Remaining: ~6 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+All 55 component files are now i18n-extracted (or verified to have no static UI text). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
