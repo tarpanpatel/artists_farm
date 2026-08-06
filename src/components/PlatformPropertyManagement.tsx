@@ -1108,8 +1108,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('property_name_label', 'Property Name')}
+                  <span
+                    className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 cursor-help hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title={t('property_name_help_tooltip', 'The display name guests see for this property/room. Automatically generates the URL slug.')}
+                  >
+                    {t('help_label', 'Help?')}
+                  </span>
                 </label>
                 <input
                   type="text"

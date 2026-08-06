@@ -1342,6 +1342,7 @@ export const strings: Record<string, string> = {
   // Header
   expand_sidebar_tooltip: "Expand Sidebar Menu",
   collapse_sidebar_tooltip: "Collapse Sidebar Menu",
+  property_name_help_tooltip: "The display name guests see for this property/room. Automatically generates the URL slug.",
   pos_badge: "POS",
   notifications_tooltip: "Notifications",
   view_notifications_aria: "View notifications",
