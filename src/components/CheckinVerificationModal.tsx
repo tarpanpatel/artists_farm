@@ -116,6 +116,9 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     if (result.success) {
       setSuccessMsg('Check-in verification complete.');
       onVerificationComplete(String(guest.id));
+      // Brief pause so the success message is actually visible, then close -
+      // this used to stay open indefinitely until manually dismissed.
+      setTimeout(() => onClose(), 900);
     } else {
       setErrorMsg(result.message || 'Failed to complete check-in verification.');
     }

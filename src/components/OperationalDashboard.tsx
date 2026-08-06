@@ -1119,7 +1119,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <CheckinVerificationModal
               guest={selectedBooking}
               isOpen={showCheckinVerification}
-              onClose={() => setShowCheckinVerification(false)}
+              onClose={() => {
+                setShowCheckinVerification(false);
+                // This modal is opened from inside the Edit Booking modal, on
+                // top of it - closing (manually, or automatically after
+                // completing) should return to the dashboard, not reveal Edit
+                // Booking sitting underneath unexpectedly.
+                setSelectedBooking(null);
+              }}
               onVerificationComplete={(guestId) => {
                 onGuestVerificationUpdated?.(guestId);
                 setSelectedBooking((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));

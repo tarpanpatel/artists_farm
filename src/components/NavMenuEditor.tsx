@@ -146,7 +146,11 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   useEffect(() => {
     const fetchConfiguration = async () => {
       try {
-        const rolesResponse = await apiFetch('/artists_farm/php/api/router.php?action=get_system_roles');
+        // apiFetch returns the raw Response - .status here was the HTTP status
+        // CODE (a number), never the string 'success', so this comparison was
+        // always false and every load silently fell back to the hardcoded
+        // defaults below instead of whatever roles/pages the DB actually has.
+        const rolesResponse = await (await apiFetch('/artists_farm/php/api/router.php?action=get_system_roles')).json();
         if (rolesResponse.status === 'success' && rolesResponse.data) {
           const roleNames = rolesResponse.data.map((r: any) => r.name);
           setAllRoles(roleNames);
@@ -154,7 +158,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           setAllRoles(['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff']);
         }
 
-        const pagesResponse = await apiFetch('/artists_farm/php/api/router.php?action=get_nav_page_options');
+        const pagesResponse = await (await apiFetch('/artists_farm/php/api/router.php?action=get_nav_page_options')).json();
         if (pagesResponse.status === 'success' && pagesResponse.data) {
           setPageOptions(pagesResponse.data);
         } else {
@@ -307,7 +311,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const handleAddItem = () => {
     if (!newItem.title.trim()) return;
     const id = `nav-${Date.now().toString().slice(-6)}`;
-    const page = PAGE_OPTIONS.find(p => p.tabKey === newItem.tabKey && p.uniqueKey === newItem.uniqueKey);
+    const page = pageOptions.find(p => p.tabKey === newItem.tabKey && p.uniqueKey === newItem.uniqueKey);
     const item: NavMenuItem = {
       id,
       title: newItem.title.trim(),
@@ -758,7 +762,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             )}
             {/* Roles */}
             <div className="flex flex-wrap gap-1">
-              {ALL_ROLES.map(role => (
+              {allRoles.map(role => (
                 <button key={role} onClick={() => {
                   setNewItem(p => ({ ...p, roles: p.roles.includes(role) ? p.roles.filter(r => r !== role) : [...p.roles, role] }));
                 }} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${newItem.roles.includes(role) ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400'}`}>

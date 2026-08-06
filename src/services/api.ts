@@ -451,7 +451,16 @@ export async function uploadImageDB(image: File | string, folder: 'menu' | 'cata
     });
     const json = await res.json();
     if (json.status === 'success' && json.url) {
-      return json.url;
+      // json.url is built server-side from the backend's own SCRIPT_NAME, which
+      // on this dev setup is the sibling `-ai2` folder the Vite proxy rewrites
+      // requests into (e.g. /artists_farm-ai2/php/uploads/images/...) - not
+      // reachable directly from the browser, since only /php/... and
+      // /artists_farm/php/... are actually proxied. Re-root it onto the same
+      // _base this frontend already uses for the upload request itself: '' in
+      // dev (matches the /php proxy rule), '/artists_farm' in production
+      // (where SCRIPT_NAME already matches _base and this is a no-op).
+      const uploadsPath = json.url.replace(/^.*(\/php\/uploads\/.*)$/, '$1');
+      return `${API_ROOT_BASE}${uploadsPath}`;
     }
     console.error('Image upload failed:', json.message);
     return null;
