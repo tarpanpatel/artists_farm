@@ -165,9 +165,9 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     }
 
     const confirmed = await confirm({
-      title: 'Delete Misc Charge Template',
-      message: 'Are you sure you want to delete this charge template?',
-      confirmText: 'Delete Template',
+      title: t('delete_misc_charge_title', 'Delete Misc Charge Template'),
+      message: t('delete_misc_charge_message', 'Are you sure you want to delete this charge template?'),
+      confirmText: t('delete_misc_charge_confirm', 'Delete Template'),
       variant: 'danger',
     });
 

@@ -1389,6 +1389,9 @@ export const strings: Record<string, string> = {
   service_name_placeholder: "e.g. Pet Fee",
   default_price_label: "Default Price (₹)",
   add_service_button: "Add Service",
+  delete_misc_charge_title: "Delete Misc Charge Template",
+  delete_misc_charge_message: "Are you sure you want to delete this charge template?",
+  delete_misc_charge_confirm: "Delete Template",
 
   // License Management
   loading_licenses_label: "Loading licenses...",
