@@ -34,10 +34,11 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Multi-Key Property Overview (`MultiKeyPropertyOverview.tsx`)
 - ✅ Cash Drawer Manager (`CashDrawerManager.tsx`)
 - ✅ Login Page (`LoginPage.tsx`)
+- ✅ Root Admin Dashboard (`RootAdminDashboard.tsx`)
 - ✅ Inventory Management (`InventoryManagement.tsx`)
 - ✅ Kitchen Management (`KitchenManagement.tsx`)
 
-Remaining: ~28 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~27 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*

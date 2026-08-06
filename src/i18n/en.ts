@@ -1169,7 +1169,6 @@ export const strings: Record<string, string> = {
   username_label: "Username",
   access_level_label: "Access Level",
   full_system_access_label: "Full System Access",
-  telegram_configure_routing_label: 'Configure "Send to:" routing for:',
   tenant_slug_change_warning: "Changes this tenant's URL for every property under it - any bookmarked or previously-shared links will stop working.",
   date_column_header: "Date",
   item_description_column_header: "Item Description",
