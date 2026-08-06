@@ -4,6 +4,7 @@ import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
+import { t } from '../i18n/en';
 
 interface ExpenseItem {
   id: number;
@@ -87,9 +88,9 @@ export const ExpenseItemsManagement: React.FC = () => {
 
   const handleDeleteItem = async (itemId: number, itemLabel: string) => {
     const confirmed = await confirm({
-      title: 'Delete Expense Item',
+      title: t('delete_expense_item_title', 'Delete Expense Item'),
       message: `Delete "${itemLabel}"? This action cannot be undone.`,
-      confirmText: 'Delete Item',
+      confirmText: t('delete_expense_item_confirm', 'Delete Item'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -130,10 +131,10 @@ export const ExpenseItemsManagement: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            Predefined Expense Items
+            {t('predefined_expense_items_heading', 'Predefined Expense Items')}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-            System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.
+            {t('expense_items_description', 'System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.')}
           </p>
         </div>
       </div>
@@ -157,21 +158,21 @@ export const ExpenseItemsManagement: React.FC = () => {
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Add Custom Item
+                {t('add_custom_item_button', 'Add Custom Item')}
               </button>
               <button
                 onClick={loadItems}
                 className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Refresh
+                {t('refresh_button', 'Refresh')}
               </button>
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search items or categories..."
+              placeholder={t('search_items_categories_placeholder', 'Search items or categories...')}
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
             />
           </div>
@@ -179,41 +180,41 @@ export const ExpenseItemsManagement: React.FC = () => {
           {/* Add New Item Form */}
           {isAddingNew && (
             <form onSubmit={handleAddItem} className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">Add Custom Expense Item</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white">{t('add_custom_expense_item_heading', 'Add Custom Expense Item')}</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Item Name *
+                    {t('item_name_required_label', 'Item Name *')}
                   </label>
                   <input
                     type="text"
                     value={newItem.label}
                     onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                    placeholder="e.g., Floor Cleaner"
+                    placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Category *
+                    {t('category_required_label', 'Category *')}
                   </label>
                   <StyledSelect
                     value={newItem.category}
                     onChange={(value) => setNewItem({ ...newItem, category: value })}
-                    placeholder="-- Select Category --"
+                    placeholder={t('select_category_placeholder', '-- Select Category --')}
                     searchable
                     options={categories.map((cat) => ({ value: cat, label: cat }))}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Default Amount (₹)
+                    {t('default_amount_label', 'Default Amount (₹)')}
                   </label>
                   <input
                     type="number"
                     value={newItem.default_amount}
                     onChange={(e) => setNewItem({ ...newItem, default_amount: e.target.value })}
-                    placeholder="0.00"
+                    placeholder={t('default_amount_placeholder', '0.00')}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -224,14 +225,14 @@ export const ExpenseItemsManagement: React.FC = () => {
                   disabled={saving}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Add Item'}
+                  {saving ? t('saving_ellipsis_button', 'Saving...') : t('add_item_button', 'Add Item')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAddingNew(false)}
                   className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
                 >
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
               </div>
             </form>
@@ -281,10 +282,10 @@ export const ExpenseItemsManagement: React.FC = () => {
                               onClick={() => handleDeleteItem(item.id, item.label)}
                               disabled={saving}
                               className="w-full p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-xs font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 mt-2"
-                              title="Delete"
+                              title={t('delete_button', 'Delete')}
                             >
                               <Trash2 className="w-3 h-3" />
-                              Delete
+                              {t('delete_button', 'Delete')}
                             </button>
                           )}
                         </div>

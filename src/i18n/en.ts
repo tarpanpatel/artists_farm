@@ -768,7 +768,7 @@ export const strings: Record<string, string> = {
   add_first_property_help_text: "Add your first property to get started",
   tenant_multi_key_badge: "Multi-Key",
   tenant_inactive_status_badge: "Inactive",
-  open_dashboard_link: "Open Dashboard",
+  open_dashboard_link: "Open Property",
   edit_tooltip: "Edit",
   deactivate_tooltip: "Deactivate",
   activate_tooltip: "Activate",
@@ -1502,6 +1502,29 @@ export const strings: Record<string, string> = {
   select_checkin_date_title: "Select Check-In Date",
   select_checkout_date_title: "Select Check-Out Date",
   clear_dates_button: "Clear dates",
+
+  // Expense Items Management
+  predefined_expense_items_heading: "Predefined Expense Items",
+  expense_items_description: "System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.",
+  add_custom_item_button: "Add Custom Item",
+  refresh_button: "Refresh",
+  search_items_categories_placeholder: "Search items or categories...",
+  add_custom_expense_item_heading: "Add Custom Expense Item",
+  default_amount_label: "Default Amount (₹)",
+  default_amount_placeholder: "0.00",
+  delete_expense_item_title: "Delete Expense Item",
+  delete_expense_item_confirm: "Delete Item",
+
+  loading_spinner_default_message: "Loading...",
+  error_boundary_component_section_fallback: "Component",
+  error_boundary_generic_heading: "Something went wrong",
+  error_boundary_generic_message: "An unexpected error occurred. Please refresh the page.",
+  appearance_settings_theme_tab: "Theme Colors",
+  appearance_settings_css_tab: "Custom CSS",
+  invalid_property_heading: "Access Denied",
+  invalid_property_message: "You don't have access to this resource. Please contact your administrator if you believe this is an error.",
+  invalid_property_home_button: "Go to Home",
+  invalid_property_help_text: "If you believe this is an error, please contact your administrator.",
 };
 
 export function t(key: string, fallback?: string): string {
