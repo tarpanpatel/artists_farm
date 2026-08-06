@@ -25,8 +25,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ iCal Sync Manager (`ICalSyncManager.tsx`)
 - ✅ Tenant Dashboard (`TenantDashboard.tsx`)
 - ✅ Petty Cash Management (`PettyCashManagement.tsx`)
+- ✅ Custom CSS Override (`CustomCSSOverride.tsx`)
 
-Remaining: ~39 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~38 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
