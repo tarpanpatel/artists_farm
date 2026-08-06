@@ -1,5 +1,6 @@
 import React, { ReactNode, ErrorInfo } from 'react';
 import { AlertCircle } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface Props {
   children: ReactNode;
@@ -22,7 +23,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[ErrorBoundary] ${this.props.section || 'Component'} error:`, error, errorInfo);
+    console.error(`[ErrorBoundary] ${this.props.section || t('error_boundary_component_section_fallback')} error:`, error, errorInfo);
   }
 
   render() {
@@ -32,10 +33,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-semibold text-red-900 dark:text-red-200">
-              {this.props.section ? `${this.props.section} Error` : 'Something went wrong'}
+              {this.props.section ? `${this.props.section} Error` : t('error_boundary_generic_heading')}
             </h3>
             <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-              {this.state.error?.message || 'An unexpected error occurred. Please refresh the page.'}
+              {this.state.error?.message || t('error_boundary_generic_message')}
             </p>
           </div>
         </div>

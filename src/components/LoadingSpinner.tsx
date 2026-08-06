@@ -1,5 +1,6 @@
 import React from 'react';
 import { Loader } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -7,7 +8,7 @@ interface LoadingSpinnerProps {
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-  message = 'Loading...',
+  message = t('loading_spinner_default_message'),
   fullScreen = false
 }) => {
   if (fullScreen) {

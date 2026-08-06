@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Palette } from 'lucide-react';
 import { ThemeManagement } from './ThemeManagement';
 import { CustomCSSOverride } from './CustomCSSOverride';
+import { t } from '../i18n/en';
 
 interface AppearanceSettingsProps {
   activeRole?: string;
@@ -22,7 +23,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
-          Theme Colors
+          {t('appearance_settings_theme_tab')}
         </button>
         <button
           onClick={() => setActiveTab('css')}
@@ -32,7 +33,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
-          Custom CSS
+          {t('appearance_settings_css_tab')}
         </button>
       </div>
 

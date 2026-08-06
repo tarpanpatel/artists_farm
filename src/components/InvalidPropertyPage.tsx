@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Home, ArrowRight } from 'lucide-react';
 import { fetchPropertyModulesFromDB } from '../services/api';
+import { t } from '../i18n/en';
 
 interface Property {
   id: number;
@@ -39,10 +40,10 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
 
         {/* Error Message */}
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-          Access Denied
+          {t('invalid_property_heading')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-          You don't have access to this resource. Please contact your administrator if you believe this is an error.
+          {t('invalid_property_message')}
         </p>
 
 
@@ -52,12 +53,12 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           <Home className="w-4 h-4" />
-          Go to Home
+          {t('invalid_property_home_button')}
         </a>
 
         {/* Help Text */}
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
-          If you believe this is an error, please contact your administrator.
+          {t('invalid_property_help_text')}
         </p>
       </div>
     </div>
