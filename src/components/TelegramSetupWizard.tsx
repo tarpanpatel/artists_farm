@@ -28,6 +28,7 @@ import {
   saveTelegramConfigDB,
 } from '../services/api';
 import { PropertyTelegramConfig, TelegramGroup } from '../types';
+import { t } from '../i18n/en';
 
 interface WizardStep {
   key: 'settings' | 'kitchen' | 'admin' | 'finance';
@@ -331,8 +332,8 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <Rocket className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white m-0">Telegram Setup</h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">Configure bot settings and pairing alerts</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
             </div>
           </div>
           <button
@@ -389,9 +390,8 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           })}
         </div>
         <div className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
-          Configure general notification preferences and link groups.
+          {t('configure_general_preferences', 'Configure general notification preferences and link groups.')}
         </div>
-
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {currentStep.key === 'settings' ? (
@@ -399,9 +399,9 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               {/* Enabled toggle */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white">Enable Telegram Notifications</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Toggle to enable or disable all Telegram notifications.
+                    {t('enable_telegram_notifications_description', 'Toggle to enable or disable all Telegram notifications.')}
                   </div>
                 </div>
                 <button
@@ -421,13 +421,13 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
 
               {/* Bot API Token */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Bot API Token</label>
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{t('bot_api_token_label', 'Bot API Token')}</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value)}
-                    placeholder="Enter Bot Token (Leave empty to use platform default)"
+                    placeholder={t('bot_token_placeholder', 'Enter Bot Token (Leave empty to use platform default)')}
                     className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
                   />
                   <button
@@ -437,7 +437,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     {savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    Save
+                    {t('save_button', 'Save')}
                   </button>
                 </div>
                 {saveSuccess && (
@@ -455,14 +455,14 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 {(!botUsername || showBotFatherGuide) && (
                   <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
                     <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center">
-                      <span>🤖 How to create a Telegram Bot:</span>
+                      <span>{t('how_to_create_bot_heading', '🤖 How to create a Telegram Bot:')}</span>
                       {botUsername && (
                         <button
                           type="button"
                           onClick={() => setShowBotFatherGuide(false)}
                           className="text-[10px] text-slate-500 hover:text-slate-700 cursor-pointer"
                         >
-                          Hide Guide
+                          {t('hide_guide_button', 'Hide Guide')}
                         </button>
                       )}
                     </div>
@@ -488,7 +488,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     onClick={() => setShowBotFatherGuide(true)}
                     className="text-xs font-bold text-sky-600 hover:underline cursor-pointer block mt-1"
                   >
-                    💡 Show BotFather setup guide
+                    {t('show_botfather_guide_button', '💡 Show BotFather setup guide')}
                   </button>
                 )}
               </div>
@@ -496,7 +496,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               {/* Auto-Reminder Interval */}
               <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                  Auto-Reminder Interval (Minutes)
+                  {t('auto_reminder_interval_label', 'Auto-Reminder Interval (Minutes)')}
                 </label>
                 <input
                   type="number"
@@ -506,7 +506,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   className="w-24 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
                 <p className="text-[10px] text-slate-400">
-                  Minutes to wait before an unaddressed order/dish gets nudged again.
+                  {t('auto_reminder_interval_description', 'Minutes to wait before an unaddressed order/dish gets nudged again.')}
                 </p>
               </div>
             </div>
@@ -518,7 +518,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               </div>
 
               <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2 text-[11px] text-sky-800 dark:text-sky-300">
-                <span className="font-bold">Who belongs here: </span>
+                <span className="font-bold">{t('who_belongs_here_prefix', 'Who belongs here: ')}</span>
                 {ROLE_GUIDANCE[currentStep.key as keyof typeof ROLE_GUIDANCE]}
               </div>
 
@@ -530,7 +530,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     onClick={() => setCurrentIndex(0)}
                     className="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg block mx-auto cursor-pointer"
                   >
-                    Go to Settings
+                    {t('go_to_settings_button', 'Go to Settings')}
                   </button>
                 </div>
               )}
@@ -541,7 +541,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Successfully Connected!</h4>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t('successfully_connected_heading', 'Successfully Connected!')}</h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Your <b>{currentStep.label}</b> group chat is linked to the bot.
                     </p>
@@ -558,7 +558,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      {currentState.testSent ? 'Test Message Sent ✓ (send again)' : 'Send Test Message'}
+                      {currentState.testSent ? t('test_message_sent_again_button', 'Test Message Sent ✓ (send again)') : t('send_test_message_button', 'Send Test Message')}
                     </button>
                     
                     <button
@@ -566,7 +566,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       onClick={handleReSetup}
                       className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer"
                     >
-                      🔄 Re-setup / Re-pair Group
+                      {t('re_setup_group_button', '🔄 Re-setup / Re-pair Group')}
                     </button>
 
                     {currentState.testSent && (
@@ -599,7 +599,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     </li>
                     <li className="flex gap-2.5">
                       <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">3</span>
-                      <span>Send this code as a message in the group:</span>
+                      <span>{t('send_this_code_label', 'Send this code as a message in the group:')}</span>
                     </li>
                   </ol>
 
@@ -616,7 +616,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       onClick={handleCopyCode}
                       disabled={!currentState.code}
                       className="w-11 h-11 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 flex items-center justify-center cursor-pointer"
-                      title="Copy code"
+                      title={t('copy_code_tooltip', 'Copy code')}
                     >
                       <Copy className="w-4 h-4" />
                     </button>
@@ -627,23 +627,23 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     {currentState.status === 'waiting' && (
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Waiting for the code to arrive…
+                        {t('waiting_for_code_label', 'Waiting for the code to arrive…')}
                       </div>
                     )}
                     {currentState.status === 'confirming' && (
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Code received — connecting…
+                        {t('code_received_connecting_label', 'Code received — connecting…')}
                       </div>
                     )}
                     {currentState.status === 'expired' && (
                       <div className="space-y-2">
-                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400">This code expired.</div>
+                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('code_expired_label', 'This code expired.')}</div>
                         <button
                           onClick={startPairing}
                           className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" /> Generate a new code
+                          <RefreshCw className="w-3.5 h-3.5" /> {t('generate_new_code_button', 'Generate a new code')}
                         </button>
                       </div>
                     )}
@@ -654,7 +654,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                           onClick={startPairing}
                           className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" /> Try again
+                          <RefreshCw className="w-3.5 h-3.5" /> {t('try_again_button', 'Try again')}
                         </button>
                       </div>
                     )}
@@ -672,7 +672,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             disabled={currentIndex === 0}
             className="text-xs font-bold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back
+            <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
           </button>
           <div className="flex items-center gap-3">
             {currentStep.key !== 'settings' && !isConnected && (
@@ -680,14 +680,14 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 onClick={skipStep}
                 className="text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
               >
-                Skip for now
+                {t('skip_for_now_button', 'Skip for now')}
               </button>
             )}
             <button
               onClick={goNext}
               className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              {isLastStep ? 'Finish' : 'Next'} <ArrowRight className="w-3.5 h-3.5" />
+              {isLastStep ? t('finish_button', 'Finish') : t('next_button', 'Next')} <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
