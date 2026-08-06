@@ -1179,8 +1179,29 @@ export const strings: Record<string, string> = {
   action_column_header: "Action",
   no_data_purchases_message: "No kitchen purchases recorded yet.",
   search_by_item_vendor_placeholder: "Search by item or vendor...",
+  no_inventory_items_message: "No inventory items found.",
+  stock_level_label: "Stock Level",
+  item_image_upload_label: "Item Image Upload / URL",
+  upload_image_button: "Upload Image",
+  or_enter_image_url_placeholder: "Or enter image URL / path...",
+  save_item_button: "Save Item",
+  search_by_name_category_placeholder: "Search by name or category...",
+  search_inventory_placeholder: "Search inventory...",
+  system_tracked_badge: "System Tracked",
+  tracking_column_header: "Tracking",
+  requested_at_column_header: "Requested At",
+  material_selections_summary_column_header: "Material Selections Summary",
+  actions_column_header: "Actions",
+  complete_button: "Complete",
+  pack_column_header: "Pack",
+  cost_column_header: "Cost",
+  add_item_button: "Add Item",
+  inventory_catalog_heading: "Inventory Catalog & Stock Alert Boundaries",
+  inventory_catalog_subtitle: "Monitor stock metrics, receive boundary threshold alerts, and adjust store inventory levels",
+  edit_catalog_item_heading: "Edit Catalog Item",
+  register_new_material_heading: "Register New Material",
 };
 
-export function t(key: string, fallback: string): string {
-  return strings[key] || fallback;
+export function t(key: string, fallback?: string): string {
+  return strings[key] || fallback || key;
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
 import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins, Package, Check } from 'lucide-react';
 import { InventoryItem, StaffMember, CatalogItem } from '../types';
+import { t } from '../i18n/en';
 import { StyledSelect } from './StyledSelect';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
@@ -1150,13 +1151,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
             <Search className="text-slate-400 w-4 h-4" />
             <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-              RECORD KITCHEN PURCHASES & STOCK
+              {t('record_kitchen_purchases_header', 'Record Kitchen Purchases & Stock')}
             </h3>
           </div>
 
           <form onSubmit={handleSavePurchase} className="space-y-4">
             <div>
-              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">PURCHASE DATE</label>
+              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('purchase_date_label', 'Purchase Date')}
+              </label>
               <input
                 type="date"
                 required
@@ -1169,7 +1172,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <div>
               <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                INVENTORY ITEM DETAIL (SELECT FROM MASTER MATERIALS CATALOG)
+                {t('inventory_item_detail_label', 'Inventory Item Detail (Select from Master Materials Catalog)')}
               </label>
               <StyledSelect
                 searchable
@@ -1199,18 +1202,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">SPECIFICATION (LOCKED TO CATALOG)</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={purSpec}
-                  placeholder="Locked from Master Catalog"
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('specification_label')}
+              </label>
+              <input
+                type="text"
+                readOnly
+                value={purSpec}
+                placeholder={t('locked_from_catalog_placeholder')}
                   className="w-full p-2.5 text-xs font-semibold text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-100 dark:bg-slate-900/80 cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">QUANTITY / VOLUME</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('quantity_volume_label')}
+              </label>
                 <input
                   type="number"
                   required
@@ -1233,7 +1240,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">UNIT (LOCKED TO CATALOG)</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('unit_locked_label')}
+              </label>
                 <input
                   type="text"
                   readOnly
@@ -1244,7 +1253,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">TOTAL PRICE (₹)</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('total_price_label')}
+              </label>
                 <input
                   type="number"
                   required
@@ -1258,7 +1269,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">RECORDED BY</label>
+              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
+                {t('recorded_by_label')}
+              </label>
               <input
                 type="text"
                 readOnly
@@ -1272,7 +1285,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 type="submit"
                 className="w-full py-3 text-xs font-extrabold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors shadow-xs cursor-pointer tracking-wider"
               >
-                Save Purchase & Sync Master Catalog
+                {t('save_purchase_sync_button')}
               </button>
             </div>
           </form>
@@ -1281,19 +1294,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Bottom Card: RECENT KITCHEN PURCHASE LOG */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-6 space-y-4">
           <h3 className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-3">
-            RECENT KITCHEN PURCHASE LOG
+            {t('recent_kitchen_purchase_log_header')}
           </h3>
 
           {/* Finance & Payroll Interceptor Bar */}
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             {/* Step 1: Assign Vendor */}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-bold text-slate-700 text-xs w-12">1. To:</span>
+              <span className="font-bold text-slate-700 text-xs w-12">{t('vendor_to_pay_label')}</span>
               <StyledSelect
                 className="max-w-xs w-full"
                 value={selectedVendorToPay}
                 onChange={setSelectedVendorToPay}
-                placeholder="-- Choose Vendor to Pay --"
+                placeholder={t('choose_vendor_placeholder')}
                 options={dbVendors.filter(v => v.type === 'Vendor').map(v => ({ value: v.name, label: v.name }))}
               />
               <button
@@ -1306,13 +1319,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Step 2: Settlement Engine */}
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-slate-700 text-xs w-12">2. Paid By:</span>
+              <span className="font-bold text-slate-700 text-xs w-12">{t('paid_by_label')}</span>
               {currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? (
                 <StyledSelect
                   className="max-w-xs w-full"
                   value={selectedPaidByStaff}
                   onChange={setSelectedPaidByStaff}
-                  placeholder="-- Paid By --"
+                  placeholder={t('choose_paid_by_placeholder')}
                   options={cashHandlers.map(u => ({
                     value: u.name,
                     label: `${u.name} (${u.role})`,
@@ -1332,7 +1345,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
-                  <Landmark size={14} className="text-slate-500" /> Cash:
+                  <Landmark size={14} className="text-slate-500" /> {t('cash_label')}
                 </span>
                 <input
                   type="number"
@@ -1348,7 +1361,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   className="w-20 p-1.5 border border-slate-300 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
-                  <Wallet size={14} className="text-slate-500" /> Pocket:
+                  <Wallet size={14} className="text-slate-500" /> {t('pocket_label')}
                 </span>
                 <input
                   type="number"
@@ -1365,12 +1378,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 />
               </div>
 
-              <button
-                onClick={handleMarkSelectedPaid}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-              >
-                Mark Selected Paid
-              </button>
+<button
+                 onClick={handleMarkSelectedPaid}
+                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+               >
+                 {t('mark_selected_paid_button')}
+               </button>
             </div>
           </div>
 
@@ -1406,14 +1419,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 ),
               },
               {
-                name: 'Date',
+                name: t('date_column_header'),
                 selector: (row: any) => row.purchaseDate,
                 sortable: true,
                 width: '110px',
                 cell: (row: any) => <span className="font-mono text-slate-500">{row.purchaseDate}</span>,
               },
               {
-                name: 'Item Description',
+                name: t('item_description_column_header'),
                 selector: (row: any) => row.itemName,
                 sortable: true,
                 grow: 2,
@@ -1425,14 +1438,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 ),
               },
               {
-                name: 'Qty',
+                name: t('qty_column_header'),
                 selector: (row: any) => row.quantity,
                 sortable: true,
                 width: '80px',
                 cell: (row: any) => <span className="font-semibold text-slate-700">{row.quantity} {row.unit}</span>,
               },
               {
-                name: 'Total Cost',
+                name: t('total_cost_column_header'),
                 selector: (row: any) => row.totalPrice,
                 sortable: true,
                 width: '110px',
@@ -1440,7 +1453,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 cell: (row: any) => <span className="font-extrabold text-slate-900 dark:text-white">₹{Number(row.totalPrice).toFixed(2)}</span>,
               },
               {
-                name: 'Settlement',
+                name: t('settlement_column_header'),
                 selector: (row: any) => row.settlementStatus,
                 sortable: true,
                 width: '110px',
@@ -1456,7 +1469,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 ),
               },
               {
-                name: 'Action',
+                name: t('action_column_header'),
                 width: '100px',
                 right: true,
                 cell: (row: any) => (
@@ -1464,7 +1477,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     onClick={() => handleDeletePurchase(row.id, row.itemName)}
                     className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
-                    Delete
+                    {t('delete_button')}
                   </button>
                 ),
                 ignoreRowClick: true,
@@ -1476,7 +1489,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="w-full flex items-center gap-2 py-2 px-1">
                 <input
                   type="text"
-                  placeholder="Search by item or vendor..."
+                  placeholder={t('search_by_item_vendor_placeholder')}
                   value={purSearch}
                   onChange={e => setPurSearch(e.target.value)}
                   className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
@@ -1488,7 +1501,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             paginationRowsPerPageOptions={[10, 25, 50, 100]}
             highlightOnHover
             noDataComponent={
-              <div className="p-6 text-center text-slate-400 font-semibold">No kitchen purchases recorded yet.</div>
+              <div className="p-6 text-center text-slate-400 font-semibold">{t('no_data_purchases_message')}</div>
             }
             customStyles={{
               subHeader: {
@@ -1550,7 +1563,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Header Title & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="text-slate-800 font-extrabold text-sm uppercase tracking-wider flex items-center gap-2">
-            <Package className="w-4 h-4 text-slate-700" /> Master Materials Catalog
+            <Package className="w-4 h-4 text-slate-700" /> {t('master_materials_catalog_header')}
           </div>
           
           <div className="flex items-center gap-2">
@@ -1559,13 +1572,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
             >
               <Settings className="w-3.5 h-3.5 text-slate-500" />
-              <span>{showCategoryManager ? 'Hide Categories' : 'Manage Categories'}</span>
+              <span>{showCategoryManager ? t('hide_categories_button') : t('manage_categories_button')}</span>
             </button>
             <button
               onClick={handleCreateNewCatalogItem}
               className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <span>+</span> Register New Item
+              <span>+ {t('register_new_item_button')}</span>
             </button>
           </div>
         </div>
@@ -1578,7 +1591,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 type="text"
                 value={newCategoryName}
                 onChange={e => setNewCategoryName(e.target.value)}
-                placeholder="New category name..."
+                placeholder={t('new_category_name_placeholder')}
                 className="flex-1 p-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-blue-500"
                 onKeyDown={async (e) => {
                   if (e.key === 'Enter' && newCategoryName.trim()) {
@@ -1613,7 +1626,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold cursor-pointer"
               >
-                Add
+                {t('add_category_button')}
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -1654,19 +1667,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${dbCat?.is_ingredient ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
                         title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
                       >
-                        {dbCat?.is_ingredient ? '🍽️ Ingredient' : '🚫 Not Food'}
+                        {dbCat?.is_ingredient ? t('ingredient_badge') : t('not_food_badge')}
                       </button>
                       <button
                         onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
                         className="text-slate-400 hover:text-blue-600 text-xs cursor-pointer"
-                        title="Rename"
+                        title={t('rename_tooltip')}
                       >
                         ✎
                       </button>
                       <button
                         onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
                         className="text-slate-400 hover:text-red-600 text-xs cursor-pointer"
-                        title="Delete"
+                        title={t('delete_button')}
                       >
                         ✕
                       </button>
@@ -1687,7 +1700,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 {selectedCatalogItemIds.length} Selected
               </span>
               <span className="text-xs text-blue-700 font-semibold">
-                items to assign category bulk:
+                {t('items_to_assign_category_bulk')}
               </span>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -1695,7 +1708,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 className="flex-1 sm:flex-none"
                 value={bulkTargetCategory}
                 onChange={setBulkTargetCategory}
-                placeholder="Select Target Category..."
+                placeholder={t('select_target_category_placeholder')}
                 options={catalogCategories.map(cat => ({ value: cat, label: cat }))}
               />
               <button
@@ -1703,13 +1716,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 disabled={!bulkTargetCategory}
                 className="btn-bulk-assign-category bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-2xs shrink-0"
               >
-                Assign Category
+                {t('assign_category_button')}
               </button>
               <button
                 onClick={() => setSelectedCatalogItemIds([])}
                 className="text-slate-500 hover:text-slate-700 text-xs font-semibold px-2 py-2 cursor-pointer transition-colors"
               >
-                Clear
+                {t('clear_button')}
               </button>
             </div>
           </div>
@@ -1721,26 +1734,26 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             key={catalogTableKey}
             columns={[
               {
-                name: 'Image',
+                name: t('image_column_header'),
                 width: '170px',
                 cell: (row: CatalogItem) => (
                   row.imagePath ? (
                     <img src={row.imagePath} alt={row.name} className="w-[150px] h-[50px] object-cover rounded border border-slate-200" />
                   ) : (
-                    <div className="w-[150px] h-[50px] bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-slate-400 text-[10px] italic">No Image</div>
+                    <div className="w-[150px] h-[50px] bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-slate-400 text-[10px] italic">{t('no_image_label')}</div>
                   )
                 ),
                 sortable: false,
               },
               {
-                name: 'Item Name',
+                name: t('item_name_label'),
                 selector: (row: CatalogItem) => row.name,
                 sortable: true,
                 grow: 2,
                 cell: (row: CatalogItem) => <span className="font-bold text-slate-800">{row.name}</span>,
               },
               {
-                name: 'Category',
+                name: t('category_label'),
                 selector: (row: CatalogItem) => row.category,
                 sortable: true,
                 width: '140px',
@@ -1749,14 +1762,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 ),
               },
               {
-                name: 'Pack',
+                name: t('pack_column_header'),
                 selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
                 sortable: true,
                 width: '120px',
                 cell: (row: CatalogItem) => <span className="text-slate-600">{row.packSize} {row.packUnit}</span>,
               },
               {
-                name: 'Cost',
+                name: t('cost_column_header'),
                 selector: (row: CatalogItem) => row.price,
                 sortable: true,
                 width: '90px',
@@ -1764,15 +1777,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 cell: (row: CatalogItem) => <span className="text-slate-600">₹{row.price.toFixed(2)}</span>,
               },
               {
-                name: 'Status',
+                name: t('status_column_header'),
                 selector: (row: CatalogItem) => row.is_verified ? 1 : 0,
                 sortable: true,
                 width: '100px',
                 cell: (row: CatalogItem) => (
                   row.is_verified ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">{t('active_status_badge')}</span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Review</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">{t('review_status_badge')}</span>
                   )
                 ),
               },
@@ -1791,7 +1804,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </button>
                     {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
                       <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
-                        Delete
+                  {t('delete_button')}
                       </button>
                     )}
                   </div>
@@ -1808,7 +1821,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             subHeader={
               <div className="w-full flex flex-col gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-500 font-medium shrink-0 text-xs">Filter</span>
+                  <span className="text-slate-500 font-medium shrink-0 text-xs">{t('filter_label')}</span>
                   {catalogCategories.map(cat => {
                     const count = catalogItems.filter(i => i.category === cat).length;
                     const isActive = selectedCategory === cat;
@@ -1830,7 +1843,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Search by name or category..."
+                    placeholder={t('search_by_name_category_placeholder')}
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
                     className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
@@ -1849,7 +1862,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
             }}
             noDataComponent={
-              <div className="p-8 text-center text-slate-400 text-sm">No catalog items found matching your search.</div>
+              <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
             }
             defaultSortFieldId={3}
             defaultSortAsc={true}
@@ -1915,7 +1928,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="font-bold text-slate-800 dark:text-white">
-                  {editingCatalogItem ? '✏️ Edit Catalog Item' : '➕ Register New Material'}
+                  {editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}
                 </h3>
                 <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1924,12 +1937,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <form onSubmit={handleSaveCatalogItem} className="p-4 space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Item Name</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('item_name_label')}</label>
                   <input type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" placeholder="e.g. Tomato Puree" />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Category</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('category_label')}</label>
                   <StyledSelect
                     value={catCategory}
                     onChange={setCatCategory}
@@ -1941,16 +1954,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Base Price (₹)</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('base_price_label')}</label>
                     <input type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
                   </div>
                   <div className="flex gap-2">
                     <div className="w-1/2">
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Pack Size</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('pack_size_label')}</label>
                       <input type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
                     </div>
                     <div className="w-1/2">
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Unit</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('unit_label')}</label>
                       <StyledSelect
                         value={catUnit}
                         onChange={setCatUnit}
@@ -1961,11 +1974,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Upload Image (Auto-crops to 150x50)</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_image_label')}</label>
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
                   {catImagePath && (
                     <div className="mt-2">
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Preview:</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
                       <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-xs" />
                     </div>
                   )}
@@ -1973,7 +1986,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                 <div className="pt-2">
                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-2xs transition-colors cursor-pointer">
-                    Save & Commit Updates
+                    {t('save_commit_updates_button')}
                   </button>
                 </div>
               </form>
@@ -1990,20 +2003,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* Header Title & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="text-slate-800 font-extrabold text-sm uppercase tracking-wider">
-            Stock Request Log
+            {t('stock_request_log_header')}
           </div>
           
            <div className="flex items-center gap-2">
             <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-slate-500 mb-0.5">FROM</span>
+              <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('from_label')}</span>
               <input type="date" ref={fulfillFromRef} onChange={(e) => { if (fulfillToRef.current && e.target.value > fulfillToRef.current.value) fulfillToRef.current.value = e.target.value; }} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-18" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-slate-500 mb-0.5">TO</span>
+              <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('to_label')}</span>
               <input type="date" ref={fulfillToRef} min={fulfillFromRef.current?.value || '2026-07-18'} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-25" />
             </div>
             <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
-              Enter
+{t('enter_button')}
             </button>
           </div>
         </div>
@@ -2011,17 +2024,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
          {/* Table */}
          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
              <DataTable
-               columns={[
-                 {
-                   name: 'Requested At',
-                   selector: (row: any) => row.date,
+                columns={[
+                  {
+                    name: t('requested_at_column_header'),
+                    selector: (row: any) => row.date,
                    sortable: true,
                    grow: 1,
                    cell: (row: any) => <span className="text-xs font-semibold text-slate-500">{row.date}</span>,
                  },
-                 {
-                   name: 'Material Selections Summary',
-                   selector: (row: any) => Array.isArray(row.items) ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ') : '',
+                  {
+                    name: t('material_selections_summary_column_header'),
+                    selector: (row: any) => Array.isArray(row.items) ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ') : '',
                    sortable: true,
                    grow: 2,
                    cell: (row: any) => (
@@ -2035,9 +2048,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                      </span>
                    ),
                  },
-                 {
-                   name: 'Status',
-                   selector: (row: any) => row.status,
+                  {
+                    name: t('status_column_header'),
+                    selector: (row: any) => row.status,
                    sortable: true,
                    center: true,
                    cell: (row: any) => (
@@ -2052,18 +2065,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                      </span>
                    ),
                  },
-                 {
-                   name: 'Actions',
-                   center: true,
+                  {
+                    name: t('actions_column_header'),
+                    center: true,
                    cell: (row: any) => (
                      <div className="flex items-center justify-center gap-1.5">
-                       <button onClick={() => handleEditFulfill(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
-                         <span className="font-mono opacity-80">-</span> Edit
-                       </button>
+<button onClick={() => handleEditFulfill(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
+                          <span className="font-mono opacity-80">-</span> {t('edit_button')}
+                        </button>
                        {row.status === 'PENDING' && (
-                         <button onClick={() => handleQuickComplete(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
-                           <span className="font-mono opacity-80">✓</span> Complete
-                         </button>
+<button onClick={() => handleQuickComplete(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
+                            <span className="font-mono opacity-80">✓</span> {t('complete_button')}
+                          </button>
                        )}
                      </div>
                    ),
@@ -2079,7 +2092,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   <div className="w-full flex items-center gap-2 py-2">
                     <input
                       type="text"
-                      placeholder="Search by date, status, or material..."
+                      placeholder={t('search_by_date_status_material_placeholder')}
                      value={fulfillSearch}
                      onChange={(e) => setFulfillSearch(e.target.value)}
                      className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
@@ -2092,9 +2105,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                highlightOnHover
                pointerOnHover
                dense
-               noDataComponent={
-                 <div className="p-8 text-center text-slate-400 text-sm">No stock request sheets found</div>
-               }
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 text-sm">{t('no_stock_request_sheets_message')}</div>
+                }
                 customStyles={{
                   subHeader: {
                     style: {
@@ -2140,7 +2153,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-bold text-slate-700 text-sm tracking-wide uppercase">
-                  MODIFY STOCK REQUEST
+                  {t('modify_stock_request_header')}
                 </h3>
                 <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
                   <X className="w-5 h-5" />
@@ -2149,7 +2162,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               
               <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                 <div className="pt-2">
-                  <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-4">COSTING & DELIVERY MANIFEST</h4>
+                  <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
                   
                   <div className="space-y-5">
                     {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
@@ -2161,7 +2174,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           <h5 className="font-bold text-slate-800 text-sm">{namePart}</h5>
                           <div className="grid grid-cols-4 gap-3">
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">Delivered Qty</label>
+                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('delivered_qty_label')}</label>
                               <input 
                                 type="number" 
                                 value={data.qty}
@@ -2170,7 +2183,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">Cost / Price (₹)</label>
+                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('cost_price_label')}</label>
                               <input 
                                 type="number" 
                                 value={data.cost}
@@ -2179,7 +2192,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">Size (e.g. 500)</label>
+                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('size_label')}</label>
                               <input 
                                 type="number" 
                                 value={data.size}
@@ -2188,7 +2201,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">Unit Format</label>
+                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('unit_format_label')}</label>
                               <StyledSelect
                                 value={data.unit}
                                 onChange={(val) => updateFulfillData(namePart, 'unit', val)}
@@ -2205,10 +2218,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
                 <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-bold text-white bg-slate-500 rounded-lg hover:bg-slate-600 transition-colors shadow-xs cursor-pointer">
-                  Cancel
+                  {t('cancel_button')}
                 </button>
                 <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-bold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 transition-colors shadow-xs cursor-pointer">
-                  Save & Commit Updates
+                  {t('save_commit_updates_button')}
                 </button>
               </div>
             </div>
@@ -2249,7 +2262,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   type="text"
                   value={reqSearch}
                   onChange={(e) => setReqSearch(e.target.value)}
-                  placeholder="Quick search catalog metrics..."
+                  placeholder={t('quick_search_catalog_placeholder')}
                   className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-2xs"
                 />
                 {reqSearch && (
@@ -2286,7 +2299,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Selected Category Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="font-extrabold text-slate-700 text-xs tracking-wider uppercase">
-                {reqCategory === 'All Items' ? 'ALL STOCK CATALOG ITEMS' : reqCategory.toUpperCase()}
+                {reqCategory === 'All Items' ? t('all_stock_catalog_items_header') : reqCategory.toUpperCase()}
               </h3>
               <span className="text-[11px] text-slate-400 font-semibold">
                 {filteredCatalog.length} items
@@ -2297,7 +2310,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {filteredCatalog.length === 0 ? (
               <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl">
                 <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-600 font-bold text-xs">No catalog items found matching "{reqSearch}"</p>
+                <p className="text-slate-600 font-bold text-xs">{t('no_catalog_items_found_message')} "{reqSearch}"</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -2337,9 +2350,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         }`}
                       >
                         {isRecentlyAdded ? (
-                          <span>✓ Added!</span>
+                          <span>{t('added_button')}</span>
                         ) : (
-                          <span>+ Add</span>
+                          <span>{t('add_button')}</span>
                         )}
                       </button>
                     </div>
@@ -2356,7 +2369,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="font-extrabold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
                   <ShoppingCart className="w-4 h-4 text-slate-700" />
-                  <span>SUPPLY BASKET</span>
+                  <span>{t('supply_basket_header')}</span>
                 </h3>
                 <span className="text-[10px] font-extrabold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-200">
                   {totalReqCount} Items
@@ -2366,8 +2379,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               {reqBasket.length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-xs">
                   <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="font-semibold text-slate-500 text-xs">No materials loaded</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Click + Add on items from catalog</p>
+                  <p className="font-semibold text-slate-500 text-xs">{t('no_materials_loaded_message')}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{t('click_add_from_catalog_hint')}</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 divide-y divide-slate-100">
@@ -2417,7 +2430,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   rows={2}
                   value={specialRequestText}
                   onChange={(e) => setSpecialRequestText(e.target.value)}
-                  placeholder="Special/Seasonal Requests (e.g., 2kg Strawberries, 1 box Cornflakes)..."
+                  placeholder={t('special_requests_placeholder')}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-500 resize-none"
                 />
               </div>
@@ -2428,7 +2441,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 disabled={reqBasket.length === 0 && !specialRequestText.trim()}
                 className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98]"
               >
-                <span>Dispatch Requirement</span>
+                <span>{t('dispatch_requirement_button')}</span>
               </button>
             </div>
 
@@ -2460,9 +2473,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 className="bg-white hover:bg-slate-100 text-cyan-700 font-extrabold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
               >
                 {isReqCartDrawerExpanded ? (
-                  <span>▼ Collapse</span>
+                  <span>▼ {t('collapse_button')}</span>
                 ) : (
-                  <span>▲ Expand Cart (50%)</span>
+                  <span>▲ {t('expand_cart_button')}</span>
                 )}
               </button>
             </div>
@@ -2471,7 +2484,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="p-3 flex-1 overflow-y-auto space-y-2">
               {!isReqCartDrawerExpanded && reqBasket.length > 3 && (
                 <p className="text-[10px] text-cyan-700 font-extrabold tracking-wide uppercase text-center pb-1">
-                  Showing Last 3 Added Items (Click Expand for all {reqBasket.length} items)
+                  {t('showing_last_3_items_prefix')} {reqBasket.length} {t('showing_last_3_items_suffix')}
                 </p>
               )}
               {visibleReqDrawerItems.map((b) => (
@@ -2522,7 +2535,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 rows={1}
                 value={specialRequestText}
                 onChange={(e) => setSpecialRequestText(e.target.value)}
-                placeholder="Special/Seasonal Requests (optional)..."
+                placeholder={t('special_requests_optional_placeholder')}
                 className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-500 resize-none"
               />
               <button
@@ -2530,7 +2543,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 disabled={reqBasket.length === 0 && !specialRequestText.trim()}
                 className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
               >
-                <span>Dispatch Requirement</span>
+                <span>{t('dispatch_requirement_button')}</span>
               </button>
             </div>
           </div>
@@ -2541,7 +2554,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const stockLogColumns = [
     {
-      name: 'Image',
+      name: t('image_column_header'),
       width: '70px',
       cell: (item: InventoryItem) => (
         <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
@@ -2554,7 +2567,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       ),
     },
     {
-      name: 'Item Name',
+      name: t('item_name_label'),
       selector: (item: InventoryItem) => item.name,
       sortable: true,
       grow: 1,
@@ -2563,7 +2576,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       ),
     },
     {
-      name: 'Category',
+      name: t('category_label'),
       selector: (item: InventoryItem) => item.category,
       sortable: true,
       cell: (item: InventoryItem) => (
@@ -2573,7 +2586,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       ),
     },
     {
-      name: 'Current Stock',
+      name: t('current_stock_column_header'),
       selector: (item: InventoryItem) => item.currentStock,
       sortable: true,
       width: '130px',
@@ -2582,7 +2595,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       ),
     },
     {
-      name: 'Min Threshold',
+      name: t('min_threshold_column_header'),
       selector: (item: InventoryItem) => item.minThreshold,
       sortable: true,
       width: '130px',
@@ -2591,29 +2604,29 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       ),
     },
     {
-      name: 'Status',
+      name: t('status_column_header'),
       width: '160px',
       cell: (item: InventoryItem) => {
         const isLow = item.currentStock <= item.minThreshold;
         return isLow ? (
           <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
             <AlertTriangle className="w-3 h-3 text-red-600" />
-            LOW STOCK
+            {t('low_stock_badge').toUpperCase()}
           </span>
         ) : (
           <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-            Adequate
+            {t('in_stock_badge')}
           </span>
         );
       },
     },
     {
-      name: 'Tracking',
+      name: t('tracking_column_header'),
       width: '180px',
       cell: () => (
         <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-bold px-2.5 py-1 rounded-full inline-block">
-          System Tracked
+          {t('system_tracked_badge')}
         </span>
       ),
     },
@@ -2627,7 +2640,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           type="text"
           value={stockLogSearch}
           onChange={(e) => setStockLogSearch(e.target.value)}
-          placeholder="Search inventory..."
+          placeholder={t('search_inventory_placeholder')}
           className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -2635,7 +2648,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         onClick={() => setIsAddModalOpen(true)}
         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
       >
-        <Plus className="w-3.5 h-3.5" /> Add Item
+        <Plus className="w-3.5 h-3.5" /> {t('add_new_item_button')}
       </button>
     </div>
   );
@@ -2645,10 +2658,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       {/* Header */}
       <div>
         <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          Inventory Catalog & Stock Alert Boundaries
+          {t('inventory_catalog_heading')}
         </h2>
         <p className="text-[11px] text-gray-500 mt-0.5">
-          Monitor stock metrics, receive boundary threshold alerts, and adjust store inventory levels
+          {t('inventory_catalog_subtitle')}
         </p>
       </div>
 
@@ -2692,21 +2705,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   </div>
                   {isLow ? (
                     <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-red-600" /> Low Stock
+                      <AlertTriangle className="w-3 h-3 text-red-600" /> {t('low_stock_badge')}
                     </span>
                   ) : (
                     <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Adequate
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t('in_stock_badge')}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Stock</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t('current_stock_column_header')}</span>
                     <span className="font-bold text-slate-900 text-sm">{item.currentStock} {item.unit}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Min Threshold</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t('min_threshold_column_header')}</span>
                     <span className="font-semibold text-slate-600">{item.minThreshold} {item.unit}</span>
                   </div>
                 </div>
@@ -2714,7 +2727,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             );
           })}
           {filteredInventory.length === 0 && (
-            <div className="text-center p-6 text-slate-400 font-semibold text-xs">No inventory items found.</div>
+            <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_inventory_items_message')}</div>
           )}
         </div>
       </div>
@@ -2724,7 +2737,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-bold text-slate-800 text-sm">Add New Inventory Item</h3>
+              <h3 className="font-bold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
               <button onClick={() => setIsAddModalOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -2732,7 +2745,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <form onSubmit={handleCreateItem} className="space-y-3">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Item Name *</label>
+                <label className="block text-slate-700 font-semibold mb-1">{t('item_name_label')} *</label>
                 <input
                   type="text"
                   required
@@ -2744,7 +2757,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Category</label>
+                <label className="block text-slate-700 font-semibold mb-1">{t('category_label')}</label>
                 <StyledSelect
                   value={category}
                   onChange={setCategory}
@@ -2760,7 +2773,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Stock Level</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t('stock_level_label')}</label>
                   <input
                     type="number"
                     value={currentStock}
@@ -2770,7 +2783,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Min Threshold</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t('min_threshold_column_header')}</label>
                   <input
                     type="number"
                     value={minThreshold}
@@ -2780,7 +2793,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Unit</label>
+                  <label className="block text-slate-700 font-semibold mb-1">{t('unit_label')}</label>
                   <StyledSelect
                     value={unit}
                     onChange={setUnit}
@@ -2795,12 +2808,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Item Image Upload / URL</label>
+                <label className="block text-slate-700 font-semibold mb-1">{t('item_image_upload_label')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
-                      <span>Upload Image</span>
+                      <span>{t('upload_image_button')}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -2822,7 +2835,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       type="text"
                       value={imagePath}
                       onChange={(e) => setImagePath(e.target.value)}
-                      placeholder="Or enter image URL / path..."
+                      placeholder={t('or_enter_image_url_placeholder')}
                       className="flex-1 p-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono text-[11px]"
                     />
                   </div>
@@ -2854,13 +2867,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 border border-slate-200 rounded-lg"
                 >
-                  Cancel
+                  {t('cancel_button')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg"
                 >
-                  Save Item
+                  {t('save_item_button')}
                 </button>
               </div>
             </form>
