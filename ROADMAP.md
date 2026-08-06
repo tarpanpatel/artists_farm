@@ -39,8 +39,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Kitchen Management (`KitchenManagement.tsx`)
 - ✅ Default Expenses Manager (`DefaultExpensesManager.tsx`)
 - ✅ Header (`Header.tsx`)
+- ✅ Misc Charges Management (`MiscChargesManagement.tsx`)
 
-Remaining: ~25 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~24 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
