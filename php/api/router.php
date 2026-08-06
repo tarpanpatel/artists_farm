@@ -195,7 +195,7 @@ if (!in_array($action, ['get_audit_logs', 'fetch_logs'])) { // Skip verbose get 
 }
 
 $propertyId = getCurrentPropertyId($pdo);
-$currentProperty = getCurrentProperty($pdo); // Get the full property details
+$currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full property details - reuse the ID just resolved above instead of re-running slug resolution
 
 // PHP's default file-based session handler holds an exclusive lock on the
 // session file for the entire request. With multiple tabs/windows open on

@@ -134,8 +134,13 @@ function getCurrentPropertySlug(PDO $pdo): string {
     return $row ? $row['slug'] : 'jaipur';
 }
 
-function getCurrentProperty(PDO $pdo): array {
-    $id = getCurrentPropertyId($pdo);
+// $knownId lets a caller that already resolved the property (router.php does,
+// right before this) skip re-running the whole slug-matching candidate chain
+// a second time - that chain is 2+ queries per attempt, and every single API
+// request in the app calls both getCurrentPropertyId() and getCurrentProperty()
+// unconditionally, so resolving twice doubled that cost on every request.
+function getCurrentProperty(PDO $pdo, ?int $knownId = null): array {
+    $id = $knownId ?? getCurrentPropertyId($pdo);
     $stmt = $pdo->prepare("SELECT * FROM properties WHERE id = ? LIMIT 1");
     $stmt->execute([$id]);
     return $stmt->fetch() ?: [];
