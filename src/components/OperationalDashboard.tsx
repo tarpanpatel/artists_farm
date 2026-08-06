@@ -394,11 +394,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Room Info Header - Compact Layout */}
-      {roomName && (
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            {isEditingRoomName ? (
+      {/* Room Info Header - Compact Layout. The row itself (and the Add
+          Booking button) always renders, Single or Multi-Key - only the
+          room-name editing UI inside it is room-specific. */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          {roomName && (
+            isEditingRoomName ? (
               <input
                 type="text"
                 value={editingRoomName}
@@ -450,18 +452,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   </div>
                 </div>
               </div>
-            )}
-            {isEditingRoomName && <p className="text-xs text-gray-500 mt-1">in Goa Homes {roomId && `(ID: ${roomId})`}</p>}
-          </div>
-          <button
-            onClick={() => setShowAddGuestModal(true)}
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('add_guest_button', 'Add Guest')}</span>
-          </button>
+            )
+          )}
+          {roomName && isEditingRoomName && <p className="text-xs text-gray-500 mt-1">in Goa Homes {roomId && `(ID: ${roomId})`}</p>}
         </div>
-      )}
+        <button
+          onClick={() => setShowAddGuestModal(true)}
+          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t('add_booking_button', 'Add Booking')}</span>
+        </button>
+      </div>
 
       {/* Front-desk Alerts */}
       {(totalAlerts > 0 || clearedGuests.length > 0) && (
@@ -1144,7 +1146,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 onCheckoutGuest={onCheckoutGuest || (() => {})}
                 onDispatchTelegram={onDispatchTelegram}
                 activeMenuItemKey="guest_registration"
-                isMultiKeyProperty={true}
+                // roomName is only ever passed for the Multi-Key per-room
+                // dashboard (see MultiKeyPropertyOverview) - the Single-property
+                // dashboard renders this same modal with none of that, and
+                // always claiming isMultiKeyProperty broke the form for Single
+                // properties once the Add Booking button became unconditional.
+                isMultiKeyProperty={!!roomName}
                 selectedRoomSlug={roomName}
                 preSelectRoom={roomName}
                 onClose={() => setShowAddGuestModal(false)}

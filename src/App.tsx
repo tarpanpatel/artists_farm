@@ -1564,6 +1564,7 @@ ${itemsStr}
                           return kitchenModule?.is_enabled ?? true;
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
+                        onAddBooking={() => handleNavigateTab('guests', 'guest_registration')}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
                         propertyName={preloadedData.currentProperty?.name || ''}

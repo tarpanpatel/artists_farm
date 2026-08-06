@@ -68,6 +68,7 @@ export const strings: Record<string, string> = {
 
   // Operational Dashboard
   add_guest_button: "Add Guest",
+  add_booking_button: "Add Booking",
   alerts_heading: "Alerts",
   no_outstanding_issues: "No outstanding issues.",
   alerts_col_guest_room: "Guest / Room",

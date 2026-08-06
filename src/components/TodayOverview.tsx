@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Save, Trash2, Share2, Printer } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Save, Trash2, Share2, Printer, Plus } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest } from '../types';
 import { DateRangePicker } from './DateRangePicker';
@@ -15,6 +15,7 @@ interface TodayOverviewProps {
   isMultiKeyProperty?: boolean;
   kitchenModuleEnabled?: boolean;
   onNavigateToRoom?: (roomSlug: string) => void;
+  onAddBooking?: () => void;
   onUpdateGuest?: (guest: Guest) => void | Promise<void>;
   onDeleteGuest?: (guestId: string) => void | Promise<void>;
   propertyName?: string;
@@ -29,6 +30,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   isMultiKeyProperty = false,
   kitchenModuleEnabled = true,
   onNavigateToRoom,
+  onAddBooking,
   onUpdateGuest,
   onDeleteGuest,
   propertyName = '',
@@ -241,10 +243,21 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header with navigation */}
+      {/* Header with navigation - this is the top of the Multi-Key property's
+          overview dashboard (before any room is selected), so Add Booking
+          lives here rather than only on the per-room dashboard below. */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{monthName}</h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {onAddBooking && (
+            <button
+              onClick={onAddBooking}
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('add_booking_button', 'Add Booking')}</span>
+            </button>
+          )}
           <button
             onClick={() => navigateMonth(-1)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
