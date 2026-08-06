@@ -104,8 +104,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
   const loadCalendars = async () => {
     try {
+      // X-Property-Slug is required here - this hits ical_sync.php directly (not
+      // router.php), so the request URL itself carries no tenant/property path
+      // segments for the backend to resolve the current property from. Without
+      // it, every property's iCal Sync Manager silently fell back to the same
+      // default property instead of showing (and scoping actions to) its own feeds.
       const response = await fetch('/artists_farm/php/api/ical_sync.php?action=get_ical_syncs', {
         credentials: 'include',
+        headers: { 'X-Property-Slug': getPropertySlug() },
       });
       const data = await response.json();
       if (data.status === 'success' && Array.isArray(data.data)) {
@@ -187,6 +193,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       const response = await fetch('/artists_farm/php/api/ical_sync.php?action=sync_ical_events', {
         method: 'POST',
         credentials: 'include',
+        headers: { 'X-Property-Slug': getPropertySlug() },
         body: formData,
       });
       const data = await response.json();
@@ -214,6 +221,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         const res = await fetch('/artists_farm/php/api/ical_sync.php?action=sync_ical_events', {
           method: 'POST',
           credentials: 'include',
+          headers: { 'X-Property-Slug': getPropertySlug() },
           body: formData,
         });
         const data = await res.json();
@@ -239,7 +247,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     try {
       const response = await fetch('/artists_farm/php/api/ical_sync.php?action=delete_ical_sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Property-Slug': getPropertySlug() },
         credentials: 'include',
         body: JSON.stringify({ id: calId }),
       });

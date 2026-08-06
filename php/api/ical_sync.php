@@ -13,13 +13,19 @@ class ICalSyncManager {
         $this->pdo = $pdo;
     }
 
-    public function getICalSyncs() {
+    // Scoped to the current property - this was previously unfiltered and leaked
+    // every property's connected feeds (IDs included) to every other property's
+    // iCal Sync Manager page, which also made the unscoped update/delete/test
+    // actions below exploitable by ID once a client had seen a foreign ID here.
+    public function getICalSyncs($propertyId) {
         $query = "SELECT sc.*, p.name as property_name
                   FROM ical_sync_configs sc
                   LEFT JOIN properties p ON sc.property_id = p.id
+                  WHERE sc.property_id = :property_id
                   ORDER BY sc.created_at DESC";
 
-        $stmt = $this->pdo->query($query);
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute([':property_id' => $propertyId]);
         $syncs = $stmt->fetchAll();
         return ['status' => 'success', 'data' => $syncs];
     }
@@ -73,22 +79,24 @@ class ICalSyncManager {
         }
     }
 
-    public function updateICalSync($data) {
+    // $propertyId is the current property from the request context, not whatever
+    // the client sent - a sync can't be re-pointed at a different property_id via
+    // this call, and the WHERE clause below rejects touching another property's row.
+    public function updateICalSync($data, $propertyId) {
         try {
             $query = "UPDATE ical_sync_configs SET
-                      property_id = :property_id,
                       service_type = :service_type,
                       service_name = :service_name,
                       ical_url = :ical_url,
                       api_key = :api_key,
                       sync_enabled = :sync_enabled,
                       sync_direction = :sync_direction
-                      WHERE id = :id";
+                      WHERE id = :id AND property_id = :property_id";
 
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([
                 ':id' => intval($data['id']),
-                ':property_id' => intval($data['property_id']),
+                ':property_id' => $propertyId,
                 ':service_type' => $data['service_type'],
                 ':service_name' => $data['service_name'],
                 ':ical_url' => $data['ical_url'] ?? null,
@@ -97,17 +105,25 @@ class ICalSyncManager {
                 ':sync_direction' => $data['sync_direction'],
             ]);
 
+            if ($stmt->rowCount() === 0) {
+                return ['status' => 'error', 'message' => 'Sync configuration not found'];
+            }
+
             return ['status' => 'success', 'message' => 'iCal sync updated'];
         } catch (Exception $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
     }
 
-    public function deleteICalSync($data) {
+    public function deleteICalSync($data, $propertyId) {
         try {
-            $query = "DELETE FROM ical_sync_configs WHERE id = :id";
+            $query = "DELETE FROM ical_sync_configs WHERE id = :id AND property_id = :property_id";
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute([':id' => intval($data['id'])]);
+            $stmt->execute([':id' => intval($data['id']), ':property_id' => $propertyId]);
+
+            if ($stmt->rowCount() === 0) {
+                return ['status' => 'error', 'message' => 'Sync configuration not found'];
+            }
 
             return ['status' => 'success', 'message' => 'iCal sync deleted'];
         } catch (Exception $e) {
@@ -115,11 +131,11 @@ class ICalSyncManager {
         }
     }
 
-    public function testSync($data) {
+    public function testSync($data, $propertyId) {
         try {
-            $query = "SELECT * FROM ical_sync_configs WHERE id = :id";
+            $query = "SELECT * FROM ical_sync_configs WHERE id = :id AND property_id = :property_id";
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute([':id' => intval($data['id'])]);
+            $stmt->execute([':id' => intval($data['id']), ':property_id' => $propertyId]);
             $sync = $stmt->fetch();
 
             if (!$sync) {
@@ -194,11 +210,18 @@ class ICalSyncManager {
         return ['status' => 'success', 'message' => 'Airbnb connection configured'];
     }
 
-    public function syncICalEvents($syncId) {
+    // $propertyId is optional because this is also called internally right after
+    // create/updateICalSync already verified ownership on that same row - the
+    // direct 'sync_ical_events' HTTP action always passes it.
+    public function syncICalEvents($syncId, $propertyId = null) {
         try {
-            $query = "SELECT * FROM ical_sync_configs WHERE id = :id";
+            $query = "SELECT * FROM ical_sync_configs WHERE id = :id" . ($propertyId !== null ? " AND property_id = :property_id" : "");
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute([':id' => intval($syncId)]);
+            $params = [':id' => intval($syncId)];
+            if ($propertyId !== null) {
+                $params[':property_id'] = $propertyId;
+            }
+            $stmt->execute($params);
             $sync = $stmt->fetch();
 
             if (!$sync) {
@@ -413,7 +436,7 @@ $response = ['status' => 'error', 'message' => 'Invalid action'];
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     switch ($action) {
         case 'get_ical_syncs':
-            $response = $manager->getICalSyncs();
+            $response = $manager->getICalSyncs($currentPropertyId);
             break;
         case 'get_properties':
             $response = $manager->getProperties();
@@ -431,30 +454,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             // Auto-sync events after creating
             if ($response['status'] === 'success' && !empty($response['id'])) {
                 error_log("Auto-syncing iCal events for sync ID: {$response['id']}");
-                $syncResult = $manager->syncICalEvents($response['id']);
+                $syncResult = $manager->syncICalEvents($response['id'], $currentPropertyId);
                 $response['sync_status'] = $syncResult['status'];
                 $response['sync_message'] = $syncResult['message'] ?? '';
             }
             break;
         case 'update_ical_sync':
-            $response = $manager->updateICalSync($data);
+            $response = $manager->updateICalSync($data, $currentPropertyId);
             // Auto-sync events after updating
             if ($response['status'] === 'success' && !empty($data['id'])) {
                 error_log("Auto-syncing iCal events for sync ID: {$data['id']}");
-                $syncResult = $manager->syncICalEvents($data['id']);
+                $syncResult = $manager->syncICalEvents($data['id'], $currentPropertyId);
                 $response['sync_status'] = $syncResult['status'];
                 $response['sync_message'] = $syncResult['message'] ?? '';
             }
             break;
         case 'delete_ical_sync':
-            $response = $manager->deleteICalSync($data);
+            $response = $manager->deleteICalSync($data, $currentPropertyId);
             break;
         case 'test_ical_sync':
-            $response = $manager->testSync($data);
+            $response = $manager->testSync($data, $currentPropertyId);
             break;
         case 'sync_ical_events':
             $id = intval($_POST['id'] ?? $_GET['id'] ?? 0);
-            $response = $manager->syncICalEvents($id);
+            $response = $manager->syncICalEvents($id, $currentPropertyId);
             break;
         case 'get_blocked_dates':
             $response = $manager->getBlockedDates($currentPropertyId);
