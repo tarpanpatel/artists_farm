@@ -1550,6 +1550,33 @@ export const strings: Record<string, string> = {
   no_active_rooms_text: "No active rooms available",
   room_selector_tip: "Tip: Select a room above to register the guest in that specific room. You can always change the room assignment later.",
   cancel_room_selection_button: "Cancel Room Selection",
+
+  multikey_overview_button: "Overview",
+  loading_rooms_text: "Loading rooms...",
+  no_rooms_yet_text: "No rooms yet",
+  confirm_action_title: "Confirm Action",
+  confirmation_title: "Confirmation",
+  styled_select_placeholder: "Select...",
+  refresh_page_button: "Refresh Page",
+  error_loading_application_heading: "Error Loading Application",
+  initializing_message: "Initializing...",
+
+  // Service Requests Management
+  guest_service_requests_heading: "Guest Service Requests",
+  service_requests_description: "Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.",
+  new_request_button: "New Request",
+  no_service_requests_label: "No service requests logged yet.",
+  updating_button: "Updating...",
+  mark_fulfilled_button: "Mark Fulfilled",
+  done_badge: "Done",
+  new_service_request_heading: "New Service Request",
+  room_field_label: "Room",
+  select_room_optional_placeholder: "-- Select Room (optional) --",
+  request_type_label: "Request Type",
+  details_optional_label: "Details (optional)",
+  service_request_details_placeholder: "e.g. 2 extra towels, AC not cooling...",
+  logging_button: "Logging...",
+  log_request_button: "Log Request",
 };
 
 export function t(key: string, fallback?: string): string {

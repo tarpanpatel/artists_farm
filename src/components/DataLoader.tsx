@@ -10,6 +10,7 @@ import {
   getPropertyAndRoomSlugs,
   getRoomSlugFromHash,
 } from '../services/api';
+import { t } from '../i18n/en';
 
 export interface PreloadedData {
   currentProperty: any;
@@ -149,7 +150,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading application..." />;
+    return <LoadingScreen message={t('loading_screen_default_message')} />;
   }
 
   if (error && !data) {
@@ -157,7 +158,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
       <div className="fixed inset-0 bg-red-50 dark:bg-red-950 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md shadow-lg border border-red-200 dark:border-red-800">
           <h2 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">
-            Error Loading Application
+            {t('error_loading_application_heading')}
           </h2>
           <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
             {error}
@@ -166,7 +167,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             onClick={() => window.location.reload()}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
           >
-            Refresh Page
+            {t('refresh_page_button')}
           </button>
         </div>
       </div>
@@ -174,7 +175,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   }
 
   if (!data) {
-    return <LoadingScreen message="Initializing..." />;
+    return <LoadingScreen message={t('initializing_message')} />;
   }
 
   return <>{children(data)}</>;

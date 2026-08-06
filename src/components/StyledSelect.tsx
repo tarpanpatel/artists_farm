@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
+import { t } from '../i18n/en';
 
 export interface StyledSelectOption {
   value: string;
@@ -25,7 +26,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   value,
   onChange,
   options,
-  placeholder = 'Select...',
+  placeholder = t('styled_select_placeholder'),
   className = '',
   disabled = false,
   error = false,
@@ -100,14 +101,14 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
+                 placeholder={t('searchable_select_placeholder')}
                 className="w-full text-sm bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400"
               />
             </div>
           )}
           <div className="max-h-60 overflow-auto py-1">
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No matches</div>
+              <div className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">{t('no_matches_text')}</div>
             ) : (
               filteredOptions.map((option, idx) => {
                 const isSelected = option.value === value;

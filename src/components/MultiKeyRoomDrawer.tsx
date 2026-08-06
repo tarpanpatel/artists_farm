@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Home, Layers } from 'lucide-react';
 import { navigateToRoomHash } from '../services/api';
+import { t } from '../i18n/en';
 
 interface Room {
   id: number;
@@ -92,14 +93,14 @@ export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
             }`}
           >
             <Home className="w-4 h-4" />
-            <span>Overview</span>
+            <span>{t('multikey_overview_button')}</span>
           </button>
 
           {/* Rooms */}
           {loading ? (
-            <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">Loading rooms...</div>
+            <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{t('loading_rooms_text')}</div>
           ) : rooms.length === 0 ? (
-            <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">No rooms yet</div>
+            <div className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">{t('no_rooms_yet_text')}</div>
           ) : (
             rooms.map((room) => {
               const isActive = activeMenuItemKey === room.slug;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { AlertTriangle, Info, Trash2, X } from 'lucide-react';
+import { t } from '../i18n/en';
 
 export type ConfirmVariant = 'danger' | 'warning' | 'info';
 
@@ -104,8 +105,8 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
                   {pendingDialog.options.title ||
                     (pendingDialog.options.variant === 'danger'
-                      ? 'Confirm Action'
-                      : 'Confirmation')}
+                      ? t('confirm_action_title')
+                      : t('confirmation_title'))}
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                   {pendingDialog.options.message}
@@ -127,7 +128,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                   onClick={handleCancel}
                   className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 >
-                  {pendingDialog.options.cancelText || 'Cancel'}
+                  {pendingDialog.options.cancelText || t('cancel_button')}
                 </button>
               )}
               <button
@@ -140,7 +141,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 }`}
               >
                 {pendingDialog.options.confirmText ||
-                  (pendingDialog.isAlert ? 'OK' : 'Confirm')}
+                  (pendingDialog.isAlert ? t('okay_button') : t('confirm_button'))}
               </button>
             </div>
           </div>
