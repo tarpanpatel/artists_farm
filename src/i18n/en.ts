@@ -1322,6 +1322,22 @@ export const strings: Record<string, string> = {
   cash_handling_user_label: "Cash Handling User",
   help_label: "Help?",
   cash_handling_help_tooltip: "Select if this person handles cash/payments",
+
+  // Default Expenses Manager
+  default_expenses_description: "Manage the 20 default expense categories. Changes cascade to all MultiKey properties.",
+  sync_defaults_tooltip: "Populate all 20 default categories across all MultiKey properties",
+  sync_defaults_button: "Sync Defaults",
+  search_expense_items_placeholder: "Search expense items...",
+  add_new_expense_item_title: "Add New Expense Item",
+  item_name_placeholder: "e.g., Floor Cleaner",
+  category_required_label: "Category *",
+  select_category_placeholder: "-- Select Category --",
+  edit_expense_item_title: "Edit Expense Item",
+  sync_default_expenses_title: "Sync Default Expenses",
+  sync_default_expenses_message: "This will populate all 20 default expense categories across all MultiKey properties. Continue?",
+  sync_defaults_confirm_button: "Sync Defaults",
+  delete_expense_category_title: "Delete Expense Category",
+  delete_category_button: "Delete Category",
 };
 
 export function t(key: string, fallback?: string): string {

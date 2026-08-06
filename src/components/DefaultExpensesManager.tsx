@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
+import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
@@ -43,9 +44,9 @@ export const DefaultExpensesManager: React.FC = () => {
 
   const handleSyncDefaults = async () => {
     const confirmed = await confirm({
-      title: 'Sync Default Expenses',
-      message: 'This will populate all 20 default expense categories across all MultiKey properties. Continue?',
-      confirmText: 'Sync Defaults',
+      title: t('sync_default_expenses_title', 'Sync Default Expenses'),
+      message: t('sync_default_expenses_message', 'This will populate all 20 default expense categories across all MultiKey properties. Continue?'),
+      confirmText: t('sync_defaults_confirm_button', 'Sync Defaults'),
       variant: 'info',
     });
     if (!confirmed) return;
@@ -162,9 +163,9 @@ export const DefaultExpensesManager: React.FC = () => {
 
   const handleDeleteItem = async (itemId: number, itemLabel: string) => {
     const confirmed = await confirm({
-      title: 'Delete Expense Category',
+      title: t('delete_expense_category_title', 'Delete Expense Category'),
       message: `Delete "${itemLabel}"? This action cannot be undone.`,
-      confirmText: 'Delete Category',
+      confirmText: t('delete_category_button', 'Delete Category'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -219,10 +220,10 @@ export const DefaultExpensesManager: React.FC = () => {
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600 shrink-0" />
-              <span className="truncate">Default Expenses (MultiKey)</span>
+              <span className="truncate">{t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}</span>
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              Manage the 20 default expense categories. Changes cascade to all MultiKey properties.
+              {t('default_expenses_description', 'Manage the 20 default expense categories. Changes cascade to all MultiKey properties.')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -230,17 +231,17 @@ export const DefaultExpensesManager: React.FC = () => {
               onClick={handleSyncDefaults}
               disabled={syncing}
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-              title="Populate all 20 default categories across all MultiKey properties"
+              title={t('sync_defaults_tooltip', 'Populate all 20 default categories across all MultiKey properties')}
             >
               {syncing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : '⚡'}
-              Sync Defaults
+              {t('sync_defaults_button', 'Sync Defaults')}
             </button>
             <button
               onClick={() => setIsAddingNew(!isAddingNew)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add New Item
+              {t('add_new_item_button', 'Add New Item')}
             </button>
           </div>
         </div>
@@ -250,7 +251,7 @@ export const DefaultExpensesManager: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search expense items..."
+            placeholder={t('search_expense_items_placeholder', 'Search expense items...')}
             className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
           />
         </div>
@@ -273,29 +274,29 @@ export const DefaultExpensesManager: React.FC = () => {
       {/* Add New Item Form */}
       {isAddingNew && (
         <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Add New Expense Item</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('add_new_expense_item_title', 'Add New Expense Item')}</h3>
           <form onSubmit={handleAddItem} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Item Name *
+                  {t('item_name_required_label', 'Item Name *')}
                 </label>
                 <input
                   type="text"
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                  placeholder="e.g., Floor Cleaner"
+                  placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Category *
+                  {t('category_required_label', 'Category *')}
                 </label>
                 <StyledSelect
                   value={newItem.category}
                   onChange={(value) => setNewItem({ ...newItem, category: value })}
-                  placeholder="-- Select Category --"
+                  placeholder={t('select_category_placeholder', '-- Select Category --')}
                   searchable
                   options={categories.map((cat) => ({ value: cat, label: cat }))}
                 />
@@ -307,14 +308,14 @@ export const DefaultExpensesManager: React.FC = () => {
                 disabled={saving}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'Add Item'}
+                {saving ? t('saving_button', 'Saving...') : t('add_item_button', 'Add Item')}
               </button>
               <button
                 type="button"
                 onClick={() => setIsAddingNew(false)}
                 className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
               >
-                Cancel
+                {t('cancel_button', 'Cancel')}
               </button>
             </div>
           </form>
@@ -368,19 +369,19 @@ export const DefaultExpensesManager: React.FC = () => {
                             setEditForm({ label: item.label, default_amount: item.default_amount.toString() });
                           }}
                           className="flex-1 p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                          title="Edit"
+                          title={t('edit_button', 'Edit')}
                         >
                           <Edit2 className="w-3 h-3" />
-                          Edit
+                          {t('edit_button', 'Edit')}
                         </button>
                         <button
                           onClick={() => handleDeleteItem(item.id, item.label)}
                           disabled={saving}
                           className="flex-1 p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-[11px] font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
-                          title="Delete"
+                          title={t('delete_button', 'Delete')}
                         >
                           <Trash2 className="w-3 h-3" />
-                          Delete
+                          {t('delete_button', 'Delete')}
                         </button>
                       </div>
                     </div>
@@ -398,11 +399,11 @@ export const DefaultExpensesManager: React.FC = () => {
       {editingItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Edit Expense Item</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('edit_expense_item_title', 'Edit Expense Item')}</h3>
             <form onSubmit={handleEditItem} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Item Name
+                  {t('item_name_label', 'Item Name')}
                 </label>
                 <input
                   type="text"
@@ -417,14 +418,14 @@ export const DefaultExpensesManager: React.FC = () => {
                   disabled={saving}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Update'}
+                  {saving ? t('saving_button', 'Saving...') : t('update_button', 'Update')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingItem(null)}
                   className="flex-1 bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
                 >
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
               </div>
             </form>
