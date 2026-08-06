@@ -32,8 +32,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Telegram Setup Wizard (`TelegramSetupWizard.tsx`)
 - ✅ Guest Billing & Checkout (`BillingCheckout.tsx`)
 - ✅ Multi-Key Property Overview (`MultiKeyPropertyOverview.tsx`)
+- ✅ Cash Drawer Manager (`CashDrawerManager.tsx`)
 
-Remaining: ~32 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~31 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
