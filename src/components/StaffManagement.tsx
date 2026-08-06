@@ -851,8 +851,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                         />
                         <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                          Cash Handling User
+                          {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
+                        <span
+                          className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                          title={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
+                        >
+                          {t('help_label', 'Help?')}
+                        </span>
                       </div>
                     </div>
                     <div>
@@ -953,8 +959,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                         />
                         <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                          Cash Handling User
+                          {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
+                        <span
+                          className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                          title={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
+                        >
+                          {t('help_label', 'Help?')}
+                        </span>
                       </div>
                     </div>
                     <div>

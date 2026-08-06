@@ -1317,6 +1317,11 @@ export const strings: Record<string, string> = {
   dish_column: "Dish",
   guest_column: "Guest",
   served_by_column: "Served By",
+
+  // Staff Management Help Hints
+  cash_handling_user_label: "Cash Handling User",
+  help_label: "Help?",
+  cash_handling_help_tooltip: "Select if this person handles cash/payments",
 };
 
 export function t(key: string, fallback?: string): string {
