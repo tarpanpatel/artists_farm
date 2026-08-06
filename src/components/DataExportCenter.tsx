@@ -23,6 +23,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface DataExportCenterProps {
   guests: Guest[];
@@ -450,10 +451,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         <div>
           <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-            <span>Data Export & Backup Center</span>
+            <span>{t('data_export_center_title', 'Data Export & Backup Center')}</span>
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.
+            {t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
           </p>
         </div>
 
@@ -477,7 +478,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
             }`}
           >
-            Single Month
+            {t('single_month_tab', 'Single Month')}
           </button>
           <button
             onClick={() => setExportRangeType('year')}
@@ -487,7 +488,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
             }`}
           >
-            Whole Year
+            {t('whole_year_tab', 'Whole Year')}
           </button>
           <button
             onClick={() => setExportRangeType('custom')}
@@ -497,7 +498,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
             }`}
           >
-            Custom Range
+            {t('custom_range_tab', 'Custom Range')}
           </button>
         </div>
 
@@ -507,7 +508,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>Target Month</span>
+                  <span>{t('target_month_label', 'Target Month')}</span>
                 </label>
                 <StyledSelect
                   value={String(selectedMonth)}
@@ -522,7 +523,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>Target Year</span>
+                  <span>{t('target_year_label', 'Target Year')}</span>
                 </label>
                 <StyledSelect
                   value={String(selectedYear)}
@@ -540,7 +541,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <div className="col-span-2 max-w-sm">
               <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-gray-500" />
-                <span>Target Year</span>
+                <span>{t('target_year_label', 'Target Year')}</span>
               </label>
               <StyledSelect
                 value={String(selectedYear)}
@@ -558,7 +559,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>Start Date</span>
+                  <span>{t('start_date_label', 'Start Date')}</span>
                 </label>
                 <input
                   type="date"
@@ -571,7 +572,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>End Date</span>
+                  <span>{t('end_date_label', 'End Date')}</span>
                 </label>
                 <input
                   type="date"
@@ -591,10 +592,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <div className="space-y-1">
               <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
-                <span>Accommodations Booking Spreadsheet</span>
+                <span>{t('bookings_export_title', 'Accommodations Booking Spreadsheet')}</span>
               </h3>
               <p className="text-xs text-gray-500">
-                Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.
+                {t('bookings_export_description', 'Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.')}
               </p>
             </div>
             <button
@@ -603,7 +604,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
-              <span>EXPORT SHEETS</span>
+              <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
             </button>
           </div>
 
@@ -613,10 +614,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div className="space-y-1">
                 <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-amber-600" />
-                  <span>Kitchen Purchases Workbook</span>
+                  <span>{t('kitchen_purchases_export_title', 'Kitchen Purchases Workbook')}</span>
                 </h3>
                 <p className="text-xs text-gray-500">
-                  Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.
+                  {t('kitchen_purchases_export_description', 'Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.')}
                 </p>
               </div>
               <button
@@ -625,7 +626,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 <Download className="w-4 h-4" />
-                <span>EXPORT SHEETS</span>
+                <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
               </button>
             </div>
           )}
@@ -635,10 +636,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <div className="space-y-1">
               <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-purple-600" />
-                <span>Property Maintenance & Utilities Logs</span>
+                <span>{t('maintenance_utilities_export_title', 'Property Maintenance & Utilities Logs')}</span>
               </h3>
               <p className="text-xs text-gray-500">
-                Generates itemized expense spreadsheets for water tankers, electricity bills, hardware, and physical farm upkeep.
+                {t('maintenance_utilities_export_description', 'Generates itemized expense spreadsheets for water tankers, electricity bills, hardware, and physical farm upkeep.')}
               </p>
             </div>
             <button
@@ -647,7 +648,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
-              <span>EXPORT SHEETS</span>
+              <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
             </button>
           </div>
 
@@ -656,10 +657,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <div className="space-y-1">
               <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
-                <span>Payroll & Salaries Registry</span>
+                <span>{t('payroll_salaries_export_title', 'Payroll & Salaries Registry')}</span>
               </h3>
               <p className="text-xs text-gray-500">
-                Compiles all recorded payouts, staff management stipends, logged cash advances, and deductions.
+                {t('payroll_salaries_export_description', 'Compiles all recorded payouts, staff management stipends, logged cash advances, and deductions.')}
               </p>
             </div>
             <button
@@ -668,7 +669,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
-              <span>EXPORT SHEETS</span>
+              <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
             </button>
           </div>
 
@@ -677,10 +678,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <div className="space-y-1">
               <h3 className="text-sm font-extrabold text-sky-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-sky-700" />
-                <span>Master Transaction Ledger</span>
+                <span>{t('master_ledger_export_title', 'Master Transaction Ledger')}</span>
               </h3>
               <p className="text-xs text-sky-700">
-                The ultimate financial sheet compiling room rent advances, final settlements, food collections, supply purchases, and operational expenses.
+                {t('master_ledger_export_description', 'The ultimate financial sheet compiling room rent advances, final settlements, food collections, supply purchases, and operational expenses.')}
               </p>
             </div>
             <button
@@ -689,7 +690,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
-              <span>EXPORT MASTER</span>
+              <span>{t('export_master_button', 'EXPORT MASTER')}</span>
             </button>
           </div>
 
@@ -699,10 +700,10 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div className="space-y-1">
                 <h3 className="text-sm font-extrabold text-rose-900 flex items-center gap-2">
                   <Database className="w-4 h-4 text-rose-700" />
-                  <span>Full System Snapshot Backup (Root Admin)</span>
+                  <span>{t('snapshot_backup_export_title', 'Full System Snapshot Backup (Root Admin)')}</span>
                 </h3>
                 <p className="text-xs text-rose-700">
-                  Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.
+                  {t('snapshot_backup_export_description', 'Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.')}
                 </p>
               </div>
               <button
@@ -711,7 +712,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
                 className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 <HardDriveDownload className="w-4 h-4" />
-                <span>DOWNLOAD BACKUP (.SQL)</span>
+                <span>{t('download_backup_button', 'DOWNLOAD BACKUP (.SQL)')}</span>
               </button>
             </div>
           )}
