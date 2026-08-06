@@ -37,6 +37,7 @@ import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
 import { GuestHistory } from './GuestHistory';
+import { t } from '../i18n/en';
 
 interface Room {
   id: number;
@@ -950,7 +951,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             {/* Total Room Tariff */}
             <div>
-              <label className="block mb-1">Total Room Tariff (₹)</label>
+              <label className="block mb-1">{t('room_rent', 'Room Rent / Price (₹)')}</label>
               <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
 
@@ -958,14 +959,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {bookingRoomTariff > 0 && (
               <>
                 <div>
-                  <label className="block mb-1">Advance Paid (₹)</label>
+                  <label className="block mb-1">{t('advance_paid', 'Advance Paid (₹)')}</label>
                   <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
 
                 {/* Advance Received By - Only show when Advance Paid has value */}
                 {bookingAdvance > 0 && (
                   <div>
-                    <label className="block mb-1">Advance Received By *</label>
+                    <label className="block mb-1">{t('advance_received_by', 'Advance Received By *')}</label>
                     <StyledSelect
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
@@ -2064,7 +2065,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   Financial Summary
                 </div>
                 <div className="flex justify-between text-black">
-                  <span>Total Room Tariff:</span>
+                  <span>{t('room_rent', 'Total Room Rent')}:</span>
                   <span>₹{(createdBooking.roomRate || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-black font-semibold">
