@@ -1112,6 +1112,26 @@ export const strings: Record<string, string> = {
   no_drawer_entries_label: "No drawer entries recorded yet.",
   exceeds_net_balance_title: "Exceeds Net Balance",
   proceed_handover_button: "Proceed Handover",
+
+  // Login Page
+  login_subtitle: "Mobile & Passcode Terminal Login",
+  mobile_username_label: "Mobile Number / Username",
+  mobile_number_placeholder: "10-digit Mobile Number",
+  pin_passcode_label: "6-Digit PIN Passcode",
+  forgot_password_link: "Forgot Password?",
+  authenticating_button: "Authenticating...",
+  login_button: "Log In",
+  login_footer_copyright: "© 2026 Artists Farm Resort & Kitchen Management System",
+  back_to_home_link: "← Back to Home",
+  forgot_passcode_title: "Forgot Your Passcode?",
+  forgot_passcode_description: "Enter your mobile number and we'll email your login details to the address on file.",
+  sending_button: "Sending...",
+  send_login_info_button: "Send Login Info",
+  back_to_login_button: "Back to Login",
+  set_new_passcode_title: "Set a New Passcode",
+  new_passcode_label: "New 6-Digit Passcode",
+  confirm_new_passcode_label: "Confirm New Passcode",
+  set_passcode_continue_button: "Set Passcode & Continue",
 };
 
 export function t(key: string, fallback: string): string {

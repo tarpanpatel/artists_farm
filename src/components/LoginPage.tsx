@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface LoginPageProps {
   onLoginSuccess: (userData: {
@@ -204,10 +205,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
 
           <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
-            Forgot Your Passcode?
+            {t('forgot_passcode_title', 'Forgot Your Passcode?')}
           </h1>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center mb-8">
-            Enter your mobile number and we'll email your login details to the address on file.
+            {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
           </p>
 
           <form onSubmit={handleRequestLoginInfo} className="space-y-5">
@@ -232,7 +233,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-                Mobile Number / Username
+                {t('mobile_username_label', 'Mobile Number / Username')}
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
@@ -246,7 +247,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
                     setForgotResult(null);
                   }}
-                  placeholder="10-digit Mobile Number"
+                  placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
                   className="w-full pl-16 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-semibold text-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   disabled={isSendingLoginInfo}
                   autoFocus
@@ -262,12 +263,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               {isSendingLoginInfo ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Sending...</span>
+                  <span>{t('sending_button', 'Sending...')}</span>
                 </>
               ) : (
                 <>
                   <Mail className="w-4 h-4" />
-                  <span>Send Login Info</span>
+                  <span>{t('send_login_info_button', 'Send Login Info')}</span>
                 </>
               )}
             </button>
@@ -281,7 +282,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               }}
               className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
+              <ArrowLeft className="w-3.5 h-3.5" /> {t('back_to_login_button', 'Back to Login')}
             </button>
           </div>
         </div>
@@ -300,7 +301,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
 
           <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
-            Set a New Passcode
+            {t('set_new_passcode_title', 'Set a New Passcode')}
           </h1>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center mb-8">
             You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
@@ -316,7 +317,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-                New 6-Digit Passcode
+                {t('new_passcode_label', 'New 6-Digit Passcode')}
               </label>
               <div className="relative">
                 <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -335,7 +336,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-                Confirm New Passcode
+                {t('confirm_new_passcode_label', 'Confirm New Passcode')}
               </label>
               <div className="relative">
                 <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -359,12 +360,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               {isSavingPasscode ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving...</span>
+                  <span>{t('saving_button', 'Saving...')}</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Set Passcode & Continue</span>
+                  <span>{t('set_passcode_continue_button', 'Set Passcode & Continue')}</span>
                 </>
               )}
             </button>
@@ -389,7 +390,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           Artists Farm
         </h1>
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 text-center mb-8 uppercase tracking-wider">
-          Mobile & Passcode Terminal Login
+          {t('login_subtitle', 'Mobile & Passcode Terminal Login')}
         </p>
 
         {/* Login Form */}
@@ -405,7 +406,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {/* Mobile Number Input */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-              Mobile Number / Username
+              {t('mobile_username_label', 'Mobile Number / Username')}
             </label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
@@ -416,7 +417,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 type="text"
                 value={mobileNumber}
                 onChange={handleMobileChange}
-                placeholder="10-digit Mobile Number"
+                placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
                 className="w-full pl-16 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-semibold text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                 disabled={isLoading}
                 autoFocus
@@ -427,7 +428,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {/* 6-Digit Passcode Input */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-              6-Digit PIN Passcode
+              {t('pin_passcode_label', '6-Digit PIN Passcode')}
             </label>
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -451,7 +452,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 }}
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer"
               >
-                Forgot Password?
+                {t('forgot_password_link', 'Forgot Password?')}
               </button>
             </div>
           </div>
@@ -465,12 +466,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Authenticating...</span>
+                <span>{t('authenticating_button', 'Authenticating...')}</span>
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                <span>Log In</span>
+                <span>{t('login_button', 'Log In')}</span>
               </>
             )}
           </button>
@@ -478,7 +479,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         {/* Footer */}
         <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-6">
-          © 2026 Artists Farm Resort & Kitchen Management System
+          {t('login_footer_copyright', '© 2026 Artists Farm Resort & Kitchen Management System')}
         </p>
 
         {/* Back Button */}
@@ -487,7 +488,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             href="/artists_farm/"
             className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
-            ← Back to Home
+            {t('back_to_home_link', '← Back to Home')}
           </a>
         </div>
       </div>
