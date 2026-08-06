@@ -17,6 +17,18 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Dark mode support: use `dark:` prefix for all colors
 - Always include dark theme variants
 
+### Component Library (Flowbite React)
+- `flowbite-react` is a real dependency (not just listed - actually wired in) - prefer its components (`Tooltip`, `Badge`, etc.) over hand-built equivalents when one exists, instead of recreating tooltips/badges/etc. from raw `<div>`/`<span>` + Tailwind
+- Import from `'flowbite-react'`, e.g. `import { Tooltip, Badge } from 'flowbite-react';`
+- Tailwind v4 can't see classes used inside `node_modules` (flowbite-react's compiled components), so every Flowbite component actually adopted must have its utility classes present in `.flowbite-react/class-list.json` (committed, allowlisted in `.gitignore`) - regenerate/extend it when adopting a new component:
+  ```js
+  const { buildClassList } = require('./node_modules/flowbite-react/dist/cli/utils/build-class-list.cjs');
+  const list = buildClassList({ components: ['Badge', 'Tooltip', /* add new ones here */], dark: true, prefix: '', version: 4 });
+  require('fs').writeFileSync('.flowbite-react/class-list.json', JSON.stringify(list, null, 2) + '\n');
+  ```
+- `src/index.css` registers the plugin: `@import "flowbite-react/plugin/tailwindcss";` + `@source "../.flowbite-react/class-list.json";` right after `@import "tailwindcss";` - don't remove these
+- Flowbite's `<Tooltip>` positions itself via Floating UI (auto-flip/shift to stay on-screen) - don't hand-roll tooltip positioning CSS anymore
+
 ### Date Format (CRITICAL)
 - **Display format: DD/MM/YYYY** (e.g., `02/08/2026`, `15/12/2025`)
 - Never show time component in date displays unless specifically required

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Tooltip, Badge } from 'flowbite-react';
 import DataTable from 'react-data-table-component';
 import {
   Calendar as CalendarIcon,
@@ -858,24 +859,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        {/* Custom CSS tooltip instead of the native `title` attribute -
-                            browsers only show `title` after a ~1s still-hover, which read
-                            as "there's no tooltip at all" to anyone who didn't hold still
-                            that long. This shows instantly on hover instead. */}
-                        <span className="relative group/help">
-                          <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                        {/* Real flowbite-react Tooltip - Popper-positioned, so it
+                            auto-flips/shifts to stay on-screen regardless of where
+                            this badge sits, instead of a hand-rolled CSS tooltip. */}
+                        <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
+                          <Badge color="gray" className="cursor-help">
                             {t('help_label', 'Help?')}
-                          </span>
-                          {/* Right-anchored (not centered) and width-capped with normal
-                              wrapping - this badge sits near the right edge of its form
-                              column, so a centered/nowrap tooltip bled off the right side
-                              of the viewport (and widened the whole page with a horizontal
-                              scrollbar). Growing left from a fixed right edge, capped at
-                              max-w, stays on-screen regardless of where the badge sits. */}
-                          <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/help:block max-w-[180px] w-max bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
-                            {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
-                          </span>
-                        </span>
+                          </Badge>
+                        </Tooltip>
                       </div>
                     </div>
                     <div>
@@ -981,24 +972,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        {/* Custom CSS tooltip instead of the native `title` attribute -
-                            browsers only show `title` after a ~1s still-hover, which read
-                            as "there's no tooltip at all" to anyone who didn't hold still
-                            that long. This shows instantly on hover instead. */}
-                        <span className="relative group/help">
-                          <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                        {/* Real flowbite-react Tooltip - Popper-positioned, so it
+                            auto-flips/shifts to stay on-screen regardless of where
+                            this badge sits, instead of a hand-rolled CSS tooltip. */}
+                        <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
+                          <Badge color="gray" className="cursor-help">
                             {t('help_label', 'Help?')}
-                          </span>
-                          {/* Right-anchored (not centered) and width-capped with normal
-                              wrapping - this badge sits near the right edge of its form
-                              column, so a centered/nowrap tooltip bled off the right side
-                              of the viewport (and widened the whole page with a horizontal
-                              scrollbar). Growing left from a fixed right edge, capped at
-                              max-w, stays on-screen regardless of where the badge sits. */}
-                          <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover/help:block max-w-[180px] w-max bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
-                            {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
-                          </span>
-                        </span>
+                          </Badge>
+                        </Tooltip>
                       </div>
                     </div>
                     <div>
