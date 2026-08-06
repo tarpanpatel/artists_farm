@@ -6,6 +6,7 @@ import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
 import { PropertySetupWizard } from './components/PropertySetupWizard';
+import { PropertyAddressBar } from './components/PropertyAddressBar';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { KitchenManagement } from './components/KitchenManagement';
@@ -1356,7 +1357,7 @@ ${itemsStr}
     }] : []),
   ];
 
-  const handleSaveSinglePropertyLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
+  const handleSavePropertyLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
     try {
       const response = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
@@ -1554,6 +1555,13 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'dashboard' ? (
                 preloadedData.isMultiKeyProperty ? (
                   <div className="space-y-6">
+                    <ErrorBoundary section="Property Address">
+                      <PropertyAddressBar
+                        address={preloadedData.currentProperty?.address || ''}
+                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        onSaveLocation={handleSavePropertyLocation}
+                      />
+                    </ErrorBoundary>
                     <ErrorBoundary section="Booking Calendar">
                       <TodayOverview
                         guests={guests}
@@ -1606,13 +1614,20 @@ ${itemsStr}
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    <ErrorBoundary section="Property Address">
+                      <PropertyAddressBar
+                        address={preloadedData.currentProperty?.address || ''}
+                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        onSaveLocation={handleSavePropertyLocation}
+                      />
+                    </ErrorBoundary>
                     <ErrorBoundary section="Property Setup Wizard">
                       <PropertySetupWizard
                         address={preloadedData.currentProperty?.address || ''}
                         googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         staffCount={staff.length}
                         showRoomsStep={false}
-                        onSaveLocation={handleSaveSinglePropertyLocation}
+                        onSaveLocation={handleSavePropertyLocation}
                         onGoToStaff={() => handleNavigateTab('staff', 'staff_payees_control')}
                       />
                     </ErrorBoundary>

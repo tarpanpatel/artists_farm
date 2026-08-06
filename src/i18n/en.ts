@@ -1046,6 +1046,8 @@ export const strings: Record<string, string> = {
   back_to_dashboard_label: "Back to Dashboard",
   room_not_found_label: "Room not found",
   no_address_label: "No address",
+  open_in_google_maps_tooltip: "Open in Google Maps",
+  edit_address_tooltip: "Edit address",
   total_rooms_label: "Total Rooms",
   occupied_label: "Occupied",
   occupancy_label: "Occupancy",
