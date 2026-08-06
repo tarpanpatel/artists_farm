@@ -166,7 +166,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           <div className="space-y-6">
             {pending.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Pending ({pending.length})</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
                 <div className="space-y-2">
                   {pending.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
@@ -178,7 +178,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           </span>
                         </div>
                         {r.description && <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">{r.description}</p>}
-                        <p className="text-[11px] text-gray-400 mt-0.5">Requested by {r.requestedBy} · {r.createdAt}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {r.createdAt}</p>
                       </div>
                       <button
                         onClick={() => handleFulfill(r.id)}
@@ -196,7 +196,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
             {fulfilled.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Fulfilled ({fulfilled.length})</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
                 <div className="space-y-2">
                   {fulfilled.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75">
@@ -208,7 +208,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           </span>
                         </div>
                         <p className="text-[11px] text-gray-400 mt-0.5">
-                          Fulfilled by {r.fulfilledBy} · {r.fulfilledAt}
+                          {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
                         </p>
                       </div>
                       <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-bold shrink-0">
