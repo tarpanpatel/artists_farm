@@ -19,8 +19,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Platform Property Management (`PlatformPropertyManagement.tsx`)
 - ✅ Telegram Notification Modal (`TelegramNotificationModal.tsx`)
 - ✅ Receipt Edit & Checkout Modal (`ReceiptEditModal.tsx`)
+- ✅ Audit Logs & Receipts View (`AuditLogsView.tsx`)
 
-Remaining: ~45 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~44 component files, including the largest ones in the codebase (InventoryManagement.tsx ~2900 lines, KitchenManagement.tsx ~2500 lines). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
