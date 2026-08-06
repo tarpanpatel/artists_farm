@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Send, Loader, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
 import { TENANT_WELCOME_VARIABLES, DEFAULT_TENANT_WELCOME_TEMPLATE, renderTenantWelcomeTemplate } from '../utils/tenantWelcomeTemplate';
+import { t } from '../i18n/en';
 
 /**
  * Root Admin panel: SMTP connection details (used to send tenant welcome
@@ -118,7 +119,7 @@ export const EmailSettingsPanel: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-slate-400 text-sm">Loading email settings...</div>;
+    return <div className="p-8 text-center text-slate-400 text-sm">{t('loading_email_settings_label', 'Loading email settings...')}</div>;
   }
 
   return (
@@ -126,25 +127,25 @@ export const EmailSettingsPanel: React.FC = () => {
       {/* SMTP Connection */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <Mail className="w-4 h-4 text-indigo-500" /> SMTP Connection
+          <Mail className="w-4 h-4 text-indigo-500" /> {t('smtp_connection_heading', 'SMTP Connection')}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Used to send the tenant welcome email (login link, username, temporary passcode) when a new tenant is created.
+          {t('smtp_connection_description', 'Used to send the tenant welcome email (login link, username, temporary passcode) when a new tenant is created.')}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Host</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_host_label', 'SMTP Host')}</label>
             <input
               type="text"
               value={host}
               onChange={(e) => setHost(e.target.value)}
-              placeholder="smtp.example.com"
+              placeholder={t('smtp_host_placeholder', 'smtp.example.com')}
               className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Port</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('port_label', 'Port')}</label>
             <input
               type="text"
               inputMode="numeric"
@@ -158,17 +159,17 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Username</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_username_label', 'SMTP Username')}</label>
             <input
               type="text"
               value={smtpUsername}
               onChange={(e) => setSmtpUsername(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('smtp_username_placeholder', 'you@example.com')}
               className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">SMTP Password</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_password_label', 'SMTP Password')}</label>
             <input
               type="password"
               value={password}
@@ -181,7 +182,7 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">From Name</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_name_label', 'From Name')}</label>
             <input
               type="text"
               value={fromName}
@@ -190,24 +191,24 @@ export const EmailSettingsPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">From Email</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_email_label', 'From Email')}</label>
             <input
               type="email"
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
-              placeholder="noreply@example.com"
+              placeholder={t('from_email_placeholder', 'noreply@example.com')}
               className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Encryption</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('encryption_label', 'Encryption')}</label>
             <StyledSelect
               value={encryption}
               onChange={(val) => setEncryption(val as any)}
               options={[
-                { value: 'tls', label: 'STARTTLS (port 587)' },
-                { value: 'ssl', label: 'Implicit TLS/SSL (port 465)' },
-                { value: 'none', label: 'None' },
+                { value: 'tls', label: t('tls_option', 'STARTTLS (port 587)') },
+                { value: 'ssl', label: t('ssl_option', 'Implicit TLS/SSL (port 465)') },
+                { value: 'none', label: t('none_option', 'None') },
               ]}
             />
           </div>
@@ -219,7 +220,7 @@ export const EmailSettingsPanel: React.FC = () => {
             disabled={isSaving}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
           >
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </button>
           {saveStatus === 'success' && (
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -237,7 +238,7 @@ export const EmailSettingsPanel: React.FC = () => {
               type="email"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="test@example.com"
+              placeholder={t('test_email_placeholder', 'test@example.com')}
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -246,7 +247,7 @@ export const EmailSettingsPanel: React.FC = () => {
               className="px-3 py-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {isTesting ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Send Test Email
+              {t('send_test_email_button', 'Send Test Email')}
             </button>
           </div>
         </div>
@@ -260,17 +261,17 @@ export const EmailSettingsPanel: React.FC = () => {
       {/* Welcome Template */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Tenant Welcome Message</h3>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
           <button
             type="button"
             onClick={() => setTemplate('')}
             className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
           >
-            Reset to default
+            {t('reset_to_default_button', 'Reset to default')}
           </button>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Sent as the welcome email and used to build the "Share via WhatsApp" message when a new tenant is created.
+          {t('tenant_welcome_message_description', 'Sent as the welcome email and used to build the "Share via WhatsApp" message when a new tenant is created.')}
         </p>
 
         <textarea
@@ -281,7 +282,7 @@ export const EmailSettingsPanel: React.FC = () => {
           className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-2">
-          Blank = use the default shown above as a placeholder. Click a variable to insert it:
+          {t('template_helper_text', 'Blank = use the default shown above as a placeholder. Click a variable to insert it:')}
         </p>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {TENANT_WELCOME_VARIABLES.map((v) => (
@@ -298,7 +299,7 @@ export const EmailSettingsPanel: React.FC = () => {
         </div>
 
         <details className="text-xs">
-          <summary className="cursor-pointer text-slate-500 dark:text-slate-400 font-semibold">Preview with sample data</summary>
+          <summary className="cursor-pointer text-slate-500 dark:text-slate-400 font-semibold">{t('preview_sample_data_label', 'Preview with sample data')}</summary>
           <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
             {renderTenantWelcomeTemplate(template || DEFAULT_TENANT_WELCOME_TEMPLATE, {
               tenant_name: 'Vrikshawan',
@@ -315,7 +316,7 @@ export const EmailSettingsPanel: React.FC = () => {
             disabled={isSaving}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
           >
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </button>
         </div>
       </div>

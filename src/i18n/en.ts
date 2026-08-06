@@ -1473,6 +1473,30 @@ export const strings: Record<string, string> = {
   filed_badge: "Filed",
   pending_filing_badge: "Pending Filing",
   no_matching_guest_records_label: "No matching guest records found.",
+
+  // Email Settings Panel
+  loading_email_settings_label: "Loading email settings...",
+  smtp_connection_heading: "SMTP Connection",
+  smtp_connection_description: "Used to send the tenant welcome email (login link, username, temporary passcode) when a new tenant is created.",
+  smtp_host_label: "SMTP Host",
+  smtp_host_placeholder: "smtp.example.com",
+  port_label: "Port",
+  smtp_username_label: "SMTP Username",
+  smtp_username_placeholder: "you@example.com",
+  smtp_password_label: "SMTP Password",
+  from_name_label: "From Name",
+  from_email_label: "From Email",
+  from_email_placeholder: "noreply@example.com",
+  encryption_label: "Encryption",
+  tls_option: "STARTTLS (port 587)",
+  ssl_option: "Implicit TLS/SSL (port 465)",
+  none_option: "None",
+  send_test_email_button: "Send Test Email",
+  test_email_placeholder: "test@example.com",
+  tenant_welcome_message_heading: "Tenant Welcome Message",
+  tenant_welcome_message_description: "Sent as the welcome email and used to build the \"Share via WhatsApp\" message when a new tenant is created.",
+  template_helper_text: "Blank = use the default shown above as a placeholder. Click a variable to insert it:",
+  preview_sample_data_label: "Preview with sample data",
 };
 
 export function t(key: string, fallback?: string): string {
