@@ -740,7 +740,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
             <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
-              <span className="font-normal">Add Guest Booking </span>
+              <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
               <span className="font-extrabold">
                 {isMultiKeyProperty && roomNumber ? `(${roomNumber})` : '(Backdating Allowed)'}
               </span>
@@ -835,7 +835,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           }}>
             {/* Row 0: Guest Name (Full width) */}
             <div>
-              <label className="block mb-1">Guest Name *</label>
+              <label className="block mb-1">{t('guest_name_label', 'Guest Name *')}</label>
               <input
                 type="text"
                 value={guestName}
@@ -849,14 +849,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 1: Contact Phone + Assigned Room (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">Contact Phone Number *</label>
+                <label className="block mb-1">{t('contact_phone_label', 'Contact Phone Number *')}</label>
                 <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter mobile number" className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
 
               {/* Room Selector for MultiKey Properties */}
               {isMultiKeyProperty && rooms && rooms.length > 0 && (
                 <div>
-                  <label className="block mb-1">Assigned Room / Villa *</label>
+                  <label className="block mb-1">{t('assigned_room_label', 'Assigned Room / Villa *')}</label>
                   <StyledSelect
                     value={roomNumber}
                     onChange={setRoomNumber}
@@ -869,7 +869,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 2: Booking Source + No. of Guests (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">Booking Source</label>
+                <label className="block mb-1">{t('booking_source_label', 'Booking Source')}</label>
                 <StyledSelect
                   value={bookingSourceLocal}
                   onChange={setBookingSourceLocal}
@@ -880,7 +880,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 />
               </div>
               <div>
-                <label className="block mb-1">No. of Guests</label>
+                <label className="block mb-1">{t('no_of_guests_label', 'No. of Guests')}</label>
                 <input
                   type="number"
                   min="1"
@@ -909,7 +909,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Check-In & Check-Out Date Buttons (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-xs font-bold">Check-In Date *</label>
+                <label className="block mb-1 text-xs font-bold">{t('checkin_date_label', 'Check-In Date *')}</label>
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
@@ -923,7 +923,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               <div>
-                <label className="block mb-1 text-xs font-bold">Check-Out Date *</label>
+                <label className="block mb-1 text-xs font-bold">{t('checkout_date_label', 'Check-Out Date *')}</label>
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
@@ -940,11 +940,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row: Check-In & Check-Out Time (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-xs font-bold">Check-In Time (Optional)</label>
+                <label className="block mb-1 text-xs font-bold">{t('checkin_time_label', 'Check-In Time (Optional)')}</label>
                 <input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
               <div>
-                <label className="block mb-1 text-xs font-bold">Check-Out Time (Optional)</label>
+                <label className="block mb-1 text-xs font-bold">{t('checkout_time_label', 'Check-Out Time (Optional)')}</label>
                 <input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
             </div>
@@ -982,14 +982,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {bookingAdvance > 0 && (
               <>
                 <div>
-                  <label className="block mb-1">Pending Balance (₹)</label>
+                  <label className="block mb-1">{t('pending_balance_label', 'Pending Balance (₹)')}</label>
                   <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
 
                 {/* Pending Received By - Only show when Pending Balance has value */}
                 {bookingPending > 0 && (
                   <div>
-                    <label className="block mb-1">Pending Received By</label>
+                    <label className="block mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
                     <StyledSelect
                       value={pendingReceivedBy}
                       onChange={setPendingReceivedBy}
@@ -1011,7 +1011,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setShowGuestNotes(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs font-bold">Guest Notes</span>
+                  <span className="text-xs font-bold">{t('guest_notes_label', 'Guest Notes')}</span>
                 </label>
                 {showGuestNotes && (
                   <textarea
@@ -1032,7 +1032,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setIsForeignGuest(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500"
                   />
-                  <span className="text-xs font-bold">Foreign National Guest</span>
+                  <span className="text-xs font-bold">{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
                 </label>
                 {isForeignGuest && (
                   <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
@@ -1049,7 +1049,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setShowDynamicIncidentals(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs font-bold">Additional Charges (Optional)</span>
+                  <span className="text-xs font-bold">{t('additional_charges_label', 'Additional Charges (Optional)')}</span>
                 </label>
                 {showDynamicIncidentals && (
                   <div className="mt-2">
@@ -1122,7 +1122,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
 
             <button type="submit" className="btn-register-guest w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl shadow-md transition-colors text-sm">
-              Save Guest Booking
+              {t('save_guest_booking_button', 'Save Guest Booking')}
             </button>
           </form>
         </div>

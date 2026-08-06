@@ -47,6 +47,24 @@ export const strings: Record<string, string> = {
   role: "Team Role",
   incurred_by: "Paid By",
   paid_by: "Paid By",
+
+  // Guest Registration form
+  add_guest_booking_header: "Add Guest Booking",
+  guest_name_label: "Guest Name *",
+  contact_phone_label: "Contact Phone Number *",
+  assigned_room_label: "Assigned Room / Villa *",
+  booking_source_label: "Booking Source",
+  no_of_guests_label: "No. of Guests",
+  checkin_date_label: "Check-In Date *",
+  checkout_date_label: "Check-Out Date *",
+  checkin_time_label: "Check-In Time (Optional)",
+  checkout_time_label: "Check-Out Time (Optional)",
+  pending_balance_label: "Pending Balance (₹)",
+  pending_received_by_label: "Pending Received By",
+  guest_notes_label: "Guest Notes",
+  foreign_national_guest_label: "Foreign National Guest",
+  additional_charges_label: "Additional Charges (Optional)",
+  save_guest_booking_button: "Save Guest Booking",
 };
 
 export function t(key: string, fallback: string): string {
