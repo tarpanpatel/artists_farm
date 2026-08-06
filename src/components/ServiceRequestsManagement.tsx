@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface Room {
   id: number;
@@ -142,10 +143,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Bell className="w-5 h-5 text-indigo-500" />
-              Guest Service Requests
+              {t('guest_service_requests_heading', 'Guest Service Requests')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.
+              {t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
             </p>
           </div>
           <button
@@ -153,14 +154,14 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            New Request
+            {t('new_request_button', 'New Request')}
           </button>
         </div>
 
         {loading ? (
-          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">Loading...</div>
+          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">{t('loading_spinner_default_message', 'Loading...')}</div>
         ) : requests.length === 0 ? (
-          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">No service requests logged yet.</div>
+          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
         ) : (
           <div className="space-y-6">
             {pending.length > 0 && (
@@ -185,7 +186,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50 transition-colors"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        {fulfillingId === r.id ? 'Updating...' : 'Mark Fulfilled'}
+                        {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
                       </button>
                     </div>
                   ))}
@@ -211,7 +212,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                         </p>
                       </div>
                       <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-bold shrink-0">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t('done_badge', 'Done')}
                       </span>
                     </div>
                   ))}
@@ -228,7 +229,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                 <Clock className="w-5 h-5 text-indigo-500" />
-                New Service Request
+                {t('new_service_request_heading', 'New Service Request')}
               </h3>
               <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
                 <X className="w-5 h-5" />
@@ -237,17 +238,17 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             <form onSubmit={handleCreate} className="space-y-4">
               {isMultiKeyProperty && rooms.length > 0 && (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Room</label>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('room_field_label', 'Room')}</label>
                   <StyledSelect
                     value={newRoomId}
                     onChange={setNewRoomId}
-                    placeholder="-- Select Room (optional) --"
+                    placeholder={t('select_room_optional_placeholder', '-- Select Room (optional) --')}
                     options={rooms.map((room) => ({ value: String(room.id), label: room.name }))}
                   />
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Request Type</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('request_type_label', 'Request Type')}</label>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
@@ -255,21 +256,21 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Details (optional)</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('details_optional_label', 'Details (optional)')}</label>
                 <textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="e.g. 2 extra towels, AC not cooling..."
+                  placeholder={t('service_request_details_placeholder', 'e.g. 2 extra towels, AC not cooling...')}
                   rows={3}
                   className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
                 <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-50">
-                  {saving ? 'Logging...' : 'Log Request'}
+                  {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
                 </button>
               </div>
             </form>
