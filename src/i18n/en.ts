@@ -1648,6 +1648,18 @@ export const strings: Record<string, string> = {
   create_first_unit_heading: "Create your first unit",
   create_first_unit_description: "Rooms, cottages, or suites - whatever you rent out - each become a unit you can take bookings against.",
 
+  add_address_step_short_label: "Add Address",
+  address_missing_banner_text: "Property address is missing",
+  address_on_page_instruction: 'Fill in the address (and optionally a Google Maps link) below, then click Save Address.',
+  add_staff_step_short_label: "Add Staff",
+  only_staff_count_template: "Only ${count} staff member${plural} on file (need at least 2)",
+  staff_on_page_instruction: 'Fill out "Create Login Staff Account" on the right and click Register Staff Member.',
+  add_room_step_short_label: "Add a Room",
+  no_rooms_banner_text: "No rooms/units added yet",
+  room_on_page_instruction: 'Click "Add New Unit" below to create your first room.',
+  property_setup_incomplete_text: "Property setup is incomplete:",
+  setup_step_prefix: "Setup step - ",
+
   // Date Range Picker
   add_date_label: "Add date",
   select_dates_heading: "Select dates",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AlertTriangle, ArrowDown } from 'lucide-react';
+import { t } from './i18n/en';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -1327,29 +1328,31 @@ ${itemsStr}
     {
       key: 'address' as const,
       done: !!preloadedData.currentProperty?.address?.trim(),
-      shortLabel: 'Add Address',
-      bannerText: 'Property address is missing',
+      shortLabel: t('add_address_step_short_label'),
+      bannerText: t('address_missing_banner_text'),
       targetTab: 'dashboard' as TabType,
       targetMenuItemKey: 'dashboard',
-      onPageInstruction: 'Fill in the address (and optionally a Google Maps link) below, then click Save Address.',
+      onPageInstruction: t('address_on_page_instruction'),
     },
     {
       key: 'staff' as const,
       done: staff.length > 1,
-      shortLabel: 'Add Staff',
-      bannerText: `Only ${staff.length} staff member${staff.length === 1 ? '' : 's'} on file (need at least 2)`,
+      shortLabel: t('add_staff_step_short_label'),
+      bannerText: t('only_staff_count_template')
+        .replace('${count}', String(staff.length))
+        .replace('${plural}', staff.length === 1 ? '' : 's'),
       targetTab: 'staff' as TabType,
       targetMenuItemKey: 'staff_payees_control',
-      onPageInstruction: 'Fill out "Create Login Staff Account" on the right and click Register Staff Member.',
+      onPageInstruction: t('staff_on_page_instruction'),
     },
     ...(preloadedData.isMultiKeyProperty ? [{
       key: 'rooms' as const,
       done: (preloadedData.currentProperty?.rooms?.length || 0) > 0,
-      shortLabel: 'Add a Room',
-      bannerText: 'No rooms/units added yet',
+      shortLabel: t('add_room_step_short_label'),
+      bannerText: t('no_rooms_banner_text'),
       targetTab: 'dashboard' as TabType,
       targetMenuItemKey: 'dashboard',
-      onPageInstruction: 'Click "Add New Unit" below to create your first room.',
+      onPageInstruction: t('room_on_page_instruction'),
     }] : []),
   ];
 
@@ -1487,7 +1490,7 @@ ${itemsStr}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300 shrink-0">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    Property setup is incomplete:
+                    {t('property_setup_incomplete_text')}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {incompleteSetupSteps.map((step) => (
@@ -1508,7 +1511,7 @@ ${itemsStr}
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                    Setup step - {currentPageSetupStep.bannerText}. {currentPageSetupStep.onPageInstruction}
+                    {t('setup_step_prefix')}{currentPageSetupStep.bannerText}. {currentPageSetupStep.onPageInstruction}
                   </p>
                   <ArrowDown className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 animate-bounce" />
                 </div>
