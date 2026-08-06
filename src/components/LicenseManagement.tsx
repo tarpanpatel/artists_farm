@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Edit2, Trash2, AlertCircle, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface License {
   id: number;
@@ -94,9 +95,9 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
 
   const handleDelete = async (id: number) => {
     const confirmed = await confirm({
-      title: 'Delete License',
-      message: 'Delete this license?',
-      confirmText: 'Delete License',
+      title: t('delete_license_title', 'Delete License'),
+      message: t('delete_license_message', 'Delete this license?'),
+      confirmText: t('delete_license_confirm', 'Delete License'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -143,7 +144,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading licenses...</div>;
+    return <div className="text-center py-8">{t('loading_licenses_label', 'Loading licenses...')}</div>;
   }
 
   return (
@@ -153,8 +154,8 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">License Management</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Track and manage property licenses</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('license_management_heading', 'License Management')}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('license_management_description', 'Track and manage property licenses')}</p>
           </div>
         </div>
         {!showForm && (
@@ -163,7 +164,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Add License
+            {t('add_license_button', 'Add License')}
           </button>
         )}
       </div>
@@ -172,14 +173,14 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
       {showForm && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-            {editingId ? 'Edit License' : 'Add New License'}
+            {editingId ? t('edit_license_heading', 'Edit License') : t('add_new_license_heading', 'Add New License')}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* License Type */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                License Type *
+                {t('license_type_label', 'License Type *')}
               </label>
               <StyledSelect
                 value={formData.license_type}
@@ -191,13 +192,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             {/* License Name */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                License Name
+                {t('license_name_label', 'License Name')}
               </label>
               <input
                 type="text"
                 value={formData.license_name}
                 onChange={(e) => setFormData({ ...formData, license_name: e.target.value })}
-                placeholder="e.g., Homestay License - Rajasthan"
+                placeholder={t('license_name_placeholder', 'e.g., Homestay License - Rajasthan')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
@@ -205,13 +206,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             {/* License Number */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                License Number *
+                {t('license_number_label', 'License Number *')}
               </label>
               <input
                 type="text"
                 value={formData.license_number}
                 onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
-                placeholder="e.g., HM/2024/00123"
+                placeholder={t('license_number_placeholder', 'e.g., HM/2024/00123')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
@@ -219,13 +220,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             {/* Issuing Authority */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Issuing Authority
+                {t('issuing_authority_label', 'Issuing Authority')}
               </label>
               <input
                 type="text"
                 value={formData.issuing_authority}
                 onChange={(e) => setFormData({ ...formData, issuing_authority: e.target.value })}
-                placeholder="e.g., Department of Tourism, Rajasthan"
+                placeholder={t('issuing_authority_placeholder', 'e.g., Department of Tourism, Rajasthan')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
@@ -233,7 +234,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             {/* Start Date */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Start Date *
+                {t('license_start_date_label', 'Start Date *')}
               </label>
               <input
                 type="date"
@@ -246,7 +247,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
             {/* End Date */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Expiry Date *
+                {t('license_expiry_date_label', 'Expiry Date *')}
               </label>
               <input
                 type="date"
@@ -260,12 +261,12 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
           {/* Notes */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Notes
+              {t('license_notes_label', 'Notes')}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Any additional information..."
+              placeholder={t('notes_placeholder', 'Any additional information...')}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
             />
@@ -277,13 +278,13 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
               onClick={resetForm}
               className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
-              Cancel
+              {t('cancel_button', 'Cancel')}
             </button>
             <button
               onClick={handleSave}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
-              {editingId ? 'Update License' : 'Add License'}
+              {editingId ? t('update_license_button', 'Update License') : t('add_license_button', 'Add License')}
             </button>
           </div>
         </div>
@@ -294,12 +295,12 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
         {licenses.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-gray-300 dark:border-slate-600">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">No licenses added yet</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('no_licenses_label', 'No licenses added yet')}</p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
             >
-              Add your first license
+              {t('add_first_license_button', 'Add your first license')}
             </button>
           </div>
         ) : (
@@ -323,26 +324,26 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ propertyId
                       )}
                       {license.status === 'expired' && (
                         <span className="text-xs px-2 py-1 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded">
-                          Expired
+                          {t('expired_badge', 'Expired')}
                         </span>
                       )}
                     </div>
                     {license.license_name && <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{license.license_name}</p>}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">License #:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('license_number_field', 'License #:')}</span>
                         <p className="font-mono text-gray-900 dark:text-white">{license.license_number}</p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Issued By:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('issued_by_field', 'Issued By:')}</span>
                         <p className="text-gray-900 dark:text-white">{license.issuing_authority || '—'}</p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Valid From:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('valid_from_field', 'Valid From:')}</span>
                         <p className="text-gray-900 dark:text-white">{new Date(license.start_date).toLocaleDateString()}</p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Expires:</span>
+                        <span className="text-gray-600 dark:text-gray-400">{t('expires_field', 'Expires:')}</span>
                         <p className="text-gray-900 dark:text-white font-semibold">{new Date(license.end_date).toLocaleDateString()}</p>
                       </div>
                     </div>
