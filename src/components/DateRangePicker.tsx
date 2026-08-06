@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface DateRangePickerProps {
   isOpen: boolean;
@@ -50,7 +51,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return 'Add date';
+    if (!dateStr) return t('add_date_label', 'Add date');
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -169,10 +170,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Select dates
+              {t('select_dates_heading', 'Select dates')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Add your reservation dates for exact pricing & availability
+              {t('select_dates_description', 'Add your reservation dates for exact pricing & availability')}
             </p>
           </div>
 
@@ -187,7 +188,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">CHECK-IN</div>
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{t('checkin_pill_label', 'CHECK-IN')}</div>
               <div className="text-xs font-semibold">{formatDisplayDate(checkinDate)}</div>
             </button>
 
@@ -202,7 +203,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">CHECKOUT</div>
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{t('checkout_pill_label', 'CHECKOUT')}</div>
               <div className="text-xs font-semibold">{formatDisplayDate(checkoutDate)}</div>
             </button>
           </div>
@@ -215,7 +216,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             type="button"
             onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
             className="absolute left-0 top-3 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-gray-700 dark:text-gray-300"
-            title="Previous month"
+            title={t('previous_month_tooltip', 'Previous month')}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -225,7 +226,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             type="button"
             onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
             className="absolute right-0 top-3 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-gray-700 dark:text-gray-300"
-            title="Next month"
+            title={t('next_month_tooltip', 'Next month')}
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -271,7 +272,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               }}
               className="text-xs font-bold text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-white transition"
             >
-              Clear dates
+              {t('clear_dates_button', 'Clear dates')}
             </button>
           ) : <div />}
 
@@ -284,7 +285,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 : 'bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900'
             }`}
           >
-            {checkinDate && checkoutDate ? 'Save' : 'Close'}
+            {checkinDate && checkoutDate ? t('save_button', 'Save') : t('close_button', 'Close')}
           </button>
         </div>
       </div>
