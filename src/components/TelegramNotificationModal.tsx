@@ -61,6 +61,12 @@ interface TelegramNotificationModalProps {
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
   kitchenModuleEnabled?: boolean;
   templateCustomizationEnabled?: boolean;
+  // Hides the "Send Test Telegram Ping" / "Telegram Setup" buttons and the
+  // per-template "Send to:" group routing row - all of that is inherently
+  // per-property. Used when this component is rendered at the root admin
+  // level to edit the shared template wording only, with no real property
+  // context to route/test against.
+  hideRoutingControls?: boolean;
 }
 
 // Identifies which templates are kitchen-related (hidden if kitchen module disabled)
@@ -414,6 +420,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   onLogAudit,
   kitchenModuleEnabled,
   templateCustomizationEnabled = false,
+  hideRoutingControls = false,
 }) => {
   const { activeRole } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
@@ -559,6 +566,11 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   }, [kitchenEnabled, dbTemplates]);
 
   useEffect(() => {
+    // Nothing here is shown when hideRoutingControls is set - skip the fetch
+    // (there's no real property context to resolve it against anyway) and,
+    // critically, skip the auto-open-setup-wizard side effect below, which
+    // would otherwise pop the wizard open with no property behind it.
+    if (hideRoutingControls) return;
     fetchTelegramConfigDB().then((cfg) => {
       setTgSettings(cfg);
       // Auto-open the setup wizard while any of the 3 core groups isn't connected
@@ -569,7 +581,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       const isComplete = requiredKeys.every((key) => cfg.groups.some((g) => g.key === key && g.chatId));
       if (!isComplete) setShowSetupWizard(true);
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideRoutingControls]);
 
   const updateTgSettings = (patch: Partial<PropertyTelegramConfig>) => {
     setTgSettings((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -968,24 +981,28 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleTest}
-            className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 ${
-              testSent
-                ? 'bg-emerald-600 hover:bg-emerald-500'
-                : 'bg-indigo-600 hover:bg-indigo-500'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-            <span>{testSent ? t('ping_sent_button', 'Ping Sent Successfully!') : t('send_test_ping_button', 'Send Test Telegram Ping')}</span>
-          </button>
-          <button
-            onClick={() => setShowSetupWizard(true)}
-            className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-          >
-            <Rocket className="w-4 h-4" />
-            <span>{t('telegram_setup_button', 'Telegram Setup')}</span>
-          </button>
+          {!hideRoutingControls && (
+            <>
+              <button
+                onClick={handleTest}
+                className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 ${
+                  testSent
+                    ? 'bg-emerald-600 hover:bg-emerald-500'
+                    : 'bg-indigo-600 hover:bg-indigo-500'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                <span>{testSent ? t('ping_sent_button', 'Ping Sent Successfully!') : t('send_test_ping_button', 'Send Test Telegram Ping')}</span>
+              </button>
+              <button
+                onClick={() => setShowSetupWizard(true)}
+                className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                <Rocket className="w-4 h-4" />
+                <span>{t('telegram_setup_button', 'Telegram Setup')}</span>
+              </button>
+            </>
+          )}
           {!isEmbedded && onClose && (
             <button
               onClick={onClose}
@@ -1098,7 +1115,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             </div>
           </div>
 
-          {/* Per-template Telegram routing: which group receives this specific notification */}
+          {/* Per-template Telegram routing: which group receives this specific
+              notification - inherently per-property, so not shown when
+              editing the shared template set with no real property context. */}
+          {!hideRoutingControls && (
           <div className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-xl px-3 py-2">
             <Send className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">{t('send_to_label', 'Send to:')}</label>
@@ -1127,6 +1147,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               </button>
             )}
           </div>
+          )}
 
           {/* Insert Available Variables */}
           <div className="space-y-1.5">
@@ -1441,7 +1462,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     </div>
   );
 
-  const setupWizard = (
+  // No button opens this when hideRoutingControls is set, and showSetupWizard
+  // never gets auto-set true in that mode either (see the effect above) - but
+  // skip rendering it outright too, rather than relying on isOpen staying false.
+  const setupWizard = hideRoutingControls ? null : (
     <TelegramSetupWizard
       isOpen={showSetupWizard}
       onClose={() => setShowSetupWizard(false)}

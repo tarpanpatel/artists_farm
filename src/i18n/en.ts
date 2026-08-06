@@ -1156,7 +1156,7 @@ export const strings: Record<string, string> = {
   root_edit_main_menu_subtitle: "Global navigation menu for all properties",
   root_default_expenses_subtitle: "System expense categories and defaults",
   root_appearance_subtitle: "Customize theme colors and CSS styling",
-  root_telegram_templates_subtitle: "One shared template set for the whole platform - edit wording here, choose a property below to configure its group routing",
+  root_telegram_templates_subtitle: "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.",
   root_email_settings_subtitle: "SMTP connection and the tenant welcome email/WhatsApp message template",
   system_status_label: "System Status",
   online_status: "Online",
