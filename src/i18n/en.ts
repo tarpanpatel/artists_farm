@@ -1497,6 +1497,11 @@ export const strings: Record<string, string> = {
   tenant_welcome_message_description: "Sent as the welcome email and used to build the \"Share via WhatsApp\" message when a new tenant is created.",
   template_helper_text: "Blank = use the default shown above as a placeholder. Click a variable to insert it:",
   preview_sample_data_label: "Preview with sample data",
+
+  // Date Picker
+  select_checkin_date_title: "Select Check-In Date",
+  select_checkout_date_title: "Select Check-Out Date",
+  clear_dates_button: "Clear dates",
 };
 
 export function t(key: string, fallback?: string): string {

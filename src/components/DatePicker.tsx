@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, ArrowDown } from 'lucide-react';
+import { t } from '../i18n/en';
 
 interface DatePickerProps {
   value: string;
@@ -193,7 +194,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 <>
                   <div className="flex items-center justify-center gap-2">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {isCheckout ? 'Select Check-Out Date' : 'Select Check-In Date'}
+                      {isCheckout ? t('select_checkout_date_title', 'Select Check-Out Date') : t('select_checkin_date_title', 'Select Check-In Date')}
                     </h2>
                     <ArrowDown
                       size={20}
@@ -275,7 +276,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   }}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm font-medium"
                 >
-                  Clear dates
+                  {t('clear_dates_button', 'Clear dates')}
                 </button>
               )}
               <button
@@ -289,7 +290,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
                 }`}
               >
-                {isCheckout && value ? 'Save' : 'Close'}
+                {isCheckout && value ? t('save_button', 'Save') : t('close_button', 'Close')}
               </button>
             </div>
             <button
