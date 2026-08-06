@@ -1422,6 +1422,25 @@ export const strings: Record<string, string> = {
   delete_license_title: "Delete License",
   delete_license_message: "Delete this license?",
   delete_license_confirm: "Delete License",
+
+  // Theme Management
+  theme_settings_heading: "Theme Settings",
+  theme_settings_description: "Customize the platform appearance for all users",
+  colors_section_label: "Colors",
+  dark_mode_section_label: "Dark Mode",
+  typography_section_label: "Typography",
+  border_radius_section_label: "Border Radius",
+  shadows_section_label: "Shadows",
+  font_family_label: "Font Family",
+  base_font_size_label: "Base Font Size",
+  heading_scale_label: "Heading Scale",
+  hex_color_placeholder: "#000000",
+  save_settings_button: "Save Settings",
+  saving_ellipsis_button: "Saving...",
+  reset_button: "Reset",
+  reset_theme_title: "Reset Theme Colors",
+  reset_theme_message: "Reset to Tailwind default colors?",
+  reset_theme_confirm: "Reset Colors",
 };
 
 export function t(key: string, fallback?: string): string {

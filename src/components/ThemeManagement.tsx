@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, RotateCcw, Loader } from 'lucide-react';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
 import { useConfirm } from './ConfirmDialogContext';
+import { t } from '../i18n/en';
 
 export const ThemeManagement: React.FC = () => {
   const { confirm } = useConfirm();
@@ -78,9 +79,9 @@ export const ThemeManagement: React.FC = () => {
 
   const handleReset = async () => {
     const confirmed = await confirm({
-      title: 'Reset Theme Colors',
-      message: 'Reset to Tailwind default colors?',
-      confirmText: 'Reset Colors',
+      title: t('reset_theme_title', 'Reset Theme Colors'),
+      message: t('reset_theme_message', 'Reset to Tailwind default colors?'),
+      confirmText: t('reset_theme_confirm', 'Reset Colors'),
       variant: 'warning',
     });
     if (confirmed) {
@@ -152,9 +153,9 @@ export const ThemeManagement: React.FC = () => {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Theme Settings</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('theme_settings_heading', 'Theme Settings')}</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Customize the platform appearance for all users
+          {t('theme_settings_description', 'Customize the platform appearance for all users')}
         </p>
       </div>
 
@@ -169,7 +170,7 @@ export const ThemeManagement: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Colors */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Colors</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('colors_section_label', 'Colors')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.colors).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3">
@@ -188,7 +189,7 @@ export const ThemeManagement: React.FC = () => {
                     value={value}
                     onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
-                    placeholder="#000000"
+                    placeholder={t('hex_color_placeholder', '#000000')}
                   />
                 </div>
               </div>
@@ -198,7 +199,7 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Dark Mode Colors */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Dark Mode</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dark_mode_section_label', 'Dark Mode')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.darkMode).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3">
@@ -217,7 +218,7 @@ export const ThemeManagement: React.FC = () => {
                     value={value}
                     onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
-                    placeholder="#000000"
+                    placeholder={t('hex_color_placeholder', '#000000')}
                   />
                 </div>
               </div>
@@ -227,11 +228,11 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Typography */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Typography</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('typography_section_label', 'Typography')}</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Font Family
+                {t('font_family_label', 'Font Family')}
               </label>
               <input
                 type="text"
@@ -242,7 +243,7 @@ export const ThemeManagement: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Base Font Size
+                {t('base_font_size_label', 'Base Font Size')}
               </label>
               <input
                 type="text"
@@ -253,7 +254,7 @@ export const ThemeManagement: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Heading Scale
+                {t('heading_scale_label', 'Heading Scale')}
               </label>
               <input
                 type="number"
@@ -268,7 +269,7 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Border Radius */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Border Radius</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('border_radius_section_label', 'Border Radius')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.borderRadius).map(([key, value]) => (
               <div key={key}>
@@ -289,7 +290,7 @@ export const ThemeManagement: React.FC = () => {
 
       {/* Shadows */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Shadows</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('shadows_section_label', 'Shadows')}</h3>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {Object.entries(settings.shadows).map(([key, value]) => (
             <div key={key}>
@@ -315,7 +316,7 @@ export const ThemeManagement: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
         >
           {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {isSaving ? 'Saving...' : 'Save Settings'}
+          {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
         </button>
         <button
           onClick={handleReset}
@@ -323,7 +324,7 @@ export const ThemeManagement: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
-          Reset
+          {t('reset_button', 'Reset')}
         </button>
       </div>
     </div>
