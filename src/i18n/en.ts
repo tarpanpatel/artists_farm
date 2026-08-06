@@ -941,6 +941,23 @@ export const strings: Record<string, string> = {
   nav_set_parent_menu_item_title: "Set Parent Menu Item",
   nav_kitchen_hidden_tooltip: "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.",
   nav_set_url_button: "Set",
+
+  // Today Overview
+  today_guest_name_label: "Guest Name",
+  today_advance_paid_label: "Advance Paid",
+  today_share_via_whatsapp_button: "Share via WhatsApp",
+  today_add_date_button: "Add date",
+  today_no_rooms_message: "No rooms available",
+  today_check_in_label: "Check-in",
+  today_check_out_label: "Check-out",
+  today_guests_label: "Guests",
+  today_room_rate_label: "Room Rate",
+  today_total_label: "Total",
+  today_pending_label: "Pending",
+  today_status_label: "Status",
+  today_booking_details_heading: "Booking Details",
+  today_edit_booking_heading: "Edit Booking",
+  today_delete_booking_button: "Delete Booking",
 };
 
 export function t(key: string, fallback: string): string {

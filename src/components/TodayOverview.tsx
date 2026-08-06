@@ -7,6 +7,7 @@ import { StyledSelect } from './StyledSelect';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
   guests: Guest[];
@@ -265,9 +266,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {/* Date Header */}
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">
             <div className="w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30">
-              Room
-            </div>
-            {daysArray.map((day) => {
+              {t('room_column', 'Room')}
+            </div>            {daysArray.map((day) => {
               const date = new Date(year, month, day);
               const dayName = date.toLocaleString('default', { weekday: 'short' });
               const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
@@ -413,7 +413,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             })
           ) : (
             <div className="text-center py-8 text-slate-600 dark:text-slate-400">
-              No rooms available
+              {t('today_no_rooms_message', 'No rooms available')}
             </div>
           )}
         </div>
@@ -435,7 +435,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {isEditingBooking ? 'Edit Booking' : 'Booking Details'}
+                {isEditingBooking ? t('today_edit_booking_heading', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
               </h2>
               <button
                 onClick={() => {
@@ -450,7 +450,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Guest Name</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_guest_name_label', 'Guest Name')}</label>
                 {isEditingBooking ? (
                   <input
                     type="text"
@@ -464,7 +464,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Room</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('room_column', 'Room')}</label>
                 {isEditingBooking ? (
                   <div className="mt-1">
                     <StyledSelect
@@ -495,7 +495,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Phone</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('phone_label', 'Phone')}</label>
                 {isEditingBooking ? (
                   <input
                     type="tel"
@@ -510,28 +510,28 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Check-in</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_check_in_label', 'Check-in')}</label>
                   {isEditingBooking ? (
                     <button
                       type="button"
                       onClick={() => setShowDatePicker(true)}
                       className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
                     >
-                      {editCheckin ? formatDate(editCheckin) : 'Add date'}
+                      {editCheckin ? formatDate(editCheckin) : t('today_add_date_button', 'Add date')}
                     </button>
                   ) : (
                     <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.checkinDate?.split('T')[0] || '')}</p>
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Check-out</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_check_out_label', 'Check-out')}</label>
                   {isEditingBooking ? (
                     <button
                       type="button"
                       onClick={() => setShowDatePicker(true)}
                       className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
                     >
-                      {editCheckout ? formatDate(editCheckout) : 'Add date'}
+                      {editCheckout ? formatDate(editCheckout) : t('today_add_date_button', 'Add date')}
                     </button>
                   ) : (
                     <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.expectedCheckout?.split('T')[0] || '')}</p>
@@ -540,7 +540,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Guests</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_guests_label', 'Guests')}</label>
                 {isEditingBooking ? (
                   <input
                     type="number"
@@ -556,7 +556,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Room Rate</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_room_rate_label', 'Room Rate')}</label>
                   {isEditingBooking ? (
                     <input
                       type="number"
@@ -570,7 +570,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Total</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_total_label', 'Total')}</label>
                   {isEditingBooking ? (
                     <input
                       type="number"
@@ -587,7 +587,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Advance Paid</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_advance_paid_label', 'Advance Paid')}</label>
                   {isEditingBooking ? (
                     <input
                       type="number"
@@ -601,7 +601,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Pending</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_pending_label', 'Pending')}</label>
                   <p className="text-amber-600 dark:text-amber-400 font-bold">
                     ₹{isEditingBooking
                       ? Math.max(0, (parseFloat(editTotal) || 0) - (parseFloat(editAdvance) || 0))
@@ -611,7 +611,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Status</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_status_label', 'Status')}</label>
                 <p className="text-emerald-600 dark:text-emerald-400 font-semibold">{selectedGuest.status}</p>
               </div>
             </div>
@@ -624,14 +624,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       onClick={() => setIsEditingBooking(false)}
                       className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
                     >
-                      Cancel
+                      {t('cancel_button', 'Cancel')}
                     </button>
                     <button
                       onClick={handleSaveEdit}
                       className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2"
                     >
                       <Save className="w-4 h-4" />
-                      Save
+                      {t('save_button', 'Save')}
                     </button>
                   </>
                 ) : (
@@ -640,7 +640,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       onClick={() => setSelectedGuest(null)}
                       className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
                     >
-                      Close
+                      {t('close_button', 'Close')}
                     </button>
                     <button
                       onClick={() => {
@@ -658,7 +658,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition flex items-center justify-center gap-2"
                     >
                       <Save className="w-4 h-4" />
-                      Edit
+                      {t('edit_button', 'Edit')}
                     </button>
                   </>
                 )}
@@ -675,14 +675,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
                     >
                       <Share2 className="w-4 h-4" />
-                      Share via WhatsApp
+                      {t('today_share_via_whatsapp_button', 'Share via WhatsApp')}
                     </a>
                     <button
                       onClick={handleShareVoucherPng}
                       className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
                     >
                       <Printer className="w-4 h-4" />
-                      Share PNG
+                      {t('share_png_button', 'Share PNG')}
                     </button>
                   </div>
 
@@ -694,7 +694,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         className="w-full px-4 py-2 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
                       >
                         <Trash2 className="w-4 h-4" />
-                        {isDeleting ? 'Deleting...' : 'Delete Booking'}
+                        {isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}
                       </button>
                     </div>
                   )}
