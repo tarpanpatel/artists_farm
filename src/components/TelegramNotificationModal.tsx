@@ -30,6 +30,7 @@ import { TelegramConnectionSettings } from './TelegramConnectionSettings';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
 import { useAuth } from '../contexts/AuthContext';
+import { t } from '../i18n/en';
 
 export interface TelegramInlineButton {
   id: string;
@@ -954,14 +955,14 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 m-0">
-              📡 Telegram Template Manager
+              {t('telegram_template_manager_heading', '📡 Telegram Template Manager')}
               <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Bot Connected
+                {t('bot_connected_badge', 'Bot Connected')}
               </span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 m-0 pt-0.5">
-              Customize automated Telegram notification formats, variables & live previews
+              {t('telegram_manager_subtitle', 'Customize automated Telegram notification formats, variables & live previews')}
             </p>
           </div>
         </div>
@@ -976,14 +977,14 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             }`}
           >
             <Send className="w-4 h-4" />
-            <span>{testSent ? 'Ping Sent Successfully!' : 'Send Test Telegram Ping'}</span>
+            <span>{testSent ? t('ping_sent_button', 'Ping Sent Successfully!') : t('send_test_ping_button', 'Send Test Telegram Ping')}</span>
           </button>
           <button
             onClick={() => setShowSetupWizard(true)}
             className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
             <Rocket className="w-4 h-4" />
-            <span>Telegram Setup</span>
+            <span>{t('telegram_setup_button', 'Telegram Setup')}</span>
           </button>
           {!isEmbedded && onClose && (
             <button
@@ -1002,7 +1003,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         <div className="lg:col-span-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-0 overflow-hidden">
           <div className="p-3.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider m-0 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Templates Catalog
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t('templates_catalog_heading', 'Templates Catalog')}
             </h3>
             <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
               {displayedTemplates.length} items
@@ -1062,7 +1063,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3.5 py-3">
               <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 dark:text-amber-300 m-0">
-                Templates are designed at the root admin level. Ask your root admin to enable customization for this property if you need to edit wording here.
+                {t('no_edit_permission_hint', "Templates are designed at the root admin level. Ask your root admin to enable customization for this property if you need to edit wording here.")}
               </p>
             </div>
           )}
@@ -1092,7 +1093,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Save Changes</span>
+                <span>{t('save_changes_button', 'Save Changes')}</span>
               </button>
             </div>
           </div>
@@ -1100,7 +1101,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Per-template Telegram routing: which group receives this specific notification */}
           <div className="flex items-center gap-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-xl px-3 py-2">
             <Send className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">Send to:</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 shrink-0">{t('send_to_label', 'Send to:')}</label>
             {tgSettings ? (
               <StyledSelect
                 className="flex-1"
@@ -1108,7 +1109,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 onChange={(value) => setTemplateRouting(currentTpl.dbKey, value)}
                 disabled={tgRoutingSaving}
                 options={[
-                  { value: '', label: tgSettings.groups.filter(g => g.chatId).length === 0 ? 'No groups found' : 'Not sent' },
+                  { value: '', label: tgSettings.groups.filter(g => g.chatId).length === 0 ? t('no_groups_found_option', 'No groups found') : t('not_sent_option', 'Not sent') },
                   ...tgSettings.groups.map((g) => ({ value: g.key, label: g.name })),
                 ]}
               />
@@ -1122,7 +1123,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 onClick={() => setShowSetupWizard(true)}
                 className="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer bg-transparent border-0 p-0 shrink-0"
               >
-                Configure groups in Telegram Setup first
+                {t('configure_groups_button', 'Configure groups in Telegram Setup first')}
               </button>
             )}
           </div>
@@ -1130,7 +1131,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Insert Available Variables */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-              Insert Available Variables (Drag and drop onto Visual Editor or click to insert):
+              {t('insert_variables_label', 'Insert Available Variables (Drag and drop onto Visual Editor or click to insert):')}
             </label>
             <div className="flex flex-wrap gap-1.5">
               {currentTpl.variables.map((v) => (
@@ -1141,7 +1142,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   onDragStart={(e) => e.dataTransfer.setData('text/plain', v)}
                   onClick={() => handleInsertVariable(v.replace(/[{}]/g, ''))}
                   className="variable-chip text-[11px] font-mono border px-2.5 py-1 rounded-lg transition-all cursor-grab active:cursor-grabbing active:scale-95 font-bold shadow-xs"
-                  title="Drag and drop or click to insert variable"
+                  title={t('drag_variable_tooltip', 'Drag and drop or click to insert variable')}
                 >
                   + {v}
                 </button>
@@ -1159,7 +1160,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   type="button"
                   onClick={handleUndo}
                   disabled={historyIndex === 0}
-                  title="Undo (Ctrl+Z)"
+                  title={t('undo_tooltip', 'Undo (Ctrl+Z)')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer border border-slate-300 dark:border-slate-600"
                 >
                   <Undo className="w-3.5 h-3.5" />
@@ -1168,7 +1169,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   type="button"
                   onClick={handleRedo}
                   disabled={historyIndex >= history.length - 1}
-                  title="Redo (Ctrl+Y)"
+                  title={t('redo_tooltip', 'Redo (Ctrl+Y)')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer border border-slate-300 dark:border-slate-600"
                 >
                   <Redo className="w-3.5 h-3.5" />
@@ -1180,7 +1181,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('bold')}
-                  title="Bold <b> (Ctrl+B)"
+                  title={t('bold_tooltip', 'Bold <b> (Ctrl+B)')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 font-bold text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <Bold className="w-3.5 h-3.5" />
@@ -1190,7 +1191,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('italic')}
-                  title="Italic <i> (Ctrl+I)"
+                  title={t('italic_tooltip', 'Italic <i> (Ctrl+I)')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 italic font-bold text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <Italic className="w-3.5 h-3.5" />
@@ -1200,7 +1201,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('underline')}
-                  title="Underline <u> (Ctrl+U)"
+                  title={t('underline_tooltip', 'Underline <u> (Ctrl+U)')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <Underline className="w-3.5 h-3.5" />
@@ -1210,7 +1211,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('strikeThrough')}
-                  title="Strikethrough <s>"
+                  title={t('strikethrough_tooltip', 'Strikethrough <s>')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <Strikethrough className="w-3.5 h-3.5" />
@@ -1220,7 +1221,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('insertHTML', '<code>code</code>')}
-                  title="Monospace Code <code>"
+                  title={t('code_tooltip', 'Monospace Code <code>')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-slate-800 dark:text-white hover:bg-slate-100 text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer font-mono"
                 >
                   <Code className="w-3.5 h-3.5" />
@@ -1230,7 +1231,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={handleInsertLink}
-                  title="Insert Hyperlink <a href>"
+                  title={t('link_tooltip', 'Insert Hyperlink <a href>')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 hover:bg-slate-100 text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
@@ -1240,7 +1241,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 <button
                   type="button"
                   onClick={() => formatCommand('removeFormat')}
-                  title="Clear Formatting"
+                  title={t('clear_formatting_tooltip', 'Clear Formatting')}
                   className="p-1.5 rounded-md bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-slate-100 text-xs flex items-center gap-1 border border-slate-300 dark:border-slate-600 cursor-pointer"
                 >
                   <Eraser className="w-3.5 h-3.5" />
@@ -1266,7 +1267,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   }`}
                 >
                   <Eye className="w-3 h-3" />
-                  <span>Visual Editor</span>
+                  <span>{t('visual_editor_button', 'Visual Editor')}</span>
                 </button>
                 <button
                   type="button"
@@ -1278,7 +1279,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   }`}
                 >
                   <FileCode className="w-3 h-3" />
-                  <span>Source HTML</span>
+                  <span>{t('source_html_button', 'Source HTML')}</span>
                 </button>
               </div>
             </div>
@@ -1304,7 +1305,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 onChange={(e) => updateTemplateWithHistory(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="w-full text-xs font-mono p-3 rounded-b-xl border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 focus:outline-hidden bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-inner"
-                placeholder="Type raw Telegram HTML tags here..."
+                placeholder={t('raw_html_placeholder', 'Type raw Telegram HTML tags here...')}
               />
             )}
           </div>
@@ -1313,7 +1314,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           <div className="p-3.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex flex-col gap-0.5">
-                <span>🔘 Telegram Inline Keyboard Buttons</span>
+                <span>{t('inline_keyboard_buttons_heading', '🔘 Telegram Inline Keyboard Buttons')}</span>
                 <span className="text-[10px] text-slate-400 font-normal">
                   URLs open web pages. Callbacks (e.g., <code>mark_served_40</code>) trigger backend scripts directly from Telegram.
                 </span>
@@ -1324,13 +1325,13 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 className="text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950 hover:bg-sky-200 dark:hover:bg-sky-900 px-2.5 py-1 rounded-lg border border-sky-300 dark:border-sky-800 flex items-center gap-1 transition-all cursor-pointer"
               >
                 <Plus className="w-3 h-3" />
-                <span>Add Button</span>
+                <span>{t('add_button_button', 'Add Button')}</span>
               </button>
             </div>
 
             {(!currentTpl.buttons || currentTpl.buttons.length === 0) ? (
               <p className="text-[11px] text-slate-500 dark:text-slate-400 italic m-0">
-                No interactive inline buttons attached to this template yet. Click above to add buttons like "Mark as Served" or "Download Invoice".
+                {t('no_buttons_message', 'No interactive inline buttons attached to this template yet. Click above to add buttons like "Mark as Served" or "Download Invoice".')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -1342,7 +1343,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                         className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-xs"
                       >
                         <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">Button Text:</label>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">{t('button_text_label', 'Button Text:')}</label>
                           <input
                             type="text"
                             value={btn.text}
@@ -1352,7 +1353,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                         </div>
 
                         <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">Action Callback / URL:</label>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">{t('action_callback_url_label', 'Action Callback / URL:')}</label>
                           <input
                             type="text"
                             value={btn.url || btn.callback_data || ''}
@@ -1364,7 +1365,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                                 handleUpdateButton(rIdx, bIdx, 'callback_data', val);
                               }
                             }}
-                            placeholder="callback_data or https://..."
+                            placeholder={t('callback_placeholder', 'callback_data or https://...')}
                             className="w-full text-xs font-mono p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                           />
                         </div>
@@ -1372,7 +1373,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                         <button
                           type="button"
                           onClick={() => handleDeleteButton(rIdx, bIdx)}
-                          title="Delete Button"
+                          title={t('delete_button_tooltip', 'Delete Button')}
                           className="p-2 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors self-end sm:self-center cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1390,7 +1391,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Live Dark Telegram Preview */}
           <div className="space-y-1.5 pt-1">
             <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <span>🤖 POS Notification Bot (Live Dark Telegram Preview)</span>
+              <span>{t('live_preview_heading', '🤖 POS Notification Bot (Live Dark Telegram Preview)')}</span>
             </div>
 
             <div className="bg-[#17212b] rounded-2xl p-4 border border-slate-800 text-white shadow-lg space-y-3">
@@ -1399,8 +1400,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                   AF
                 </div>
                 <div>
-                  <span className="text-xs font-bold block leading-none">Artists Farm Bot</span>
-                  <span className="text-[9px] text-slate-400">bot service</span>
+                  <span className="text-xs font-bold block leading-none">{t('bot_name_label', 'Artists Farm Bot')}</span>
+                  <span className="text-[9px] text-slate-400">{t('bot_service_label', 'bot service')}</span>
                 </div>
               </div>
 
