@@ -349,7 +349,16 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ON DUPLICATE KEY UPDATE file_path = VALUES(file_path), uploaded_at = CURRENT_TIMESTAMP, uploaded_by = VALUES(uploaded_by)
                     ");
                     $stmt->execute([$guestId, $propertyId, $guestIndex, $filePath, $_SESSION['username'] ?? '']);
-                    echo json_encode(['status' => 'success', 'message' => 'ID document saved']);
+
+                    // Return the saved row directly so the frontend can merge
+                    // it into local state instead of a third round-trip
+                    // re-fetching the entire document list just to pick up
+                    // one new/changed row.
+                    $docStmt = $pdo->prepare("SELECT id, guest_index, file_path, uploaded_at FROM guest_id_documents WHERE guest_id = ? AND property_id = ? AND guest_index = ?");
+                    $docStmt->execute([$guestId, $propertyId, $guestIndex]);
+                    $savedDoc = convertSnakeToCamel($docStmt->fetch(PDO::FETCH_ASSOC));
+
+                    echo json_encode(['status' => 'success', 'message' => 'ID document saved', 'data' => $savedDoc]);
 
                     // Live progress ping - lets the tenant follow along in Telegram as
                     // photos come in, rather than only hearing about it at completion.

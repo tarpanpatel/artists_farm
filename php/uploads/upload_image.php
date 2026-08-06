@@ -132,6 +132,38 @@ if ($ext === 'png' && !$isIdDocument) {
     $saved = imagejpeg($canvas, $filepath, $jpegQuality);
 }
 
+// ID documents also get a small thumbnail alongside the full-size copy -
+// the check-in modal only needs a tiny preview per upload slot, not the
+// full legibility-preserving 1600px image. Downscaled from the already-
+// resized $canvas (not the original source), same downscale-only/no-crop
+// policy as the main image. Best-effort: a failure here doesn't fail the
+// upload, the UI just falls back to the full-size file for that photo.
+if ($isIdDocument && $saved) {
+    $thumbMaxDim = 300;
+    if ($canvasWidth > $thumbMaxDim || $canvasHeight > $thumbMaxDim) {
+        if ($canvasWidth >= $canvasHeight) {
+            $thumbWidth = $thumbMaxDim;
+            $thumbHeight = max(1, intval($canvasHeight * ($thumbMaxDim / $canvasWidth)));
+        } else {
+            $thumbHeight = $thumbMaxDim;
+            $thumbWidth = max(1, intval($canvasWidth * ($thumbMaxDim / $canvasHeight)));
+        }
+    } else {
+        $thumbWidth = $canvasWidth;
+        $thumbHeight = $canvasHeight;
+    }
+    $thumbCanvas = imagecreatetruecolor($thumbWidth, $thumbHeight);
+    if ($thumbCanvas !== false) {
+        imagecopyresampled($thumbCanvas, $canvas, 0, 0, 0, 0, $thumbWidth, $thumbHeight, $canvasWidth, $canvasHeight);
+        $thumbDir = $uploadDir . '/thumbs';
+        if (!is_dir($thumbDir)) {
+            mkdir($thumbDir, 0755, true);
+        }
+        imagejpeg($thumbCanvas, $thumbDir . '/' . $filename, 80);
+        imagedestroy($thumbCanvas);
+    }
+}
+
 imagedestroy($imageSource);
 imagedestroy($canvas);
 

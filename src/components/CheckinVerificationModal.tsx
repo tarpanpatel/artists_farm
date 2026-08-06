@@ -8,7 +8,13 @@ import {
   deleteIdDocumentFromDB,
   completeCheckinVerificationDB,
   uploadImageDB,
+  resizeImageFile,
 } from '../services/api';
+
+// upload_image.php saves a small thumbnail alongside every id_documents
+// upload, at <same folder>/thumbs/<same filename> - derived here rather than
+// stored, so no schema/response change was needed to wire it up.
+const idDocThumbUrl = (filePath: string) => filePath.replace('/id_documents/', '/id_documents/thumbs/');
 
 interface CheckinVerificationModalProps {
   guest: Guest;
@@ -62,16 +68,25 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     setErrorMsg(null);
     setSuccessMsg(null);
     setUploadingIndex(index);
-    // Upload the File directly - no FileReader/base64 round-trip needed since
+    // Downscale before it ever hits the network - a phone camera photo is
+    // routinely several MB, and that's almost the entire wait time on a
+    // resort's connection. No FileReader/base64 preview round-trip either,
     // this flow never previews the image, only uploads it.
-    const uploadedUrl = await uploadImageDB(file, 'id_documents');
+    const resized = await resizeImageFile(file);
+    const uploadedUrl = await uploadImageDB(resized, 'id_documents');
     if (!uploadedUrl) {
       setErrorMsg('Failed to upload the photo. Please try again.');
       setUploadingIndex(null);
       return;
     }
     const result = await saveIdDocumentToDB(guest.id, index, uploadedUrl);
-    if (result.success) {
+    if (result.success && result.document) {
+      // Merge the one saved/changed row locally instead of a third
+      // round-trip re-fetching the entire document list.
+      setDocuments((prev) => [...prev.filter((d) => d.guestIndex !== index), result.document!]);
+    } else if (result.success) {
+      // Backend didn't return the row for some reason - fall back to a
+      // full refresh rather than leave the UI out of sync.
       const refreshed = await fetchIdDocumentsFromDB(guest.id);
       setDocuments(refreshed);
     } else {
@@ -196,7 +211,19 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                       {isUploading ? (
                         <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
                       ) : doc ? (
-                        <img src={doc.filePath} alt={label} className="w-full h-full object-cover" />
+                        <img
+                          src={idDocThumbUrl(doc.filePath)}
+                          alt={label}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                          // Documents uploaded before thumbnails existed have
+                          // no file at the thumbs/ path - fall back to the
+                          // full-size image rather than show a broken icon.
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            if (img.src !== doc.filePath) img.src = doc.filePath;
+                          }}
+                        />
                       ) : (
                         <>
                           <Upload className="w-6 h-6 text-slate-400" />

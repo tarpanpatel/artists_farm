@@ -397,6 +397,49 @@ function dataUriToBlob(dataUri: string): Blob {
 // Either way this sends multipart/form-data, not JSON - a base64 data URI is
 // ~33% larger than the raw bytes, and json_decode()-ing that whole string
 // server-side was a real, measured contributor to upload latency.
+// Downscales an image client-side, before it ever crosses the network, so a
+// multi-MB phone camera photo doesn't have to fully upload before the server
+// gets a chance to resize it. Caps the long edge at maxDim (default matches
+// the server's own id_documents target, so this isn't even doing redundant
+// work - the server-side resize becomes a no-op for anything this already
+// shrank). Never upscales, never crops (cropping is a deliberate per-folder
+// choice the server makes for menu/catalog thumbnails - this only exists to
+// avoid uploading more bytes than needed). Falls back to the original file
+// on any error so a resize failure never blocks the upload itself.
+export async function resizeImageFile(file: File, maxDim: number = 1600): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width, height } = bitmap;
+    if (width <= maxDim && height <= maxDim) {
+      bitmap.close?.();
+      return file; // already small enough - don't re-encode for no reason
+    }
+    const scale = maxDim / Math.max(width, height);
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    bitmap.close?.();
+    // Preserve PNG (transparency) if that's what came in; everything else
+    // becomes JPEG, which is what actually shrinks a multi-MB photo.
+    const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, mime, mime === 'image/jpeg' ? 0.9 : undefined)
+    );
+    if (!blob) return file;
+    const newName = file.name.replace(/\.\w+$/, mime === 'image/png' ? '.png' : '.jpg');
+    return new File([blob], newName, { type: mime });
+  } catch (err) {
+    console.error('Client-side image resize failed, uploading original file:', err);
+    return file;
+  }
+}
+
 export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' = 'misc'): Promise<string | null> {
   try {
     const formData = new FormData();
@@ -893,7 +936,7 @@ export async function fetchIdDocumentsFromDB(guestId: string | number): Promise<
   }
 }
 
-export async function saveIdDocumentToDB(guestId: string | number, guestIndex: number, filePath: string): Promise<{ success: boolean; message?: string }> {
+export async function saveIdDocumentToDB(guestId: string | number, guestIndex: number, filePath: string): Promise<{ success: boolean; message?: string; document?: GuestIdDocument }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=upload_id_document`, {
       method: 'POST',
@@ -901,7 +944,9 @@ export async function saveIdDocumentToDB(guestId: string | number, guestIndex: n
       body: JSON.stringify({ guest_id: guestId, guest_index: guestIndex, file_path: filePath }),
     });
     const json = await res.json();
-    return { success: json.status === 'success', message: json.message };
+    // Backend now returns the saved row directly - lets the caller update
+    // local state without a separate re-fetch of the whole document list.
+    return { success: json.status === 'success', message: json.message, document: json.data };
   } catch (err) {
     console.error('Failed to save ID document:', err);
     return { success: false, message: 'Network error while saving ID document' };
