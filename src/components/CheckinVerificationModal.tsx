@@ -10,6 +10,7 @@ import {
   uploadImageDB,
   resizeImageFile,
 } from '../services/api';
+import { t } from '../i18n/en';
 
 // upload_image.php saves a small thumbnail alongside every id_documents
 // upload, at <same folder>/thumbs/<same filename> - derived here rather than
@@ -170,7 +171,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
           <div className="flex items-start gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-              This booking's check-in is already verified. You can still replace a photo below if needed.
+              {t('already_verified_message', "This booking's check-in is already verified. You can still replace a photo below if needed.")}
             </p>
           </div>
         )}
@@ -239,7 +240,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                         <button
                           onClick={() => handleDelete(doc.id)}
                           className="text-red-500 hover:text-red-700 p-0.5 rounded cursor-pointer"
-                          title="Remove and re-upload"
+                          title={t('remove_reupload_tooltip', 'Remove and re-upload')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -253,7 +254,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
               onClick={() => setExtraSlots((n) => n + 1)}
               className="w-full py-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Plus className="w-3.5 h-3.5" /> Add More Images
+              <Plus className="w-3.5 h-3.5" /> {t('add_more_images_button', 'Add More Images')}
             </button>
           </>
         )}
@@ -269,7 +270,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
               onClick={onClose}
               className="flex-1 py-2.5 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-100 font-semibold rounded-lg transition-colors cursor-pointer"
             >
-              Close
+              {t('close_button', 'Close')}
             </button>
             <button
               onClick={handleCompleteCheckin}
@@ -278,11 +279,11 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             >
               {completing ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Completing...
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('completing_button', 'Completing...')}
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Check-in Complete
+                  <CheckCircle2 className="w-4 h-4" /> {t('checkin_complete_button', 'Check-in Complete')}
                 </>
               )}
             </button>

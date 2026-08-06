@@ -1515,6 +1515,13 @@ export const strings: Record<string, string> = {
   delete_expense_item_title: "Delete Expense Item",
   delete_expense_item_confirm: "Delete Item",
 
+  // Check-in Verification Modal
+  already_verified_message: "This booking's check-in is already verified. You can still replace a photo below if needed.",
+  remove_reupload_tooltip: "Remove and re-upload",
+  add_more_images_button: "Add More Images",
+  completing_button: "Completing...",
+  checkin_complete_button: "Check-in Complete",
+
   loading_spinner_default_message: "Loading...",
   error_boundary_component_section_fallback: "Component",
   error_boundary_generic_heading: "Something went wrong",
@@ -1525,6 +1532,25 @@ export const strings: Record<string, string> = {
   invalid_property_message: "You don't have access to this resource. Please contact your administrator if you believe this is an error.",
   invalid_property_home_button: "Go to Home",
   invalid_property_help_text: "If you believe this is an error, please contact your administrator.",
+
+  loading_screen_default_message: "Loading application...",
+  artists_farm_brand: "Artists Farm",
+  loading_timeout_message: "Loading is taking longer than expected. Click below to go home.",
+  go_home_button: "← Go Home",
+  searchable_select_placeholder: "Search...",
+  no_matches_text: "No matches",
+  global_modal_notification_title: "Notification",
+  global_modal_confirm_title: "Please Confirm",
+  global_modal_error_title: "Error",
+  global_modal_success_title: "Success",
+  cancel_button: "Cancel",
+  confirm_button: "Confirm",
+  okay_button: "Okay",
+  select_room_heading: "Select Room for New Guest",
+  select_room_subtext: "Choose a room to register the guest in",
+  no_active_rooms_text: "No active rooms available",
+  room_selector_tip: "Tip: Select a room above to register the guest in that specific room. You can always change the room assignment later.",
+  cancel_room_selection_button: "Cancel Room Selection",
 };
 
 export function t(key: string, fallback?: string): string {
