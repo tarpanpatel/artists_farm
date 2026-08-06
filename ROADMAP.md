@@ -46,8 +46,11 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Email Settings Panel (`EmailSettingsPanel.tsx`)
 - ✅ Date Picker (`DatePicker.tsx`)
 - ✅ Expense Items Management (`ExpenseItemsManagement.tsx`)
+- ✅ Check-in Verification Modal (`CheckinVerificationModal.tsx`)
+- ✅ Service Requests Management (`ServiceRequestsManagement.tsx`)
+- ✅ Loading/Error/Settings/Modal shared components (`LoadingSpinner`, `ErrorBoundary`, `AppearanceSettings`, `InvalidPropertyPage`, `LoadingScreen`, `SearchableSelect`, `GlobalModal`, `RoomSelectorModal`, `MultiKeyRoomDrawer`, `ConfirmDialogContext`, `StyledSelect`, `DataLoader`)
 
-Remaining: ~18 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~8 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
