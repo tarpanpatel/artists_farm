@@ -595,6 +595,43 @@ switch ($action) {
         }
         exit;
 
+    // Root-admin-only: reveal a tenant's current login credentials (username +
+    // passcode). Passcodes are stored in plaintext throughout this app (same
+    // as staff_users), so this is a straightforward lookup, not a decrypt -
+    // it works identically whether the tenant is still on the temp passcode
+    // from create_tenant or has since changed it themselves.
+    case 'get_tenant_credentials':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $tenant_id = $_GET['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                SELECT username, passcode, must_change_passcode
+                FROM users
+                WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL)
+                ORDER BY id ASC LIMIT 1
+            ");
+            $stmt->execute([$tenant_id]);
+            $user = $stmt->fetch();
+            if (!$user) {
+                echo json_encode(['success' => false, 'message' => 'No login found for this tenant yet']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'data' => $user]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     case 'get_all_properties':
         try {
             $stmt = $pdo->query("SELECT * FROM properties ORDER BY name ASC");
