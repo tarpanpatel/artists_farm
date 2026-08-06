@@ -11,6 +11,7 @@ import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface NavMenuEditorProps {
   navItems: NavMenuItem[];
@@ -462,7 +463,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
           {/* Drag Handle */}
           <div className="hs-handle p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
-            title="Drag to reorder">
+            title={t('nav_drag_to_reorder_label', 'Drag to reorder')}>
             <GripVertical className="w-4 h-4" />
           </div>
 
@@ -488,7 +489,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
               item.isVisible ? 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600' : 'bg-slate-100 text-slate-400'
             }`}
-            title="Click to change icon"
+            title={t('nav_click_to_change_icon_tooltip', 'Click to change icon')}
           >
             <IconComp className="w-3.5 h-3.5" />
           </button>
@@ -507,7 +508,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 <button onClick={() => setEditingTitleId(null)} className="p-0.5 text-slate-400 hover:bg-slate-100 rounded cursor-pointer"><X className="w-3.5 h-3.5" /></button>
               </div>
             ) : (
-              <span className={`font-bold text-slate-800 truncate cursor-text hover:text-blue-600 ${!item.isVisible ? 'line-through text-slate-400' : ''}`} onClick={() => handleStartRename(item)} title="Click to rename">
+              <span className={`font-bold text-slate-800 truncate cursor-text hover:text-blue-600 ${!item.isVisible ? 'line-through text-slate-400' : ''}`} onClick={() => handleStartRename(item)} title={t('nav_click_to_rename_tooltip', 'Click to rename')}>
                 {item.title}
               </span>
             )}
@@ -517,9 +518,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <button
             onClick={() => setShowTabPickerFor(showTabPickerFor === item.id ? null : item.id)}
             className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors shrink-0 cursor-pointer max-w-[100px] truncate"
-            title="Click to change page target"
+            title={t('nav_click_to_change_page_tooltip', 'Click to change page target')}
           >
-            {item.customUrl ? <span className="flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> URL</span> : (currentPage?.label || item.tabKey)}
+            {item.customUrl ? <span className="flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> {t('nav_url_badge', 'URL')}</span> : (currentPage?.label || item.tabKey)}
           </button>
 
           {/* Visibility */}
@@ -528,7 +529,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </button>
 
           {/* Roles badge */}
-          <button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer" title="Click to edit roles">
+          <button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer" title={t('nav_click_to_edit_roles_tooltip', 'Click to edit roles')}>
             {item.roles.length}r
           </button>
 
@@ -536,17 +537,17 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="flex items-center gap-0.5 shrink-0">
             <button onClick={() => setShowParentPickerFor(showParentPickerFor === item.id ? null : item.id)}
               className={`p-0.5 rounded transition-colors cursor-pointer ${item.parentId ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
-              title={item.parentId ? `Parent: ${items.find(i => i.id === item.parentId)?.title || 'Unknown'}` : 'Set parent (root level)'}>
+              title={item.parentId ? `Parent: ${items.find(i => i.id === item.parentId)?.title || 'Unknown'}` : t('nav_set_parent_tooltip', 'Set parent (root level)')}>
               <Layers className="w-3.5 h-3.5" />
             </button>
             <button onClick={() => handleOutdent(item.id)} disabled={!item.parentId}
               className="p-0.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              title="Outdent (move left)">
+              title={t('nav_outdent_tooltip', 'Outdent (move left)')}>
               <PanelLeftClose className="w-3.5 h-3.5" />
             </button>
             <button onClick={() => handleIndent(item.id)} disabled={depth >= 2}
               className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              title="Indent (move right)">
+              title={t('nav_indent_tooltip', 'Indent (move right)')}>
               <PanelRightOpen className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -581,7 +582,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             {filteredIcons.length > 120 && (
               <div className="text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
             )}
-            <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
+            <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
@@ -597,7 +598,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 </button>
               );
             })}
-            <button onClick={() => setShowIconPickerFor(null)} className="text-[10px] text-slate-400 hover:text-slate-600 ml-2 cursor-pointer">Close</button>
+            <button onClick={() => setShowIconPickerFor(null)} className="text-[10px] text-slate-400 hover:text-slate-600 ml-2 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
@@ -606,7 +607,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[280px]">
             <div className="relative mb-2">
               <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1.5" />
-              <input type="text" autoFocus value={tabSearch} onChange={(e) => setTabSearch(e.target.value)} placeholder="Search pages..."
+              <input type="text" autoFocus value={tabSearch} onChange={(e) => setTabSearch(e.target.value)} placeholder={t('nav_search_pages_placeholder', 'Search pages...')}
                 className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
             </div>
             <div className="max-h-[200px] overflow-y-auto space-y-0.5">
@@ -627,10 +628,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             {item.tabKey === 'custom' && (
               <div className="mt-2 flex gap-1">
                 <input type="url" value={customUrlInput[item.id] ?? item.customUrl ?? ''} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
-                <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">Set</button>
+                <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
               </div>
             )}
-            <button onClick={() => { setShowTabPickerFor(null); setTabSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
+            <button onClick={() => { setShowTabPickerFor(null); setTabSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
@@ -639,19 +640,19 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           <div className="ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
             <input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus
               className="flex-1 px-2 py-1 bg-white border border-purple-200 rounded text-[11px] focus:ring-1 focus:ring-purple-500 focus:outline-none" />
-            <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded cursor-pointer">Set</button>
-            <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="px-2 py-1 text-slate-400 text-[10px] cursor-pointer">Cancel</button>
+            <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
+            <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
         )}
 
         {/* Parent Picker Dropdown */}
         {showParentPickerFor === item.id && (
           <div className="ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 max-w-[280px]">
-            <p className="text-[10px] font-bold text-blue-700 mb-1">Set Parent Menu Item</p>
+            <p className="text-[10px] font-bold text-blue-700 mb-1">{t('nav_set_parent_menu_item_title', 'Set Parent Menu Item')}</p>
             <div className="space-y-0.5 max-h-[160px] overflow-y-auto">
               <button onClick={() => handleParentChange(item.id, null)}
                 className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${!item.parentId ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
-                Root Level (no parent)
+                {t('nav_root_level_label', 'Root Level (no parent)')}
               </button>
               {visibleItems.filter(i => i.id !== item.id).map(i => {
                 const parentLabel = i.parentId ? `\u00A0\u00A0\u21B3 ${i.title}` : i.title;
@@ -663,7 +664,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 );
               })}
             </div>
-            <button onClick={() => setShowParentPickerFor(null)} className="mt-1 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">Close</button>
+            <button onClick={() => setShowParentPickerFor(null)} className="mt-1 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
@@ -684,31 +685,31 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
-            <h3 className="font-extrabold text-slate-900 text-sm">Menu Structure</h3>
+            <h3 className="font-extrabold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
             <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
-              <span className="text-[10px] font-medium text-slate-400" title="Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.">
+              <span className="text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer">
-              <Plus className="w-3.5 h-3.5" /> Add Item
+              <Plus className="w-3.5 h-3.5" /> {t('nav_add_item_button', 'Add Item')}
             </button>
             {hasUnsaved && (
               <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50">
-                {isSaving ? 'Saving...' : 'Save Menu'}
+                {isSaving ? t('saving_button', 'Saving...') : t('nav_save_menu_button', 'Save Menu')}
               </button>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-slate-500">
-          <span className="flex items-center gap-1"><GripVertical className="w-3 h-3" /> Drag to reorder</span>
-          <span>← → to indent/outdent</span>
-          <span>Click title to rename</span>
-          <span>Click icon to change</span>
-          <span>Click page badge to change target</span>
+          <span className="flex items-center gap-1"><GripVertical className="w-3 h-3" /> {t('nav_drag_to_reorder_label', 'Drag to reorder')}</span>
+          <span>{t('nav_arrow_indent_outdent_label', '← → to indent/outdent')}</span>
+          <span>{t('nav_click_title_rename_label', 'Click title to rename')}</span>
+          <span>{t('nav_click_icon_change_label', 'Click icon to change')}</span>
+          <span>{t('nav_click_page_badge_label', 'Click page badge to change target')}</span>
         </div>
       </div>
 
@@ -717,12 +718,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         <div className="p-3 border-b border-slate-200 bg-blue-50/50">
           <div className="flex items-center gap-2 mb-2">
             <Plus className="w-4 h-4 text-blue-600" />
-            <span className="text-xs font-bold text-blue-800">New Menu Item</span>
+            <span className="text-xs font-bold text-blue-800">{t('nav_new_menu_item_title', 'New Menu Item')}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Title */}
             <input type="text" value={newItem.title} onChange={(e) => setNewItem(p => ({ ...p, title: e.target.value }))}
-              placeholder="Item title" autoFocus
+              placeholder={t('nav_item_title_placeholder', 'Item title')} autoFocus
               className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
             {/* Page selector */}
             <StyledSelect
@@ -742,7 +743,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               value={newItem.parentId || ''}
               onChange={(val) => setNewItem(p => ({ ...p, parentId: val || null }))}
               options={[
-                { value: '', label: 'Root Level (no parent)' },
+                { value: '', label: t('nav_root_level_label', 'Root Level (no parent)') },
                 ...visibleItems.filter(i => i.id !== newItem.parentId).map(i => ({
                   value: i.id,
                   label: i.title,
@@ -753,7 +754,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             {/* Custom URL (if custom selected) */}
             {newItem.tabKey === 'custom' && (
               <input type="url" value={newItem.customUrl} onChange={(e) => setNewItem(p => ({ ...p, customUrl: e.target.value }))}
-                placeholder="https://..." className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+                placeholder={t('url_placeholder', 'https://...')} className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
             )}
             {/* Roles */}
             <div className="flex flex-wrap gap-1">
@@ -768,10 +769,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
           <div className="flex items-center gap-2 mt-2">
             <button onClick={handleAddItem} disabled={!newItem.title.trim()} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40">
-              Add to Menu
+              {t('nav_add_to_menu_button', 'Add to Menu')}
             </button>
             <button onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-slate-500 text-[11px] font-bold hover:text-slate-700 cursor-pointer">
-              Cancel
+              {t('cancel_button', 'Cancel')}
             </button>
           </div>
         </div>
@@ -782,18 +783,18 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {selectedIds.size > 0 ? (
           <>
             <span className="text-[11px] font-bold text-blue-700">{selectedIds.size} selected</span>
-            <button onClick={handleBulkDelete} className="text-[11px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">Delete Selected</button>
-            <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1 rounded cursor-pointer">Clear</button>
+            <button onClick={handleBulkDelete} className="text-[11px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">{t('nav_delete_selected_button', 'Delete Selected')}</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1 rounded cursor-pointer">{t('clear_button', 'Clear')}</button>
           </>
         ) : (
           <>
-            <button onClick={expandAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">Expand All</button>
+            <button onClick={expandAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_expand_all_button', 'Expand All')}</button>
             <span className="text-slate-300">|</span>
-            <button onClick={collapseAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">Collapse All</button>
+            <button onClick={collapseAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
             <span className="text-slate-300">|</span>
             <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
               <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3" />
-              Select All
+              {t('nav_select_all_button', 'Select All')}
             </label>
           </>
         )}
@@ -804,8 +805,8 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {tree.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
             <LayoutDashboard className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-500 font-bold text-sm mb-1">Menu is empty</p>
-            <p className="text-slate-400 text-xs">Click "Add Item" to start building your menu</p>
+            <p className="text-slate-500 font-bold text-sm mb-1">{t('nav_menu_empty_message', 'Menu is empty')}</p>
+            <p className="text-slate-400 text-xs">{t('nav_menu_empty_subtitle', 'Click "Add Item" to start building your menu')}</p>
           </div>
         ) : (
           <ul data-sortable className="flex flex-col">
@@ -817,7 +818,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500">
         <span>{visibleItems.filter(i => i.isVisible).length} visible / {visibleItems.length} total</span>
-        {hasUnsaved && <span className="text-amber-600 font-bold">Unsaved changes</span>}
+        {hasUnsaved && <span className="text-amber-600 font-bold">{t('unsaved_changes_tooltip', 'Unsaved changes')}</span>}
       </div>
 
       {/* Floating Save Button */}
@@ -831,12 +832,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             {isSaving ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
+                {t('saving_button', 'Saving...')}
               </>
             ) : (
               <>
                 <Check className="w-5 h-5" />
-                Save Menu
+                {t('nav_save_menu_button', 'Save Menu')}
               </>
             )}
           </button>
