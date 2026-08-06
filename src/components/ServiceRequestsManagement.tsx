@@ -137,7 +137,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const fulfilled = requests.filter((r) => r.status === 'Fulfilled');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[550px]">
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-4 mb-4">
           <div>
