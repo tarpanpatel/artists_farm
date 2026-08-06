@@ -187,7 +187,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               {isCheckout && value ? (
                 // Show date range summary when checkout date is selected
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Check-in: {new Date(otherDate || '').toLocaleDateString('en-GB')} - Check-out: {new Date(value).toLocaleDateString('en-GB')}
+                  {t('check_in_label')} {new Date(otherDate || '').toLocaleDateString('en-GB')} - {t('check_out_label')} {new Date(value).toLocaleDateString('en-GB')}
                 </p>
               ) : (
                 // Show title with bouncing arrow when still selecting
@@ -204,7 +204,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   </div>
                   {otherDate && isCheckout && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      Check-in: {new Date(otherDate).toLocaleDateString('en-GB')}
+                      {t('check_in_label')} {new Date(otherDate).toLocaleDateString('en-GB')}
                     </p>
                   )}
                 </>

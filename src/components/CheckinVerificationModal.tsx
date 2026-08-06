@@ -140,10 +140,10 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                Complete Check-in — {guest.guestName}
+                {t('complete_checkin_heading_prefix')} {guest.guestName}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {guest.roomNumber} · {requiredCount} ID document{requiredCount > 1 ? 's' : ''} required
+                {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
               </p>
             </div>
           </div>
@@ -188,7 +188,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                 const doc = docForIndex(index);
                 const isUploading = uploadingIndex === index;
                 const isExtra = index >= requiredCount;
-                const label = isExtra ? `Extra Photo ${index - requiredCount + 1}` : `Guest ${index + 1} ID`;
+                const label = isExtra ? `${t('extra_photo_label')} ${index - requiredCount + 1}` : `${t('guest_id_label')} ${index + 1} ID`;
                 return (
                   <div key={index} className="space-y-1.5">
                     <label
@@ -262,8 +262,8 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
         {/* Footer */}
         <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
-            {requiredUploadedCount} of {requiredCount} required ID document{requiredCount > 1 ? 's' : ''} uploaded
-            {extraUploadedCount > 0 && ` (+${extraUploadedCount} extra)`}
+            {requiredUploadedCount} {t('required_uploaded_text')} {requiredCount} {t('required_uploaded_suffix')}{requiredCount > 1 ? 's' : ''} {t('uploaded_suffix')}
+            {extraUploadedCount > 0 && ` (+${extraUploadedCount} ${t('extra_uploaded_suffix')})`}
           </p>
           <div className="flex gap-2">
             <button

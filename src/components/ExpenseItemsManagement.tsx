@@ -143,7 +143,7 @@ export const ExpenseItemsManagement: React.FC = () => {
       {allItems.length === 0 && !loading && (
         <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-12 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">
-            No expense items loaded yet. Visit Root Admin → <strong>Default Expenses (MK)</strong> → click <strong>"⚡ Sync Defaults"</strong> to populate all 20 categories.
+            {t('no_expense_items_loaded_text')}
           </p>
         </div>
       )}
