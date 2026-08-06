@@ -1646,6 +1646,15 @@ export const strings: Record<string, string> = {
   add_staff_button: "Add Staff",
   create_first_unit_heading: "Create your first unit",
   create_first_unit_description: "Rooms, cottages, or suites - whatever you rent out - each become a unit you can take bookings against.",
+
+  // Date Range Picker
+  add_date_label: "Add date",
+  select_dates_heading: "Select dates",
+  select_dates_description: "Add your reservation dates for exact pricing & availability",
+  checkin_pill_label: "CHECK-IN",
+  checkout_pill_label: "CHECKOUT",
+  previous_month_tooltip: "Previous month",
+  next_month_tooltip: "Next month",
 };
 
 export function t(key: string, fallback?: string): string {

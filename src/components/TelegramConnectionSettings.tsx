@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { PropertyTelegramConfig, TelegramGroup } from '../types';
+import { t } from '../i18n/en';
 
 function slugify(name: string, existingKeys: string[]): string {
   const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'group';
@@ -60,9 +61,9 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       {/* Master toggle */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div>
-          <div className="text-sm font-bold text-slate-100">Telegram Notifications for this Property</div>
+          <div className="text-sm font-bold text-slate-100">{t('telegram_notifications_heading')}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">
-            Turn off to stop all Telegram alerts for this property, regardless of the settings below.
+            {t('telegram_toggle_description')}
           </div>
         </div>
         <button
@@ -81,12 +82,12 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
 
       {/* Bot token */}
       <div>
-        <label className="text-[11px] font-semibold text-slate-300 block mb-1">Bot API Token</label>
+        <label className="text-[11px] font-semibold text-slate-300 block mb-1">{t('bot_api_token_label')}</label>
         <input
           type="text"
           value={config.botToken ?? ''}
           onChange={(e) => onChange({ botToken: e.target.value })}
-          placeholder="Leave blank to use the platform default bot"
+          placeholder={t('leave_blank_platform_default_placeholder')}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
       </div>
@@ -94,7 +95,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       {/* Reminder nudge threshold */}
       <div>
         <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-          Auto-Reminder Interval <span className="text-slate-500 font-normal">— minutes before an unaddressed order/dish gets nudged again</span>
+          {t('auto_reminder_interval_label')}
         </label>
         <input
           type="number"
@@ -108,7 +109,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       {/* Groups */}
       <div>
         <label className="text-[11px] font-semibold text-slate-300 block mb-2">
-          Group Chats <span className="text-slate-500 font-normal">— pick which one each notification goes to from its template editor below</span>
+          {t('group_chats_label')}
         </label>
         <div className="space-y-2">
           {config.groups.map((group) => (
@@ -118,26 +119,26 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
                 value={group.name}
                 onChange={(e) => updateGroupField(group.key, 'name', e.target.value)}
                 className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"
-                placeholder="Group name"
+                placeholder={t('group_name_placeholder')}
               />
               <input
                 type="text"
                 value={group.chatId}
                 onChange={(e) => updateGroupField(group.key, 'chatId', e.target.value)}
                 className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono"
-                placeholder="Chat ID (e.g. -100123456789)"
+                placeholder={t('chat_id_placeholder')}
               />
               <button
                 onClick={() => removeGroup(group.key)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 cursor-pointer"
-                title="Remove group"
+                title={t('remove_group_tooltip')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
           {config.groups.length === 0 && (
-            <div className="text-[11px] text-slate-500 italic">No groups configured yet — add one below.</div>
+            <div className="text-[11px] text-slate-500 italic">{t('no_groups_configured_text')}</div>
           )}
         </div>
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800">
@@ -145,14 +146,14 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
             type="text"
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
-            placeholder="e.g. Kitchen Staff"
+            placeholder={t('e_g_kitchen_staff_placeholder')}
             className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500"
           />
           <input
             type="text"
             value={newGroupChatId}
             onChange={(e) => setNewGroupChatId(e.target.value)}
-            placeholder="Chat ID"
+            placeholder={t('chat_id_placeholder')}
             className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono placeholder:text-slate-500"
           />
           <button
@@ -160,7 +161,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
             onClick={addGroup}
             disabled={!newGroupName.trim() || !newGroupChatId.trim()}
             className="p-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white cursor-pointer"
-            title="Add group"
+            title={t('add_group_tooltip')}
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -170,7 +171,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
         {saved && (
           <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
           </span>
         )}
         <button
@@ -180,7 +181,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
           className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          <span>{saving ? 'Saving…' : 'Save Connection Settings'}</span>
+          <span>{saving ? t('saving_ellipsis_text') : t('save_connection_settings_button')}</span>
         </button>
       </div>
     </div>

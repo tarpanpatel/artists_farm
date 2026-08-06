@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, Phone, KeyRound, ShieldAlert, ArrowRight } from 'lucide-react';
 import { StaffMember } from '../types';
+import { t } from '../i18n/en';
 
 interface LoginModalProps {
   onLoginSuccess: (user: StaffMember) => void;
@@ -39,11 +40,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!mobileNumber) {
-      setErrorMsg('Please enter your 10-digit mobile number');
+      setErrorMsg(t('enter_10_digit_mobile_error'));
       return;
     }
     if (passcode.length !== 6 && passcode !== '123456' && passcode !== 'admin') {
-      setErrorMsg('Please enter a 6-digit passcode');
+      setErrorMsg(t('enter_6_digit_passcode_error'));
       return;
     }
 
@@ -72,11 +73,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
         };
         onLoginSuccess(user);
       } else {
-        setErrorMsg(data.message || 'Login failed. Invalid mobile or PIN.');
+        setErrorMsg(data.message || t('login_failed_error'));
         if (onLoginFailed) onLoginFailed(mobileNumber);
       }
     } catch (error) {
-      setErrorMsg('Network error during authentication');
+      setErrorMsg(t('network_auth_error'));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -91,8 +92,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
             <Lock className="w-7 h-7 text-white" />
           </div>
-          <h2 className="text-xl font-black tracking-tight uppercase">Artists' Farm</h2>
-          <p className="text-xs text-emerald-100 mt-1 font-medium">Terminal Mobile & Passcode Authorization</p>
+          <h2 className="text-xl font-black tracking-tight uppercase">{t('login_modal_brand')}</h2>
+          <p className="text-xs text-emerald-100 mt-1 font-medium">{t('terminal_authorization_subtitle')}</p>
         </div>
 
         {/* Form Body */}
@@ -107,7 +108,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           {/* Mobile Number Field */}
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Mobile Number / Username
+              <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('mobile_number_label')}
             </label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-400 dark:text-gray-500">
@@ -117,7 +118,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
                 type="text"
                 value={mobileNumber}
                 onChange={handleMobileChange}
-                placeholder="10-digit Mobile Number"
+                placeholder={t('ten_digit_mobile_placeholder')}
                 className="w-full pl-16 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
                 autoFocus
               />
@@ -127,7 +128,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           {/* 6-Digit Passcode Field */}
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> 6-Digit PIN Passcode
+              <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('six_digit_pin_label')}
             </label>
             <input
               type="password"
@@ -137,7 +138,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
                 setPasscode(val);
                 setErrorMsg(null);
               }}
-              placeholder="••••••"
+              placeholder={t('passcode_dots_placeholder')}
               maxLength={6}
               className="w-full text-center tracking-widest text-2xl font-black py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
@@ -160,7 +161,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               onClick={handleClear}
               className="py-3 text-xs font-bold bg-gray-100 dark:bg-slate-700/70 text-gray-500 dark:text-gray-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
             >
-              Clear
+              {t('clear_keypad_button')}
             </button>
             <button
               type="button"
@@ -184,7 +185,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
             disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
             className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
           >
-            <span>{isLoading ? 'Authenticating...' : 'Login to Terminal'}</span>
+            <span>{isLoading ? t('authenticating_text') : t('login_to_terminal_button')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
