@@ -131,7 +131,7 @@ set_exception_handler(function($exception) {
 // === Simple API Key Authentication (from environment only, no fallback) ===
 $api_key = getenv('API_KEY');
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_all_property_modules', 'toggle_property_module', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_tenant_by_slug', 'get_tenant_slot_usage', 'create_property_for_tenant', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings', 'generate_demo_data', 'clear_demo_data'];
+$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_all_property_modules', 'toggle_property_module', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_tenant_by_slug', 'get_tenant_slot_usage', 'create_property_for_tenant', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'request_login_info', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings', 'generate_demo_data', 'clear_demo_data'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -452,6 +452,64 @@ switch ($action) {
 
             http_response_code(401);
             echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // "Forgot Password?" on the login page. Passcodes are stored in plaintext
+    // throughout this app (see force_set_passcode above), so this isn't a
+    // reset-link flow - it just emails the tenant their current username +
+    // passcode, same info root admin can already see via get_tenant_credentials.
+    // Scoped to tenant logins only (users.default_tenant_id), since that's
+    // the only place we have an email address on file at all.
+    case 'request_login_info':
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $identifier = trim($input['username'] ?? '');
+        if (!$identifier) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Enter your mobile number / username first']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT u.username, u.passcode, u.full_name, t.email AS tenant_email, t.name AS tenant_name
+                FROM users u
+                LEFT JOIN tenants t ON u.default_tenant_id = t.id
+                WHERE u.username = ? AND (u.is_platform_admin = 0 OR u.is_platform_admin IS NULL)
+                LIMIT 1
+            ");
+            $stmt->execute([$identifier]);
+            $user = $stmt->fetch();
+
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'No account found for that mobile number / username']);
+                exit;
+            }
+            if (empty($user['tenant_email'])) {
+                echo json_encode(['success' => false, 'message' => 'No email is on file for this account. Contact your platform admin to have one added.']);
+                exit;
+            }
+
+            $loginUrl = trim($input['login_url'] ?? '') ?: '/artists_farm/';
+            $displayName = $user['tenant_name'] ?: ($user['full_name'] ?: 'there');
+            $body = "<p>Hi {$displayName},</p>"
+                . "<p>Here are your Artists Farm login details:</p>"
+                . "<p><b>Mobile Number / Username:</b> {$user['username']}<br>"
+                . "<b>Passcode:</b> {$user['passcode']}</p>"
+                . "<p><a href=\"{$loginUrl}\">Log in here</a></p>"
+                . "<p style=\"color:#888;font-size:12px;\">Didn't request this? You can safely ignore this email.</p>";
+
+            $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Your Artists Farm login details', $body);
+            echo json_encode([
+                'success' => $emailResult['success'],
+                'message' => $emailResult['success']
+                    ? 'Login info sent to your email'
+                    : ('Could not send email: ' . $emailResult['error']),
+            ]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
