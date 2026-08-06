@@ -42,8 +42,9 @@ Rolled out phased, not as one big-bang pass. Done so far:
 - ✅ Misc Charges Management (`MiscChargesManagement.tsx`)
 - ✅ License Management (`LicenseManagement.tsx`)
 - ✅ Theme Management (`ThemeManagement.tsx`)
+- ✅ Guest History (`GuestHistory.tsx`)
 
-Remaining: ~22 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
+Remaining: ~21 component files. Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
 
 ---
 *Last Updated: August 2026*
