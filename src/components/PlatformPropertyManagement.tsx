@@ -67,6 +67,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // the slug field directly, we stop overwriting it - same "auto-generated,
   // editable" pattern used for property slugs elsewhere in the app.
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  // Same auto-fill-from-name behavior for the Edit Tenant modal's slug field
+  // - tracked separately since it's a different modal/session.
+  const [editSlugManuallyEdited, setEditSlugManuallyEdited] = useState(false);
   const slugify = (text: string) =>
     text
       .toLowerCase()
@@ -154,6 +157,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const handleManageTenant = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setShowEditTenantModal(true);
+    // Fresh edit session - don't carry over "manually edited" from whichever
+    // tenant was last opened.
+    setEditSlugManuallyEdited(false);
   };
 
   const handleAddProperty = async () => {
@@ -301,6 +307,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         body: JSON.stringify({
           id: editingTenant.id,
           name: editingTenant.name,
+          slug: editingTenant.slug,
           email: editingTenant.email,
           phone: editingTenant.phone,
           subscription_status: editingTenant.subscription_status,
@@ -974,9 +981,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <input
                   type="text"
                   value={editingTenant.name}
-                  onChange={(e) =>
-                    setEditingTenant({ ...editingTenant, name: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setEditingTenant((prev) => prev && ({
+                      ...prev,
+                      name,
+                      slug: editSlugManuallyEdited ? prev.slug : slugify(name),
+                    }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
@@ -1009,6 +1021,24 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
 
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('slug_label', 'Slug')}
+                </label>
+                <input
+                  type="text"
+                  value={editingTenant.slug}
+                  onChange={(e) => {
+                    setEditSlugManuallyEdited(true);
+                    setEditingTenant({ ...editingTenant, slug: slugify(e.target.value) });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                />
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {t('tenant_slug_change_warning', "Changes this tenant's URL for every property under it - any bookmarked or previously-shared links will stop working.")}
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

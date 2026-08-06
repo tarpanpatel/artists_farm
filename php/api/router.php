@@ -906,14 +906,30 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'tenant id required']);
             exit;
         }
+        $slug = isset($input['slug']) ? trim($input['slug']) : null;
+        if ($slug === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Slug cannot be empty']);
+            exit;
+        }
         try {
+            if ($slug !== null) {
+                $slugCheck = $pdo->prepare("SELECT id FROM tenants WHERE slug = ? AND id != ? LIMIT 1");
+                $slugCheck->execute([$slug, $id]);
+                if ($slugCheck->fetch()) {
+                    http_response_code(409);
+                    echo json_encode(['success' => false, 'message' => "Slug \"{$slug}\" is already in use by another tenant"]);
+                    exit;
+                }
+            }
             $stmt = $pdo->prepare("
                 UPDATE tenants
-                SET name = ?, email = ?, phone = ?, subscription_status = ?, is_active = ?
+                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?
                 WHERE id = ?
             ");
             $stmt->execute([
                 $input['name'] ?? '',
+                $slug,
                 $input['email'] ?? null,
                 $input['phone'] ?? null,
                 $input['subscription_status'] ?? 'trial',
