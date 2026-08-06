@@ -27,6 +27,7 @@ import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { useToast } from './ToastContext';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { t } from '../i18n/en';
 
 interface OperationalDashboardProps {
   guests: Guest[];
@@ -438,7 +439,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setEditingRoomName(roomName || '');
                       }}
                       className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition text-gray-600 hover:text-gray-900"
-                      title="Edit room name"
+                      title={t('edit_room_name_tooltip', 'Edit room name')}
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -457,7 +458,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Guest</span>
+            <span>{t('add_guest_button', 'Add Guest')}</span>
           </button>
         </div>
       )}
@@ -467,7 +468,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
           <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
-            Alerts
+            {t('alerts_heading', 'Alerts')}
             {totalAlerts > 0 && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
                 {totalAlerts}
@@ -475,15 +476,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             )}
           </h3>
           {totalAlerts === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">No outstanding issues.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('no_outstanding_issues', 'No outstanding issues.')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700">
-                    <th className="pb-2 pr-3">Guest / Room</th>
-                    <th className="pb-2 pr-3">Issue</th>
-                    <th className="pb-2 w-36">Action</th>
+                    <th className="pb-2 pr-3">{t('alerts_col_guest_room', 'Guest / Room')}</th>
+                    <th className="pb-2 pr-3">{t('alerts_col_issue', 'Issue')}</th>
+                    <th className="pb-2 w-36">{t('alerts_col_action', 'Action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700/60">
@@ -517,7 +518,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
                           }`}
                         >
-                          View &amp; Resolve
+                          {t('view_resolve_button', 'View & Resolve')}
                         </button>
                       </td>
                     </tr>
@@ -533,7 +534,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Cleared ({clearedGuests.length})
+                {t('cleared_label', 'Cleared')} ({clearedGuests.length})
                 <span className="text-gray-400 font-normal">{showCleared ? '▲' : '▼'}</span>
               </button>
               {showCleared && (
@@ -565,7 +566,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
           <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
-            C-Form Filing Due
+            {t('cform_filing_due_heading', 'C-Form Filing Due')}
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
               {cFormPending.length}
             </span>
@@ -598,7 +599,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       onChange={() => handleMarkCFormFiled(g.id)}
                       className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 cursor-pointer"
                     />
-                    Mark filed
+                    {t('mark_filed_label', 'Mark filed')}
                   </label>
                 </li>
               );
@@ -612,7 +613,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5">
           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
             <IdCard className="w-4 h-4 text-purple-600" />
-            Today's Check-ins & Pending Actions
+            {t('todays_checkins_heading', "Today's Check-ins & Pending Actions")}
           </h3>
           <ul className="space-y-2">
             {todaysCheckins.map((g) => {
@@ -630,7 +631,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   </div>
                   {verified ? (
                     <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      ID Verified
+                      {t('id_verified_badge', 'ID Verified')}
                     </span>
                   ) : (
                     <button
@@ -640,7 +641,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       }}
                       className="text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      ⚠️ ID Upload Pending
+                      {t('id_upload_pending_button', '⚠️ ID Upload Pending')}
                     </button>
                   )}
                 </li>
@@ -655,11 +656,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Kitchen Queue</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('kitchen_queue_label', 'Kitchen Queue')}</p>
               <p className="text-lg font-bold text-gray-900 mt-1">
-                {pendingOrders.length} Tickets
+                {pendingOrders.length} {t('tickets_suffix', 'Tickets')}
                 </p>
-                <p className="text-xs text-amber-600 font-semibold mt-0.5">Active Kitchen KDS</p>
+                <p className="text-xs text-amber-600 font-semibold mt-0.5">{t('active_kitchen_queue_label', 'Live Order Queue')}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
                 <Utensils className="w-5 h-5" />
@@ -668,11 +669,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Requisitions</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('requisitions_label', 'Requisitions')}</p>
                 <p className="text-lg font-bold text-gray-900 mt-1">
-                  {stockAlerts.length} Thresholds
+                  {stockAlerts.length} {t('items_low_suffix', 'Items Low')}
                 </p>
-                <p className="text-xs text-red-600 font-semibold mt-0.5">Low Stock Warnings</p>
+                <p className="text-xs text-red-600 font-semibold mt-0.5">{t('low_stock_warnings_label', 'Low Stock Warnings')}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold">
                 <AlertTriangle className="w-5 h-5" />
@@ -689,10 +690,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
               <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
-                Current Resident Profile
+                {t('current_resident_profile_heading', 'Guest Currently Staying')}
               </h3>
               <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
-                Active Stay
+                {t('active_stay_badge', 'Active Stay')}
               </span>
             </div>
 
@@ -700,21 +701,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
                   <span className="text-gray-500 font-medium flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-gray-400" /> Resident Name:
+                    <User className="w-3.5 h-3.5 text-gray-400" /> {t('guest_name_colon_label', 'Guest Name:')}
                   </span>
                   <span className="font-bold text-gray-900 text-sm">{activeGuest.guestName}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
                   <span className="text-gray-500 font-medium flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-gray-400" /> Contact Phone:
+                    <Phone className="w-3.5 h-3.5 text-gray-400" /> {t('contact_phone_colon_label', 'Contact Phone:')}
                   </span>
                   <span className="font-semibold text-gray-800">{activeGuest.phoneNumber}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
                   <span className="text-gray-500 font-medium flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> Dates:
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('dates_colon_label', 'Dates:')}
                   </span>
                   <span className="font-semibold text-gray-800">
                     {(() => {
@@ -731,7 +732,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 </div>
 
                 <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-500 font-medium">Room Unit:</span>
+                  <span className="text-gray-500 font-medium">{t('room_label', 'Room:')}</span>
                   <span className="font-bold bg-gray-100 text-gray-800 px-2.5 py-1 rounded border border-gray-200">
                     {activeGuest.roomNumber}
                   </span>
@@ -739,7 +740,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
             ) : (
               <div className="py-8 text-center text-gray-400 text-xs font-medium">
-                No active resident currently checked in.
+                {t('no_active_resident_message', 'No guest currently staying.')}
               </div>
             )}
           </div>
@@ -753,10 +754,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                 <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
-                  Live Kitchen Tickets
+                  {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
                 </h3>
                 <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
-                  KDS Queue
+                  {t('order_queue_badge', 'Order Queue')}
                 </span>
               </div>
 
@@ -790,7 +791,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 </ul>
               ) : (
                 <div className="py-8 text-center text-gray-400 text-xs font-medium">
-                  No active kitchen tickets.
+                  {t('no_active_kitchen_tickets_message', 'No active kitchen tickets.')}
                 </div>
               )}
             </div>
@@ -799,7 +800,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               onClick={() => onNavigate('kitchen')}
               className="mt-5 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <span>Kitchen Display System</span>
+              <span>{t('open_kitchen_orders_button', 'Open Kitchen Orders')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -812,7 +813,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
               <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                {roomName ? `${roomName} Calendar` : 'Booking Calendar'}
+                {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
               <span className="text-xs font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                 {monthName}
@@ -897,21 +898,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="flex items-center justify-between text-[11px] text-gray-500">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-300" />
-                <span>Active Resident</span>
+                <span>{t('legend_active_resident', 'Active Resident')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-gray-300" />
-                <span>Checked Out</span>
+                <span>{t('legend_checked_out', 'Checked Out')}</span>
               </div>
             </div>
             <div className="flex items-center justify-between text-[11px] text-gray-500">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-orange-500" />
-                <span>Airbnb Booking</span>
+                <span>{t('legend_airbnb_booking', 'Airbnb Booking')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-red-100 border border-red-200" />
-                <span>Blocked</span>
+                <span>{t('legend_blocked', 'Blocked')}</span>
               </div>
             </div>
           </div>
@@ -923,7 +924,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div id="printableRoomBookingContent" className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit Booking</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('edit_booking_header', 'Edit Booking')}</h2>
               <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
             </div>
 
@@ -937,20 +938,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
                 <IdCard className="w-4 h-4" />
-                Check-in ID Verification
+                {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 selectedBooking.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
                   : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
               }`}>
-                {selectedBooking.idVerificationStatus === 'Complete' ? 'Complete' : 'Pending'}
+                {selectedBooking.idVerificationStatus === 'Complete' ? t('verification_complete_badge', 'Complete') : t('verification_pending_badge', 'Pending')}
               </span>
             </button>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Guest Name</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('guest_name_only_label', 'Guest Name')}</label>
                 <input
                   type="text"
                   value={editGuestName}
@@ -966,12 +967,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 >
                   {editCheckin && editCheckout
                     ? `${new Date(editCheckin).toLocaleDateString('en-GB')} → ${new Date(editCheckout).toLocaleDateString('en-GB')}`
-                    : 'Select check-in and check-out dates'}
+                    : t('select_checkin_checkout_placeholder', 'Select check-in and check-out dates')}
                 </button>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Phone</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('phone_label', 'Phone')}</label>
                 <input
                   type="tel"
                   value={editPhone}
@@ -981,7 +982,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Number of Guests</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('number_of_guests_label', 'Number of Guests')}</label>
                 <input
                   type="number"
                   min={1}
@@ -998,7 +999,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   onClick={() => setSelectedBooking(null)}
                   className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
                 >
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
                 <button
                   onClick={async () => {
@@ -1024,13 +1025,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   disabled={isSavingBooking || !onUpdateBooking}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
                 >
-                  {isSavingBooking ? 'Saving…' : 'Save'}
+                  {isSavingBooking ? t('saving_button', 'Saving…') : t('save_button', 'Save')}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
                 >
-                  Delete
+                  {t('delete_button', 'Delete')}
                 </button>
               </div>
 
@@ -1042,7 +1043,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
                 >
                   <Share2 className="w-4 h-4" />
-                  Share via WhatsApp
+                  {t('share_whatsapp_button', 'Share via WhatsApp')}
                 </a>
                 <button
                   onClick={handleShareVoucherPng}
@@ -1050,7 +1051,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  {isSharingPng ? 'Preparing…' : 'Share PNG'}
+                  {isSharingPng ? t('preparing_button', 'Preparing…') : t('share_png_button', 'Share PNG')}
                 </button>
               </div>
             </div>
@@ -1075,7 +1076,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           {showDeleteConfirm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-sm w-full p-6">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Delete Booking</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('delete_booking_header', 'Delete Booking')}</h2>
                 <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
                   Are you sure you want to delete this booking for {selectedBooking?.guestName}? This action cannot be undone.
                 </p>
@@ -1084,7 +1085,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     onClick={() => setShowDeleteConfirm(false)}
                     className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
                   >
-                    Cancel
+                    {t('cancel_button', 'Cancel')}
                   </button>
                   <button
                     onClick={async () => {
@@ -1104,7 +1105,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     disabled={isDeletingBooking || !onDeleteBooking}
                     className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
                   >
-                    {isDeletingBooking ? 'Deleting…' : 'Delete'}
+                    {isDeletingBooking ? t('deleting_button', 'Deleting…') : t('delete_button', 'Delete')}
                   </button>
                 </div>
               </div>
