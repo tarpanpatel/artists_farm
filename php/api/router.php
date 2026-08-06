@@ -929,18 +929,6 @@ switch ($action) {
 
     case 'get_all_property_modules':
         try {
-            $pdo->exec("
-                CREATE TABLE IF NOT EXISTS `property_modules` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL,
-                    `module_slug` VARCHAR(100) NOT NULL,
-                    `is_enabled` TINYINT(1) DEFAULT 1,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY `property_module_idx` (`property_id`, `module_slug`),
-                    FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            ");
 
             $stmt = $pdo->query("SELECT property_id, module_slug, is_enabled FROM property_modules");
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -978,18 +966,6 @@ switch ($action) {
 
         try {
             // Ensure table exists
-            $pdo->exec("
-                CREATE TABLE IF NOT EXISTS `property_modules` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL,
-                    `module_slug` VARCHAR(100) NOT NULL,
-                    `is_enabled` TINYINT(1) DEFAULT 1,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY `property_module_idx` (`property_id`, `module_slug`),
-                    FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            ");
 
             // Use INSERT ... ON DUPLICATE KEY UPDATE for atomic upsert
             $stmt = $pdo->prepare("
@@ -1114,20 +1090,6 @@ switch ($action) {
             $property_id = $pdo->lastInsertId();
 
             // Create staff_users table if it doesn't exist
-            $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_users` (
-                `id` VARCHAR(50) PRIMARY KEY,
-                `property_id` INT NOT NULL DEFAULT 1,
-                `username` VARCHAR(100) NOT NULL,
-                `full_name` VARCHAR(150) DEFAULT '',
-                `role` VARCHAR(50) NOT NULL DEFAULT 'Staff',
-                `phone` VARCHAR(30) DEFAULT '',
-                `monthly_salary` DECIMAL(10,2) DEFAULT 0,
-                `status` VARCHAR(20) DEFAULT 'Active',
-                `is_financial_handler` TINYINT(1) NOT NULL DEFAULT 0,
-                `passcode` VARCHAR(50) DEFAULT '1234',
-                `qr_code_url` TEXT,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
             // Add only the tenant as super_admin, no other prefilled users
             if ($tenant_username) {

@@ -8,20 +8,6 @@
 function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create staff_users and payees tables
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_users` (
-            `id` VARCHAR(50) PRIMARY KEY,
-            `property_id` INT NOT NULL DEFAULT 1,
-            `username` VARCHAR(100) NOT NULL,
-            `full_name` VARCHAR(150) DEFAULT '',
-            `role` VARCHAR(50) NOT NULL DEFAULT 'Staff',
-            `phone` VARCHAR(30) DEFAULT '',
-            `monthly_salary` DECIMAL(10,2) DEFAULT 0,
-            `status` VARCHAR(20) DEFAULT 'Active',
-            `is_financial_handler` TINYINT(1) NOT NULL DEFAULT 0,
-            `passcode` VARCHAR(50) DEFAULT '1234',
-            `qr_code_url` TEXT,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
         // Add new columns if upgrading from old schema (safe to run multiple times)
         $alterCols = [
@@ -35,14 +21,6 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
         }
 
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `payee_entities` (
-            `id` VARCHAR(50) PRIMARY KEY,
-            `property_id` INT NOT NULL DEFAULT 1,
-            `name` VARCHAR(255) NOT NULL,
-            `type` VARCHAR(50) NOT NULL DEFAULT 'Vendor',
-            `qr_code_url` TEXT,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
         // Staff advances (Monthly Payout Calculator "+ Advance") - was localStorage-only
         // before, which meant it never synced across devices and could silently vanish.
@@ -51,15 +29,6 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         // kitchen purchase out of pocket) - CREATE baseline matches that existing schema
         // exactly, and the ALTERs below add what the advance-giving flow additionally
         // needs, rather than standing up a second, competing table.
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_advances` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `property_id` INT NOT NULL DEFAULT 1,
-            `staff_name` VARCHAR(100) NOT NULL,
-            `amount` DECIMAL(10,2) NOT NULL,
-            `reason` TEXT,
-            `date` VARCHAR(50) NOT NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         $advanceAlterCols = [
             "ALTER TABLE `staff_advances` ADD COLUMN IF NOT EXISTS `staff_id` VARCHAR(50) DEFAULT NULL",
             "ALTER TABLE `staff_advances` ADD COLUMN IF NOT EXISTS `month_key` VARCHAR(7) DEFAULT NULL",

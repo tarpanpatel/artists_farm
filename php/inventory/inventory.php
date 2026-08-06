@@ -25,14 +25,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     // Auto-create req_catalog table if both are missing
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `item_name` VARCHAR(255) NOT NULL,
-                        `category_id` INT DEFAULT 1,
-                        `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                        `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg'
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     $stmt = $pdo->prepare("SELECT id, item_name as name, 'General' as category, current_stock as quantity, unit_label as unit FROM req_catalog WHERE property_id = ? ORDER BY item_name ASC");
                     $stmt->execute([$propertyId]);
@@ -57,14 +49,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_stock_requests':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `stock_requisitions` (
-                    `id` VARCHAR(50) PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-                    `date` VARCHAR(100) NOT NULL,
-                    `items` JSON NOT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT id, status, date, items FROM stock_requisitions WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) DESC, created_at DESC");
                 $stmt->execute([$propertyId]);
@@ -127,18 +111,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_wastage_logs':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_wastage_logs` (
-                    `id` VARCHAR(50) PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `date` VARCHAR(50) NOT NULL,
-                    `item_name` VARCHAR(255) NOT NULL,
-                    `wasted_qty` DECIMAL(10,2) NOT NULL,
-                    `unit` VARCHAR(20) NOT NULL,
-                    `reason` VARCHAR(100) NOT NULL,
-                    `reported_by` VARCHAR(100) NOT NULL,
-                    `notes` TEXT,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT id, date, item_name as itemName, wasted_qty as wastedQty, unit, reason, reported_by as reportedBy, notes FROM kitchen_wastage_logs WHERE property_id = ? ORDER BY created_at DESC");
                 $stmt->execute([$propertyId]);
@@ -173,42 +145,8 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_kitchen_purchases':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_purchases_log` (
-                    `id` VARCHAR(50) PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `purchase_date` VARCHAR(50) NOT NULL,
-                    `item_name` VARCHAR(255) NOT NULL,
-                    `specification` VARCHAR(255) DEFAULT 'N/A',
-                    `quantity` DECIMAL(10,3) NOT NULL,
-                    `unit` VARCHAR(20) NOT NULL,
-                    `total_price` DECIMAL(10,2) NOT NULL,
-                    `unit_cost` DECIMAL(10,2) NOT NULL,
-                    `recorded_by` VARCHAR(100) NOT NULL,
-                    `vendor_name` VARCHAR(100) DEFAULT 'Unassigned Vendor',
-                    `settlement_status` VARCHAR(50) NOT NULL DEFAULT 'Unpaid',
-                    `settlement_method` VARCHAR(100) DEFAULT 'Farm Cash',
-                    `paid_by_staff` VARCHAR(100) DEFAULT '',
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `inventory_price_history` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `item_name` VARCHAR(255) NOT NULL,
-                    `unit_cost` DECIMAL(10,2) NOT NULL,
-                    `purchase_date` VARCHAR(50) NOT NULL,
-                    `recorded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `staff_advances` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `staff_name` VARCHAR(100) NOT NULL,
-                    `amount` DECIMAL(10,2) NOT NULL,
-                    `reason` TEXT,
-                    `date` VARCHAR(50) NOT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT id, purchase_date as purchaseDate, item_name as itemName, specification, quantity, unit, total_price as totalPrice, unit_cost as unitCost, recorded_by as recordedBy, vendor_name as vendorName, settlement_status as settlementStatus, settlement_method as settlementMethod, paid_by_staff as paidByStaff FROM kitchen_purchases_log WHERE property_id = ? ORDER BY created_at DESC");
                 $stmt->execute([$propertyId]);
@@ -222,32 +160,7 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `kitchen_purchases_log` (
-                        `id` VARCHAR(50) PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `purchase_date` VARCHAR(50) NOT NULL,
-                        `item_name` VARCHAR(255) NOT NULL,
-                        `specification` VARCHAR(255) DEFAULT 'N/A',
-                        `quantity` DECIMAL(10,3) NOT NULL,
-                        `unit` VARCHAR(20) NOT NULL,
-                        `total_price` DECIMAL(10,2) NOT NULL,
-                        `unit_cost` DECIMAL(10,2) NOT NULL,
-                        `recorded_by` VARCHAR(100) NOT NULL,
-                        `vendor_name` VARCHAR(100) DEFAULT 'Unassigned Vendor',
-                        `settlement_status` VARCHAR(50) NOT NULL DEFAULT 'Unpaid',
-                        `settlement_method` VARCHAR(100) DEFAULT 'Farm Cash',
-                        `paid_by_staff` VARCHAR(100) DEFAULT '',
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `inventory_price_history` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `item_name` VARCHAR(255) NOT NULL,
-                        `unit_cost` DECIMAL(10,2) NOT NULL,
-                        `purchase_date` VARCHAR(50) NOT NULL,
-                        `recorded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     $stmt = $pdo->prepare("INSERT INTO kitchen_purchases_log (id, property_id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, paid_by_staff) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
@@ -348,13 +261,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_material_categories':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `name` VARCHAR(100) NOT NULL,
-                    `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 // Ensure UNIQUE constraint exists (add if missing from old schema)
                 try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
@@ -434,12 +340,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `name` VARCHAR(100) NOT NULL UNIQUE,
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                     $stmt = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, ?)");
                     $stmt->execute([$name, $propertyId]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Category added']);
@@ -485,15 +385,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `item_name` VARCHAR(255) NOT NULL,
-                        `category_id` INT DEFAULT 1,
-                        `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                        `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg',
-                        `image_path` TEXT DEFAULT NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     // Add image_path column if missing
                     try { $pdo->exec("ALTER TABLE `req_catalog` ADD COLUMN `image_path` TEXT DEFAULT NULL"); } catch (Exception $e) { /* already exists */ }
@@ -612,20 +503,6 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'seed_catalog':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `req_catalog` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `item_name` VARCHAR(255) NOT NULL,
-                    `category_id` INT DEFAULT 1,
-                    `current_stock` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                    `unit_label` VARCHAR(20) NOT NULL DEFAULT 'Kg'
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `material_categories` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `name` VARCHAR(100) NOT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                 try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
 
                 $desiredCategories = [

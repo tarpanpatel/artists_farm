@@ -34,15 +34,6 @@ if (!function_exists('renderTenantWelcomeTemplate')) {
 if (!function_exists('getTenantWelcomeTemplate')) {
     function getTenantWelcomeTemplate(PDO $pdo): string {
         try {
-            $pdo->exec("
-                CREATE TABLE IF NOT EXISTS `system_settings` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `setting_key` VARCHAR(100) NOT NULL UNIQUE,
-                    `setting_value` LONGTEXT NOT NULL,
-                    `updated_by` VARCHAR(255) DEFAULT NULL,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            ");
             $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'tenant_welcome_template' LIMIT 1");
             $stmt->execute();
             $val = $stmt->fetchColumn();

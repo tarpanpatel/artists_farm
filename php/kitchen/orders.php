@@ -132,17 +132,6 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
                     // Ensure table exists
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS served_logs (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        property_id INT NOT NULL DEFAULT 1,
-                        order_id VARCHAR(50),
-                        item_name VARCHAR(255),
-                        quantity INT DEFAULT 1,
-                        served_by VARCHAR(100),
-                        guest_name VARCHAR(255),
-                        room_number VARCHAR(50),
-                        served_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )");
                     $stmt = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
                     $stmt->execute([
                         $propertyId,

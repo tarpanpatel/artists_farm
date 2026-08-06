@@ -15,26 +15,11 @@ require_once __DIR__ . '/../modules/module_manager.php';
 if (!function_exists('ensurePairingTables')) {
     function ensurePairingTables($pdo) {
         try {
-            $pdo->exec("CREATE TABLE IF NOT EXISTS telegram_pairing_codes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                code VARCHAR(40) NOT NULL UNIQUE,
-                property_id INT NOT NULL,
-                group_key VARCHAR(50) NOT NULL,
-                group_name VARCHAR(100) NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'pending',
-                chat_id VARCHAR(50) DEFAULT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                paired_at TIMESTAMP NULL DEFAULT NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
             // Keyed by SHA1(bot_token) rather than a single fixed row: each bot
             // token is an independent Telegram account with its own unrelated
             // update_id sequence (properties can bring their own bot), so a
             // shared cursor across tokens would desync and silently drop
             // updates for whichever token isn't "in sync" with the others.
-            $pdo->exec("CREATE TABLE IF NOT EXISTS telegram_bot_offsets (
-                bot_token_hash CHAR(40) PRIMARY KEY,
-                last_update_id BIGINT NOT NULL DEFAULT 0
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         } catch (Exception $e) {
             error_log("Telegram pairing table setup error: " . $e->getMessage());
         }

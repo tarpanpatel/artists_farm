@@ -7,16 +7,6 @@
 function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
     // Ensure menu_items table exists
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `menu_items` (
-            `id` VARCHAR(50) PRIMARY KEY,
-            `property_id` INT NOT NULL DEFAULT 1,
-            `name` VARCHAR(255) NOT NULL,
-            `category` VARCHAR(100) NOT NULL DEFAULT 'Starters',
-            `price` DECIMAL(10,2) NOT NULL,
-            `available` TINYINT(1) NOT NULL DEFAULT 1,
-            `image_path` TEXT DEFAULT '',
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         // Upgrade image_path from VARCHAR(255) to TEXT if needed
         try { $pdo->exec("ALTER TABLE `menu_items` MODIFY COLUMN `image_path` TEXT DEFAULT ''"); } catch (Exception $e) {}
     } catch (PDOException $e) {}
@@ -166,21 +156,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_nav_menu':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `nav_menu_items` (
-                    `id` VARCHAR(50) PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `title` VARCHAR(255) NOT NULL,
-                    `tab_key` VARCHAR(100) NOT NULL,
-                    `unique_key` VARCHAR(100) NOT NULL,
-                    `category` VARCHAR(100) DEFAULT 'Main Sections',
-                    `icon_name` VARCHAR(100) DEFAULT 'Grid',
-                    `display_order` INT NOT NULL DEFAULT 1,
-                    `roles_json` TEXT,
-                    `is_visible` TINYINT(1) DEFAULT 1,
-                    `custom_url` TEXT DEFAULT NULL,
-                    `open_in_new_tab` TINYINT(1) DEFAULT 0,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                 // Auto-add columns if missing
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `custom_url` TEXT DEFAULT NULL"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
@@ -219,19 +194,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $items = is_array($input) ? $input : ($input['items'] ?? []);
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `nav_menu_items` (
-                        `id` VARCHAR(50) PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `title` VARCHAR(255) NOT NULL,
-                        `tab_key` VARCHAR(100) NOT NULL,
-                        `unique_key` VARCHAR(100) NOT NULL,
-                        `category` VARCHAR(100) DEFAULT 'Main Sections',
-                        `icon_name` VARCHAR(100) DEFAULT 'Grid',
-                        `display_order` INT NOT NULL DEFAULT 1,
-                        `roles_json` TEXT,
-                        `is_visible` TINYINT(1) DEFAULT 1,
-                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                     try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
 
                     // Navigation structure is shared across every property/tenant, so a
@@ -318,18 +280,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
         // ─── Recipe / BOM Engine ───
         case 'get_recipes':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `menu_item_id` INT NOT NULL,
-                    `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
-                    `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
-                    `servings` INT NOT NULL DEFAULT 1,
-                    `ingredients` JSON NOT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY `menu_item_idx` (`menu_item_id`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT dr.menu_item_id, dr.recipe_name, dr.yield_factor, dr.servings, dr.ingredients, COALESCE(m.name, '') AS menu_item_name
                     FROM dish_recipes dr
@@ -359,18 +309,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `dish_recipes` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `menu_item_id` INT NOT NULL,
-                        `recipe_name` VARCHAR(255) NOT NULL DEFAULT '',
-                        `yield_factor` DECIMAL(10,2) NOT NULL DEFAULT 1.00,
-                        `servings` INT NOT NULL DEFAULT 1,
-                        `ingredients` JSON NOT NULL,
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        UNIQUE KEY `menu_item_idx` (`menu_item_id`)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     $stmt = $pdo->prepare("INSERT INTO dish_recipes (property_id, menu_item_id, recipe_name, yield_factor, servings, ingredients)
                         VALUES (?, ?, ?, ?, ?, ?)
@@ -455,14 +393,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_staff_meal_options':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_options (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    property_id INT NOT NULL DEFAULT 1,
-                    name VARCHAR(255) NOT NULL,
-                    cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                    is_system_default TINYINT(1) DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM staff_meal_options WHERE property_id = ?");
                 $countStmt->execute([$propertyId]);
@@ -504,14 +434,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_staff_meal_logs':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_logs (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    property_id INT NOT NULL DEFAULT 1,
-                    staff_names TEXT NOT NULL,
-                    food_description VARCHAR(255) NOT NULL,
-                    is_leftover_buffer TINYINT(1) DEFAULT 0,
-                    logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT id, staff_names, food_description, is_leftover_buffer, logged_at FROM staff_meal_logs WHERE property_id = ? ORDER BY logged_at DESC LIMIT 200");
                 $stmt->execute([$propertyId]);
@@ -533,14 +455,6 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS staff_meal_logs (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        property_id INT NOT NULL DEFAULT 1,
-                        staff_names TEXT NOT NULL,
-                        food_description VARCHAR(255) NOT NULL,
-                        is_leftover_buffer TINYINT(1) DEFAULT 0,
-                        logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     $stmt = $pdo->prepare("INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer) VALUES (?, ?, ?, ?)");
                     $stmt->execute([$propertyId, $staffNames, $foodDescription, $isLeftover]);

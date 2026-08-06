@@ -21,16 +21,6 @@ function ensureIdVerificationSchema($pdo) {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_last_reminder_at` DATETIME DEFAULT NULL");
     } catch (PDOException $e) {}
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS guest_id_documents (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            guest_id INT NOT NULL,
-            property_id INT NOT NULL,
-            guest_index INT NOT NULL,
-            file_path VARCHAR(500) NOT NULL,
-            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            uploaded_by VARCHAR(255) DEFAULT '',
-            UNIQUE KEY guest_slot (guest_id, guest_index)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     } catch (PDOException $e) {}
 }
 

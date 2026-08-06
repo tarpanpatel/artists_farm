@@ -59,12 +59,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 // Save/update latest price for this item
                 if (!empty($input['description']) && !empty($input['amount'])) {
                     try {
-                        $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
-                            `item_name` VARCHAR(255) PRIMARY KEY,
-                            `property_id` INT NOT NULL DEFAULT 1,
-                            `last_price` DECIMAL(10,2) NOT NULL,
-                            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                         $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, property_id, last_price) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
                         $stmtPrice->execute([trim($input['description']), $propertyId, $input['amount']]);
                     } catch (PDOException $ePrice) {
@@ -124,12 +118,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
 
                 // Update item price tracking
                 if (!empty($input['description']) && !empty($input['amount'])) {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
-                        `item_name` VARCHAR(255) PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `last_price` DECIMAL(10,2) NOT NULL,
-                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                     $stmtPrice = $pdo->prepare("INSERT INTO expense_item_prices (item_name, property_id, last_price) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE last_price = VALUES(last_price)");
                     $stmtPrice->execute([trim($input['description']), $propertyId, $input['amount']]);
                 }
@@ -173,12 +161,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_expense_item_prices':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_item_prices` (
-                    `item_name` VARCHAR(255) PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `last_price` DECIMAL(10,2) NOT NULL,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT item_name, last_price FROM expense_item_prices WHERE property_id = ?");
                 $stmt->execute([$propertyId]);
@@ -191,12 +173,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_expense_items':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_items` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `item_name` VARCHAR(255) NOT NULL UNIQUE,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $count = $pdo->query("SELECT COUNT(*) FROM expense_items")->fetchColumn();
                 if ((int)$count === 0) {
@@ -233,12 +209,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `expense_items` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `item_name` VARCHAR(255) NOT NULL UNIQUE,
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                     $stmt = $pdo->prepare("INSERT INTO expense_items (item_name, property_id) VALUES (?, ?)");
                     $stmt->execute([$name, $propertyId]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'Item added']);
@@ -301,17 +271,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_misc_catalog':
             try {
                 // Ensure table has is_system_default column
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL,
-                    `label` VARCHAR(255) NOT NULL,
-                    `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                    `category` VARCHAR(100) NOT NULL DEFAULT 'Incidentals',
-                    `description` TEXT,
-                    `is_system_default` BOOLEAN DEFAULT FALSE,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY `unique_item_per_property` (property_id, label)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 // Add is_system_default column if it doesn't exist
                 try {
@@ -350,17 +309,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
                     // Ensure table has is_system_default column
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL,
-                        `label` VARCHAR(255) NOT NULL,
-                        `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                        `category` VARCHAR(100) NOT NULL DEFAULT 'Incidentals',
-                        `description` TEXT,
-                        `is_system_default` BOOLEAN DEFAULT FALSE,
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE KEY `unique_item_per_property` (property_id, label)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     // Add is_system_default column if it doesn't exist
                     try {
@@ -429,17 +377,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_cash_drawer_summary':
             try {
                 // Auto-create the cash_drawer_entries table if it doesn't exist
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `staff_id` VARCHAR(50) NOT NULL,
-                    `staff_name` VARCHAR(150) NOT NULL,
-                    `type` ENUM('handover','manual_adjustment') NOT NULL,
-                    `amount` DECIMAL(10,2) NOT NULL,
-                    `handed_to` VARCHAR(150) DEFAULT NULL,
-                    `notes` TEXT DEFAULT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 // Step 1: Get all staff members
                 $staffStmt = $pdo->query("SELECT id, username, full_name, role FROM staff_users WHERE status = 'Active' ORDER BY CAST(id AS UNSIGNED) ASC");
@@ -522,17 +459,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
-                        `id` INT AUTO_INCREMENT PRIMARY KEY,
-                        `property_id` INT NOT NULL DEFAULT 1,
-                        `staff_id` VARCHAR(50) NOT NULL,
-                        `staff_name` VARCHAR(150) NOT NULL,
-                        `type` ENUM('handover','manual_adjustment') NOT NULL,
-                        `amount` DECIMAL(10,2) NOT NULL,
-                        `handed_to` VARCHAR(150) DEFAULT NULL,
-                        `notes` TEXT DEFAULT NULL,
-                        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                     $stmt = $pdo->prepare("INSERT INTO cash_drawer_entries (staff_id, staff_name, type, amount, handed_to, notes, property_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
@@ -569,17 +495,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_drawer_entries':
             try {
-                $pdo->exec("CREATE TABLE IF NOT EXISTS `cash_drawer_entries` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `property_id` INT NOT NULL DEFAULT 1,
-                    `staff_id` VARCHAR(50) NOT NULL,
-                    `staff_name` VARCHAR(150) NOT NULL,
-                    `type` ENUM('handover','manual_adjustment') NOT NULL,
-                    `amount` DECIMAL(10,2) NOT NULL,
-                    `handed_to` VARCHAR(150) DEFAULT NULL,
-                    `notes` TEXT DEFAULT NULL,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
                 $stmt = $pdo->prepare("SELECT * FROM cash_drawer_entries WHERE property_id = ? ORDER BY created_at DESC");
                 $stmt->execute([$propertyId]);

@@ -23,22 +23,6 @@ if (!function_exists('convertSnakeToCamel')) {
 
 function ensureServiceRequestsSchema($pdo) {
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS service_requests (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            property_id INT NOT NULL,
-            room_id INT NULL DEFAULT NULL,
-            request_type VARCHAR(100) NOT NULL,
-            description TEXT NULL,
-            requested_by VARCHAR(255) NOT NULL,
-            status VARCHAR(20) NOT NULL DEFAULT 'Pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_reminder_at DATETIME NULL DEFAULT NULL,
-            fulfilled_at DATETIME NULL DEFAULT NULL,
-            fulfilled_by VARCHAR(255) NULL DEFAULT NULL,
-            telegram_chat_id VARCHAR(50) NULL DEFAULT NULL,
-            telegram_message_id BIGINT NULL DEFAULT NULL,
-            INDEX (property_id, status)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     } catch (PDOException $e) {}
 
     // Nav items are DB-driven and shared across every property (see get_nav_menu
@@ -46,22 +30,6 @@ function ensureServiceRequestsSchema($pdo) {
     // Telegram templates get backfilled, rather than requiring an admin to add
     // it by hand through the Edit Navigation screen.
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS nav_menu_items (
-            id VARCHAR(50) PRIMARY KEY,
-            property_id INT NOT NULL DEFAULT 1,
-            title VARCHAR(255) NOT NULL,
-            tab_key VARCHAR(100) NOT NULL,
-            unique_key VARCHAR(100) NOT NULL,
-            category VARCHAR(100) DEFAULT 'Main Sections',
-            icon_name VARCHAR(100) DEFAULT 'Grid',
-            display_order INT NOT NULL DEFAULT 1,
-            roles_json TEXT,
-            is_visible TINYINT(1) DEFAULT 1,
-            custom_url TEXT DEFAULT NULL,
-            open_in_new_tab TINYINT(1) DEFAULT 0,
-            parent_id VARCHAR(50) DEFAULT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         $pdo->exec("INSERT IGNORE INTO nav_menu_items
             (id, property_id, title, tab_key, unique_key, category, icon_name, display_order)
             VALUES ('nav-svcreq', 1, 'Service Requests', 'service_requests', 'service_requests', 'Residents & Billing', 'Bell', 4)");

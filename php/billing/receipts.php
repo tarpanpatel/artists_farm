@@ -7,38 +7,6 @@
 function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create billing_receipts table
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_receipts` (
-            `id` VARCHAR(50) PRIMARY KEY,
-            `property_id` VARCHAR(50) DEFAULT '',
-            `guest_id` VARCHAR(50) DEFAULT '',
-            `guest_name` VARCHAR(100) DEFAULT '',
-            `room_number` VARCHAR(50) DEFAULT '',
-            `checkin_date` VARCHAR(30) DEFAULT '',
-            `checkout_date` VARCHAR(30) DEFAULT '',
-            `room_rate_per_night` DECIMAL(10,2) DEFAULT 0,
-            `nights_count` INT DEFAULT 0,
-            `room_rent` DECIMAL(10,2) DEFAULT 0,
-            `room_total` DECIMAL(10,2) DEFAULT 0,
-            `food_total` DECIMAL(10,2) DEFAULT 0,
-            `kitchen_total` DECIMAL(10,2) DEFAULT 0,
-            `misc_total` DECIMAL(10,2) DEFAULT 0,
-            `discount` DECIMAL(10,2) DEFAULT 0,
-            `grand_total` DECIMAL(10,2) DEFAULT 0,
-            `advance_paid` DECIMAL(10,2) DEFAULT 0,
-            `payment_method` VARCHAR(50) DEFAULT 'Cash',
-            `status` VARCHAR(30) DEFAULT 'Paid',
-            `paid_at` VARCHAR(30) DEFAULT '',
-            `gst_enabled` TINYINT(1) DEFAULT 0,
-            `gst_rate` DECIMAL(5,2) DEFAULT 0,
-            `gst_amount` DECIMAL(10,2) DEFAULT 0,
-            `gst_cgst` DECIMAL(10,2) DEFAULT 0,
-            `gst_sgst` DECIMAL(10,2) DEFAULT 0,
-            `gst_accommodation_rate` DECIMAL(5,2) DEFAULT 0,
-            `gst_food_rate` DECIMAL(5,2) DEFAULT 0,
-            `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0,
-            `gst_food_amount` DECIMAL(10,2) DEFAULT 0,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         // Auto-add GST columns on older schemas
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_enabled` TINYINT(1) DEFAULT 0 AFTER `paid_at`"); } catch (PDOException $e) {}
         try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_enabled`"); } catch (PDOException $e) {}

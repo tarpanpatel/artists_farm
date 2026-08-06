@@ -24,15 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // 1. Ensure MySQL system_telegram_templates table exists if $pdo is available
 if (isset($pdo)) {
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS system_telegram_templates (
-            template_key VARCHAR(50) PRIMARY KEY,
-            title VARCHAR(100) NOT NULL,
-            category VARCHAR(50) NOT NULL,
-            description TEXT,
-            content TEXT NOT NULL,
-            available_variables TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     } catch (Exception $e) {
         error_log("Telegram template table error: " . $e->getMessage());
     }

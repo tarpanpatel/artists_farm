@@ -61,25 +61,8 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
-    // Ensure properties table exists and seed default
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `properties` (
-      `id` INT AUTO_INCREMENT PRIMARY KEY,
-      `name` VARCHAR(255) NOT NULL,
-      `slug` VARCHAR(100) NOT NULL UNIQUE,
-      `domain` VARCHAR(255) DEFAULT NULL,
-      `address` TEXT DEFAULT NULL,
-      `gstin` VARCHAR(50) DEFAULT NULL,
-      `logo_url` VARCHAR(500) DEFAULT NULL,
-      `telegram_bot_token` VARCHAR(255) DEFAULT NULL,
-      `telegram_kitchen_chat_id` VARCHAR(100) DEFAULT NULL,
-      `telegram_admin_chat_id` VARCHAR(100) DEFAULT NULL,
-      `telegram_finance_chat_id` VARCHAR(100) DEFAULT NULL,
-      `currency` VARCHAR(10) DEFAULT 'INR',
-      `timezone` VARCHAR(50) DEFAULT 'Asia/Kolkata',
-      `is_active` TINYINT(1) DEFAULT 1,
-      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    // properties table is provisioned once via direct migration, not
+    // re-verified on every request (see ROADMAP.md history).
     $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
       ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
       ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
@@ -98,9 +81,9 @@ try {
     foreach ($propertyWhatsAppCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
     }
-
-    // Initialize all required database tables
-    initializeDatabaseTables($pdo);
+    // initializeDatabaseTables($pdo) runs once, below, after this try/catch -
+    // it used to also run here, meaning it fired twice per request on the
+    // normal (non-fallback) connection path for no reason.
 
 } catch (PDOException $e) {
     if ($is_testing_mode) {

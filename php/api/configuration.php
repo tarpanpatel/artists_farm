@@ -225,15 +225,6 @@ function getNavPageOptions($pdo) {
 function getSystemSettings($pdo) {
     try {
         // Ensure table exists
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `system_settings` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `setting_key` VARCHAR(100) NOT NULL UNIQUE,
-                `setting_value` LONGTEXT NOT NULL,
-                `updated_by` VARCHAR(255) DEFAULT NULL,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
 
         $stmt = $pdo->query("
             SELECT setting_key, setting_value
@@ -278,15 +269,6 @@ function saveSystemSettings($pdo) {
         }
 
         // Ensure table exists
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `system_settings` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `setting_key` VARCHAR(100) NOT NULL UNIQUE,
-                `setting_value` LONGTEXT NOT NULL,
-                `updated_by` VARCHAR(255) DEFAULT NULL,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
 
         $input = json_decode(file_get_contents('php://input'), true);
 
