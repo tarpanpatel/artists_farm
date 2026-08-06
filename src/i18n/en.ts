@@ -1543,7 +1543,6 @@ export const strings: Record<string, string> = {
   global_modal_confirm_title: "Please Confirm",
   global_modal_error_title: "Error",
   global_modal_success_title: "Success",
-  cancel_button: "Cancel",
   confirm_button: "Confirm",
   okay_button: "Okay",
   select_room_heading: "Select Room for New Guest",
