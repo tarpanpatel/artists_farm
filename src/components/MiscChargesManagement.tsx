@@ -5,6 +5,7 @@ import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { t } from '../i18n/en';
 
 interface MiscChargeTemplate {
   id: string | number;
@@ -191,7 +192,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
   const columns = [
     {
-      name: 'Service ID',
+      name: t('service_id_column', 'Service ID'),
       selector: (row: MiscChargeTemplate) => row.id,
       width: '100px',
       cell: (row: MiscChargeTemplate) => (
@@ -199,7 +200,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       ),
     },
     {
-      name: 'Service Name',
+      name: t('service_name_column', 'Service Name'),
       selector: (row: MiscChargeTemplate) => row.label,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
@@ -215,7 +216,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             <span className="font-bold text-gray-900 dark:text-white">{row.label}</span>
             {row.is_system_default && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">
-                🔒 Default
+                {t('system_default_badge', '🔒 Default')}
               </span>
             )}
           </div>
@@ -223,7 +224,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       },
     },
     {
-      name: 'Category',
+      name: t('category_column', 'Category'),
       selector: (row: MiscChargeTemplate) => row.category,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
@@ -242,7 +243,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       },
     },
     {
-      name: 'Default Price (₹)',
+      name: t('default_price_column', 'Default Price (₹)'),
       selector: (row: MiscChargeTemplate) => row.default_amount,
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
@@ -259,15 +260,15 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       },
     },
     {
-      name: 'Actions',
+      name: t('actions_column', 'Actions'),
       width: '120px',
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         const isSystemDefault = row.is_system_default;
         return editing ? (
           <div className="flex justify-end gap-2">
-            <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">Save</button>
-            <button onClick={() => setIsEditing(null)} className="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">Cancel</button>
+            <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('save_button', 'Save')}</button>
+            <button onClick={() => setIsEditing(null)} className="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
         ) : (
           <div className="flex justify-end gap-3">
@@ -277,7 +278,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 setEditForm(row);
               }}
               disabled={isSystemDefault}
-              title={isSystemDefault ? 'System default items cannot be edited' : 'Edit'}
+              title={isSystemDefault ? t('system_default_edit_disabled_tooltip', 'System default items cannot be edited') : t('edit_button', 'Edit')}
               className={`p-1 rounded-full transition-colors ${
                 isSystemDefault
                   ? 'text-gray-400 cursor-not-allowed'
@@ -289,7 +290,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             <button
               onClick={() => handleDelete(row.id)}
               disabled={isSystemDefault}
-              title={isSystemDefault ? 'System default items cannot be deleted' : 'Delete'}
+              title={isSystemDefault ? t('system_default_delete_disabled_tooltip', 'System default items cannot be deleted') : t('delete_button', 'Delete')}
               className={`p-1 rounded-full transition-colors ${
                 isSystemDefault
                   ? 'text-gray-400 cursor-not-allowed'
@@ -311,10 +312,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-indigo-500" />
-              Expense Categories & Items
+              {t('misc_charges_heading', 'Expense Categories & Items')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.
+              {t('misc_charges_description', 'System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.')}
             </p>
           </div>
           <button
@@ -322,7 +323,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add New Service
+            {t('add_new_service_button', 'Add New Service')}
           </button>
         </div>
 
@@ -335,13 +336,13 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
           noDataComponent={
             <div className="text-center py-6 text-gray-500 font-medium">
-              No miscellaneous charges found.
+              {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}
             </div>
           }
           subHeader={
             <input
               type="text"
-              placeholder="Search by service name or category..."
+              placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full max-w-xs p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
@@ -355,21 +356,21 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-700">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">Add Extra Service</h3>
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Service Name</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('service_name_label', 'Service Name')}</label>
                 <input
                   type="text"
                   required
                   value={newForm.label}
                   onChange={(e) => setNewForm({ ...newForm, label: e.target.value })}
-                  placeholder="e.g. Pet Fee"
+                  placeholder={t('service_name_placeholder', 'e.g. Pet Fee')}
                   className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('category_label', 'Category')}</label>
                 <input
                   type="text"
                   required
@@ -379,7 +380,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Default Price (₹)</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('default_price_label', 'Default Price (₹)')}</label>
                 <input
                   type="number"
                   required
@@ -389,8 +390,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer">Add Service</button>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
               </div>
             </form>
           </div>

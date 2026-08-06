@@ -1371,6 +1371,24 @@ export const strings: Record<string, string> = {
   lock_logout_pos_tooltip: "Lock & Logout POS",
   logout_pos_aria: "Logout POS",
   not_logged_in_label: "Not logged in",
+
+  // Misc Charges Management
+  misc_charges_heading: "Expense Categories & Items",
+  misc_charges_description: "System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.",
+  add_new_service_button: "Add New Service",
+  service_id_column: "Service ID",
+  service_name_column: "Service Name",
+  default_price_column: "Default Price (₹)",
+  system_default_badge: "🔒 Default",
+  system_default_edit_disabled_tooltip: "System default items cannot be edited",
+  system_default_delete_disabled_tooltip: "System default items cannot be deleted",
+  no_misc_charges_found_label: "No miscellaneous charges found.",
+  search_misc_charges_placeholder: "Search by service name or category...",
+  add_extra_service_title: "Add Extra Service",
+  service_name_label: "Service Name",
+  service_name_placeholder: "e.g. Pet Fee",
+  default_price_label: "Default Price (₹)",
+  add_service_button: "Add Service",
 };
 
 export function t(key: string, fallback?: string): string {
