@@ -159,8 +159,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
         return { tab: 'dashboard', key: hash };
       }
 
-      const savedTab = localStorage.getItem('artists_farm_active_tab') as TabType;
-      const savedKey = localStorage.getItem('artists_farm_active_menu_key');
+      // sessionStorage, not localStorage - deliberately scoped to this one tab.
+      // A refresh in the same tab should stay where you were; a genuinely new
+      // tab/window opening the property fresh should land on Dashboard, not
+      // whatever tab happened to be last active in some other tab sharing the
+      // same origin (localStorage is shared across all of them).
+      const savedTab = sessionStorage.getItem('artists_farm_active_tab') as TabType;
+      const savedKey = sessionStorage.getItem('artists_farm_active_menu_key');
       if (savedTab && savedKey) {
         return { tab: savedTab, key: savedKey };
       }
@@ -197,8 +202,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
 
   useEffect(() => {
-    localStorage.setItem('artists_farm_active_tab', activeTab);
-    localStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
+    sessionStorage.setItem('artists_farm_active_tab', activeTab);
+    sessionStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
     // Only update hash for menu items, NOT for room slugs (which start with "room-" or other room patterns)
     if (typeof window !== 'undefined' && activeMenuItemKey) {
       const isRoomSlug = activeMenuItemKey.match(/^(room-|vr-|[a-z]+-\d+)/);

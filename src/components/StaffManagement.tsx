@@ -858,11 +858,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        <span
-                          className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                          title={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
-                        >
-                          {t('help_label', 'Help?')}
+                        {/* Custom CSS tooltip instead of the native `title` attribute -
+                            browsers only show `title` after a ~1s still-hover, which read
+                            as "there's no tooltip at all" to anyone who didn't hold still
+                            that long. This shows instantly on hover instead. */}
+                        <span className="relative group/help">
+                          <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                            {t('help_label', 'Help?')}
+                          </span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/help:block whitespace-nowrap bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
+                            {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -969,11 +975,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
-                        <span
-                          className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                          title={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
-                        >
-                          {t('help_label', 'Help?')}
+                        {/* Custom CSS tooltip instead of the native `title` attribute -
+                            browsers only show `title` after a ~1s still-hover, which read
+                            as "there's no tooltip at all" to anyone who didn't hold still
+                            that long. This shows instantly on hover instead. */}
+                        <span className="relative group/help">
+                          <span className="bg-gray-100 text-gray-800 text-[10px] font-medium px-2 py-0.5 rounded-full dark:bg-gray-700 dark:text-gray-300 cursor-help hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                            {t('help_label', 'Help?')}
+                          </span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/help:block whitespace-nowrap bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg z-10">
+                            {t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}
+                          </span>
                         </span>
                       </div>
                     </div>

@@ -473,9 +473,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <a
                         href={dashboardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors"
                       >
-                        {t('open_dashboard_link', 'Open Dashboard')} <ExternalLink className="w-3 h-3" />
+                        {t('open_dashboard_link', 'Open Property')} <ExternalLink className="w-3 h-3" />
                       </a>
                       <div className="flex items-center gap-1">
                         <button

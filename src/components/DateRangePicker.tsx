@@ -82,8 +82,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       onCheckoutChange('');
       setSelectedMode('checkout');
     } else {
-      if (checkinDate && dateStr <= checkinDate) {
-        // Reset check-in if user picked an earlier or same check-out date
+      if (checkinDate && dateStr < checkinDate) {
+        // Reset check-in if user picked an earlier check-out date. Same-day
+        // is allowed on purpose - a late check-in with a same-morning
+        // check-out is a real booking, distinguished by the separate
+        // Check-In/Check-Out Time fields, not by the date alone.
         onCheckinChange(dateStr);
         onCheckoutChange('');
         setSelectedMode('checkout');
