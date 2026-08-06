@@ -22,6 +22,7 @@ import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../serv
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
+import { t } from '../i18n/en';
 
 interface Calendar {
   id: number;
@@ -278,34 +279,34 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       return {
         bg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300',
         dot: 'bg-rose-500',
-        name: 'Airbnb'
+        name: t('platform_airbnb_label', 'Airbnb')
       };
     }
     if (lower.includes('booking')) {
       return {
         bg: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300',
         dot: 'bg-blue-600',
-        name: 'Booking.com'
+        name: t('platform_booking_label', 'Booking.com')
       };
     }
     if (lower.includes('vrbo') || lower.includes('homeaway')) {
       return {
         bg: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300',
         dot: 'bg-sky-500',
-        name: 'VRBO'
+        name: t('platform_vrbo_label', 'VRBO')
       };
     }
     if (lower.includes('google')) {
       return {
         bg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300',
         dot: 'bg-emerald-500',
-        name: 'Google Calendar'
+        name: t('platform_google_calendar_label', 'Google Calendar')
       };
     }
     return {
       bg: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300',
       dot: 'bg-slate-400',
-      name: 'Custom iCal'
+      name: t('platform_custom_ical_label', 'Custom iCal')
     };
   };
 
@@ -332,7 +333,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     return (
       <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-        <span className="text-sm font-semibold">Loading iCal integration feeds...</span>
+        <span className="text-sm font-semibold">{t('ical_loading_message', 'Loading iCal integration feeds...')}</span>
       </div>
     );
   }
@@ -343,21 +344,21 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
         {/* Breadcrumb Navigation */}
         <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center">
-          <span>Dashboard</span>
+          <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
           <span>/</span>
-          <span>Integrations</span>
+          <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
           <span>/</span>
-          <span className="text-blue-600 dark:text-blue-400">iCal Channel API</span>
+          <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
         </nav>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
               <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              <span>iCal & OTA Channel Integration Keys</span>
+              <span>{t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}</span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.
+              {t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
             </p>
           </div>
 
@@ -368,7 +369,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-2xs disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 text-blue-600 ${isSyncingAll ? 'animate-spin' : ''}`} />
-              <span>{isSyncingAll ? 'Syncing All...' : 'Sync All Feeds'}</span>
+              <span>{isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}</span>
             </button>
 
             <button
@@ -376,7 +377,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>Connect iCal Feed</span>
+              <span>{t('connect_ical_feed_button', 'Connect iCal Feed')}</span>
             </button>
           </div>
         </div>
@@ -387,66 +388,66 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         {/* Card 1: Active Connected Channels */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Connected iCal Feeds</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
               <Globe className="w-4 h-4 text-blue-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            {calendars.length} <span className="text-xs font-semibold text-slate-500">Active</span>
+            {calendars.length} <span className="text-xs font-semibold text-slate-500">{t('active_unit_label', 'Active')}</span>
           </p>
           <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5" /> Bidirectional OTA Sync Enabled
+            <ShieldCheck className="w-3.5 h-3.5" /> {t('bidirectional_ota_sync_enabled_label', 'Bidirectional OTA Sync Enabled')}
           </p>
         </div>
 
         {/* Card 2: Auto-Sync Worker Interval */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Background Worker</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            15 Min <span className="text-xs font-semibold text-slate-500">Interval</span>
+            15 Min <span className="text-xs font-semibold text-slate-500">{t('interval_unit_label', 'Interval')}</span>
           </p>
           <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Automated Cron Engine Active
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t('automated_cron_engine_active_label', 'Automated Cron Engine Active')}
           </p>
         </div>
 
         {/* Card 3: Channel Health */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Integration Health</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('integration_health_label', 'Integration Health')}</span>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
               <CheckCircle2 className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            100% <span className="text-xs font-semibold text-slate-500">Operational</span>
+            100% <span className="text-xs font-semibold text-slate-500">{t('operational_unit_label', 'Operational')}</span>
           </p>
-          <p className="text-[10px] text-slate-500 font-semibold">Zero availability conflicts</p>
+          <p className="text-[10px] text-slate-500 font-semibold">{t('zero_availability_conflicts_label', 'Zero availability conflicts')}</p>
         </div>
 
         {/* Card 4: Master Export Link */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Master iCal Export</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('master_ical_export_label', 'Master iCal Export')}</span>
               <div className="p-2 bg-sky-50 dark:bg-sky-950/40 rounded-lg">
                 <Share2 className="w-4 h-4 text-sky-600" />
               </div>
             </div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">OTA Feed URL</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">{t('ota_feed_url_label', 'OTA Feed URL')}</p>
           </div>
           <button
             onClick={() => copyToClipboard(exportUrl, 'main_export')}
             className="w-full py-1.5 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 text-sky-700 dark:text-sky-300 font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer border border-sky-200 dark:border-sky-800 text-[11px]"
           >
             {copiedExport ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedExport ? 'Feed URL Copied!' : 'Copy Feed URL'}</span>
+            <span>{copiedExport ? t('feed_url_copied_button', 'Feed URL Copied!') : t('copy_feed_url_button', 'Copy Feed URL')}</span>
           </button>
         </div>
       </div>
@@ -463,7 +464,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter feeds by platform or endpoint URL..."
+                placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
                 className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -474,19 +475,19 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 value={platformFilter}
                 onChange={setPlatformFilter}
                 options={[
-                  { value: 'all', label: 'All Platforms' },
-                  { value: 'airbnb', label: 'Airbnb' },
-                  { value: 'booking', label: 'Booking.com' },
-                  { value: 'vrbo', label: 'VRBO' },
-                  { value: 'google', label: 'Google Calendar' },
-                  { value: 'other', label: 'Custom iCal' },
+                  { value: 'all', label: t('filter_all_platforms_label', 'All Platforms') },
+                  { value: 'airbnb', label: t('filter_airbnb_label', 'Airbnb') },
+                  { value: 'booking', label: t('filter_booking_label', 'Booking.com') },
+                  { value: 'vrbo', label: t('filter_vrbo_label', 'VRBO') },
+                  { value: 'google', label: t('filter_google_calendar_label', 'Google Calendar') },
+                  { value: 'other', label: t('filter_custom_ical_label', 'Custom iCal') },
                 ]}
               />
             </div>
           </div>
 
           <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
-            Showing {filteredCalendars.length} of {calendars.length} Connected Feeds
+            {t('showing_label', 'Showing')} {filteredCalendars.length} {t('of_label', 'of')} {calendars.length} {t('connected_feeds_label', 'Connected Feeds')}
           </div>
         </div>
 
@@ -495,12 +496,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider">
               <tr>
-                <th className="p-4">Channel / Platform</th>
-                <th className="p-4">Endpoint URL (.ics)</th>
-                <th className="p-4 text-center">Sync Mode</th>
-                <th className="p-4">Last Synchronization</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4">{t('channel_platform_column', 'Channel / Platform')}</th>
+                <th className="p-4">{t('endpoint_url_column', 'Endpoint URL (.ics)')}</th>
+                <th className="p-4 text-center">{t('sync_mode_column', 'Sync Mode')}</th>
+                <th className="p-4">{t('last_synchronization_column', 'Last Synchronization')}</th>
+                <th className="p-4 text-center">{t('status_column', 'Status')}</th>
+                <th className="p-4 text-right">{t('actions_column', 'Actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium text-xs">
@@ -533,7 +534,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         <button
                           onClick={() => copyToClipboard(cal.ical_url, cal.id)}
                           className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 transition cursor-pointer shrink-0"
-                          title="Copy feed URL"
+                          title={t('copy_feed_url_tooltip', 'Copy feed URL')}
                         >
                           {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
@@ -543,7 +544,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                     {/* Sync Mode */}
                     <td className="p-4 text-center">
                       <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-mono text-[10px]">
-                        Auto (15m)
+                        {t('auto_15m_badge', 'Auto (15m)')}
                       </span>
                     </td>
 
@@ -559,7 +560,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                           </p>
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic text-[11px]">Never synced</span>
+                        <span className="text-slate-400 italic text-[11px]">{t('never_synced_label', 'Never synced')}</span>
                       )}
                     </td>
 
@@ -567,7 +568,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                     <td className="p-4 text-center">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Connected
+                        {t('connected_badge', 'Connected')}
                       </span>
                     </td>
 
@@ -578,16 +579,16 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                           onClick={() => handleManualSync(cal.id, cal.service_name)}
                           disabled={isSyncing}
                           className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-bold rounded-lg transition flex items-center gap-1 cursor-pointer border border-blue-200 dark:border-blue-800 text-[11px]"
-                          title="Sync channel now"
+                          title={t('sync_channel_now_tooltip', 'Sync channel now')}
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                          <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                          <span>{isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}</span>
                         </button>
 
                         <button
                           onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
                           className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-transparent hover:border-rose-200"
-                          title="Delete integration key"
+                          title={t('delete_integration_key_tooltip', 'Delete integration key')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -601,13 +602,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 <tr>
                   <td colSpan={6} className="text-center p-12 text-slate-400 space-y-3">
                     <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
-                    <p className="font-semibold text-xs">No iCal integration feeds match your current filter.</p>
+                    <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
                     <button
                       onClick={() => setIsAddModalOpen(true)}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Connect First iCal Feed</span>
+                      <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
                     </button>
                   </td>
                 </tr>
@@ -622,7 +623,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
-            <span>Room-by-Room iCal Sync Settings ({propertyRooms.length} Rooms)</span>
+            <span>{t('room_by_room_ical_sync_settings_label', 'Room-by-Room iCal Sync Settings')} ({propertyRooms.length} {t('rooms_plural_label', 'Rooms')})</span>
           </h3>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -651,17 +652,17 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                     <div>
                       <h4 className="font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
-                      <p className="text-[10px] text-slate-400 font-mono">Room Slug: {room.slug}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{t('room_slug_label', 'Room Slug:')} {room.slug}</p>
                     </div>
                     <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
-                      {roomCalendars.length} Feeds
+                      {roomCalendars.length} {t('feeds_label', 'Feeds')}
                     </span>
                   </div>
 
                   {/* Connected Feeds for this Room */}
                   {roomCalendars.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Connected Feeds ({roomCalendars.length})</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">{t('connected_feeds_label', 'Connected Feeds')} ({roomCalendars.length})</span>
                       <div className="space-y-1.5">
                         {roomCalendars.map((cal) => {
                           const badge = getPlatformBadge(cal.service_name);
@@ -680,7 +681,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                                 <button
                                   onClick={() => copyToClipboard(cal.ical_url, cal.id)}
                                   className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 transition cursor-pointer"
-                                  title="Copy feed URL"
+                                  title={t('copy_feed_url_tooltip', 'Copy feed URL')}
                                 >
                                   {isCopiedUrl ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                                 </button>
@@ -688,14 +689,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                                   onClick={() => handleManualSync(cal.id, cal.service_name)}
                                   disabled={isSyncing}
                                   className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition cursor-pointer disabled:opacity-50"
-                                  title="Sync now"
+                                  title={t('sync_now_tooltip', 'Sync now')}
                                 >
                                   <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
                                   className="p-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition cursor-pointer"
-                                  title="Delete feed"
+                                  title={t('delete_feed_tooltip', 'Delete feed')}
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>
@@ -709,7 +710,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
                   {/* Add Feed Inputs */}
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Connect Channel for {room.name}</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t('connect_channel_for_label', 'Connect Channel for')} {room.name}</span>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="w-36 shrink-0">
                         <StyledSelect
@@ -718,11 +719,11 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                             setRoomImportPlatforms((prev) => ({ ...prev, [room.id]: val }))
                           }
                           options={[
-                            { value: 'Airbnb', label: 'Airbnb' },
-                            { value: 'Booking.com', label: 'Booking.com' },
-                            { value: 'VRBO', label: 'VRBO' },
-                            { value: 'Google', label: 'Google' },
-                            { value: 'Other', label: 'Other' },
+                            { value: 'Airbnb', label: t('platform_airbnb_label', 'Airbnb') },
+                            { value: 'Booking.com', label: t('platform_booking_label', 'Booking.com') },
+                            { value: 'VRBO', label: t('platform_vrbo_label', 'VRBO') },
+                            { value: 'Google', label: t('platform_google_label', 'Google') },
+                            { value: 'Other', label: t('platform_other_label', 'Other') },
                           ]}
                         />
                       </div>
@@ -733,7 +734,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         onChange={(e) =>
                           setRoomImportUrls((prev) => ({ ...prev, [room.id]: e.target.value }))
                         }
-                        placeholder="https://..."
+                        placeholder={t('url_placeholder', 'https://...')}
                         className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
 
@@ -748,14 +749,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         disabled={!url.trim()}
                         className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition whitespace-nowrap cursor-pointer shadow-xs"
                       >
-                        Add Feed
+                        {t('add_feed_button', 'Add Feed')}
                       </button>
                     </div>
                   </div>
 
                   {/* Room Export URL */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Export iCal Feed ({room.name})</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t('export_ical_feed_label', 'Export iCal Feed')} ({room.name})</span>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -767,7 +768,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         onClick={() => copyToClipboard(roomExportUrl, room.id)}
                         className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold rounded-lg transition text-[11px] cursor-pointer"
                       >
-                        {isCopied ? 'Copied' : 'Copy'}
+                        {isCopied ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
                       </button>
                     </div>
                   </div>
@@ -785,7 +786,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
               <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
-                <span>Connect New iCal Feed</span>
+                <span>{t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -798,18 +799,18 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
             <div className="space-y-4 text-xs">
               <div>
                 <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                  1. Select Channel Platform
+                  {t('select_channel_platform_label', '1. Select Channel Platform')}
                 </label>
                 <StyledSelect
                   value={newServiceName}
                   onChange={setNewServiceName}
                   options={[
-                    { value: 'Airbnb Calendar', label: 'Airbnb Calendar' },
-                    { value: 'Booking.com Calendar', label: 'Booking.com Calendar' },
-                    { value: 'Google Calendar', label: 'Google Calendar' },
-                    { value: 'VRBO / HomeAway', label: 'VRBO / HomeAway' },
-                    { value: 'Agoda Calendar', label: 'Agoda Calendar' },
-                    { value: 'Other', label: 'Other Custom OTA' },
+                    { value: 'Airbnb Calendar', label: t('modal_platform_airbnb_calendar_label', 'Airbnb Calendar') },
+                    { value: 'Booking.com Calendar', label: t('modal_platform_booking_calendar_label', 'Booking.com Calendar') },
+                    { value: 'Google Calendar', label: t('modal_platform_google_calendar_label', 'Google Calendar') },
+                    { value: 'VRBO / HomeAway', label: t('modal_platform_vrbo_homeaway_label', 'VRBO / HomeAway') },
+                    { value: 'Agoda Calendar', label: t('modal_platform_agoda_label', 'Agoda Calendar') },
+                    { value: 'Other', label: t('modal_platform_other_ota_label', 'Other Custom OTA') },
                   ]}
                 />
               </div>
@@ -817,13 +818,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               {newServiceName === 'Other' && (
                 <div>
                   <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                    Custom Feed Name
+                    {t('custom_feed_name_label', 'Custom Feed Name')}
                   </label>
                   <input
                     type="text"
                     value={customServiceName}
                     onChange={(e) => setCustomServiceName(e.target.value)}
-                    placeholder="e.g. Direct Booking Channel"
+                    placeholder={t('custom_feed_name_placeholder', 'e.g. Direct Booking Channel')}
                     className="w-full px-3 py-2.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -832,14 +833,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               {propertyRooms.length > 0 && (
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                    2. Target Room Assignment
+                    {t('target_room_assignment_label', '2. Target Room Assignment')}
                   </label>
                   <StyledSelect
                     value={selectedRoomForImport}
                     onChange={setSelectedRoomForImport}
                     options={[
-                      { value: 'all', label: 'Entire Resort Property' },
-                      ...propertyRooms.map((r) => ({ value: r.name, label: `Room: ${r.name}` })),
+                      { value: 'all', label: t('entire_resort_property_label', 'Entire Resort Property') },
+                      ...propertyRooms.map((r) => ({ value: r.name, label: `${t('room_option_prefix', 'Room:')} ${r.name}` })),
                     ]}
                   />
                 </div>
@@ -847,17 +848,17 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
               <div>
                 <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                  {propertyRooms.length > 0 ? '3. Paste iCal Feed URL' : '2. Paste iCal Feed URL'}
+                  {propertyRooms.length > 0 ? '3' : '2'}. {t('paste_ical_feed_url_label', 'Paste iCal Feed URL')}
                 </label>
                 <input
                   type="url"
                   value={newImportUrl}
                   onChange={(e) => setNewImportUrl(e.target.value)}
-                  placeholder="https://www.airbnb.com/calendar/ical/..."
+                  placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
                   className="w-full px-3.5 py-2.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Copy the export .ics calendar link from your OTA host dashboard and paste it here.
+                  {t('ical_url_helper_text', 'Copy the export .ics calendar link from your OTA host dashboard and paste it here.')}
                 </p>
               </div>
             </div>
@@ -868,7 +869,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 onClick={() => setIsAddModalOpen(false)}
                 className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer text-xs"
               >
-                Cancel
+                {t('cancel_button', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -877,7 +878,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl transition cursor-pointer text-xs shadow-xs flex items-center gap-2"
               >
                 {isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                <span>{isAdding ? 'Connecting...' : 'Connect Feed'}</span>
+                <span>{isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}</span>
               </button>
             </div>
           </div>
