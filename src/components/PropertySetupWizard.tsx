@@ -99,14 +99,17 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   />
                 </div>
               </div>
-              <button
-                onClick={handleSaveLocation}
-                disabled={isSavingLocation || !editAddress.trim()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                {isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                Save Address
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveLocation}
+                  disabled={isSavingLocation || !editAddress.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Save Address
+                </button>
+                {!isSavingLocation && <ArrowRight className="w-4 h-4 text-indigo-500 animate-bounce shrink-0" />}
+              </div>
             </div>
           </div>
         )}
@@ -126,7 +129,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 onClick={onGoToStaff}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                Add Staff <ArrowRight className="w-3.5 h-3.5" />
+                Add Staff <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
               </button>
             </div>
           </div>
@@ -147,7 +150,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 onClick={onAddUnit}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                Add New Unit <ArrowRight className="w-3.5 h-3.5" />
+                Add New Unit <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
               </button>
             </div>
           </div>

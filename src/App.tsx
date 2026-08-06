@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowDown } from 'lucide-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -1311,6 +1311,47 @@ ${itemsStr}
   const { pendingOrdersCount } = useKitchenContext();
   const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
 
+  // Property setup checklist - each step knows its own completion state, where
+  // its actual form lives, and what to tell the admin once they're standing on
+  // that page. Address and Rooms are both completed inline in
+  // PropertySetupWizard on the Dashboard tab; Staff has its own page.
+  const setupSteps = preloadedData.isMultiKeyProperty ? [
+    {
+      key: 'address' as const,
+      done: !!preloadedData.currentProperty?.address?.trim(),
+      shortLabel: 'Add Address',
+      bannerText: 'Property address is missing',
+      targetTab: 'dashboard' as TabType,
+      targetMenuItemKey: 'dashboard',
+      onPageInstruction: 'Fill in the address (and optionally a Google Maps link) below, then click Save Address.',
+    },
+    {
+      key: 'staff' as const,
+      done: staff.length > 1,
+      shortLabel: 'Add Staff',
+      bannerText: `Only ${staff.length} staff member${staff.length === 1 ? '' : 's'} on file (need at least 2)`,
+      targetTab: 'staff' as TabType,
+      targetMenuItemKey: 'staff_payees_control',
+      onPageInstruction: 'Fill out "Create Login Staff Account" on the right and click Register Staff Member.',
+    },
+    {
+      key: 'rooms' as const,
+      done: (preloadedData.currentProperty?.rooms?.length || 0) > 0,
+      shortLabel: 'Add a Room',
+      bannerText: 'No rooms/units added yet',
+      targetTab: 'dashboard' as TabType,
+      targetMenuItemKey: 'dashboard',
+      onPageInstruction: 'Click "Add New Unit" below to create your first room.',
+    },
+  ] : [];
+  const incompleteSetupSteps = setupSteps.filter((s) => !s.done);
+  // True once the admin is actually standing on the one page where a given
+  // incomplete step's own form lives - used to swap the generic multi-item
+  // banner for that step's specific instructions instead.
+  const currentPageSetupStep = incompleteSetupSteps.find(
+    (s) => s.key === 'staff' ? activeMenuItemKey === 'staff_payees_control' : activeTab === 'dashboard'
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
         {!isAuthenticated && (
@@ -1400,25 +1441,45 @@ ${itemsStr}
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
 
-              {/* Setup-incomplete banner - the full checklist already lives on
-                  the dashboard itself (PropertySetupWizard), so this only
-                  shows elsewhere, as a reminder + shortcut back to it. */}
-              {preloadedData.isMultiKeyProperty && activeTab !== 'dashboard' && (
-                !preloadedData.currentProperty?.address?.trim() ||
-                staff.length <= 1 ||
-                (preloadedData.currentProperty?.rooms?.length || 0) === 0
-              ) && (
-                <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+              {/* Setup-incomplete banner. Two forms:
+                  1. Generic, multi-item version - shown on any page that isn't
+                     where a given step is actually completed, one button per
+                     missing item, each jumping straight to that step's page
+                     (not funneled through Dashboard for everything).
+                  2. Specific, single-step version - shown once the admin is
+                     actually standing on the page where an incomplete step's
+                     form lives, naming exactly what to do there. Address/Rooms
+                     land on the Dashboard tab, where PropertySetupWizard
+                     already renders this inline per-step, so this banner only
+                     needs to cover Staff, whose form lives on a different page. */}
+              {incompleteSetupSteps.length > 0 && !currentPageSetupStep && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300 shrink-0">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    Property setup is incomplete.
+                    Property setup is incomplete:
                   </div>
-                  <button
-                    onClick={() => handleNavigateTab('dashboard')}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0 cursor-pointer"
-                  >
-                    Complete Setup
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {incompleteSetupSteps.map((step) => (
+                      <button
+                        key={step.key}
+                        onClick={() => handleNavigateTab(step.targetTab, step.targetMenuItemKey)}
+                        title={step.bannerText}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0 cursor-pointer"
+                      >
+                        {step.shortLabel}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentPageSetupStep?.key === 'staff' && (
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    Setup step - {currentPageSetupStep.bannerText}. {currentPageSetupStep.onPageInstruction}
+                  </p>
+                  <ArrowDown className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 animate-bounce" />
                 </div>
               )}
 

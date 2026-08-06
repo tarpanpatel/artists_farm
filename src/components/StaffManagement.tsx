@@ -20,7 +20,8 @@ import {
   Trash2,
   Upload,
   Key,
-  Store
+  Store,
+  ArrowRight
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, SalaryEntry } from '../types';
 import { useToast } from './ToastContext';
@@ -54,6 +55,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
+  // Mirrors the property-setup-step threshold in App.tsx (staff.length > 1) -
+  // computed here directly off the same staff context rather than threaded
+  // down as a prop, so it can't drift out of sync with the banner upstream.
+  const highlightRegisterStaffStep = activeMenuItemKey === 'staff_payees_control' && staff.length <= 1;
 
   useEffect(() => {
     if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
@@ -877,12 +882,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
                       />
                     </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                    >
-                      Register Staff Member
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                      >
+                        Register Staff Member
+                      </button>
+                      {highlightRegisterStaffStep && <ArrowRight className="w-5 h-5 text-indigo-500 animate-bounce shrink-0" />}
+                    </div>
                   </form>
                 ) : (
                   <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
