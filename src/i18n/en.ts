@@ -1634,7 +1634,8 @@ export const strings: Record<string, string> = {
 
   // Property Setup Wizard
   finish_setup_property_heading: "Finish Setting Up This Property",
-  setup_steps_done_suffix: "of 3 steps done",
+  setup_steps_done_suffix: "steps done",
+  setup_steps_done_of_prefix: "of",
   add_property_address_heading: "Add the property address",
   property_address_step_description: "Guests and staff need to know where this property actually is.",
   address_label: "Address",

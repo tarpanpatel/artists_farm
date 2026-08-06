@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
+import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { KitchenManagement } from './components/KitchenManagement';
@@ -1319,8 +1320,10 @@ ${itemsStr}
   // Property setup checklist - each step knows its own completion state, where
   // its actual form lives, and what to tell the admin once they're standing on
   // that page. Address and Rooms are both completed inline in
-  // PropertySetupWizard on the Dashboard tab; Staff has its own page.
-  const setupSteps = preloadedData.isMultiKeyProperty ? [
+  // PropertySetupWizard on the Dashboard tab; Staff has its own page. Rooms
+  // only applies to Multi-Key properties - a Single property IS the one
+  // bookable unit, so there's nothing separate to add.
+  const setupSteps = [
     {
       key: 'address' as const,
       done: !!preloadedData.currentProperty?.address?.trim(),
@@ -1339,7 +1342,7 @@ ${itemsStr}
       targetMenuItemKey: 'staff_payees_control',
       onPageInstruction: 'Fill out "Create Login Staff Account" on the right and click Register Staff Member.',
     },
-    {
+    ...(preloadedData.isMultiKeyProperty ? [{
       key: 'rooms' as const,
       done: (preloadedData.currentProperty?.rooms?.length || 0) > 0,
       shortLabel: 'Add a Room',
@@ -1347,8 +1350,31 @@ ${itemsStr}
       targetTab: 'dashboard' as TabType,
       targetMenuItemKey: 'dashboard',
       onPageInstruction: 'Click "Add New Unit" below to create your first room.',
-    },
-  ] : [];
+    }] : []),
+  ];
+
+  const handleSaveSinglePropertyLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/php/api/router.php?action=update_property', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: preloadedData.currentProperty?.id, address, google_maps_link: googleMapsLink }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // No local setter for preloadedData (it's loaded once by DataLoader
+        // above AppBody) - reload to pick up the saved address, matching how
+        // other property-level changes elsewhere in this file already do it.
+        window.location.reload();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to save address:', err);
+      return false;
+    }
+  };
   const incompleteSetupSteps = setupSteps.filter((s) => !s.done);
   // True once the admin is actually standing on the one page where a given
   // incomplete step's own form lives - used to swap the generic multi-item
@@ -1575,22 +1601,34 @@ ${itemsStr}
                     </ErrorBoundary>
                   </div>
                 ) : (
-                  <ErrorBoundary section="Operational Dashboard">
-                    <OperationalDashboard
-                      guests={guests}
-                      onNavigate={(tab) => handleNavigateTab(tab)}
-                      onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
-                      kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                      onUpdateBooking={handleUpdateGuest}
-                      onDeleteBooking={handleDeleteGuest}
-                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
-                      onCFormFiledUpdated={handleCFormFiledUpdated}
-                      propertyName={preloadedData.currentProperty?.name || ''}
-                      propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                      propertyPhone={preloadedData.currentProperty?.phone || ''}
-                      propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
-                    />
-                  </ErrorBoundary>
+                  <div className="space-y-6">
+                    <ErrorBoundary section="Property Setup Wizard">
+                      <PropertySetupWizard
+                        address={preloadedData.currentProperty?.address || ''}
+                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        staffCount={staff.length}
+                        showRoomsStep={false}
+                        onSaveLocation={handleSaveSinglePropertyLocation}
+                        onGoToStaff={() => handleNavigateTab('staff', 'staff_payees_control')}
+                      />
+                    </ErrorBoundary>
+                    <ErrorBoundary section="Operational Dashboard">
+                      <OperationalDashboard
+                        guests={guests}
+                        onNavigate={(tab) => handleNavigateTab(tab)}
+                        onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                        kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                        onUpdateBooking={handleUpdateGuest}
+                        onDeleteBooking={handleDeleteGuest}
+                        onGuestVerificationUpdated={handleGuestVerificationUpdated}
+                        onCFormFiledUpdated={handleCFormFiledUpdated}
+                        propertyName={preloadedData.currentProperty?.name || ''}
+                        propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyPhone={preloadedData.currentProperty?.phone || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                      />
+                    </ErrorBoundary>
+                  </div>
                 )
               ) : null}
 

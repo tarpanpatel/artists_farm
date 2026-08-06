@@ -6,10 +6,16 @@ interface PropertySetupWizardProps {
   address: string;
   googleMapsLink: string;
   staffCount: number; // total staff rows for this property, including the tenant's own auto-seeded row
-  roomCount: number;
+  // Step 3 (Rooms/Units) only applies to Multi-Key properties - a Single
+  // property IS the one bookable unit, there's nothing separate to add.
+  // Omit showRoomsStep (or pass false) for Single properties: the wizard
+  // becomes a 2-step checklist (Address, Staff) instead of 3, and neither
+  // roomCount nor onAddUnit are needed in that case.
+  showRoomsStep?: boolean;
+  roomCount?: number;
   onSaveLocation: (address: string, googleMapsLink: string) => Promise<boolean>;
   onGoToStaff: () => void;
-  onAddUnit: () => void;
+  onAddUnit?: () => void;
 }
 
 /**
@@ -23,6 +29,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   address,
   googleMapsLink,
   staffCount,
+  showRoomsStep = true,
   roomCount,
   onSaveLocation,
   onGoToStaff,
@@ -36,11 +43,16 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   // "minimum 1 user excluding the tenant" - the tenant's own auto-seeded row
   // always exists once a property is created, so the real bar is staffCount > 1.
   const step2Done = staffCount > 1;
-  const step3Done = roomCount > 0;
+  const step3Done = (roomCount ?? 0) > 0;
 
-  if (step1Done && step2Done && step3Done) return null;
+  if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
 
-  const stepsDone = [step1Done, step2Done, step3Done].filter(Boolean).length;
+  // Single properties skip Step 3 entirely (see showRoomsStep doc above), so
+  // it's excluded from both the numerator and denominator here rather than
+  // just hidden - otherwise "steps done" would count a step that isn't shown.
+  const applicableSteps = showRoomsStep ? [step1Done, step2Done, step3Done] : [step1Done, step2Done];
+  const totalSteps = applicableSteps.length;
+  const stepsDone = applicableSteps.filter(Boolean).length;
 
   const handleSaveLocation = async () => {
     setIsSavingLocation(true);
@@ -56,12 +68,12 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       <div className="px-6 py-4 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">{stepsDone} {t('setup_steps_done_suffix', 'of 3 steps done')}</p>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
         </div>
         <div className="w-32 h-1.5 bg-indigo-100 dark:bg-indigo-900 rounded-full overflow-hidden">
           <div
             className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all"
-            style={{ width: `${(stepsDone / 3) * 100}%` }}
+            style={{ width: `${(stepsDone / totalSteps) * 100}%` }}
           />
         </div>
       </div>
@@ -136,8 +148,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           </div>
         )}
 
-        {/* Step 3: Units */}
-        {!step3Done && (
+        {/* Step 3: Units - Multi-Key properties only, see showRoomsStep doc above */}
+        {showRoomsStep && !step3Done && (
           <div className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">3</div>
             <div className="flex-1 min-w-0">
