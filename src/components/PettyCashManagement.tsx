@@ -7,6 +7,7 @@ import { useFinance } from '../contexts/FinanceContext';
 import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -352,10 +353,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {/* Top Title */}
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          Operational Expenses Ledger
+          {t('petty_cash_ledger_heading', 'Operational Expenses Ledger')}
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.
+          {t('petty_cash_ledger_subtitle', 'Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.')}
         </p>
       </div>
 
@@ -364,13 +365,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {/* Visible inline Form */}
       <div className="add-expenses-container max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-red-500 pl-2.5 mb-4 flex items-center gap-1.5">
-          📝 ADD EXPENSES
+          {t('add_expenses_heading', '📝 ADD EXPENSES')}
         </h3>
 
         <form onSubmit={handleSubmit} className="add-expense-form space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Expense Date</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('expense_date_label', 'Expense Date')}</label>
               <input
                 type="date"
                 required
@@ -382,32 +383,32 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Cost Category Group</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('cost_category_group_label', 'Cost Category Group')}</label>
               <StyledSelect
                 value={formState.category}
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'category', value: val })}
                 options={[
-                  { value: 'Other', label: 'Other' },
-                  { value: 'Salaries', label: 'Salaries (Manual)' },
-                  { value: 'Salary (Auto)', label: 'Salary (Auto)' },
-                  { value: 'Bills', label: 'Bills' },
+                  { value: 'Other', label: t('category_other_label', 'Other') },
+                  { value: 'Salaries', label: t('category_salaries_manual_label', 'Salaries (Manual)') },
+                  { value: 'Salary (Auto)', label: t('category_salary_auto_label', 'Salary (Auto)') },
+                  { value: 'Bills', label: t('category_bills_label', 'Bills') },
                 ]}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Details Descriptions *</label>
+            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('details_descriptions_label', 'Details Descriptions *')}</label>
             {formState.category === 'Salaries' || formState.category === 'Salary (Auto)' ? (
               <div>
                 <StyledSelect
                   value={formState.description}
                   onChange={handleDescriptionChange}
-                  placeholder="-- Select Staff Beneficiary --"
+                  placeholder={t('select_staff_beneficiary_placeholder', '-- Select Staff Beneficiary --')}
                   options={staff.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
                 />
                 {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
-                  <p className="text-red-500 font-semibold text-[10px] mt-1">🔒 Warning: You are not logged in as Admin. Salary submission will be blocked.</p>
+                  <p className="text-red-500 font-semibold text-[10px] mt-1">{t('salary_access_warning_message', '🔒 Warning: You are not logged in as Admin. Salary submission will be blocked.')}</p>
                 )}
               </div>
             ) : (
@@ -422,7 +423,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     handleDescriptionChange(e.target.value);
                     setShowSuggestions(true);
                   }}
-                  placeholder="Type to search items... (e.g., MCB, Petrol, Water Bill)"
+                  placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
                 />
                 
@@ -452,7 +453,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       item.toLowerCase().includes(formState.description.toLowerCase().trim())
                     ).length === 0 && (
                       <div className="p-3 text-slate-400 italic text-center">
-                        No matching pre-stored items found. You can still type a custom description!
+                        {t('no_matching_items_message', 'No matching pre-stored items found. You can still type a custom description!')}
                       </div>
                     )}
                   </div>
@@ -462,25 +463,25 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">& More Information (If Any)</label>
+            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('more_information_label', '& More Information (If Any)')}</label>
             <textarea
               value={formState.moreInfoNotes}
               onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
-              placeholder="Optional contextual notes..."
+              placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
               className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-20 font-medium"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Amount (₹) *</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('expense_amount_rupees_required_label', 'Amount (₹) *')}</label>
               <input
                 type="number"
                 step="0.01"
                 required
                 value={formState.amount}
                 onChange={e => dispatch({ type: 'SET_FIELD', field: 'amount', value: e.target.value === '' ? '' : Number(e.target.value) })}
-                placeholder="e.g., 450"
+                placeholder={t('expense_amount_placeholder', 'e.g., 450')}
                 className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
               />
               {formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
@@ -491,14 +492,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Payment Mode</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('payment_mode_label', 'Payment Mode')}</label>
               <StyledSelect
                 value={formState.paymentMode}
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
                 options={[
-                  { value: 'UPI / QR', label: 'UPI / QR' },
-                  { value: 'Cash', label: 'Cash' },
-                  { value: 'Mixed', label: 'Mixed' },
+                  { value: 'UPI / QR', label: t('payment_mode_upi_qr_label', 'UPI / QR') },
+                  { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
+                  { value: 'Mixed', label: t('payment_mode_mixed_label', 'Mixed') },
                 ]}
               />
             </div>
@@ -512,14 +513,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 }}
               />
               <span className="flex items-center gap-1">
-                <Landmark size={14} className="text-slate-500" /> From Cash Drawer
+                <Landmark size={14} className="text-slate-500" /> {t('from_cash_drawer_label', 'From Cash Drawer')}
               </span>
             </label>
 
             {formState.showDrawerSplit && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Landmark size={14} className="text-slate-500" /> Cash Drawer (₹)</label>
+                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Landmark size={14} className="text-slate-500" /> {t('cash_drawer_rupees_label', 'Cash Drawer (₹)')}</label>
                   <input
                     type="number"
                     min="0"
@@ -536,7 +537,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Wallet size={14} className="text-slate-500" /> Out of Pocket (₹)</label>
+                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Wallet size={14} className="text-slate-500" /> {t('out_of_pocket_rupees_label', 'Out of Pocket (₹)')}</label>
                   <input
                     type="number"
                     min="0"
@@ -556,7 +557,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             )}
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Paid By</label>
+              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('expense_paid_by_label', 'Paid By')}</label>
               <StyledSelect
                 value={formState.paidBy}
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
@@ -568,7 +569,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           {/* Proof uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2 relative">
-              <label className="block font-bold text-slate-600 dark:text-slate-400">📁 Capture / Upload Invoice Bill</label>
+              <label className="block font-bold text-slate-600 dark:text-slate-400">{t('capture_upload_invoice_bill_label', '📁 Capture / Upload Invoice Bill')}</label>
               <input
                 type="file"
                 accept="image/*"
@@ -577,15 +578,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <FileText className="w-4 h-4 text-slate-400" />
-                <span>{formState.invoiceBillUrl ? '✓ Invoice Loaded (Compressed)' : 'Choose Document'}</span>
+                <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', '✓ Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
               </div>
               {formState.invoiceBillUrl && (
-                <img src={formState.invoiceBillUrl} alt="Invoice" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+                <img src={formState.invoiceBillUrl} alt={t('invoice_image_alt', 'Invoice')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
             </div>
 
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2 relative">
-              <label className="block font-bold text-slate-600 dark:text-slate-400">📸 Upload Payment Screenshot</label>
+              <label className="block font-bold text-slate-600 dark:text-slate-400">{t('upload_payment_screenshot_label', '📸 Upload Payment Screenshot')}</label>
               <input
                 type="file"
                 accept="image/*"
@@ -594,10 +595,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
-                <span>{formState.paymentScreenshotUrl ? '✓ Screenshot Loaded (Compressed)' : 'Select Screenshot'}</span>
+                <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', '✓ Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
               </div>
               {formState.paymentScreenshotUrl && (
-                <img src={formState.paymentScreenshotUrl} alt="Screenshot" className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+                <img src={formState.paymentScreenshotUrl} alt={t('screenshot_image_alt', 'Screenshot')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
             </div>
           </div>
@@ -607,7 +608,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               type="submit"
               className="btn-submit-expense bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
             >
-              <span>ADD EXPENSE</span>
+              <span>{t('add_expense_button', 'ADD EXPENSE')}</span>
             </button>
           </div>
         </form>
@@ -616,7 +617,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {/* Live Search & Filter Panel */}
       <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="font-bold text-slate-700 dark:text-slate-300">📅 Select Ledger Month</span>
+          <span className="font-bold text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', '📅 Select Ledger Month')}</span>
           <StyledSelect
             value={selectedMonth}
             onChange={setSelectedMonth}
@@ -635,7 +636,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search descriptions, payment modes, payees..."
+            placeholder={t('search_expenses_placeholder', 'Search descriptions, payment modes, payees...')}
             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
           />
         </div>
@@ -646,7 +647,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         <DataTable
           columns={[
             {
-              name: 'Date',
+              name: t('date_column', 'Date'),
               selector: (entry: any) => entry.date,
               sortable: true,
               width: '110px',
@@ -655,12 +656,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingDate ? (
                   <input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded text-slate-900 text-[11px]" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title="Double click to edit">{entry.date}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{entry.date}</span>
                 );
               },
             },
             {
-              name: 'Category',
+              name: t('category_column', 'Category'),
               selector: (entry: any) => entry.category || entry.costCategory,
               sortable: true,
               width: '120px',
@@ -681,7 +682,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
             },
             {
-              name: 'Description',
+              name: t('description_column', 'Description'),
               selector: (entry: any) => entry.description,
               sortable: true,
               grow: 2,
@@ -689,12 +690,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <div>
                   <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{entry.description}</div>
                   {entry.moreInfoNotes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>}
-                  <p className="text-[10px] text-slate-500 mt-0.5">Paid by: <strong>{entry.paidBy || entry.vendor}</strong></p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{t('paid_by_prefix', 'Paid by:')} <strong>{entry.paidBy || entry.vendor}</strong></p>
                 </div>
               ),
             },
             {
-              name: 'Total',
+              name: t('total_column', 'Total'),
               selector: (entry: any) => entry.amount,
               sortable: true,
               width: '110px',
@@ -704,12 +705,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingAmount ? (
                   <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded w-24 text-slate-900 text-[11px]" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-bold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title="Double click to edit">₹{entry.amount.toFixed(2)}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-bold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
                 );
               },
             },
             {
-              name: 'Mode',
+              name: t('mode_column', 'Mode'),
               selector: (entry: any) => entry.paymentMode || 'Online',
               sortable: true,
               width: '80px',
@@ -721,16 +722,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               ),
             },
             ...((activeRole === 'Admin' || activeRole === 'Super Admin') ? [{
-              name: 'Actions',
+              name: t('actions_column', 'Actions'),
               width: '120px',
               center: true as const,
               cell: (entry: any) => (
                 <div className="flex items-center justify-center gap-1">
                   <button onClick={() => setEditingEntry(entry)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors">
-                    <Edit2 className="w-3 h-3" /> Edit
+                    <Edit2 className="w-3 h-3" /> {t('edit_button', 'Edit')}
                   </button>
                   <button onClick={() => handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors">
-                    Delete
+                    {t('delete_button', 'Delete')}
                   </button>
                 </div>
               ),
@@ -744,9 +745,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           subHeader={
             <div className="w-full flex items-center justify-between py-2">
               <h3 className="font-semibold text-slate-800 dark:text-white text-sm">
-                Cost Logs for {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
-              <span className="font-mono text-slate-400 font-bold text-xs">{filteredEntries.length} entries</span>
+              <span className="font-mono text-slate-400 font-bold text-xs">{filteredEntries.length} {t('entries_label', 'entries')}</span>
             </div>
           }
           customStyles={{
@@ -757,7 +758,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           }}
           noDataComponent={
             <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold text-xs">
-              No expenses recorded for this month.
+              {t('no_expenses_this_month_message', 'No expenses recorded for this month.')}
             </div>
           }
         />
@@ -769,7 +770,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-blue-600" /> EDIT EXPENSE RECORD #{editingEntry.id}
+                <Edit2 className="w-4 h-4 text-blue-600" /> {t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}
               </h3>
               <button onClick={() => setEditingEntry(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <X className="w-5 h-5" />
@@ -778,7 +779,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <form onSubmit={handleSaveModalEdit} className="space-y-4">
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Expense Date</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('expense_date_label', 'Expense Date')}</label>
                 <input
                   type="date"
                   required
@@ -789,21 +790,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Category</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('category_label', 'Category')}</label>
                 <StyledSelect
                   value={editingEntry.category || editingEntry.costCategory || 'Other'}
                   onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
                   options={[
-                    { value: 'Other', label: 'Other' },
-                    { value: 'Salaries', label: 'Salaries (Manual)' },
-                    { value: 'Salary (Auto)', label: 'Salary (Auto)' },
-                    { value: 'Bills', label: 'Bills' },
+                    { value: 'Other', label: t('category_other_label', 'Other') },
+                    { value: 'Salaries', label: t('category_salaries_manual_label', 'Salaries (Manual)') },
+                    { value: 'Salary (Auto)', label: t('category_salary_auto_label', 'Salary (Auto)') },
+                    { value: 'Bills', label: t('category_bills_label', 'Bills') },
                   ]}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Details Description</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('details_description_label', 'Details Description')}</label>
                 <input
                   type="text"
                   required
@@ -815,7 +816,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Amount (₹)</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('expense_amount_rupees_label', 'Amount (₹)')}</label>
                 <input
                   type="number"
                   required
@@ -827,13 +828,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">Payment Mode</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('payment_mode_label', 'Payment Mode')}</label>
                 <StyledSelect
                   value={editingEntry.paymentMode || 'Online / UPI / QR'}
                   onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
                   options={[
-                    { value: 'Online / UPI / QR', label: 'Online / UPI / QR' },
-                    { value: 'Cash', label: 'Cash' },
+                    { value: 'Online / UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
+                    { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
                   ]}
                 />
               </div>
@@ -844,13 +845,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   onClick={() => setEditingEntry(null)}
                   className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold cursor-pointer"
                 >
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold cursor-pointer transition-colors"
                 >
-                  Save Changes
+                  {t('save_changes_button', 'Save Changes')}
                 </button>
               </div>
             </form>
