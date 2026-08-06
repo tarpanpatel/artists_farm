@@ -22,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { Guest, Order } from '../types';
+import { t } from '../i18n/en';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -142,8 +143,8 @@ export const Header: React.FC<HeaderProps> = ({
                 onToggleIconOnly();
               }
             }}
-            title={isIconOnly ? "Expand Sidebar Menu" : "Collapse Sidebar Menu"}
-            aria-label="Toggle Sidebar Navigation"
+            title={isIconOnly ? t('expand_sidebar_tooltip', 'Expand Sidebar Menu') : t('collapse_sidebar_tooltip', 'Collapse Sidebar Menu')}
+            aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
             className="btn-toggle-sidebar p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
@@ -158,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-sm font-bold text-gray-700 dark:text-white tracking-tight flex items-center gap-2">
                 {propertyName}
                 <span className="hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
-                  POS
+                  {t('pos_badge', 'POS')}
                 </span>
               </span>
             </div>
@@ -171,8 +172,8 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative">
             <button
               onClick={handleToggleNotifications}
-              title="Notifications"
-              aria-label="View notifications"
+              title={t('notifications_tooltip', 'Notifications')}
+              aria-label={t('view_notifications_aria', 'View notifications')}
               className="btn-notification-bell relative p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
               <Bell className="w-5 h-5" />
@@ -187,7 +188,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
-                    Notifications
+                    {t('notifications_label', 'Notifications')}
                   </span>
                   <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
                     {totalCount} updates
@@ -201,10 +202,10 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1.5">
                           <Utensils className="w-3.5 h-3.5 text-amber-600" />
-                          {isShowingServed ? 'Recently Served Orders' : 'Live Kitchen Tickets'}
+                          {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
-                          {isShowingServed ? 'Served' : 'Active'}
+                          {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
                         </span>
                       </div>
 
@@ -246,10 +247,10 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                          Property Bookings
+                          {t('property_bookings_label', 'Property Bookings')}
                         </span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                          Today & Tomorrow
+                          {t('today_tomorrow_badge', 'Today & Tomorrow')}
                         </span>
                       </div>
 
@@ -258,13 +259,13 @@ export const Header: React.FC<HeaderProps> = ({
                         {todayGuests.map((guest) => {
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
                           const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
-                          let badgeText = 'Active Stay';
+                          let badgeText = t('active_stay_badge', 'Active Stay');
                           let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
                           if (checkin === todayStr) {
-                            badgeText = 'Check-in Today';
+                            badgeText = t('checkin_today_badge', 'Check-in Today');
                             badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300';
                           } else if (checkout === todayStr) {
-                            badgeText = 'Check-out Today';
+                            badgeText = t('checkout_today_badge', 'Checkout Today');
                             badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
                           }
 
@@ -303,11 +304,11 @@ export const Header: React.FC<HeaderProps> = ({
                                 <span className="text-gray-400 font-normal">({guest.roomNumber})</span>
                               </p>
                               <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                                Upcoming tomorrow
+                                {t('upcoming_tomorrow_label', 'Upcoming tomorrow')}
                               </p>
                             </div>
                             <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
-                              Checking in Tomorrow
+                              {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
                           </div>
                         ))}
@@ -326,7 +327,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {lowStockCount} Low Inventory Items
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          Items reached minimum threshold limit
+                          {t('low_stock_threshold_description', 'Items reached minimum threshold limit')}
                         </p>
                       </div>
                     </div>
@@ -336,7 +337,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {totalCount === 0 && (
                     <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center gap-2">
                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                      <span className="font-semibold">All systems operating normally</span>
+                      <span className="font-semibold">{t('all_systems_normal_label', 'All systems operating normally')}</span>
                     </div>
                   )}
                 </div>
@@ -348,8 +349,8 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenDemoModal && (
             <button
               onClick={isTestingMode ? onToggleTestingMode : onOpenDemoModal}
-              title={isTestingMode ? "Stop Test Mode" : "Open Test Data Center"}
-              aria-label="Test Data Center"
+              title={isTestingMode ? t('stop_test_mode_tooltip', 'Stop Test Mode') : t('open_test_data_center_tooltip', 'Open Test Data Center')}
+              aria-label={t('test_data_center_aria', 'Test Data Center')}
               className={`btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
                 isTestingMode
                   ? 'bg-red-600 hover:bg-red-700 text-white border-red-700 font-bold'
@@ -361,15 +362,15 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 <Play className="w-4 h-4 fill-current" />
               )}
-              <span className="hidden sm:inline">{isTestingMode ? 'Stop Test' : 'Test'}</span>
+              <span className="hidden sm:inline">{isTestingMode ? t('stop_test_button', 'Stop Test') : t('test_button', 'Test')}</span>
             </button>
           )}
 
           {/* Dark Mode Toggle Button */}
           <button
             onClick={onToggleDarkMode}
-            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle Dark Mode"
+            title={isDarkMode ? t('switch_to_light_tooltip', 'Switch to Light Mode') : t('switch_to_dark_tooltip', 'Switch to Dark Mode')}
+            aria-label={t('toggle_dark_mode_aria', 'Toggle Dark Mode')}
             className="btn-toggle-darkmode p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
@@ -380,12 +381,12 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="pos-user-profile-badge flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-slate-700">
               <img
                 src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-                alt="User Avatar"
+                alt={t('user_avatar_alt', 'User Avatar')}
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30"
               />
               <div className="hidden sm:block text-left leading-tight">
                 <span className="block text-xs font-bold text-gray-900 dark:text-white">
-                  {currentUser?.name || 'Staff'}
+                  {currentUser?.name || t('staff_label', 'Staff')}
                 </span>
                 <span className="block text-[10px] text-gray-500 dark:text-gray-400 font-medium">
                   {activeRole}
@@ -394,8 +395,8 @@ export const Header: React.FC<HeaderProps> = ({
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  title="Lock & Logout POS"
-                  aria-label="Logout POS"
+                  title={t('lock_logout_pos_tooltip', 'Lock & Logout POS')}
+                  aria-label={t('logout_pos_aria', 'Logout POS')}
                   className="btn-onlogout-pos ml-1 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
@@ -407,7 +408,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center">
                 <UserCheck className="w-4 h-4 text-gray-400 dark:text-slate-500" />
               </div>
-              <span className="hidden sm:block text-xs text-gray-400 dark:text-gray-500 font-medium">Not logged in</span>
+              <span className="hidden sm:block text-xs text-gray-400 dark:text-gray-500 font-medium">{t('not_logged_in_label', 'Not logged in')}</span>
             </div>
           )}
         </div>
