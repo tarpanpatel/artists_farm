@@ -25,6 +25,7 @@ import {
 import { AuditLog, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { t } from '../i18n/en';
 
 interface AuditLogsViewProps {
   logs: AuditLog[];
@@ -253,10 +254,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <ScrollText className="w-6 h-6 text-blue-600" />
-              <span>Audit Trails & System Diagnostics</span>
+              <span>{t('audit_trails_system_diagnostics_heading', 'Audit Trails & System Diagnostics')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Timestamped security logs, past receipt settlements, login trace audits, and system health status
+              {t('audit_trails_system_diagnostics_subtitle', 'Timestamped security logs, past receipt settlements, login trace audits, and system health status')}
             </p>
           </div>
 
@@ -270,7 +271,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               }`}
             >
               <ScrollText className="w-3.5 h-3.5" />
-              <span>Audit Trail</span>
+              <span>{t('audit_trail_tab_label', 'Audit Trail')}</span>
             </button>
             <button
               onClick={() => setActiveTab('receipts')}
@@ -281,7 +282,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
-              <span>Past Receipts Log</span>
+              <span>{t('past_receipts_log_tab_label', 'Past Receipts Log')}</span>
             </button>
             <button
               onClick={() => setActiveTab('login')}
@@ -292,7 +293,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Login Trace</span>
+              <span>{t('login_trace_tab_label', 'Login Trace')}</span>
             </button>
           </div>
         </div>
@@ -304,7 +305,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           <DataTable
             columns={[
               {
-                name: 'Receipt ID',
+                name: t('receipt_id_column', 'Receipt ID'),
                 selector: (rec: BillingReceipt) => rec.id,
                 width: '100px',
                 cell: (rec: BillingReceipt) => (
@@ -312,7 +313,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Resident / Group',
+                name: t('resident_group_column', 'Resident / Group'),
                 selector: (rec: BillingReceipt) => rec.guestName,
                 sortable: true,
                 grow: 1,
@@ -321,13 +322,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Room / Cottage',
+                name: t('room_cottage_column', 'Room / Cottage'),
                 selector: (rec: BillingReceipt) => rec.roomNumber,
                 sortable: true,
                 width: '120px',
               },
               {
-                name: 'Checkout Date',
+                name: t('checkout_date_column', 'Checkout Date'),
                 selector: (rec: BillingReceipt) => rec.checkoutDate || '',
                 sortable: true,
                 width: '130px',
@@ -336,7 +337,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Room Rent',
+                name: t('room_rent_column', 'Room Rent'),
                 selector: (rec: BillingReceipt) => rec.roomRent || rec.roomTotal || 0,
                 sortable: true,
                 width: '110px',
@@ -345,7 +346,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Food Bill',
+                name: t('food_bill_column', 'Food Bill'),
                 selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
                 sortable: true,
                 width: '100px',
@@ -354,7 +355,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'GST',
+                name: t('gst_column', 'GST'),
                 selector: (rec: BillingReceipt) => rec.gstRate || 0,
                 sortable: true,
                 width: '90px',
@@ -365,7 +366,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Grand Total',
+                name: t('grand_total_column', 'Grand Total'),
                 selector: (rec: BillingReceipt) => rec.grandTotal || 0,
                 sortable: true,
                 width: '120px',
@@ -374,7 +375,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Payment',
+                name: t('payment_column', 'Payment'),
                 selector: (rec: BillingReceipt) => rec.paymentMethod || 'Cash',
                 width: '120px',
                 cell: (rec: BillingReceipt) => (
@@ -384,7 +385,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 ),
               },
               {
-                name: 'Actions',
+                name: t('actions_column', 'Actions'),
                 width: '120px',
                 cell: (rec: BillingReceipt) => (
                   <button
@@ -392,7 +393,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-bold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
                   >
                     <Edit2 className="w-3 h-3" />
-                    Edit
+                    {t('edit_button', 'Edit')}
                   </button>
                 ),
               },
@@ -405,7 +406,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-blue-600" />
-                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">Past Billing Receipts & Settlement Log</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
                   <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono text-slate-500">{receipts.length} receipts</span>
                 </div>
                 <div className="relative">
@@ -414,7 +415,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     type="text"
                     value={receiptsSearch}
                     onChange={(e) => setReceiptsSearch(e.target.value)}
-                    placeholder="Search receipts..."
+                    placeholder={t('search_receipts_placeholder', 'Search receipts...')}
                     className="pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -429,7 +430,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             }}
             noDataComponent={
               <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-                No billing receipts found in database.
+                {t('no_billing_receipts_message', 'No billing receipts found in database.')}
               </div>
             }
           />
@@ -442,7 +443,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
               <ShieldAlert className="w-6 h-6 text-indigo-600" />
-              <span>Staff Activity & Attendance Trail</span>
+              <span>{t('staff_activity_attendance_heading', 'Staff Activity & Attendance Trail')}</span>
             </h3>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -450,7 +451,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search activity..."
+                  placeholder={t('search_activity_placeholder', 'Search activity...')}
                   value={activitySearch}
                   onChange={(e) => setActivitySearch(e.target.value)}
                   className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-48 transition-all"
@@ -469,7 +470,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 onChange={setActivityUser}
                 className="w-48"
                 options={[
-                  { value: 'All', label: 'All Users' },
+                  { value: 'All', label: t('all_users_option_label', 'All Users') },
                   ...Array.from(new Set(logs.map(l => l.user))).filter(Boolean).map(user => ({ value: user, label: user })),
                 ]}
               />
@@ -480,7 +481,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             <DataTable
               columns={[
                 {
-                  name: 'Timestamp (Date & Time)',
+                  name: t('timestamp_datetime_column', 'Timestamp (Date & Time)'),
                   selector: (log: AuditLog) => log.timestamp,
                   sortable: true,
                   grow: 1,
@@ -491,7 +492,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'User',
+                  name: t('user_column', 'User'),
                   selector: (log: AuditLog) => log.user,
                   sortable: true,
                   width: '160px',
@@ -500,7 +501,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Activity Logged (What, For Whom)',
+                  name: t('activity_logged_column', 'Activity Logged (What, For Whom)'),
                   selector: (log: AuditLog) => log.action,
                   sortable: true,
                   grow: 2,
@@ -520,14 +521,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     type="text"
                     value={activitySubSearch}
                     onChange={(e) => setActivitySubSearch(e.target.value)}
-                    placeholder="Search by action or user..."
+                    placeholder={t('search_by_action_or_user_placeholder', 'Search by action or user...')}
                     className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               }
               customStyles={customStyles}
               noDataComponent={
-                <div className="text-center p-8 text-slate-500 font-medium">No activity records match your filters.</div>
+                <div className="text-center p-8 text-slate-500 font-medium">{t('no_activity_records_message', 'No activity records match your filters.')}</div>
               }
             />
           </div>
@@ -540,15 +541,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <Lock className="w-5 h-5 text-blue-600" />
-              <span>Security Login Trace & Authentication Audit</span>
+              <span>{t('security_login_trace_heading', 'Security Login Trace & Authentication Audit')}</span>
             </h3>
-            <span className="font-mono text-slate-400 font-bold text-xs">{loginTraceLogs.length} Login Events</span>
+            <span className="font-mono text-slate-400 font-bold text-xs">{loginTraceLogs.length} {t('login_events_count_label', 'Login Events')}</span>
           </div>
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <DataTable
               columns={[
                 {
-                  name: 'Timestamp',
+                  name: t('timestamp_column', 'Timestamp'),
                   selector: (log: AuditLog) => log.timestamp,
                   sortable: true,
                   width: '170px',
@@ -557,7 +558,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'User',
+                  name: t('user_column', 'User'),
                   selector: (log: AuditLog) => log.user,
                   sortable: true,
                   width: '140px',
@@ -566,7 +567,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Status',
+                  name: t('status_column', 'Status'),
                   selector: (log: AuditLog) => log.status || 'Unknown',
                   sortable: true,
                   width: '110px',
@@ -581,7 +582,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Browser',
+                  name: t('browser_column', 'Browser'),
                   selector: (log: AuditLog) => log.browser || '—',
                   sortable: true,
                   width: '120px',
@@ -590,7 +591,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'OS',
+                  name: t('os_column', 'OS'),
                   selector: (log: AuditLog) => log.os || '—',
                   sortable: true,
                   width: '100px',
@@ -599,7 +600,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Device',
+                  name: t('device_column', 'Device'),
                   selector: (log: AuditLog) => log.device_type || '—',
                   width: '110px',
                   cell: (log: AuditLog) => (
@@ -609,7 +610,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'IP Address',
+                  name: t('ip_address_column', 'IP Address'),
                   selector: (log: AuditLog) => log.ip_address || '—',
                   width: '130px',
                   cell: (log: AuditLog) => (
@@ -617,7 +618,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Action',
+                  name: t('action_column', 'Action'),
                   selector: (log: AuditLog) => log.action,
                   sortable: true,
                   grow: 1,
@@ -637,14 +638,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     type="text"
                     value={loginSearch}
                     onChange={(e) => setLoginSearch(e.target.value)}
-                    placeholder="Search by user or action..."
+                    placeholder={t('search_by_user_or_action_placeholder', 'Search by user or action...')}
                     className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               }
               customStyles={customStyles}
               noDataComponent={
-                <div className="text-center p-8 text-slate-400">No login events recorded yet. Login attempts will appear here.</div>
+                <div className="text-center p-8 text-slate-400">{t('no_login_events_message', 'No login events recorded yet. Login attempts will appear here.')}</div>
               }
             />
           </div>
@@ -657,15 +658,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-blue-600" />
-              <span>Staff Activity & Operational Audit Trail</span>
+              <span>{t('staff_activity_operational_audit_heading', 'Staff Activity & Operational Audit Trail')}</span>
             </h3>
-            <span className="font-mono text-slate-400 font-bold text-xs">{logs.length} Activity Log Entries</span>
+            <span className="font-mono text-slate-400 font-bold text-xs">{logs.length} {t('activity_log_entries_count_label', 'Activity Log Entries')}</span>
           </div>
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <DataTable
               columns={[
                 {
-                  name: 'Log ID',
+                  name: t('log_id_column', 'Log ID'),
                   selector: (log: AuditLog) => log.id,
                   width: '100px',
                   cell: (log: AuditLog) => (
@@ -673,7 +674,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Timestamp',
+                  name: t('timestamp_column', 'Timestamp'),
                   selector: (log: AuditLog) => log.timestamp,
                   sortable: true,
                   width: '170px',
@@ -682,7 +683,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'User',
+                  name: t('user_column', 'User'),
                   selector: (log: AuditLog) => log.user,
                   sortable: true,
                   width: '140px',
@@ -691,7 +692,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Status',
+                  name: t('status_column', 'Status'),
                   selector: (log: AuditLog) => log.status || 'Success',
                   sortable: true,
                   width: '110px',
@@ -706,7 +707,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Module',
+                  name: t('module_column', 'Module'),
                   selector: (log: AuditLog) => log.module || '—',
                   sortable: true,
                   width: '120px',
@@ -715,7 +716,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   ),
                 },
                 {
-                  name: 'Action Description',
+                  name: t('action_description_column', 'Action Description'),
                   selector: (log: AuditLog) => log.action,
                   sortable: true,
                   grow: 1,
@@ -735,14 +736,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     type="text"
                     value={auditSearch}
                     onChange={(e) => setAuditSearch(e.target.value)}
-                    placeholder="Search by action or module..."
+                    placeholder={t('search_by_action_or_module_placeholder', 'Search by action or module...')}
                     className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               }
               customStyles={customStyles}
               noDataComponent={
-                <div className="text-center p-8 text-slate-400">No audit trail records found.</div>
+                <div className="text-center p-8 text-slate-400">{t('no_audit_records_message', 'No audit trail records found.')}</div>
               }
             />
           </div>
@@ -758,10 +759,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
               <div>
                 <h3 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                  <span>Modify Bill & Audit: {editingReceipt.guestName} ({editingReceipt.checkoutDate || 'Stay'})</span>
+                  <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({editingReceipt.checkoutDate || 'Stay'})</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.
+                  {t('modify_bill_audit_subtitle', 'Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.')}
                 </p>
               </div>
               <button
@@ -783,13 +784,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
                       <Home className="w-4 h-4 text-emerald-600" />
-                      <span>ACCOMMODATION INVOICE BREAKDOWN</span>
+                      <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          BASE LODGING CHARGES (CONTRACT)
+                          {t('base_lodging_charges_contract_label', 'BASE LODGING CHARGES (CONTRACT)')}
                         </label>
                         <input
                           type="number"
@@ -804,7 +805,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                       <div>
                         <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          ADVANCE DEPOSIT PAID (₹)
+                          {t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
                         </label>
                         <input
                           type="number"
@@ -820,7 +821,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">ADVANCE COLLECTED BY</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('advance_collected_by_label', 'ADVANCE COLLECTED BY')}</label>
                         <StyledSelect
                           value={editingReceipt.advanceCollectedBy || 'Tarpan'}
                           onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, advanceCollectedBy: val }) : null)}
@@ -835,7 +836,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">PENDING TARIFF COLLECTED BY</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('pending_tariff_collected_by_label', 'PENDING TARIFF COLLECTED BY')}</label>
                         <StyledSelect
                           value={editingReceipt.tariffCollectedBy || 'Kamlesh'}
                           onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, tariffCollectedBy: val }) : null)}
@@ -850,7 +851,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">INCIDENTALS CASHIER</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('incidentals_cashier_label', 'INCIDENTALS CASHIER')}</label>
                         <StyledSelect
                           value={editingReceipt.incidentalsCashier || 'Subrata'}
                           onChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, incidentalsCashier: val }) : null)}
@@ -870,7 +871,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
                       <Utensils className="w-4 h-4 text-emerald-600" />
-                      <span>FOOD ORDERS & INCIDENTALS LOG</span>
+                      <span>{t('food_orders_incidentals_log_heading', 'FOOD ORDERS & INCIDENTALS LOG')}</span>
                     </h4>
 
                     {/* Insert Food Item Bar */}
@@ -879,7 +880,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         className="flex-1 w-full"
                         value={selectedDish}
                         onChange={setSelectedDish}
-                        placeholder="-- Choose Menu Dish --"
+                        placeholder={t('audit_choose_menu_dish_placeholder', '-- Choose Menu Dish --')}
                         options={defaultMenuCatalog.map((item) => ({
                           value: item.name,
                           label: `${item.name} (₹${item.price})`,
@@ -899,7 +900,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         onClick={handleAddFoodItem}
                         className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
                       >
-                        + Insert
+                        + {t('audit_insert_button', 'Insert')}
                       </button>
                     </div>
 
@@ -908,9 +909,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                           <tr>
-                            <th className="p-2.5">Description Item</th>
-                            <th className="p-2.5 text-center">Quantity</th>
-                            <th className="p-2.5 text-right">Total</th>
+                            <th className="p-2.5">{t('description_item_column', 'Description Item')}</th>
+                            <th className="p-2.5 text-center">{t('quantity_label', 'Quantity')}</th>
+                            <th className="p-2.5 text-right">{t('total_column', 'Total')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -945,7 +946,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                           ) : (
                             <tr>
                               <td colSpan={3} className="p-4 text-center text-slate-400 italic">
-                                No food incidentals recorded for this bill.
+                                {t('no_food_incidentals_message', 'No food incidentals recorded for this bill.')}
                               </td>
                             </tr>
                           )}
@@ -954,7 +955,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div className="text-right text-xs font-bold text-slate-600 dark:text-slate-300">
-                      Incidentals Bill Subtotal: <span className="text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                      {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -967,11 +968,11 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
                       <PlusCircle className="w-4 h-4 text-emerald-600" />
-                      <span>ADD CUSTOM ADJUSTMENTS</span>
+                      <span>{t('audit_add_custom_adjustments_heading', 'ADD CUSTOM ADJUSTMENTS')}</span>
                     </h4>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">STRATEGY TYPE</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('audit_strategy_type_label', 'STRATEGY TYPE')}</label>
                       <StyledSelect
                         value={adjType}
                         onChange={setAdjType}
@@ -984,10 +985,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">LABEL DESCRIPTION</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('label_description_label', 'LABEL DESCRIPTION')}</label>
                       <input
                         type="text"
-                        placeholder="e.g., Service Apology..."
+                        placeholder={t('service_apology_placeholder', 'e.g., Service Apology...')}
                         value={adjLabel}
                         onChange={(e) => setAdjLabel(e.target.value)}
                         className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-medium"
@@ -995,7 +996,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">AMOUNT (₹)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('amount_rupees_label', 'AMOUNT (₹)')}</label>
                       <input
                         type="number"
                         placeholder="0.00"
@@ -1010,7 +1011,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       onClick={handleApplyAdjustment}
                       className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs transition-colors"
                     >
-                      Apply Active Adjustment
+                      {t('apply_active_adjustment_button', 'Apply Active Adjustment')}
                     </button>
                   </div>
 
@@ -1018,11 +1019,11 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 space-y-2">
                     <h4 className="font-extrabold text-amber-800 dark:text-amber-400 text-xs flex items-center gap-1.5 uppercase tracking-wide">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
-                      <span>CHECKOUT MODIFICATIONS AUDIT TRAIL</span>
+                      <span>{t('checkout_modifications_audit_heading', 'CHECKOUT MODIFICATIONS AUDIT TRAIL')}</span>
                     </h4>
                     <div className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
                       {auditTrailList.length === 0 ? (
-                        <p className="italic text-slate-400">No last-minute modifications recorded for this sheet.</p>
+                        <p className="italic text-slate-400">{t('no_last_minute_modifications_message', 'No last-minute modifications recorded for this sheet.')}</p>
                       ) : (
                         <ul className="space-y-1 list-disc list-inside">
                           {auditTrailList.map((log, i) => (
@@ -1037,28 +1038,28 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
                       <CreditCard className="w-4 h-4 text-emerald-600" />
-                      <span>FINAL FINANCIAL POSITION</span>
+                      <span>{t('final_financial_position_heading', 'FINAL FINANCIAL POSITION')}</span>
                     </h4>
 
                     <div className="space-y-2 text-xs font-bold border-b border-slate-200 dark:border-slate-700 pb-3">
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                        <span>Stay Rent Outstanding Balance:</span>
+                        <span>{t('stay_rent_outstanding_balance_label', 'Stay Rent Outstanding Balance:')}</span>
                         <span className="font-extrabold text-slate-900 dark:text-white">₹{calculatedStayRent.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                        <span>Food & Extras Subtotal:</span>
+                        <span>{t('food_extras_subtotal_label', 'Food & Extras Subtotal:')}</span>
                         <span className="font-extrabold text-cyan-600">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-sm font-extrabold">
-                      <span className="text-slate-900 dark:text-white">Total Outstanding Target:</span>
+                      <span className="text-slate-900 dark:text-white">{t('total_outstanding_target_label', 'Total Outstanding Target:')}</span>
                       <span className="text-emerald-600 text-base font-black">₹{calculatedGrandTotal.toFixed(2)}</span>
                     </div>
 
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">
-                      <p className="font-bold uppercase text-slate-400 mb-0.5">ORIGINAL SPLIT PAYOUT BREAKDOWN</p>
-                      <p className="italic">Legacy payment route or not recorded.</p>
+                      <p className="font-bold uppercase text-slate-400 mb-0.5">{t('original_split_payout_breakdown_heading', 'ORIGINAL SPLIT PAYOUT BREAKDOWN')}</p>
+                      <p className="italic">{t('legacy_payment_route_message', 'Legacy payment route or not recorded.')}</p>
                     </div>
                   </div>
 
@@ -1073,14 +1074,14 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   onClick={() => setEditingReceipt(null)}
                   className="px-5 py-2.5 font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-xl cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                 >
-                  Cancel
+                  {t('cancel_button', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-6 py-2.5 font-bold text-white bg-blue-600 rounded-xl cursor-pointer hover:bg-blue-700 flex items-center gap-1.5 shadow-md transition-colors"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save Modifications & Audit Log</span>
+                  <span>{t('save_modifications_audit_log_button', 'Save Modifications & Audit Log')}</span>
                 </button>
               </div>
             </form>
