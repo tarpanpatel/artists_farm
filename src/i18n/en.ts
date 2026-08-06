@@ -1013,6 +1013,31 @@ export const strings: Record<string, string> = {
   next_button: "Next",
   finish_button: "Finish",
   skip_for_now_button: "Skip for now",
+
+  // Billing Checkout
+  guest_billing_checkout_title: "Guest Billing & Checkout",
+  today_tab: "Today",
+  upcoming_tab: "Upcoming",
+  past_bookings_tab: "Past Bookings",
+  search_guest_placeholder: "Search guest name, phone, or room...",
+  filter_room_all_label: "Filter Room: All",
+  no_guest_records_found: "No Guest Records Found",
+  no_guest_records_description: "No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.",
+  checked_in_today_badge: "Checked In Today",
+  checkout_today_badge: "Checkout Today",
+  upcoming_booking_badge: "Upcoming Booking",
+  past_booking_badge: "Past Booking",
+  no_contact: "No contact",
+  same_day_stay: "Same day stay",
+  tomorrow_label: "Tomorrow",
+  room_charges_label: "Room Charges:",
+  food_incidentals_label: "Food & Incidentals:",
+  less_advance_paid_label: "Less: Advance Paid",
+  refund_due_to_guest_label: "Refund Due to Guest:",
+  amount_due_label: "Amount Due:",
+  checkout_button: "Checkout",
+  edit_booking_button: "Edit Booking",
+  notes_prefix: "Notes:",
 };
 
 export function t(key: string, fallback: string): string {

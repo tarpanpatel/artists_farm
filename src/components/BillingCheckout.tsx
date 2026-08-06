@@ -12,6 +12,7 @@ import {
   Building,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
+import { t } from '../i18n/en';
 import { useToast } from './ToastContext';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { StyledSelect } from './StyledSelect';
@@ -124,13 +125,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const getGuestStayStatus = (guest: Guest) => {
     const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
-      return { key: 'staying', label: 'Checked In Today', color: 'bg-emerald-600 text-white dark:bg-emerald-600' };
+      return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), color: 'bg-emerald-600 text-white dark:bg-emerald-600' };
     } else if (cat === 'checkout_today') {
-      return { key: 'checkout', label: 'Checkout Today', color: 'bg-amber-600 text-white dark:bg-amber-600' };
+      return { key: 'checkout', label: t('checkout_today_badge', 'Checkout Today'), color: 'bg-amber-600 text-white dark:bg-amber-600' };
     } else if (cat === 'upcoming') {
-      return { key: 'upcoming', label: 'Upcoming Booking', color: 'bg-blue-600 text-white dark:bg-blue-600' };
+      return { key: 'upcoming', label: t('upcoming_booking_badge', 'Upcoming Booking'), color: 'bg-blue-600 text-white dark:bg-blue-600' };
     } else {
-      return { key: 'past', label: 'Past Booking', color: 'bg-purple-600 text-white dark:bg-purple-600' };
+      return { key: 'past', label: t('past_booking_badge', 'Past Booking'), color: 'bg-purple-600 text-white dark:bg-purple-600' };
     }
   };
 
@@ -180,7 +181,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // Room filter dropdown options
   const roomOptions = useMemo(() => {
     return [
-      { value: 'all', label: 'Filter Room: All' },
+      { value: 'all', label: t('filter_room_all_label', 'Filter Room: All') },
       ...rooms.map((r) => ({ value: r.name, label: `Room: ${r.name}` })),
     ];
   }, [rooms]);
@@ -312,7 +313,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       .sort()
       .map((dateStr) => ({
         dateStr,
-        label: dateStr === tomorrowStr ? 'Tomorrow' : formatDate(dateStr),
+        label: dateStr === tomorrowStr ? t('tomorrow_label', 'Tomorrow') : formatDate(dateStr),
         roomGroups: buildRoomGroups(byDate.get(dateStr)!),
       }));
   }, [activeTab, searchedGuests, rooms, selectedRoomFilter, todayStr]);
@@ -408,7 +409,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
-                const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : 'Same day stay';
+                const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : t('same_day_stay', 'Same day stay');
                 const stayStatus = getGuestStayStatus(guest);
                 const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
 
@@ -425,7 +426,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             {guest.guestName}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {guest.phoneNumber || 'No contact'}
+                            {guest.phoneNumber || t('no_contact', 'No contact')}
                           </p>
                         </div>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
@@ -449,25 +450,25 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     <div className="space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
                       {guest.roomRate ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                          <span>Room Charges:</span>
+                          <span>{t('room_charges_label', 'Room Charges:')}</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.roomRate.toFixed(2)}</span>
                         </div>
                       ) : null}
                       {guest.foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                          <span>Food & Incidentals:</span>
+                          <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
                         </div>
                       )}
                       {guest.advanceAmount > 0 && (
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-[11px]">
-                          <span>Less: Advance Paid</span>
+                          <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
                           <span className="font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
                         <span className="text-slate-700 dark:text-slate-300">
-                          {amountDue < 0 ? 'Refund Due to Guest:' : 'Amount Due:'}
+                          {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
                         <span className={amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}>
                           ₹{Math.abs(amountDue).toFixed(2)}
@@ -484,7 +485,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Edit
+                          {t('edit_button', 'Edit')}
                         </button>
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
@@ -492,7 +493,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
-                          Checkout
+                          {t('checkout_button', 'Checkout')}
                         </button>
                       </div>
                     ) : (
@@ -503,7 +504,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Edit Booking
+                          {t('edit_booking_button', 'Edit Booking')}
                         </button>
                       </div>
                     )}
@@ -513,7 +514,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <div className="p-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg flex gap-1.5 text-[10px]">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                         <p className="text-amber-800 dark:text-amber-200 line-clamp-2">
-                          <span className="font-bold">Notes:</span> {guest.notes}
+                          <span className="font-bold">{t('notes_prefix', 'Notes:')}</span> {guest.notes}
                         </p>
                       </div>
                     )}
@@ -533,7 +534,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-6">
         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
           <Receipt className="w-7 h-7 text-blue-600" />
-          Guest Billing & Checkout
+          {t('guest_billing_checkout_title', 'Guest Billing & Checkout')}
         </h2>
       </div>
 
@@ -549,7 +550,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            <span>Today</span>
+            <span>{t('today_tab', 'Today')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'today' ? 'bg-white/20 text-white font-extrabold' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold'}`}>
               {tabCounts.today}
             </span>
@@ -563,7 +564,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            <span>Upcoming</span>
+            <span>{t('upcoming_tab', 'Upcoming')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-white/20 text-white font-extrabold' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-bold'}`}>
               {tabCounts.upcoming}
             </span>
@@ -577,7 +578,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            <span>Past Bookings</span>
+            <span>{t('past_bookings_tab', 'Past Bookings')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'past_bookings' ? 'bg-white/20 text-white font-extrabold' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold'}`}>
               {tabCounts.past_bookings}
             </span>
@@ -590,7 +591,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search guest name, phone, or room..."
+              placeholder={t('search_guest_placeholder', 'Search guest name, phone, or room...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 outline-none"
@@ -629,10 +630,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-12 text-center">
           <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">
-            No Guest Records Found
+            {t('no_guest_records_found', 'No Guest Records Found')}
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.
+            {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
           </p>
         </div>
       )}
