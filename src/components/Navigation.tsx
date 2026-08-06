@@ -85,7 +85,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   multiKeyRooms,
   kitchenModuleEnabled = true,
 }) => {
-  const { activeRole, logout } = useAuth();
+  const { activeRole, logout, currentUser } = useAuth();
   const { lowStockCount, requisitions } = useInventoryContext();
   const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -273,7 +273,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           >
             <div className="flex items-center gap-2.5 truncate">
               <ItemIcon className={`w-4 h-4 shrink-0 ${depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
-              <span className="truncate">{node.title}</span>
+              <span className="truncate">{t(node.uniqueKey || node.tabKey || '', node.title)}</span>
             </div>
             <div className="flex items-center gap-1">
               {badge && (
@@ -326,7 +326,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'
             }`}
           />
-          <span className="truncate">{node.title}</span>
+          <span className="truncate">{t(node.uniqueKey || node.tabKey || '', node.title)}</span>
         </div>
         {badge && (
           <span
@@ -423,7 +423,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
             <div className="space-y-1">
               <div className="px-3 pb-2 mb-2 border-b border-gray-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
-                Hello, Tarpan
+                Hello, {currentUser?.name || 'there'}
               </div>
 
 
