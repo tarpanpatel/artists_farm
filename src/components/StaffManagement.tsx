@@ -536,12 +536,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-500" /> Property Payroll & Payee Control Center
+              <Users className="w-5 h-5 text-indigo-500" /> {t('payroll_control_center_heading', 'Property Payroll & Payee Control Center')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isAttendancePage
-                ? 'Track staff attendance and manage salary details.'
-                : 'Manage login staff credentials, core operational suppliers, and pass-through third parties.'}
+                ? t('attendance_page_subtitle', 'Track staff attendance and manage salary details.')
+                : t('staff_payee_subtitle', 'Manage login staff credentials, core operational suppliers, and pass-through third parties.')}
             </p>
           </div>
 
@@ -600,7 +600,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-indigo-600 pl-2.5">
-                  Active System Users & Staff
+                  {t('active_system_users_heading', 'Active System Users & Staff')}
                 </h3>
                 <div className="flex items-center gap-3">
                   {tenantId && (
@@ -608,62 +608,62 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <p className="text-xs text-white font-bold">Tenant ID: <span className="font-mono text-sm">{tenantId}</span></p>
                     </div>
                   )}
-                  <span className="text-xs text-slate-400 font-mono">{users.length} Registered</span>
+                  <span className="text-xs text-slate-400 font-mono">{users.length} {t('registered_suffix', 'Registered')}</span>
                 </div>
               </div>
 
               <DataTable
                 columns={[
                   {
-                    name: 'Staff Name',
+                    name: t('staff_name_label', 'Staff Name'),
                     selector: (row: any) => row.fullName,
                     sortable: true,
                     cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.fullName}</span>,
                   },
                   {
-                    name: 'Username',
+                    name: t('username_column', 'Username'),
                     selector: (row: any) => row.username,
                     sortable: true,
                     width: '130px',
                     cell: (row: any) => <span className="font-mono text-slate-500 dark:text-slate-400">{row.username}</span>,
                   },
                   {
-                    name: 'Role Group',
+                    name: t('role_group_column', 'Role Group'),
                     selector: (row: any) => row.role,
                     sortable: true,
                     width: '150px',
                     cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-bold text-[10px]">{row.role}</span>,
                   },
                   {
-                    name: 'Dropdown Status',
+                    name: t('cash_handling_column', 'Cash Handling'),
                     selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
                     sortable: true,
                     center: true,
                     width: '150px',
                     cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-semibold">💳 Cash Handler</span>
+                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
                     ) : (
-                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">No Finances</span>
+                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
                     ),
                   },
                   {
-                    name: 'UPI QR Code',
+                    name: t('upi_qr_code_column', 'UPI QR Code'),
                     center: true,
                     width: '130px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">📸 View QR</button>
+                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">{t('view_qr_button', '📸 View QR')}</button>
                     ) : (
-                      <span className="text-slate-400 italic text-[11px]">None</span>
+                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
                     ),
                   },
                   {
-                    name: 'Actions',
+                    name: t('actions_column', 'Actions'),
                     right: true,
                     width: '120px',
                     cell: (row: any) => currentUser?.id === row.id ? (
-                      <span className="text-slate-400 italic text-[11px]">Active Session</span>
+                      <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
                     ) : (
-                      <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">Delete</button>
+                      <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
                     ),
                   },
                 ]}
@@ -685,7 +685,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   rows: { style: { minHeight: '52px' } },
                 }}
                 noDataComponent={
-                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No system users registered.</div>
+                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
                 }
               />
             </div>
@@ -694,48 +694,48 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-orange-500 pl-2.5">
-                  Registered Payees (Vendors & Third Parties)
+                  {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
                 </h3>
-                <span className="text-xs text-slate-400 font-mono">{payees.length} Vendors</span>
+                <span className="text-xs text-slate-400 font-mono">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
               </div>
 
               <DataTable
                 columns={[
                   {
-                    name: 'Payee Entity Title',
+                    name: t('payee_name_column', 'Payee Name'),
                     selector: (row: any) => row.name,
                     sortable: true,
                     cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.name}</span>,
                   },
                   {
-                    name: 'Classification',
+                    name: t('classification_column', 'Classification'),
                     selector: (row: any) => row.type,
                     sortable: true,
                     width: '150px',
                     cell: (row: any) => row.type === 'Vendor' ? (
-                      <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2 py-0.5 rounded font-bold text-[10px]">Vendor</span>
+                      <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2 py-0.5 rounded font-bold text-[10px]">{t('vendor_badge', 'Vendor')}</span>
                     ) : (
-                      <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-bold text-[10px]">Third Party</span>
+                      <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-bold text-[10px]">{t('third_party_badge', 'Third Party')}</span>
                     ),
                   },
                   {
-                    name: 'UPI QR Code',
+                    name: t('upi_qr_code_column', 'UPI QR Code'),
                     center: true,
                     width: '130px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">📸 View QR</button>
+                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">{t('view_qr_button', '📸 View QR')}</button>
                     ) : (
-                      <span className="text-slate-400 italic text-[11px]">None</span>
+                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
                     ),
                   },
                   {
-                    name: 'Actions',
+                    name: t('actions_column', 'Actions'),
                     right: true,
                     width: '130px',
                     cell: (row: any) => (
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setEditingPayee(row)} className="text-sky-600 hover:text-sky-700 font-bold text-[11px] cursor-pointer">Edit</button>
-                        <button onClick={() => handleDeletePayee(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">Delete</button>
+                        <button onClick={() => setEditingPayee(row)} className="text-sky-600 hover:text-sky-700 font-bold text-[11px] cursor-pointer">{t('edit_button', 'Edit')}</button>
+                        <button onClick={() => handleDeletePayee(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
                       </div>
                     ),
                   },
@@ -797,7 +797,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {userFormTab === 'create' ? (
                   <form onSubmit={handleCreateUser} className="space-y-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Name</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
                       <input
                         type="text"
                         required
@@ -809,7 +809,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                         <input
                           type="tel"
                           required
@@ -821,7 +821,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">6-Digit Passcode PIN</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('six_digit_passcode_label', '6-Digit Passcode PIN')}</label>
                         <input
                           type="password"
                           required
@@ -856,7 +856,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Payment QR Code Image (Optional)</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -881,7 +881,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 ) : (
                   <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Select Staff Target Account</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('select_staff_target_account_label', 'Select Staff Target Account')}</label>
                       <StyledSelect
                         value={selectedUpdateUserId}
                         onChange={(uid) => {
@@ -900,7 +900,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Staff Name</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
                         <input
                           type="text"
                           value={updateFullName}
@@ -910,7 +910,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Phone Number (Login Username)</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                         <input
                           type="tel"
                           maxLength={10}
@@ -923,7 +923,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New 6-Digit Passcode PIN (Leave blank to keep current)</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
                         <input
                           type="password"
                           maxLength={6}
@@ -936,7 +936,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">New System Role</label>
+                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('new_system_role_label', 'New System Role')}</label>
                         <StyledSelect
                           value={updateRole}
                           onChange={(val) => setUpdateRole(val as any)}
@@ -958,7 +958,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Replace Payment QR Code Image</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -994,7 +994,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <form onSubmit={handleCreatePayee} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Payee Account Name</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('payee_account_name_label', 'Payee Account Name')}</label>
                       <input
                         type="text"
                         required
@@ -1006,7 +1006,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Classification Group</label>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('classification_group_label', 'Classification Group')}</label>
                       <StyledSelect
                         value={newPayeeType}
                         onChange={(val) => setNewPayeeType(val as any)}
@@ -1019,7 +1019,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">Upload UPI QR Image Screenshot</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot')}</label>
                     <input
                       type="file"
                       accept="image/*"
@@ -1080,7 +1080,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-emerald-700 flex items-center justify-center text-[10px]">P</span>
-                  <span>Mark Present (P)</span>
+                  <span>{t('mark_present_label', 'Mark Present (P)')}</span>
                 </button>
 
                 <button
@@ -1089,7 +1089,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-red-700 flex items-center justify-center text-[10px]">A</span>
-                  <span>Mark Absent (A)</span>
+                  <span>{t('mark_absent_label', 'Mark Absent (A)')}</span>
                 </button>
 
                 <button
@@ -1098,7 +1098,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-indigo-700 flex items-center justify-center text-[10px]">L</span>
-                  <span>Mark Leave / Half Day (L)</span>
+                  <span>{t('mark_leave_halfday_label', 'Mark Leave / Half Day (L)')}</span>
                 </button>
 
                 <button
@@ -1106,7 +1106,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   onClick={() => applyBulkStatus('Clear')}
                   className="bg-slate-600 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
-                  <span>Clear Status (-)</span>
+                  <span>{t('clear_status_label', 'Clear Status (-)')}</span>
                 </button>
               </div>
             </div>
@@ -1241,7 +1241,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
               <h3 className="font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
                 <IndianRupee className="w-4 h-4" />
-                Monthly Payout Calculator
+                {t('monthly_payout_calculator_heading', 'Monthly Payout Calculator')}
               </h3>
               <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full">
                 {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -1412,7 +1412,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             {/* Advances History for this month */}
             {monthAdvances.length > 0 && (
               <div className="border-t border-amber-200 dark:border-amber-800/40 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Advances This Month</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">{t('advances_this_month_label', 'Advances This Month')}</p>
                 <div className="space-y-1">
                   {monthAdvances.map((adv) => (
                     <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
@@ -1446,10 +1446,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-xs p-5 transition-colors space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm">
-              Staff Member Directory & Payroll Breakdown
+              {t('staff_directory_payroll_heading', 'Staff Member Directory & Payroll Breakdown')}
             </h3>
             <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
-              Total Payroll: ₹{totalPayroll.toLocaleString('en-IN')} / mo
+              {t('total_payroll_label', 'Total Payroll:')} ₹{totalPayroll.toLocaleString('en-IN')} / mo
             </span>
           </div>
 
@@ -1531,11 +1531,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 width: '130px',
                 cell: (row: any) => editingStaffId === row.id ? (
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Save</button>
-                    <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Cancel</button>
+                    <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">{t('save_button', 'Save')}</button>
+                    <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
                   </div>
                 ) : (
-                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">Edit</button>
+                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer">{t('edit_button', 'Edit')}</button>
                 ),
               }] : []),
             ]}
@@ -1579,7 +1579,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
-            <h4 className="font-bold text-slate-900 text-sm">Registered QR Code</h4>
+            <h4 className="font-bold text-slate-900 text-sm">{t('registered_qr_code_heading', 'Registered QR Code')}</h4>
             <div className="rounded-xl overflow-hidden border border-slate-200 p-2 bg-slate-50">
               <img src={lightboxUrl} alt="QR Code" className="w-full h-auto rounded-lg" />
             </div>
@@ -1592,12 +1592,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl text-xs">
             <h3 className="font-bold text-slate-900 text-sm border-l-3 border-sky-600 pl-2">
-              Edit Payee Account Settings
+              {t('edit_payee_settings_heading', 'Edit Payee Account Settings')}
             </h3>
 
             <form onSubmit={handleUpdatePayeeSave} className="space-y-3">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Payee Account Name</label>
+                <label className="block text-slate-700 font-bold mb-1">{t('payee_account_name_label', 'Payee Account Name')}</label>
                 <input
                   type="text"
                   required
@@ -1608,7 +1608,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Classification Type</label>
+                <label className="block text-slate-700 font-bold mb-1">{t('classification_type_label', 'Classification Type')}</label>
                 <StyledSelect
                   value={editingPayee.type}
                   onChange={(val) => setEditingPayee({ ...editingPayee, type: val as any })}
@@ -1662,7 +1662,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-gray-200 dark:border-slate-700 shadow-2xl p-6 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 pb-3">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Add New Staff Member</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('add_new_staff_member_heading', 'Add New Staff Member')}</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
@@ -1673,7 +1673,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <form onSubmit={handleAddStaffSubmit} className="space-y-3">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Staff Name *</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('staff_name_required_label', 'Staff Name *')}</label>
                 <input
                   type="text"
                   required
@@ -1685,7 +1685,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Role</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('team_role', 'Team Role')}</label>
                 <StyledSelect
                   value={role}
                   onChange={(val) => setRole(val as any)}
@@ -1694,7 +1694,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Phone Number (Login Username) *</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('phone_login_username_required_label', 'Phone Number (Login Username) *')}</label>
                 <input
                   type="tel"
                   required
@@ -1707,7 +1707,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">6-Digit Passcode PIN *</label>
+                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}</label>
                 <input
                   type="password"
                   required
@@ -1754,7 +1754,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Give Advance — {advanceStaff.name}</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</h3>
               <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
@@ -1773,7 +1773,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reason</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('reason_label', 'Reason')}</label>
               <input
                 type="text"
                 value={advanceReason}
