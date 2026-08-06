@@ -1655,8 +1655,6 @@ export const strings: Record<string, string> = {
   checkout_pill_label: "CHECKOUT",
   previous_month_tooltip: "Previous month",
   next_month_tooltip: "Next month",
-  save_button: "Save",
-  close_button: "Close",
   complete_checkin_heading_prefix: "Complete Check-in —",
   id_documents_required_text: "ID document",
   extra_photo_label: "Extra Photo",
@@ -1666,13 +1664,10 @@ export const strings: Record<string, string> = {
   uploaded_suffix: "uploaded",
   extra_uploaded_suffix: "extra",
   no_expense_items_loaded_text: "No expense items loaded yet. Visit Root Admin → Default Expenses (MK) → click Sync Defaults to populate all 20 categories.",
-  select_checkin_date_title: "Select Check-In Date",
-  select_checkout_date_title: "Select Check-Out Date",
   check_in_label: "Check-in:",
   check_out_label: "Check-out:",
   port_placeholder: "587",
   password_dots_placeholder: "••••••••",
-  saved_badge: "Saved",
   failed_to_save_text: "Failed to save",
 };
 
