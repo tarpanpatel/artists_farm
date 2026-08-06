@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, GripVertical, Loader, AlertCircle, BarChart3, Users, DollarSign, TrendingUp, ChevronLeft } from 'lucide-react';
 import { navigateToRoomHash } from '../services/api';
+import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertySetupWizard } from './PropertySetupWizard';
@@ -238,9 +239,9 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
   const handleDeleteRoom = async (roomId: number) => {
     const confirmed = await confirm({
-      title: 'Delete Room',
-      message: 'Delete this room? All present and future bookings associated with this room will be deleted. Past bookings and their billing records will stay intact.',
-      confirmText: 'Delete Room',
+      title: t('delete_room_confirm_title', 'Delete Room'),
+      message: t('delete_room_confirm_message', 'Delete this room? All present and future bookings associated with this room will be deleted. Past bookings and their billing records will stay intact.'),
+      confirmText: t('delete_room_confirm_button', 'Delete Room'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -275,7 +276,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading property...</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('loading_property_label', 'Loading property...')}</p>
         </div>
       </div>
     );
@@ -286,7 +287,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
-          <p className="text-red-600 dark:text-red-400">Property not found</p>
+          <p className="text-red-600 dark:text-red-400">{t('property_not_found_label', 'Property not found')}</p>
         </div>
       </div>
     );
@@ -304,11 +305,11 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             className="flex items-center gap-2 px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Dashboard
+            {t('back_to_dashboard_label', 'Back to Dashboard')}
           </button>
           <div className="text-center py-8">
             <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
-            <p className="text-red-600 dark:text-red-400">Room not found</p>
+            <p className="text-red-600 dark:text-red-400">{t('room_not_found_label', 'Room not found')}</p>
           </div>
         </div>
       );
@@ -433,7 +434,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{property.name}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{property.address || 'No address'}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
         </div>
       </div>
       )}
@@ -445,7 +446,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <div className="flex items-center gap-3">
               <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-60" />
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Total Rooms</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('total_rooms_label', 'Total Rooms')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{overview.total_rooms}</p>
               </div>
             </div>
@@ -455,7 +456,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <div className="flex items-center gap-3">
               <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400 opacity-60" />
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Occupied</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('occupied_label', 'Occupied')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{overview.total_occupied}</p>
               </div>
             </div>
@@ -465,7 +466,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <div className="flex items-center gap-3">
               <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-60" />
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Occupancy</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('occupancy_label', 'Occupancy')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{overview.occupancy_rate}%</p>
               </div>
             </div>
@@ -475,7 +476,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <div className="flex items-center gap-3">
               <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400 opacity-60" />
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Revenue</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{t('revenue_label', 'Revenue')}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
               </div>
             </div>
@@ -486,7 +487,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       {/* Rooms List */}
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rooms</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('rooms_heading', 'Rooms')}</h2>
           <div className="flex items-center gap-3">
             {slotUsage && (
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -500,11 +501,11 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <button
               onClick={() => setShowAddRoomModal(true)}
               disabled={property.room_count >= 10 || (!!slotUsage && slotUsage.remaining_slots <= 0)}
-              title={!!slotUsage && slotUsage.remaining_slots <= 0 ? "You've used all the units on your plan - upgrade to add more" : undefined}
+              title={!!slotUsage && slotUsage.remaining_slots <= 0 ? t('units_exhausted_tooltip', "You've used all the units on your plan - upgrade to add more") : undefined}
               className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add New Unit
+              {t('add_new_unit_button', 'Add New Unit')}
             </button>
           </div>
         </div>
@@ -513,7 +514,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
           <div className="flex items-start gap-3 p-3 mb-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 dark:text-amber-300">
-              No units yet. Add your first room to start taking bookings.
+              {t('no_units_yet_description', 'No units yet. Add your first room to start taking bookings.')}
             </p>
           </div>
         )}
@@ -543,7 +544,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                           : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
                       }`}
                     >
-                      {status === 'booked' ? 'Booked' : 'Available'}
+                      {status === 'booked' ? t('booked_badge', 'Booked') : t('available_badge', 'Available')}
                     </span>
                     {roomData && (
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
@@ -557,14 +558,14 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       onClick={() => onNavigateToRoom?.(room.slug)}
                       className="flex-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
                     >
-                      Manage
+                      {t('manage_button', 'Manage')}
                     </button>
 
                     <button
                       onClick={() => handleDeleteRoom(room.id)}
                       disabled={deletingRoom === room.id}
                       className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
-                      title="Delete room"
+                      title={t('delete_room_tooltip', 'Delete Room')}
                     >
                       {deletingRoom === room.id ? (
                         <Loader className="w-4 h-4 animate-spin" />
@@ -584,18 +585,18 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       {showAddRoomModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add New Room</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
 
             {property.room_count >= 10 && (
               <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded">
-                <p className="text-sm text-red-800 dark:text-red-300">Maximum 10 rooms allowed</p>
+                <p className="text-sm text-red-800 dark:text-red-300">{t('max_rooms_allowed_message', 'Maximum 10 rooms allowed')}</p>
               </div>
             )}
 
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Room Name *
+                  {t('room_name_label', 'Room Name *')}
                 </label>
                 <input
                   type="text"
@@ -609,20 +610,20 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       .replace(/^-|-$/g, '');
                     setNewRoom(prev => ({ ...prev, slug }));
                   }}
-                  placeholder="e.g., Suite A"
+                  placeholder={t('room_name_placeholder', 'e.g., Suite A')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Room Slug
+                  {t('room_slug_label', 'Room Slug')}
                 </label>
                 <input
                   type="text"
                   value={newRoom.slug}
                   onChange={(e) => setNewRoom({ ...newRoom, slug: e.target.value })}
-                  placeholder="e.g., suite-a"
+                  placeholder={t('room_slug_placeholder', 'e.g., suite-a')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
@@ -636,7 +637,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
               >
-                Cancel
+                {t('cancel_button', 'Cancel')}
               </button>
               <button
                 onClick={handleAddRoom}
@@ -646,10 +647,10 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                 {addingRoom ? (
                   <>
                     <Loader className="w-3 h-3 animate-spin" />
-                    Adding...
+                    {t('adding_room_button', 'Adding...')}
                   </>
                 ) : (
-                  'Add Room'
+                  t('add_room_button', 'Add Room')
                 )}
               </button>
             </div>

@@ -1038,6 +1038,33 @@ export const strings: Record<string, string> = {
   checkout_button: "Checkout",
   edit_booking_button: "Edit Booking",
   notes_prefix: "Notes:",
+
+  // Multi-Key Property Overview
+  loading_property_label: "Loading property...",
+  property_not_found_label: "Property not found",
+  back_to_dashboard_label: "Back to Dashboard",
+  room_not_found_label: "Room not found",
+  no_address_label: "No address",
+  total_rooms_label: "Total Rooms",
+  occupied_label: "Occupied",
+  occupancy_label: "Occupancy",
+  revenue_label: "Revenue",
+  rooms_heading: "Rooms",
+  units_exhausted_tooltip: "You've used all the units on your plan - upgrade to add more",
+  add_new_unit_button: "Add New Unit",
+  no_units_yet_description: "No units yet. Add your first room to start taking bookings.",
+  booked_badge: "Booked",
+  manage_button: "Manage",
+  add_new_room_title: "Add New Room",
+  max_rooms_allowed_message: "Maximum 10 rooms allowed",
+  room_name_label: "Room Name *",
+  room_name_placeholder: "e.g., Suite A",
+  room_slug_placeholder: "e.g., suite-a",
+  adding_room_button: "Adding...",
+  add_room_button: "Add Room",
+  delete_room_confirm_title: "Delete Room",
+  delete_room_confirm_message: "Delete this room? All present and future bookings associated with this room will be deleted. Past bookings and their billing records will stay intact.",
+  delete_room_confirm_button: "Delete Room",
 };
 
 export function t(key: string, fallback: string): string {
