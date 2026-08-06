@@ -44,10 +44,15 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $pdo->exec("INSERT IGNORE INTO nav_menu_items (id, property_id, title, tab_key, unique_key, category, icon_name, display_order) VALUES ('nav-history', 1, 'Guest History', 'guests', 'guest_history', 'Residents & Billing', 'History', 5)");
             } catch (Exception $e) {}
             try {
+                // A Single property has no separate "room" to assign - it IS the one
+                // bookable unit, so a guest there should show the property's own name,
+                // never "Unassigned" (which should only ever mean a Multi-Key guest
+                // genuinely hasn't had a room picked yet).
                 $stmt = $pdo->prepare("
-                    SELECT g.*, COALESCE(r.name, 'Unassigned') as roomNumber
+                    SELECT g.*, COALESCE(r.name, IF(p.property_type = 'SINGLE', p.name, 'Unassigned')) as roomNumber
                     FROM guests g
                     LEFT JOIN properties r ON g.room_id = r.id AND r.property_type = 'MULTI_KEY_ROOM'
+                    JOIN properties p ON g.property_id = p.id
                     WHERE g.property_id = ? AND (g.room_id IS NULL OR r.id IS NULL OR r.is_deleted = 0)
                     ORDER BY g.checkin_date DESC
                 ");
