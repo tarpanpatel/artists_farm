@@ -151,7 +151,7 @@ export const EmailSettingsPanel: React.FC = () => {
               inputMode="numeric"
               value={port}
               onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))}
-              placeholder="587"
+              placeholder={t('port_placeholder')}
               className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -174,7 +174,7 @@ export const EmailSettingsPanel: React.FC = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder={t('password_dots_placeholder')}
               className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -224,12 +224,12 @@ export const EmailSettingsPanel: React.FC = () => {
           </button>
           {saveStatus === 'success' && (
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+              <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
             </span>
           )}
           {saveStatus === 'error' && (
             <span className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5" /> Failed to save
+              <XCircle className="w-3.5 h-3.5" /> {t('failed_to_save_text')}
             </span>
           )}
 

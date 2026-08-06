@@ -1670,6 +1670,10 @@ export const strings: Record<string, string> = {
   select_checkout_date_title: "Select Check-Out Date",
   check_in_label: "Check-in:",
   check_out_label: "Check-out:",
+  port_placeholder: "587",
+  password_dots_placeholder: "••••••••",
+  saved_badge: "Saved",
+  failed_to_save_text: "Failed to save",
 };
 
 export function t(key: string, fallback?: string): string {
