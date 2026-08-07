@@ -1589,16 +1589,6 @@ ${itemsStr}
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <ErrorBoundary section="Property Setup Wizard">
-                      <PropertySetupWizard
-                        address={preloadedData.currentProperty?.address || ''}
-                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                        staffCount={staff.length}
-                        showRoomsStep={false}
-                        onSaveLocation={handleSavePropertyLocation}
-                        onGoToStaff={() => handleNavigateTab('staff', 'staff_payees_control')}
-                      />
-                    </ErrorBoundary>
                     <ErrorBoundary section="Operational Dashboard">
                       <OperationalDashboard
                         guests={guests}

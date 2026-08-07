@@ -4,7 +4,6 @@ import { navigateToRoomHash } from '../services/api';
 import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
-import { PropertySetupWizard } from './PropertySetupWizard';
 import { useConfirm } from './ConfirmDialogContext';
 
 interface Room {
@@ -414,21 +413,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
         </div>
       )}
 
-      {/* Setup checklist - dashboard route only (hideHeader=true), hides
-          itself once address, staff, and units are all in place. */}
-      {hideHeader && (
-        <PropertySetupWizard
-          address={property.address || ''}
-          googleMapsLink={property.google_maps_link || ''}
-          staffCount={staffCount}
-          roomCount={property.rooms.length}
-          onSaveLocation={handleSaveLocation}
-          onGoToStaff={() => setActiveTab?.('staff')}
-          onAddUnit={() => setShowAddRoomModal(true)}
-        />
-      )}
-
-      {/* Header - hide on dashboard overview. Add Room now lives in the
+       {/* Header - hide on dashboard overview. Add Room now lives in the
           Rooms List section below, always visible regardless of hideHeader. */}
       {!hideHeader && (
       <div className="flex items-center justify-between">
