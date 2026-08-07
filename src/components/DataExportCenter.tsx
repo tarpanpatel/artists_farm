@@ -71,7 +71,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     { num: 12, name: 'December' },
   ];
 
-  const yearsList = [2026, 2025, 2024];
+  const yearsList = [currentYearNum, currentYearNum - 1, currentYearNum - 2];
 
   const triggerDownload = (filename: string, content: string, mimeType: string = 'text/csv;charset=utf-8;') => {
     const blob = new Blob(['\uFEFF' + content], { type: mimeType });
@@ -131,11 +131,14 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       'Guests',
       'Check-In Date',
       'Check-Out Date',
+      'Status',
       'Base Room Rent (INR)',
       'Advance Paid (INR)',
       'Total Food Bill (INR)',
       'Total Bill (INR)',
       'Payment Status',
+      'C-Form Status',
+      'Filing Time',
     ];
 
     const filteredGuests = getFilteredData(guests, 'checkinDate');
@@ -143,16 +146,19 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     const rows = filteredGuests.map((g) => [
       `"${g.guestName}"`,
       `"${g.roomNumber}"`,
-      `"${g.bookingSource}"`,
+      `"${g.bookingSource || 'Direct'}"`,
       `"${g.phoneNumber}"`,
-      g.numberOfGuests,
+      g.numberOfGuests || 1,
       `"${g.checkinDate || ''}"`,
-      `"${g.checkoutDate || ''}"`,
-      g.roomRate,
-      g.advanceAmount,
-      g.foodBill,
-      g.totalAmount,
-      `"${g.paymentStatus}"`,
+      `"${g.checkoutDate || g.expectedCheckout || ''}"`,
+      `"${g.status || ''}"`,
+      g.roomRate || 0,
+      g.advanceAmount || 0,
+      g.foodBill || 0,
+      g.totalAmount || 0,
+      `"${g.paymentStatus || 'Pending'}"`,
+      g.isForeignGuest ? (g.cFormFiledAt ? 'Filed' : 'Pending Filing') : 'N/A',
+      `"${g.cFormFiledAt || ''}"`,
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');

@@ -321,67 +321,30 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         )}
 
         {/* ── Slot Usage Widget ── */}
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('slot_usage_heading', 'Slot Usage')}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {t('slot_usage_subtext', 'Each room in a multi-key property counts as one slot')}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-3xl font-bold text-slate-900 dark:text-white">{usedSlots}</span>
-              <span className="text-lg text-slate-400 dark:text-slate-500"> / {totalSlots}</span>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('slots_used_label', 'slots used')}</p>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-5">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                slotPercent >= 100
-                  ? 'bg-red-500'
-                  : slotPercent >= 80
-                  ? 'bg-amber-500'
-                  : 'bg-indigo-500'
-              }`}
-              style={{ width: `${Math.min(slotPercent, 100)}%` }}
-            />
-          </div>
-
-          {/* Per-property breakdown */}
-          {slotUsage && slotUsage.breakdown.length > 0 && (
-            <div className="space-y-2">
-              {slotUsage.breakdown.map((item, idx) => (
-                <div key={item.id} className="flex items-center gap-3 text-sm">
-                  <span className="text-slate-400 dark:text-slate-500 w-4 text-right">{idx === slotUsage.breakdown.length - 1 ? '└' : '├'}</span>
-                  {item.property_type === 'MULTI_KEY' ? (
-                    <Layers className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                  ) : (
-                    <Home className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
-                  )}
-                  <span className="text-slate-700 dark:text-slate-300 flex-1 font-medium">{item.name}</span>
-                  <span className="text-slate-500 dark:text-slate-400 text-xs">
-                    {item.property_type === 'MULTI_KEY'
-                      ? `${item.slots_used} room${item.slots_used !== 1 ? 's' : ''}`
-                      : t('single_type_label', 'Single')}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 w-16 text-right">
-                    = {item.slots_used} slot{item.slots_used !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              ))}
-              <div className="mt-3 pl-7">
-                <span className={`text-sm font-semibold ${remaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {remaining > 0 ? `✦ ${remaining} slot${remaining !== 1 ? 's' : ''} remaining` : '✦ No slots remaining'}
-                </span>
+        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center">
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{usedSlots}/{totalSlots}</span>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Slots</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">{remaining > 0 ? `${remaining} remaining` : 'No slots left'}</p>
               </div>
             </div>
-          )}
-          {slotUsage && slotUsage.breakdown.length === 0 && (
-            <p className="text-sm text-slate-400 dark:text-slate-500 pl-4">{t('no_properties_in_breakdown_message', 'No properties yet. Add your first property below.')}</p>
-          )}
+            <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  slotPercent >= 100
+                    ? 'bg-red-500'
+                    : slotPercent >= 80
+                    ? 'bg-amber-500'
+                    : 'bg-indigo-500'
+                }`}
+                style={{ width: `${Math.min(slotPercent, 100)}%` }}
+              />
+            </div>
+          </div>
         </section>
 
         {/* ── Properties Section ── */}

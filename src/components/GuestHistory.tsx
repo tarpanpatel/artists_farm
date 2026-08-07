@@ -51,55 +51,6 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
     });
   }, [guests, searchTerm, statusFilter, foreignFilter]);
 
-  // Export to CSV
-  const handleExportCSV = () => {
-    const headers = [
-      'Guest Name',
-      'Phone Number',
-      'Room Number',
-      'Check-in Date',
-      'Check-out Date',
-      'Status',
-      'Booking Source',
-      'No of Guests',
-      'Room Rate (Per Night)',
-      'Advance Paid',
-      'Total Bill Amount',
-      'Payment Status',
-      'C-Form Status',
-      'Filing Time',
-    ];
-
-    const rows = filteredGuests.map((g) => [
-      `"${g.guestName}"`,
-      `"${g.phoneNumber}"`,
-      `"${g.roomNumber}"`,
-      `"${g.checkinDate}"`,
-      `"${g.checkoutDate || g.expectedCheckout || ''}"`,
-      `"${g.status}"`,
-      `"${g.bookingSource || 'Direct'}"`,
-      g.numberOfGuests || 1,
-      g.roomRate || 0,
-      g.advanceAmount || 0,
-      g.totalAmount || 0,
-      `"${g.paymentStatus || 'Pending'}"`,
-      g.isForeignGuest ? (g.cFormFiledAt ? 'Filed' : 'Pending Filing') : 'N/A',
-      `"${g.cFormFiledAt || ''}"`,
-    ]);
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `guest_history_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // DataTable custom styles
   const customStyles = {
     subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
@@ -253,15 +204,6 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
             {t('guest_history_description', 'Browse complete history of current, upcoming, and past guest bookings, stays, and ledger records.')}
           </p>
         </div>
-
-        <button
-          onClick={handleExportCSV}
-          disabled={filteredGuests.length === 0}
-          className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 self-start md:self-auto"
-        >
-          <Download className="w-4 h-4" />
-          <span>{t('export_filtered_csv_button', 'Export filtered list (CSV)')}</span>
-        </button>
       </div>
 
       {/* Filters and Search Bar */}

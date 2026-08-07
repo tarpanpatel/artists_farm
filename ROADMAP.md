@@ -25,6 +25,19 @@ This document tracks identified bugs, pending backend API integrations, and upco
   Revisit after **one week** to decide whether to re-enable the toggle or
   remove it entirely. Do not merge any dark-mode theme changes until then.
 
+### CSV Export Consolidated
+
+- Merged the Guest History CSV export into the Data Export Center's
+  **Accommodations Booking Spreadsheet**. The export now includes Status,
+  C-Form Status, and Filing Time in addition to the existing booking fields.
+  Removed the duplicate "Export filtered list (CSV)" button from Guest History.
+
+### Slot Usage Widget — Minimal Redesign
+
+- Replaced the detailed Slot Usage widget on the Tenant Dashboard with a
+  compact inline pill showing used/total slots and a slim progress bar.
+  Removed the per-property breakdown tree to reduce visual noise.
+
 ---
 
 *Last Updated: August 2026*
