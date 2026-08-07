@@ -102,15 +102,20 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    // advance_received_by/pending_received_by columns have existed on
+                    // this table all along - the Add Booking form collects both as
+                    // *required* fields, but nothing ever actually wrote them here.
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
                         $input['checkin_date'] ?? date('Y-m-d'),
                         $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
                         floatval($input['advance_paid'] ?? 0),
+                        $input['advance_received_by'] ?? '',
                         floatval($input['total_charge'] ?? 0),
                         floatval($input['pending_amount'] ?? 0),
+                        $input['pending_received_by'] ?? '',
                         floatval($input['base_room_rent'] ?? 0),
                         $input['notes'] ?? '',
                         $input['booking_source'] ?? '',
@@ -208,9 +213,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $totalCharge = floatval($input['total_charge'] ?? 0);
                     $advancePaid = floatval($input['advance_paid'] ?? 0);
                     $pendingAmount = max(0, $totalCharge - $advancePaid);
+                    // advance_received_by/pending_received_by/booking_source/notes were
+                    // missing here entirely - editing a booking could never touch them,
+                    // only creating one could (and even that was broken for the two
+                    // received-by fields until just now).
+                    $advanceReceivedBy = $input['advance_received_by'] ?? '';
+                    $pendingReceivedBy = $input['pending_received_by'] ?? '';
+                    $bookingSource = $input['booking_source'] ?? '';
+                    $notes = $input['notes'] ?? '';
 
                     if ($roomId !== null) {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
@@ -221,13 +234,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             floatval($input['base_room_rent'] ?? 0),
                             $totalCharge,
                             $advancePaid,
+                            $advanceReceivedBy,
                             $pendingAmount,
+                            $pendingReceivedBy,
+                            $bookingSource,
+                            $notes,
                             !empty($input['is_foreign_guest']) ? 1 : 0,
                             $guestId,
                             $propertyId,
                         ]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, pending_amount = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
@@ -237,7 +254,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             floatval($input['base_room_rent'] ?? 0),
                             $totalCharge,
                             $advancePaid,
+                            $advanceReceivedBy,
                             $pendingAmount,
+                            $pendingReceivedBy,
+                            $bookingSource,
+                            $notes,
                             !empty($input['is_foreign_guest']) ? 1 : 0,
                             $guestId,
                             $propertyId,
@@ -258,6 +279,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'no_of_guests' => 'No. of Guests',
                             'base_room_rent' => 'Room Rent',
                             'advance_paid' => 'Advance Paid',
+                            'advance_received_by' => 'Advance Received By',
+                            'pending_received_by' => 'Pending Received By',
+                            'booking_source' => 'Booking Source',
+                            'notes' => 'Guest Notes',
                             'is_foreign_guest' => 'Foreign Guest',
                         ];
                         $newValues = [
@@ -268,6 +293,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'no_of_guests' => intval($input['no_of_guests'] ?? 1),
                             'base_room_rent' => floatval($input['base_room_rent'] ?? 0),
                             'advance_paid' => $advancePaid,
+                            'advance_received_by' => $advanceReceivedBy,
+                            'pending_received_by' => $pendingReceivedBy,
+                            'booking_source' => $bookingSource,
+                            'notes' => $notes,
                             'is_foreign_guest' => !empty($input['is_foreign_guest']) ? 1 : 0,
                         ];
                         $changedLines = [];

@@ -629,30 +629,29 @@ function AppBody({ preloadedData }: AppBodyProps) {
         const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
         const filtered = data.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
 
-        setNavItems((prev) => {
-          // Build a map of initial items by uniqueKey for ordering
-          const initialMap = new Map(prev.map((item) => [item.uniqueKey, item]));
-          // Merge: use DB as source of truth, keep initial order for known items
-          const merged = filtered.map((dbItem: any, idx: number) => {
-            const initial = initialMap.get(dbItem.uniqueKey);
-            return {
-              id: dbItem.id,
-              title: dbItem.title,
-              tabKey: dbItem.tabKey,
-              uniqueKey: dbItem.uniqueKey,
-              urlSlug: dbItem.urlSlug,
-              category: dbItem.category,
-              iconName: dbItem.iconName,
-              order: initial ? prev.indexOf(initial) + 1 : idx + 1,
-              roles: dbItem.roles || ['Super Admin'],
-              isVisible: dbItem.isVisible,
-              parentId: dbItem.parentId ?? null,
-              customUrl: dbItem.customUrl || undefined,
-              openInNewTab: dbItem.openInNewTab || false,
-            };
-          });
-          return merged;
-        });
+        // Use the DB as source of truth wholesale, including order - filtered
+        // is already sorted by display_order ASC (see fetchNavMenuFromDB's
+        // query), so idx reflects the DB's actual current order. This used to
+        // instead reuse prev.indexOf(initial) - the position the item
+        // happened to have in whatever loaded first - which meant a reorder
+        // in Root Admin's editor would show correctly there but a tab that
+        // had already loaded before the reorder stayed stuck on the old order
+        // for the rest of its session.
+        setNavItems(filtered.map((dbItem: any, idx: number) => ({
+          id: dbItem.id,
+          title: dbItem.title,
+          tabKey: dbItem.tabKey,
+          uniqueKey: dbItem.uniqueKey,
+          urlSlug: dbItem.urlSlug,
+          category: dbItem.category,
+          iconName: dbItem.iconName,
+          order: idx + 1,
+          roles: dbItem.roles || ['Super Admin'],
+          isVisible: dbItem.isVisible,
+          parentId: dbItem.parentId ?? null,
+          customUrl: dbItem.customUrl || undefined,
+          openInNewTab: dbItem.openInNewTab || false,
+        })));
       }
     });
   }, []);
@@ -1024,6 +1023,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
       no_of_guests: newGuest.numberOfGuests || 0,
       base_room_rent: newGuest.roomRate || 0,
       advance_paid: newGuest.advanceAmount || 0,
+      advance_received_by: newGuest.advanceReceivedBy || '',
+      pending_amount: newGuest.pendingAmount || 0,
+      pending_received_by: newGuest.pendingReceivedBy || '',
       is_foreign_guest: newGuest.isForeignGuest || false,
     }).then((dbId) => {
       if (dbId) {

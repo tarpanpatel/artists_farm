@@ -835,8 +835,10 @@ export async function addGuestToDB(guest: {
   no_of_guests?: number;
   base_room_rent?: number;
   advance_paid?: number;
+  advance_received_by?: string;
   total_charge?: number;
   pending_amount?: number;
+  pending_received_by?: string;
   is_foreign_guest?: boolean;
 }): Promise<string | null> {
   try {

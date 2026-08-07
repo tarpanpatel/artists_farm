@@ -862,6 +862,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               numberOfGuests: noOfGuests,
               roomRate: bookingRoomTariff,
               advanceAmount: bookingAdvance,
+              // These were being collected as *required* fields on this form and
+              // then silently discarded - never in guestObj, never sent, despite
+              // the guests table having columns for both all along.
+              advanceReceivedBy: bookingAdvance > 0 ? advanceReceivedBy : '',
+              pendingAmount: bookingPending,
+              pendingReceivedBy: bookingPending > 0 ? pendingReceivedBy : '',
               notes: showGuestNotes ? notes : '',
               isForeignGuest,
             };

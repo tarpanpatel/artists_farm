@@ -12,6 +12,9 @@ export interface Guest {
   numberOfGuests?: number;
   roomRate?: number;
   advanceAmount?: number;
+  advanceReceivedBy?: string;
+  pendingAmount?: number;
+  pendingReceivedBy?: string;
   foodBill?: number;
   totalAmount?: number;
   paymentStatus?: string;
