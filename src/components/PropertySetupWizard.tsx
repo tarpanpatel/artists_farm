@@ -47,9 +47,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
 
-  // Single properties skip Step 3 entirely (see showRoomsStep doc above), so
-  // it's excluded from both the numerator and denominator here rather than
-  // just hidden - otherwise "steps done" would count a step that isn't shown.
   const applicableSteps = showRoomsStep ? [step1Done, step2Done, step3Done] : [step1Done, step2Done];
   const totalSteps = applicableSteps.length;
   const stepsDone = applicableSteps.filter(Boolean).length;
@@ -63,34 +60,48 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     }
   };
 
+  const allDone = step1Done && step2Done && (!showRoomsStep || step3Done);
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-900 shadow-xs overflow-hidden">
-      <div className="px-6 py-4 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900 flex items-center justify-between">
+    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden">
+      <div className="px-6 py-4 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
+          <h2 className="text-sm font-bold text-amber-900 dark:text-amber-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
         </div>
-        <div className="w-32 h-1.5 bg-indigo-100 dark:bg-indigo-900 rounded-full overflow-hidden">
+        <div className="w-32 h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all"
+            className="h-full bg-amber-500 dark:bg-amber-400 transition-all"
             style={{ width: `${(stepsDone / totalSteps) * 100}%` }}
           />
         </div>
       </div>
 
-      <div className="p-6 space-y-4">
-        {/* Step 1: Address + Maps Link */}
-        {!step1Done && (
-          <div className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">1</div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-1">
-                <MapPin className="w-4 h-4 text-indigo-500" /> {t('add_property_address_heading', 'Add the property address')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Step 1: Address + Maps Link */}
+          {step1Done ? (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-500" /> {t('add_property_address_heading', 'Add the property address')}
+                </h3>
+              </div>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{t('address_setup_complete_text', 'Address saved')}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-amber-500" /> {t('add_property_address_heading', 'Add the property address')}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('property_address_step_description', 'Guests and staff need to know where this property actually is.')}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('address_label', 'Address')}</label>
                   <input
@@ -98,7 +109,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     value={editAddress}
                     onChange={(e) => setEditAddress(e.target.value)}
                     placeholder={t('full_property_address_placeholder', 'Full property address')}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
@@ -108,7 +119,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     value={editMapsLink}
                     onChange={(e) => setEditMapsLink(e.target.value)}
                     placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -116,58 +127,78 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 <button
                   onClick={handleSaveLocation}
                   disabled={isSavingLocation || !editAddress.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                   {t('save_address_button', 'Save Address')}
                 </button>
-                {!isSavingLocation && <ArrowRight className="w-4 h-4 text-indigo-500 animate-bounce shrink-0" />}
+                {!isSavingLocation && <ArrowRight className="w-4 h-4 text-amber-500 animate-bounce shrink-0" />}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 2: Users */}
-        {!step2Done && (
-          <div className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">2</div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-1">
-                <Users className="w-4 h-4 text-indigo-500" /> {t('add_team_member_heading', 'Add at least one team member')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          {/* Step 2: Users */}
+          {step2Done ? (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-emerald-500" /> {t('add_team_member_heading', 'Add at least one team member')}
+                </h3>
+              </div>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{t('staff_setup_complete_text', 'Staff added')}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-amber-500" /> {t('add_team_member_heading', 'Add at least one team member')}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('add_team_member_description', "You're already registered as Super Admin. Add whoever else will run the front desk, kitchen, or bookings.")}
               </p>
               <button
                 onClick={onGoToStaff}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {t('add_staff_button', 'Add Staff')} <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
               </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 3: Units - Multi-Key properties only, see showRoomsStep doc above */}
-        {showRoomsStep && !step3Done && (
-          <div className="flex gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">3</div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-1">
-                <DoorOpen className="w-4 h-4 text-indigo-500" /> {t('create_first_unit_heading', 'Create your first unit')}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          {/* Step 3: Units - Multi-Key properties only, see showRoomsStep doc above */}
+          {showRoomsStep && (step3Done ? (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <DoorOpen className="w-4 h-4 text-emerald-500" /> {t('create_first_unit_heading', 'Create your first unit')}
+                </h3>
+              </div>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{t('rooms_setup_complete_text', 'Rooms added')}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">3</div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <DoorOpen className="w-4 h-4 text-amber-500" /> {t('create_first_unit_heading', 'Create your first unit')}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('create_first_unit_description', 'Rooms, cottages, or suites - whatever you rent out - each become a unit you can take bookings against.')}
               </p>
               <button
                 onClick={onAddUnit}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {t('add_new_unit_button', 'Add New Unit')} <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
               </button>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );
