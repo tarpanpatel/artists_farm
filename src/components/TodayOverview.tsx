@@ -1,12 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Save, Trash2, Share2, Printer, Plus } from 'lucide-react';
-import * as htmlToImage from 'html-to-image';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Guest } from '../types';
-import { DateRangePicker } from './DateRangePicker';
-import { StyledSelect } from './StyledSelect';
-import { useConfirm } from './ConfirmDialogContext';
-import { useToast } from './ToastContext';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { BookingDetailsModal } from './BookingDetailsModal';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -38,21 +33,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyPhone = '',
   propertyWhatsappTemplate = '',
 }) => {
-  const { confirm } = useConfirm();
-  const { showToast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
-  const [isEditingBooking, setIsEditingBooking] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editCheckin, setEditCheckin] = useState('');
-  const [editCheckout, setEditCheckout] = useState('');
-  const [editRoomId, setEditRoomId] = useState('');
-  const [editGuests, setEditGuests] = useState('');
-  const [editRoomRate, setEditRoomRate] = useState('');
-  const [editTotal, setEditTotal] = useState('');
-  const [editAdvance, setEditAdvance] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
@@ -65,18 +46,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const monthName = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    try {
-      const dateOnly = dateStr.split(' ')[0];
-      const parts = dateOnly.split('-');
-      if (parts.length !== 3) return dateStr;
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    } catch {
-      return dateStr;
-    }
-  };
 
   // Note: In a multi-key property, we pass room objects with IDs
   // For single properties, we match by room name
@@ -106,125 +75,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     ];
     const numId = parseInt(String(guestId), 10) || 0;
     return colors[numId % colors.length];
-  };
-
-  const getBlockedDateStrings = (currentGuest: Guest | null) => {
-    if (!currentGuest) return [];
-    const guestRoomId = (currentGuest as any).roomId || (currentGuest as any).room_id;
-    const blockedStrings: string[] = [];
-    activeGuests
-      .filter((g) => g.id !== currentGuest.id)
-      .filter((g) => {
-        const gRoomId = (g as any).roomId || (g as any).room_id;
-        return guestRoomId ? Number(gRoomId) === Number(guestRoomId) : g.roomNumber === currentGuest.roomNumber;
-      })
-      .forEach((g) => {
-        const start = new Date(g.checkinDate);
-        const end = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
-        const current = new Date(start);
-        while (current < end) {
-          const y = current.getFullYear();
-          const m = String(current.getMonth() + 1).padStart(2, '0');
-          const d = String(current.getDate()).padStart(2, '0');
-          blockedStrings.push(`${y}-${m}-${d}`);
-          current.setDate(current.getDate() + 1);
-        }
-      });
-    return blockedStrings;
-  };
-
-  const handleSaveEdit = async () => {
-    if (!selectedGuest || !onUpdateGuest) return;
-    const newRoom = rooms.find((r) => String(r.id) === editRoomId);
-    const updated: any = {
-      ...selectedGuest,
-      guestName: editName,
-      phoneNumber: editPhone,
-      checkinDate: editCheckin,
-      expectedCheckout: editCheckout,
-      room_id: editRoomId ? parseInt(editRoomId, 10) : undefined,
-      roomId: editRoomId ? parseInt(editRoomId, 10) : undefined,
-      roomNumber: newRoom?.name || selectedGuest.roomNumber,
-      no_of_guests: parseInt(editGuests, 10) || 1,
-      base_room_rent: parseFloat(editRoomRate) || 0,
-      total_charge: parseFloat(editTotal) || 0,
-      advance_paid: parseFloat(editAdvance) || 0,
-    };
-    await onUpdateGuest(updated);
-    setSelectedGuest(updated);
-    setIsEditingBooking(false);
-  };
-
-  const handleDeleteBooking = async () => {
-    if (!selectedGuest || !onDeleteGuest) return;
-    const ok = await confirm({
-      title: 'Delete Booking',
-      message: `Delete ${selectedGuest.guestName}'s booking? This cannot be restored.`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    setIsDeleting(true);
-    try {
-      await onDeleteGuest(selectedGuest.id);
-      setSelectedGuest(null);
-      showToast('Booking deleted', { type: 'success' });
-    } catch (err) {
-      showToast('Failed to delete booking. Please try again.', { type: 'error' });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // "Share Voucher (PNG)" - same html-to-image pattern used on the booking
-  // confirmation voucher and the billing receipt, so this modal offers the
-  // same convenience without needing to reopen either of those flows.
-  const handleShareVoucherPng = async () => {
-    const voucherBox = document.getElementById('printableBookingDetailsContent');
-    if (!voucherBox) return;
-    const actionsBar = document.getElementById('printableBookingDetailsActionsBar');
-    if (actionsBar) actionsBar.style.display = 'none';
-
-    try {
-      const blob = await htmlToImage.toBlob(voucherBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
-      if (!blob) return;
-      const file = new File([blob], `Booking_${selectedGuest?.guestName || 'Details'}_${Date.now()}.png`, { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Booking Details' });
-      } else {
-        const link = document.createElement('a');
-        link.download = `Booking_${selectedGuest?.guestName || 'Details'}_${Date.now()}.png`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-      }
-    } catch (err) {
-      showToast('Failed to generate image: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
-    } finally {
-      if (actionsBar) actionsBar.style.display = '';
-    }
-  };
-
-  // WhatsApp share - same wa.me + per-property customizable template as the
-  // post-booking confirmation voucher, so it's reachable from here too
-  // without going back through Guest Registration.
-  const buildWhatsAppShareUrl = (guest: Guest) => {
-    const digits = (guest.phoneNumber || '').replace(/\D/g, '');
-    const phone = digits.length === 10 ? '91' + digits : digits;
-    const message = renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
-      guest_name: guest.guestName,
-      room_name: guest.roomNumber,
-      property_name: propertyName || 'us',
-      checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
-      checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || ''),
-      guest_count: String((guest as any).no_of_guests ?? 1),
-      room_tariff: ((guest as any).per_night_charges || (guest as any).roomRate || 0).toFixed(2),
-      advance_paid: ((guest as any).advance_paid || (guest as any).advanceAmount || (guest as any).advance || 0).toFixed(2),
-      maps_link: propertyMapsLink,
-      contact_phone: propertyPhone,
-    });
-    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   };
 
   const navigateMonth = (direction: number) => {
@@ -432,306 +282,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      {/* Booking Details / Edit Popup */}
-      {selectedGuest && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            setSelectedGuest(null);
-            setIsEditingBooking(false);
-          }}
-        >
-          <div
-            id="printableBookingDetailsContent"
-            className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {isEditingBooking ? t('today_edit_booking_heading', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
-              </h2>
-              <button
-                onClick={() => {
-                  setSelectedGuest(null);
-                  setIsEditingBooking(false);
-                }}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_guest_name_label', 'Guest Name')}</label>
-                {isEditingBooking ? (
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.guestName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('room_column', 'Room')}</label>
-                {isEditingBooking ? (
-                  <div className="mt-1">
-                    <StyledSelect
-                      value={editRoomId}
-                      onChange={setEditRoomId}
-                      options={rooms.map((room) => {
-                        const newCheckin = new Date(editCheckin || selectedGuest.checkinDate);
-                        const newCheckout = new Date(editCheckout || selectedGuest.expectedCheckout);
-                        const occupiedByOther = activeGuests.some((g) => {
-                          if (g.id === selectedGuest.id) return false;
-                          const gRoomId = (g as any).roomId || (g as any).room_id;
-                          if (Number(gRoomId) !== Number(room.id)) return false;
-                          const gCheckin = new Date(g.checkinDate);
-                          const gCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
-                          return newCheckin < gCheckout && gCheckin < newCheckout;
-                        });
-                        return {
-                          value: String(room.id),
-                          label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`,
-                          disabled: occupiedByOther,
-                        };
-                      })}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{selectedGuest.roomNumber}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('phone_label', 'Phone')}</label>
-                {isEditingBooking ? (
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-slate-900 dark:text-white">{selectedGuest.phoneNumber}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_check_in_label', 'Check-in')}</label>
-                  {isEditingBooking ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowDatePicker(true)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
-                    >
-                      {editCheckin ? formatDate(editCheckin) : t('today_add_date_button', 'Add date')}
-                    </button>
-                  ) : (
-                    <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.checkinDate?.split('T')[0] || '')}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_check_out_label', 'Check-out')}</label>
-                  {isEditingBooking ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowDatePicker(true)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-left hover:border-blue-500 transition"
-                    >
-                      {editCheckout ? formatDate(editCheckout) : t('today_add_date_button', 'Add date')}
-                    </button>
-                  ) : (
-                    <p className="text-slate-900 dark:text-white">{formatDate(selectedGuest.expectedCheckout?.split('T')[0] || '')}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_guests_label', 'Guests')}</label>
-                {isEditingBooking ? (
-                  <input
-                    type="number"
-                    min={1}
-                    value={editGuests}
-                    onChange={(e) => setEditGuests(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                  />
-                ) : (
-                  <p className="text-slate-900 dark:text-white">{(selectedGuest as any).no_of_guests || 1} guest{(selectedGuest as any).no_of_guests !== 1 ? 's' : ''}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_room_rate_label', 'Room Rate')}</label>
-                  {isEditingBooking ? (
-                    <input
-                      type="number"
-                      min={0}
-                      value={editRoomRate}
-                      onChange={(e) => setEditRoomRate(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).per_night_charges || (selectedGuest as any).roomRate || 0}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_total_label', 'Total')}</label>
-                  {isEditingBooking ? (
-                    <input
-                      type="number"
-                      min={0}
-                      value={editTotal}
-                      onChange={(e) => setEditTotal(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">₹{(selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_advance_paid_label', 'Advance Paid')}</label>
-                  {isEditingBooking ? (
-                    <input
-                      type="number"
-                      min={0}
-                      value={editAdvance}
-                      onChange={(e) => setEditAdvance(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    />
-                  ) : (
-                    <p className="text-emerald-600 dark:text-emerald-400 font-bold">₹{(selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_pending_label', 'Pending')}</label>
-                  <p className="text-amber-600 dark:text-amber-400 font-bold">
-                    ₹{isEditingBooking
-                      ? Math.max(0, (parseFloat(editTotal) || 0) - (parseFloat(editAdvance) || 0))
-                      : Math.max(0, ((selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0) - ((selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0))}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">{t('today_status_label', 'Status')}</label>
-                <p className="text-emerald-600 dark:text-emerald-400 font-semibold">{selectedGuest.status}</p>
-              </div>
-            </div>
-
-            <div id="printableBookingDetailsActionsBar">
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                {isEditingBooking ? (
-                  <>
-                    <button
-                      onClick={() => setIsEditingBooking(false)}
-                      className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-                    >
-                      {t('cancel_button', 'Cancel')}
-                    </button>
-                    <button
-                      onClick={handleSaveEdit}
-                      className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {t('save_button', 'Save')}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setSelectedGuest(null)}
-                      className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-                    >
-                      {t('close_button', 'Close')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditName(selectedGuest.guestName || '');
-                        setEditPhone(selectedGuest.phoneNumber || '');
-                        setEditCheckin(selectedGuest.checkinDate?.split(' ')[0] || '');
-                        setEditCheckout(selectedGuest.expectedCheckout?.split(' ')[0] || selectedGuest.checkoutDate?.split(' ')[0] || '');
-                        setEditRoomId(String((selectedGuest as any).roomId || (selectedGuest as any).room_id || ''));
-                        setEditGuests(String((selectedGuest as any).no_of_guests || 1));
-                        setEditRoomRate(String((selectedGuest as any).per_night_charges || (selectedGuest as any).roomRate || 0));
-                        setEditTotal(String((selectedGuest as any).totalCharge || (selectedGuest as any).totalAmount || (selectedGuest as any).total_charge || 0));
-                        setEditAdvance(String((selectedGuest as any).advance_paid || (selectedGuest as any).advanceAmount || (selectedGuest as any).advance || 0));
-                        setIsEditingBooking(true);
-                      }}
-                      className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition flex items-center justify-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {t('edit_button', 'Edit')}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Share + Delete - only while just viewing, not mid-edit */}
-              {!isEditingBooking && (
-                <>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <a
-                      href={buildWhatsAppShareUrl(selectedGuest)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      {t('today_share_via_whatsapp_button', 'Share via WhatsApp')}
-                    </a>
-                    <button
-                      onClick={handleShareVoucherPng}
-                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
-                    >
-                      <Printer className="w-4 h-4" />
-                      {t('share_png_button', 'Share PNG')}
-                    </button>
-                  </div>
-
-                  {onDeleteGuest && (
-                    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
-                      <button
-                        onClick={handleDeleteBooking}
-                        disabled={isDeleting}
-                        className="w-full px-4 py-2 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {selectedGuest && onUpdateGuest && (
+        <BookingDetailsModal
+          guest={selectedGuest}
+          onClose={() => setSelectedGuest(null)}
+          onSave={async (updated) => { await onUpdateGuest(updated); setSelectedGuest(updated); }}
+          onDelete={onDeleteGuest ? async (id) => { await onDeleteGuest(id); setSelectedGuest(null); } : undefined}
+          rooms={rooms}
+          activeGuests={activeGuests}
+          propertyName={propertyName}
+          propertyMapsLink={propertyMapsLink}
+          propertyPhone={propertyPhone}
+          propertyWhatsappTemplate={propertyWhatsappTemplate}
+        />
       )}
-
-      {/* Date Range Picker for editing */}
-      <DateRangePicker
-        isOpen={showDatePicker}
-        onClose={() => setShowDatePicker(false)}
-        checkinDate={editCheckin}
-        checkoutDate={editCheckout}
-        onCheckinChange={setEditCheckin}
-        onCheckoutChange={setEditCheckout}
-        onClear={() => {
-          setEditCheckin('');
-          setEditCheckout('');
-        }}
-        blockedDates={getBlockedDateStrings(selectedGuest)}
-      />
     </div>
   );
 };

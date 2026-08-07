@@ -1022,6 +1022,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
       booking_source: newGuest.bookingSource || '',
       no_of_guests: newGuest.numberOfGuests || 0,
       base_room_rent: newGuest.roomRate || 0,
+      // total_charge was never sent here despite the column existing - it stayed 0 for
+      // every new booking, which silently zeroed the TodayOverview calendar chip's
+      // nightly-rate label (it derives from totalCharge, not roomRate/base_room_rent).
+      total_charge: newGuest.roomRate || newGuest.totalAmount || 0,
       advance_paid: newGuest.advanceAmount || 0,
       advance_received_by: newGuest.advanceReceivedBy || '',
       pending_amount: newGuest.pendingAmount || 0,
@@ -1055,6 +1059,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
       base_room_rent: g.base_room_rent ?? g.baseRoomRent ?? updatedGuest.roomRate ?? 0,
       total_charge: g.total_charge ?? g.totalCharge ?? updatedGuest.totalAmount ?? 0,
       advance_paid: g.advance_paid ?? g.advancePaid ?? updatedGuest.advanceAmount ?? 0,
+      advance_received_by: g.advance_received_by ?? updatedGuest.advanceReceivedBy ?? '',
+      pending_received_by: g.pending_received_by ?? updatedGuest.pendingReceivedBy ?? '',
+      booking_source: g.booking_source ?? updatedGuest.bookingSource ?? '',
+      notes: g.notes ?? updatedGuest.notes ?? '',
       is_foreign_guest: g.is_foreign_guest ?? updatedGuest.isForeignGuest ?? false,
     });
     if (!ok) throw new Error('Failed to update booking');

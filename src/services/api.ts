@@ -802,7 +802,13 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           notes: g.notes || g.guestNotes || g.guest_notes || g.miscArrangements || g.misc_arrangements || '',
           bookingSource: g.bookingSource || g.booking_source || '',
           numberOfGuests: Number(g.noOfGuests || g.no_of_guests || g.total_guests || g.adults || 0),
-          roomRate: Number(g.perNightCharges || g.per_night_charges || g.baseRoomRent || g.base_room_rent || 0),
+          // add_guest/update_guest only ever write base_room_rent - per_night_charges
+          // is a legacy column nothing populates, so it's always the string "0.00".
+          // A plain `||` chain treats that as truthy (non-empty string) and masks the
+          // real base_room_rent value, silently zeroing Room Rent on every refetch.
+          // Parse to numbers and only fall through on an actual zero/missing value.
+          roomRate: (parseFloat(g.perNightCharges ?? g.per_night_charges ?? '0') || 0)
+            || (parseFloat(g.baseRoomRent ?? g.base_room_rent ?? '0') || 0),
           advanceAmount: Number(g.advancePaid || g.advance_paid || 0),
           foodBill: Number(g.totalFood || g.total_food || 0),
           totalAmount: Number(g.totalCharge || g.total_charge || 0),
@@ -868,6 +874,10 @@ export async function updateGuestInDB(guest: {
   base_room_rent?: number;
   total_charge?: number;
   advance_paid?: number;
+  advance_received_by?: string;
+  pending_received_by?: string;
+  booking_source?: string;
+  notes?: string;
   is_foreign_guest?: boolean;
 }): Promise<boolean> {
   try {

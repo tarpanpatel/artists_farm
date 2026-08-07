@@ -13,22 +13,17 @@ import {
   Plus,
   ExternalLink,
   Pencil,
-  IdCard,
-  Share2,
-  Printer
+  IdCard
 } from 'lucide-react';
-import * as htmlToImage from 'html-to-image';
 import { Guest, Order } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { getPropertySlug, markCFormFiled } from '../services/api';
-import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { PropertyAddressBar } from './PropertyAddressBar';
-import { StyledSelect } from './StyledSelect';
+import { BookingDetailsModal } from './BookingDetailsModal';
 import { useToast } from './ToastContext';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 
 interface OperationalDashboardProps {
@@ -91,22 +86,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onSavePropertyLocation,
 }) => {
   const { showToast } = useToast();
-  const [isSharingPng, setIsSharingPng] = useState(false);
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
   const { inventory } = useInventoryContext();
   const [selectedBooking, setSelectedBooking] = useState<Guest | null>(null);
-  const [editCheckin, setEditCheckin] = useState<string>('');
-  const [editCheckout, setEditCheckout] = useState<string>('');
-  const [editGuestName, setEditGuestName] = useState<string>('');
-  const [editPhone, setEditPhone] = useState<string>('');
-  const [editNoOfGuests, setEditNoOfGuests] = useState<number>(1);
-  const [editRoomId, setEditRoomId] = useState<string>('');
-  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isSavingBooking, setIsSavingBooking] = useState(false);
-  const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [showCheckinVerification, setShowCheckinVerification] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
@@ -139,26 +123,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     return blockedRanges.some(range => date >= range.start && date < range.end);
   };
 
-  // Convert blocked date ranges to array of individual date strings for DatePicker
-  const getBlockedDateStrings = (currentGuest: Guest | null) => {
-    if (!currentGuest) return [];
-    const blockedRanges = getBlockedDateRanges(currentGuest);
-    const blockedStrings: string[] = [];
-
-    blockedRanges.forEach(range => {
-      const current = new Date(range.start);
-      while (current < range.end) {
-        const year = current.getFullYear();
-        const month = String(current.getMonth() + 1).padStart(2, '0');
-        const day = String(current.getDate()).padStart(2, '0');
-        blockedStrings.push(`${year}-${month}-${day}`);
-        current.setDate(current.getDate() + 1);
-      }
-    });
-
-    return blockedStrings;
-  };
-
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const dateOnly = dateStr.split(' ')[0];
@@ -166,72 +130,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     if (parts.length !== 3) return dateStr;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
-
-  // WhatsApp share - same wa.me + per-property customizable template as the
-  // post-booking confirmation voucher and the TodayOverview calendar's
-  // Booking Details modal, so it's reachable from here too.
-  const buildWhatsAppShareUrl = (guest: Guest) => {
-    const digits = (guest.phoneNumber || '').replace(/\D/g, '');
-    const phone = digits.length === 10 ? '91' + digits : digits;
-    const message = renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
-      guest_name: guest.guestName,
-      room_name: guest.roomNumber || roomName || '',
-      property_name: propertyName || 'us',
-      checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
-      checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || ''),
-      guest_count: String((guest as any).no_of_guests ?? (guest as any).numberOfGuests ?? 1),
-      room_tariff: ((guest as any).per_night_charges || (guest as any).roomRate || 0).toFixed(2),
-      advance_paid: ((guest as any).advance_paid || (guest as any).advanceAmount || (guest as any).advance || 0).toFixed(2),
-      maps_link: propertyMapsLink || '',
-      contact_phone: propertyPhone || '',
-    });
-    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
-  };
-
-  // "Share Voucher (PNG)" - same html-to-image pattern used on the booking
-  // confirmation voucher, the billing receipt, and the TodayOverview
-  // calendar's Booking Details modal.
-  const handleShareVoucherPng = async () => {
-    const voucherBox = document.getElementById('printableRoomBookingContent');
-    if (!voucherBox) return;
-    const actionsBar = document.getElementById('printableRoomBookingActionsBar');
-    if (actionsBar) actionsBar.style.display = 'none';
-    setIsSharingPng(true);
-
-    try {
-      const blob = await htmlToImage.toBlob(voucherBox, { pixelRatio: 2, backgroundColor: '#ffffff' });
-      if (!blob) return;
-      const file = new File([blob], `Booking_${selectedBooking?.guestName || 'Details'}_${Date.now()}.png`, { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Booking Details' });
-      } else {
-        const link = document.createElement('a');
-        link.download = `Booking_${selectedBooking?.guestName || 'Details'}_${Date.now()}.png`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-      }
-    } catch (err) {
-      showToast('Failed to generate image: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
-    } finally {
-      if (actionsBar) actionsBar.style.display = '';
-      setIsSharingPng(false);
-    }
-  };
-
-  // Update edit state when booking is selected
-  useEffect(() => {
-    if (selectedBooking) {
-      setEditCheckin(selectedBooking.checkinDate?.split(' ')[0] || '');
-      setEditCheckout(selectedBooking.expectedCheckout?.split(' ')[0] || '');
-      setEditGuestName(selectedBooking.guestName || '');
-      setEditPhone(selectedBooking.phoneNumber || '');
-      setEditNoOfGuests((selectedBooking as any).no_of_guests || 1);
-      const bookingRoomId = (selectedBooking as any).room_id || (selectedBooking as any).roomId;
-      setEditRoomId(bookingRoomId ? String(bookingRoomId) : '');
-      setShowDateRangePicker(false);
-    }
-  }, [selectedBooking]);
 
   // Fetch blocked dates from iCal sync
   useEffect(() => {
@@ -943,249 +841,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </div>
 
       {/* Booking Details Modal - Editable */}
-      {selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div id="printableRoomBookingContent" className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('edit_booking_header', 'Edit Booking')}</h2>
-              <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
-            </div>
+      {selectedBooking && !showCheckinVerification && (
+        <BookingDetailsModal
+          guest={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+          onSave={async (updated) => {
+            if (!onUpdateBooking) return;
+            await onUpdateBooking(updated);
+            setSelectedBooking(updated);
+          }}
+          onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); } : undefined}
+          rooms={rooms}
+          activeGuests={guests}
+          propertyName={propertyName}
+          propertyMapsLink={propertyMapsLink}
+          propertyPhone={propertyPhone}
+          propertyWhatsappTemplate={propertyWhatsappTemplate}
+          onOpenIdVerification={() => setShowCheckinVerification(true)}
+        />
+      )}
 
-            <button
-              onClick={() => setShowCheckinVerification(true)}
-              className={`w-full mb-4 px-4 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                selectedBooking.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
-                  : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
-              }`}
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                <IdCard className="w-4 h-4" />
-                {t('checkin_id_verification_label', 'Check-in ID Verification')}
-              </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                selectedBooking.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
-              }`}>
-                {selectedBooking.idVerificationStatus === 'Complete' ? t('verification_complete_badge', 'Complete') : t('verification_pending_badge', 'Pending')}
-              </span>
-            </button>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('guest_name_only_label', 'Guest Name')}</label>
-                <input
-                  type="text"
-                  value={editGuestName}
-                  onChange={(e) => setEditGuestName(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
-                />
-              </div>
-
-              {rooms.length > 0 && (
-                <div>
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('room_column', 'Room')}</label>
-                  <div className="mt-1">
-                    <StyledSelect
-                      value={editRoomId}
-                      onChange={setEditRoomId}
-                      options={rooms.map((room) => {
-                        const newCheckin = new Date(editCheckin || selectedBooking.checkinDate);
-                        const newCheckout = new Date(editCheckout || selectedBooking.expectedCheckout);
-                        const occupiedByOther = guests.some((g) => {
-                          if (g.id === selectedBooking.id) return false;
-                          if (g.status !== 'Active') return false;
-                          const gRoomId = (g as any).roomId || (g as any).room_id;
-                          if (Number(gRoomId) !== Number(room.id)) return false;
-                          const gCheckin = new Date(g.checkinDate);
-                          const gCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
-                          return newCheckin < gCheckout && gCheckin < newCheckout;
-                        });
-                        return {
-                          value: String(room.id),
-                          label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`,
-                          disabled: occupiedByOther,
-                        };
-                      })}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <button
-                  onClick={() => setShowDateRangePicker(true)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {editCheckin && editCheckout
-                    ? `${new Date(editCheckin).toLocaleDateString('en-GB')} → ${new Date(editCheckout).toLocaleDateString('en-GB')}`
-                    : t('select_checkin_checkout_placeholder', 'Select check-in and check-out dates')}
-                </button>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('phone_label', 'Phone')}</label>
-                <input
-                  type="tel"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('number_of_guests_label', 'Number of Guests')}</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={editNoOfGuests}
-                  onChange={(e) => setEditNoOfGuests(Math.max(1, Number(e.target.value) || 1))}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div id="printableRoomBookingActionsBar">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSelectedBooking(null)}
-                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
-                >
-                  {t('cancel_button', 'Cancel')}
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!selectedBooking || !onUpdateBooking) return;
-                    setIsSavingBooking(true);
-                    try {
-                      await onUpdateBooking({
-                        ...selectedBooking,
-                        guestName: editGuestName,
-                        phoneNumber: editPhone,
-                        checkinDate: editCheckin,
-                        expectedCheckout: editCheckout,
-                        ...( { no_of_guests: editNoOfGuests } as any),
-                        ...(editRoomId ? { room_id: Number(editRoomId) } as any : {}),
-                      });
-                      showToast('Booking updated successfully', { type: 'success' });
-                      setSelectedBooking(null);
-                    } catch (err) {
-                      showToast('Failed to update booking. Please try again.', { type: 'error' });
-                    } finally {
-                      setIsSavingBooking(false);
-                    }
-                  }}
-                  disabled={isSavingBooking || !onUpdateBooking}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
-                >
-                  {isSavingBooking ? t('saving_button', 'Saving…') : t('save_button', 'Save')}
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
-                >
-                  {t('delete_button', 'Delete')}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <a
-                  href={buildWhatsAppShareUrl(selectedBooking)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
-                >
-                  <Share2 className="w-4 h-4" />
-                  {t('share_whatsapp_button', 'Share via WhatsApp')}
-                </a>
-                <button
-                  onClick={handleShareVoucherPng}
-                  disabled={isSharingPng}
-                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  {isSharingPng ? t('preparing_button', 'Preparing…') : t('share_png_button', 'Share PNG')}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Date Range Picker Modal */}
-          <DateRangePicker
-            isOpen={showDateRangePicker}
-            onClose={() => setShowDateRangePicker(false)}
-            checkinDate={editCheckin}
-            checkoutDate={editCheckout}
-            onCheckinChange={setEditCheckin}
-            onCheckoutChange={setEditCheckout}
-            onClear={() => {
-              setEditCheckin('');
-              setEditCheckout('');
-            }}
-            blockedDates={getBlockedDateStrings(selectedBooking)}
-          />
-
-          {/* Delete Confirmation Modal */}
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-sm w-full p-6">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('delete_booking_header', 'Delete Booking')}</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-                  Are you sure you want to delete this booking for {selectedBooking?.guestName}? This action cannot be undone.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg hover:bg-gray-300 transition"
-                  >
-                    {t('cancel_button', 'Cancel')}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!selectedBooking || !onDeleteBooking) return;
-                      setIsDeletingBooking(true);
-                      try {
-                        await onDeleteBooking(selectedBooking.id);
-                        showToast('Booking deleted', { type: 'success' });
-                        setSelectedBooking(null);
-                        setShowDeleteConfirm(false);
-                      } catch (err) {
-                        showToast('Failed to delete booking. Please try again.', { type: 'error' });
-                      } finally {
-                        setIsDeletingBooking(false);
-                      }
-                    }}
-                    disabled={isDeletingBooking || !onDeleteBooking}
-                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
-                  >
-                    {isDeletingBooking ? t('deleting_button', 'Deleting…') : t('delete_button', 'Delete')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Check-in ID Verification Modal */}
-          {showCheckinVerification && (
-            <CheckinVerificationModal
-              guest={selectedBooking}
-              isOpen={showCheckinVerification}
-              onClose={() => {
-                setShowCheckinVerification(false);
-                // This modal is opened from inside the Edit Booking modal, on
-                // top of it - closing (manually, or automatically after
-                // completing) should return to the dashboard, not reveal Edit
-                // Booking sitting underneath unexpectedly.
-                setSelectedBooking(null);
-              }}
-              onVerificationComplete={(guestId) => {
-                onGuestVerificationUpdated?.(guestId);
-                setSelectedBooking((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));
-              }}
-            />
-          )}
-        </div>
+      {/* Check-in ID Verification Modal */}
+      {showCheckinVerification && (
+        <CheckinVerificationModal
+          guest={selectedBooking}
+          isOpen={showCheckinVerification}
+          onClose={() => {
+            setShowCheckinVerification(false);
+            // This modal is opened from inside Booking Details, on top of it -
+            // closing (manually, or automatically after completing) should
+            // return to the dashboard, not reveal Booking Details sitting
+            // underneath unexpectedly.
+            setSelectedBooking(null);
+          }}
+          onVerificationComplete={(guestId) => {
+            onGuestVerificationUpdated?.(guestId);
+            setSelectedBooking((prev) => (prev ? { ...prev, idVerificationStatus: 'Complete' } : prev));
+          }}
+        />
       )}
 
       {/* Add Guest Modal */}
