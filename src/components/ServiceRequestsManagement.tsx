@@ -151,7 +151,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             {t('new_request_button', 'New Request')}
