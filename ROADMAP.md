@@ -6,60 +6,19 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Plain-Language UI Text + Centralized Strings File
-UI copy is currently hardcoded inline across ~52 component files (e.g. "Authorization Role" in StaffManagement.tsx), written in formal/jargon-y English that's unfriendly to staff who aren't fluent readers. Two-part effort:
-1. **Extract to one file**: `src/i18n/en.ts` - a flat, keyed strings object (e.g. `team_role: "Team Role"`) - components read from it instead of inlining text. Keyed (not just English-as-the-source) so a future `hi.ts` or similar can sit alongside it without a code rewrite, if translation is ever needed. No i18n library - single language, plain object, no added dependency.
-2. **Reword toward plain English** as strings get extracted: "Authorization Role" -> "Team Role", "Current Resident Profile" -> "Guest Currently Staying", "KDS Queue" -> "Order Queue", and similar case-by-case simplifications flagged during each pass or from staff feedback.
+### Assigned Room dropdown missing from Edit Booking (Multi-Key)
 
-Rolled out phased, not as one big-bang pass. Done so far:
-- ✅ Sidebar/nav (`Navigation.tsx`)
-- ✅ Guest Registration (`GuestManagement.tsx`)
-- ✅ Operational Dashboard (`OperationalDashboard.tsx`)
-- ✅ Staff & Payee Management (`StaffManagement.tsx`) - the original motivating "Authorization Role" example, now "Team Role"
-- ✅ Platform Property Management (`PlatformPropertyManagement.tsx`)
-- ✅ Telegram Notification Modal (`TelegramNotificationModal.tsx`)
-- ✅ Receipt Edit & Checkout Modal (`ReceiptEditModal.tsx`)
-- ✅ Audit Logs & Receipts View (`AuditLogsView.tsx`)
-- ✅ Menu Manager (`MenuManager.tsx`)
-- ✅ Analytics Dashboard (`AnalyticsDashboard.tsx`)
-- ✅ iCal Sync Manager (`ICalSyncManager.tsx`)
-- ✅ Tenant Dashboard (`TenantDashboard.tsx`)
-- ✅ Petty Cash Management (`PettyCashManagement.tsx`)
-- ✅ Custom CSS Override (`CustomCSSOverride.tsx`)
-- ✅ Nav Menu Editor (`NavMenuEditor.tsx`)
-- ✅ Today Overview (`TodayOverview.tsx`)
-- ✅ Data Export Center (`DataExportCenter.tsx`)
-- ✅ Telegram Setup Wizard (`TelegramSetupWizard.tsx`)
-- ✅ Guest Billing & Checkout (`BillingCheckout.tsx`)
-- ✅ Multi-Key Property Overview (`MultiKeyPropertyOverview.tsx`)
-- ✅ Cash Drawer Manager (`CashDrawerManager.tsx`)
-- ✅ Login Page (`LoginPage.tsx`)
-- ✅ Root Admin Dashboard (`RootAdminDashboard.tsx`)
-- ✅ Inventory Management (`InventoryManagement.tsx`)
-- ✅ Kitchen Management (`KitchenManagement.tsx`)
-- ✅ Default Expenses Manager (`DefaultExpensesManager.tsx`)
-- ✅ Header (`Header.tsx`)
-- ✅ Misc Charges Management (`MiscChargesManagement.tsx`)
-- ✅ License Management (`LicenseManagement.tsx`)
-- ✅ Theme Management (`ThemeManagement.tsx`)
-- ✅ Guest History (`GuestHistory.tsx`)
-- ✅ Email Settings Panel (`EmailSettingsPanel.tsx`)
-- ✅ Date Picker (`DatePicker.tsx`)
-- ✅ Expense Items Management (`ExpenseItemsManagement.tsx`)
-- ✅ Check-in Verification Modal (`CheckinVerificationModal.tsx`)
-- ✅ Service Requests Management (`ServiceRequestsManagement.tsx`)
-- ✅ Loading/Error/Settings/Modal shared components (`LoadingSpinner`, `ErrorBoundary`, `AppearanceSettings`, `InvalidPropertyPage`, `LoadingScreen`, `SearchableSelect`, `GlobalModal`, `RoomSelectorModal`, `MultiKeyRoomDrawer`, `ConfirmDialogContext`, `StyledSelect`, `DataLoader`)
-- ✅ Property Setup Wizard (`PropertySetupWizard.tsx`)
-- ✅ No static UI text (nothing to extract): `ToggleSwitch.tsx`, `ToastContext.tsx`
-- ✅ Date Range Picker (`DateRangePicker.tsx`)
-- ✅ Demo Data Modal (`DemoDataModal.tsx`)
-- ✅ Login Modal (`LoginModal.tsx`)
-- ✅ Telegram Connection Settings (`TelegramConnectionSettings.tsx`)
-- ✅ Root App Shell (`App.tsx`)
+Edit Booking only has Guest Name/Dates/Phone/Number of Guests - no way to
+set or change which room a booking belongs to, even though `update_guest`
+already accepts and applies `room_id` (conflict-checked against other
+active bookings on that room). This is also the only way to fix bookings
+already sitting with no room assigned, e.g. "Hans Mueller" on Goa Homes -
+`add_guest` never wrote `room_id` at all until it was just fixed, so every
+booking made before that fix has no stored room to recover automatically.
 
-All 56 component files are now i18n-extracted (or verified to have no static UI text). Once a screen's strings are extracted, future wording tweaks on it are a one-line edit instead of a code hunt.
-
-Note: duplicate-key sweep passed clean for the latest batch; the earlier 5-key regression was from overlapping commits and is already resolved.
+Add an Assigned Room dropdown (same room list already used on the Add
+Booking form) to the Edit Booking modal in
+`src/components/OperationalDashboard.tsx`, Multi-Key properties only.
 
 ### Pending DB Cleanup (writes blocked in-session, need to run manually)
 
@@ -86,18 +45,6 @@ UI flow for yet.
      AND property_id != 1;
    ```
    (property_id = 1 is Jaipur, where this data is real and should stay.)
-
-3. **Pre-existing guests with no room assigned** (e.g. "Hans Mueller" on Goa
-   Homes) - `add_guest` never wrote `room_id` at all until now (see fix in
-   `php/guests/guests.php`), so every booking made before this fix has
-   `room_id = NULL` regardless of what room was actually picked at check-in.
-   Not backfillable - there's no stored room name on these older rows to
-   recover from. Also currently no UI to fix them: Edit Booking has no
-   Assigned Room field for Multi-Key properties (only Guest Name/Dates/
-   Phone/Number of Guests), even though `update_guest` already accepts
-   `room_id`. Needs: an Assigned Room dropdown in Edit Booking (`selectedBooking`
-   modal, `src/components/OperationalDashboard.tsx`) so staff can manually
-   reassign these going forward.
 
 ### Needs Manual Verification
 
