@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DataTable from 'react-data-table-component';
 import {
   UserPlus,
   Users,
@@ -148,6 +149,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
   const [createdBooking, setCreatedBooking] = useState<Guest | null>(null);
+  // Set when "Manage" is clicked on a row in the recent-bookings list on this
+  // same page - carried over to BillingCheckout below so it lands on the
+  // right Today/Upcoming/Past tab with this exact booking already filtered
+  // into view, instead of just dropping the admin on the page in general.
+  const [focusBookingGuestId, setFocusBookingGuestId] = useState<string | null>(null);
 
   // Set default room for MultiKey properties on component mount
   useEffect(() => {
@@ -762,8 +768,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   }
 
   if (activeMenuItemKey === 'guest_registration') {
+    const recentBookings = [...guests]
+      .sort((a, b) => (b.checkinDate || '').localeCompare(a.checkinDate || ''))
+      .slice(0, 10);
+
     return (
-      <div className="guest-management-container w-full flex justify-center">
+      <div className="guest-management-container w-full flex flex-col lg:flex-row justify-center items-start gap-6">
         {/* Left Column: Form */}
         <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
@@ -1156,6 +1166,62 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </form>
         </div>
 
+        {/* Right Column: Recent Bookings (guest_registration mode only) */}
+        {activeMenuItemKey === 'guest_registration' && (
+          <div className="recent-bookings-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 max-w-[520px] w-full">
+            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide font-bold mb-3">
+              {t('recent_bookings_heading', 'Recent Bookings')}
+            </h3>
+            <DataTable
+              columns={[
+                {
+                  name: t('guest_name_column', 'Guest'),
+                  selector: (row: Guest) => row.guestName,
+                  cell: (row: Guest) => (
+                    <div className="py-1.5">
+                      <div className="font-bold text-slate-800 dark:text-slate-200">{row.guestName}</div>
+                      <div className="text-[11px] text-slate-400">{row.roomNumber}</div>
+                    </div>
+                  ),
+                  grow: 2,
+                },
+                {
+                  name: t('checkin_column', 'Check-in'),
+                  selector: (row: Guest) => row.checkinDate,
+                  cell: (row: Guest) => (
+                    <span className="text-xs text-slate-600 dark:text-slate-300">
+                      {row.checkinDate ? row.checkinDate.split(' ')[0].split('-').reverse().join('/') : ''}
+                    </span>
+                  ),
+                },
+                {
+                  name: '',
+                  cell: (row: Guest) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFocusBookingGuestId(row.id);
+                        onSetActiveMenuItemKey?.('all_bookings');
+                      }}
+                      className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 text-[11px] font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      {t('manage_booking_button', 'Manage')}
+                    </button>
+                  ),
+                  right: true,
+                },
+              ]}
+              data={recentBookings}
+              dense
+              noDataComponent={
+                <div className="py-8 text-xs text-slate-400 dark:text-slate-500">
+                  {t('no_bookings_yet_text', 'No bookings yet.')}
+                </div>
+              }
+            />
+          </div>
+        )}
+
         {/* Right Column: Booking Calendar (hidden in guest_registration mode) */}
         {activeMenuItemKey !== 'guest_registration' && (
           <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden flex flex-col">
@@ -1194,6 +1260,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         kitchenModuleEnabled={kitchenModuleEnabled}
         propertyGstin={propertyGstin}
         propertyName={propertyName}
+        focusGuestId={focusBookingGuestId}
       />
     );
   }

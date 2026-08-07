@@ -29,6 +29,11 @@ interface BillingCheckoutProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
+  // Set by the "Manage" button on the Add Booking page's recent-bookings
+  // list - jumps straight to the right Today/Upcoming/Past tab with this
+  // one booking already filtered into view, instead of landing on the page
+  // in general and making the admin search for it themselves.
+  focusGuestId?: string | null;
 }
 
 interface GroupedRoomBooking {
@@ -50,6 +55,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
+  focusGuestId = null,
 }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,6 +126,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     if (detailed === 'checkin_today' || detailed === 'checkout_today') return 'today';
     return detailed;
   };
+
+  // Jump to whichever tab actually has the requested booking, and filter the
+  // list down to just that guest via the existing search box - re-runs each
+  // time "Manage" is clicked again (including on the same guest), not just
+  // on mount.
+  useEffect(() => {
+    if (!focusGuestId) return;
+    const target = guests.find((g) => String(g.id) === String(focusGuestId));
+    if (!target) return;
+    setActiveTab(getGuestTabCategory(target));
+    setSearchTerm(target.guestName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGuestId]);
 
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
