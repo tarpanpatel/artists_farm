@@ -1054,6 +1054,10 @@ switch ($action) {
                 $sets[] = 'address = ?';
                 $params[] = trim($input['address']) ?: null;
             }
+            if (array_key_exists('instructions', $input)) {
+                $sets[] = 'instructions = ?';
+                $params[] = trim($input['instructions']) !== '' ? $input['instructions'] : null;
+            }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,
                 // not an empty template, so the frontend's fallback logic kicks in.

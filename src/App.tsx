@@ -1390,13 +1390,18 @@ ${itemsStr}
     }] : []),
   ];
 
-  const handleSavePropertyLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
+  const handleSavePropertyLocation = async (address: string, googleMapsLink: string, instructions?: string): Promise<boolean> => {
     try {
       const response = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: preloadedData.currentProperty?.id, address, google_maps_link: googleMapsLink }),
+        body: JSON.stringify({
+          property_id: preloadedData.currentProperty?.id,
+          address,
+          google_maps_link: googleMapsLink,
+          ...(instructions !== undefined ? { instructions } : {}),
+        }),
       });
       const data = await response.json();
       if (data.success) {
@@ -1592,6 +1597,7 @@ ${itemsStr}
                       <PropertyAddressBar
                         address={preloadedData.currentProperty?.address || ''}
                         googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        instructions={preloadedData.currentProperty?.instructions || ''}
                         onSaveLocation={handleSavePropertyLocation}
                       />
                     </ErrorBoundary>
@@ -1647,13 +1653,6 @@ ${itemsStr}
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <ErrorBoundary section="Property Address">
-                      <PropertyAddressBar
-                        address={preloadedData.currentProperty?.address || ''}
-                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                        onSaveLocation={handleSavePropertyLocation}
-                      />
-                    </ErrorBoundary>
                     <ErrorBoundary section="Property Setup Wizard">
                       <PropertySetupWizard
                         address={preloadedData.currentProperty?.address || ''}
@@ -1678,6 +1677,10 @@ ${itemsStr}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        propertyAddress={preloadedData.currentProperty?.address || ''}
+                        propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        onSavePropertyLocation={handleSavePropertyLocation}
                       />
                     </ErrorBoundary>
                   </div>

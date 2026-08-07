@@ -81,6 +81,14 @@ try {
     foreach ($propertyWhatsAppCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
     }
+    // Check-in instructions: free-text notes shown on the property dashboard,
+    // edited alongside the address in the same Property Details modal.
+    $propertyDetailCols = [
+        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `instructions` TEXT DEFAULT NULL",
+    ];
+    foreach ($propertyDetailCols as $sql) {
+        try { $pdo->exec($sql); } catch (PDOException $e) {}
+    }
     // initializeDatabaseTables($pdo) runs once, below, after this try/catch -
     // it used to also run here, meaning it fired twice per request on the
     // normal (non-fallback) connection path for no reason.

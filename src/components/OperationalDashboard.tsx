@@ -25,6 +25,7 @@ import { getPropertySlug, markCFormFiled } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
+import { PropertyAddressBar } from './PropertyAddressBar';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
@@ -54,6 +55,10 @@ interface OperationalDashboardProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  propertyAddress?: string;
+  propertyGoogleMapsLink?: string;
+  propertyInstructions?: string;
+  onSavePropertyLocation?: (address: string, googleMapsLink: string, instructions: string) => Promise<boolean>;
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
@@ -80,6 +85,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyAddress = '',
+  propertyGoogleMapsLink = '',
+  propertyInstructions = '',
+  onSavePropertyLocation,
 }) => {
   const { showToast } = useToast();
   const [isSharingPng, setIsSharingPng] = useState(false);
@@ -459,6 +468,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             )
           )}
           {roomName && isEditingRoomName && <p className="text-xs text-gray-500 mt-1">in Goa Homes {roomId && `(ID: ${roomId})`}</p>}
+          {!roomName && onSavePropertyLocation && (
+            <PropertyAddressBar
+              address={propertyAddress}
+              googleMapsLink={propertyGoogleMapsLink}
+              instructions={propertyInstructions}
+              onSaveLocation={onSavePropertyLocation}
+            />
+          )}
         </div>
         <button
           onClick={() => setShowAddGuestModal(true)}
