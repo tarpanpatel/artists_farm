@@ -184,10 +184,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Compress & Crop Image Engine
   const handleCompressFile = (file: File, type: 'invoice' | 'screenshot') => {
+    console.log('[PettyCash] handleCompressFile start', { type, name: file.name, size: file.size, lastModified: file.lastModified });
     const reader = new FileReader();
     reader.onload = (event) => {
+      console.log('[PettyCash] FileReader onload start', { type });
       const img = new Image();
       img.onload = () => {
+        console.log('[PettyCash] image onload', { type, width: img.width, height: img.height });
         const canvas = document.createElement('canvas');
         const MAX_WIDTH = 800;
         const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
@@ -198,11 +201,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
           dispatch({ type: 'SET_FIELD', field: type === 'invoice' ? 'invoiceBillUrl' : 'paymentScreenshotUrl', value: compressedBase64 });
+          console.log('[PettyCash] canvas dispatch done', { type });
+        } else {
+          console.warn('[PettyCash] canvas 2D context unavailable', { type });
         }
+      };
+      img.onerror = () => {
+        console.error('[PettyCash] image onerror from FileReader result', { type, srcLength: typeof event.target?.result === 'string' ? event.target.result.length : 'n/a' });
       };
       img.src = event.target?.result as string;
     };
+    reader.onerror = () => {
+      console.error('[PettyCash] FileReader onerror', { type, file: file.name });
+    };
     reader.readAsDataURL(file);
+    console.log('[PettyCash] FileReader readAsDataURL called', { type });
   };
 
   // Handle Description change with Auto-fill Price lookup
@@ -575,8 +588,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => invoiceFileRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') invoiceFileRef.current?.click(); }}
+                onClick={() => {
+                  console.log('[PettyCash] invoice upload clicked', { ref: !!invoiceFileRef.current });
+                  invoiceFileRef.current?.click();
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { console.log('[PettyCash] invoice upload keyboard activated'); invoiceFileRef.current?.click(); } }}
                 className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <FileText className="w-4 h-4 text-slate-400" />
@@ -586,7 +602,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 ref={invoiceFileRef}
                 type="file"
                 accept="image/*"
-                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice')}
+                onChange={e => {
+                  console.log('[PettyCash] invoice file input onChange', { files: e.target.files?.length, fileNames: Array.from(e.target.files || []).map(f => f.name) });
+                  e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice');
+                }}
                 className="hidden"
               />
               {formState.invoiceBillUrl && (
@@ -599,8 +618,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => screenshotFileRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') screenshotFileRef.current?.click(); }}
+                onClick={() => {
+                  console.log('[PettyCash] screenshot upload clicked', { ref: !!screenshotFileRef.current });
+                  screenshotFileRef.current?.click();
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { console.log('[PettyCash] screenshot upload keyboard activated'); screenshotFileRef.current?.click(); } }}
                 className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ImageIcon className="w-4 h-4 text-slate-400" />
@@ -610,7 +632,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 ref={screenshotFileRef}
                 type="file"
                 accept="image/*"
-                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot')}
+                onChange={e => {
+                  console.log('[PettyCash] screenshot file input onChange', { files: e.target.files?.length, fileNames: Array.from(e.target.files || []).map(f => f.name) });
+                  e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot');
+                }}
                 className="hidden"
               />
               {formState.paymentScreenshotUrl && (
