@@ -87,6 +87,18 @@ UI flow for yet.
    ```
    (property_id = 1 is Jaipur, where this data is real and should stay.)
 
+3. **Pre-existing guests with no room assigned** (e.g. "Hans Mueller" on Goa
+   Homes) - `add_guest` never wrote `room_id` at all until now (see fix in
+   `php/guests/guests.php`), so every booking made before this fix has
+   `room_id = NULL` regardless of what room was actually picked at check-in.
+   Not backfillable - there's no stored room name on these older rows to
+   recover from. Also currently no UI to fix them: Edit Booking has no
+   Assigned Room field for Multi-Key properties (only Guest Name/Dates/
+   Phone/Number of Guests), even though `update_guest` already accepts
+   `room_id`. Needs: an Assigned Room dropdown in Edit Booking (`selectedBooking`
+   modal, `src/components/OperationalDashboard.tsx`) so staff can manually
+   reassign these going forward.
+
 ### Needs Manual Verification
 
 - **Telegram delivery on booking edits.** `update_guest` now diffs the
