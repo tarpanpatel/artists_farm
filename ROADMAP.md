@@ -87,5 +87,17 @@ UI flow for yet.
    ```
    (property_id = 1 is Jaipur, where this data is real and should stay.)
 
+### Needs Manual Verification
+
+- **Telegram delivery on booking edits.** `update_guest` now diffs the
+  pre-update row and pings the property's Admin Telegram channel with the
+  changed fields (see `php/guests/guests.php`) - verified the diff logic
+  runs cleanly and doesn't break the save (edited/reverted a live guest name
+  with no errors), but actual message delivery to Telegram wasn't confirmed
+  from this session (no visibility into the bot/chat from here). Same open
+  question for the pre-existing new-booking and ID-upload notifications this
+  pattern was copied from. Check the property's actual Admin Telegram chat
+  after an edit to confirm the message arrives and reads correctly.
+
 ---
 *Last Updated: August 2026*
