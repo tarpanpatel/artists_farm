@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Plus, CheckCircle2, Clock, X, Home } from 'lucide-react';
 import {
   ServiceRequest,
+  ServiceRequestType,
   fetchServiceRequestsFromDB,
   createServiceRequestInDB,
   fulfillServiceRequestInDB,
   updateServiceRequestReminderTimestamp,
   checkStaleServiceRequests,
+  fetchServiceRequestTypesFromDB,
   resolveTelegramTemplate,
   getPropertySlug,
 } from '../services/api';
@@ -26,7 +28,34 @@ interface ServiceRequestsManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
 }
 
-const QUICK_PICK_TYPES = ['Fresh Towels', 'Housekeeping', 'Maintenance', 'Extra Amenities', 'Other'];
+const DEFAULT_SERVICE_REQUEST_TYPES = [
+  { type_id: 'fresh_towels', category: 'Housekeeping', label: 'Fresh Towels' },
+  { type_id: 'extra_bedding', category: 'Housekeeping', label: 'Extra Bedding / Pillows' },
+  { type_id: 'toiletries_refill', category: 'Housekeeping', label: 'Toiletries Refill' },
+  { type_id: 'room_cleaning', category: 'Housekeeping', label: 'Room Cleaning' },
+  { type_id: 'trash_pickup', category: 'Housekeeping', label: 'Trash Pickup' },
+  { type_id: 'drinking_water', category: 'Food & Beverage', label: 'Drinking Water / Ice' },
+  { type_id: 'tea_coffee_replenish', category: 'Food & Beverage', label: 'Tea / Coffee Sachets' },
+  { type_id: 'crockery_cutlery', category: 'Food & Beverage', label: 'Crockery / Cutlery' },
+  { type_id: 'room_service_order', category: 'Food & Beverage', label: 'In-Room Dining Request' },
+  { type_id: 'ac_heating_issue', category: 'Maintenance', label: 'AC / Heating Issue' },
+  { type_id: 'hot_water_geyser', category: 'Maintenance', label: 'Hot Water / Geyser Issue' },
+  { type_id: 'wifi_connectivity', category: 'Maintenance', label: 'Wi-Fi / Internet Issue' },
+  { type_id: 'tv_cable_issue', category: 'Maintenance', label: 'TV / Cable Issue' },
+  { type_id: 'plumbing_leakage', category: 'Maintenance', label: 'Plumbing / Leakage' },
+  { type_id: 'electrical_power', category: 'Maintenance', label: 'Electrical / Power Outlet Issue' },
+  { type_id: 'iron_ironing_board', category: 'Amenities On Request', label: 'Iron & Ironing Board' },
+  { type_id: 'hair_dryer', category: 'Amenities On Request', label: 'Hair Dryer' },
+  { type_id: 'mosquito_repellent', category: 'Amenities On Request', label: 'Mosquito Repellent / Vaporizer' },
+  { type_id: 'luggage_assistance', category: 'Front Desk & Services', label: 'Luggage Assistance' },
+  { type_id: 'cab_travel_booking', category: 'Front Desk & Services', label: 'Taxi / Travel Booking' },
+  { type_id: 'late_checkout_request', category: 'Front Desk & Services', label: 'Late Check-out Request' },
+  { type_id: 'early_checkin_request', category: 'Front Desk & Services', label: 'Early Check-in Request' },
+  { type_id: 'first_aid_assistance', category: 'Front Desk & Services', label: 'First Aid Kit' },
+  { type_id: 'other_special_request', category: 'General', label: 'Other / Custom Request' },
+];
+
+const OTHER_REQUEST_TYPE_ID = 'other_special_request';
 
 // Reminder cadence for still-unfulfilled requests - same shared nudge engine
 // shape as KitchenManagement's stale-order poll (php/kitchen/orders.php's
@@ -41,10 +70,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [requestTypes, setRequestTypes] = useState<ServiceRequestType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoomId, setNewRoomId] = useState<string>('');
-  const [newRequestType, setNewRequestType] = useState(QUICK_PICK_TYPES[0]);
+  const [newRequestType, setNewRequestType] = useState(DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
   const [newDescription, setNewDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
@@ -71,38 +101,66 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     setLoading(false);
   };
 
+  const loadTypes = async () => {
+    const data = await fetchServiceRequestTypesFromDB();
+    setRequestTypes(data);
+  };
+
   useEffect(() => {
     loadRequests();
+    loadTypes();
   }, []);
+
+  // DB-driven types when available; falls back to the built-in list so the
+  // dropdown still works before/without a backend seed.
+  const effectiveTypes: ServiceRequestType[] = requestTypes.length > 0
+    ? requestTypes
+    : DEFAULT_SERVICE_REQUEST_TYPES.map((d, i) => ({
+        id: -1 - i,
+        propertyId: 0,
+        typeId: d.type_id,
+        category: d.category,
+        label: d.label,
+        isSystemDefault: true,
+        displayOrder: i,
+      }));
+
+  const typeOptions = effectiveTypes.map((rt) => ({ value: rt.typeId, label: rt.label, group: rt.category, searchText: `${rt.label} ${rt.category}`.toLowerCase() }));
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const selectedTypeLabel = typeOptions.find((t) => t.value === newRequestType)?.label ?? newRequestType;
+    const roomLabel = rooms.find((r) => String(r.id) === newRoomId)?.name ?? 'Not specified';
     const ok = await createServiceRequestInDB({
       room_id: newRoomId ? Number(newRoomId) : null,
       request_type: newRequestType,
       description: newDescription.trim(),
       requested_by: getCurrentUserName(),
     });
-    setSaving(false);
     if (ok) {
       showToast('Service request logged', { type: 'success' });
+      const createdMsg = `🆕 <b>SERVICE REQUEST CREATED</b>\n━━━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${selectedTypeLabel}\n🚪 <b>Room:</b> ${roomLabel}\n👤 <b>Requested by:</b> ${getCurrentUserName()}\n${newDescription.trim() ? `📝 <b>Details:</b> ${newDescription.trim()}\n` : ''}━━━━━━━━━━━━━━━━━━━━`;
+      onDispatchTelegram?.('Service Request Created', createdMsg, 'admin');
       setIsAddModalOpen(false);
       setNewRoomId('');
-      setNewRequestType(QUICK_PICK_TYPES[0]);
+      setNewRequestType(typeOptions[0]?.value ?? DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
       setNewDescription('');
       loadRequests();
     } else {
       showToast('Failed to log service request', { type: 'error' });
     }
+    setSaving(false);
   };
 
-  const handleFulfill = async (id: number) => {
+  const handleFulfill = async (id: number, requestType: string, roomName: string) => {
     setFulfillingId(id);
     const ok = await fulfillServiceRequestInDB(id, getCurrentUserName());
     setFulfillingId(null);
     if (ok) {
       showToast('Marked fulfilled', { type: 'success' });
+      const fulfilledMsg = `✅ <b>SERVICE REQUEST FULFILLED</b>\n━━━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${requestType}\n🚪 <b>Room:</b> ${roomName}\n👤 <b>Fulfilled by:</b> ${getCurrentUserName()}\n🕒 <b>Time:</b> ${new Date().toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━━━━━`;
+      onDispatchTelegram?.('Service Request Fulfilled', fulfilledMsg, 'admin');
       loadRequests();
     } else {
       showToast('Failed to update request', { type: 'error' });
@@ -180,11 +238,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                         {r.description && <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">{r.description}</p>}
                         <p className="text-[11px] text-gray-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {r.createdAt}</p>
                       </div>
-                      <button
-                        onClick={() => handleFulfill(r.id)}
-                        disabled={fulfillingId === r.id}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50 transition-colors"
-                      >
+                       <button
+                         onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
+                         disabled={fulfillingId === r.id}
+                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50 transition-colors"
+                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
                       </button>
@@ -252,15 +310,16 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
-                  options={QUICK_PICK_TYPES.map((t) => ({ value: t, label: t }))}
+                  options={typeOptions}
+                  searchable
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('details_optional_label', 'Details (optional)')}</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('details_label', 'Details')}</label>
                 <textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder={t('service_request_details_placeholder', 'e.g. 2 extra towels, AC not cooling...')}
+                  placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
                   rows={3}
                   className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
                 />
