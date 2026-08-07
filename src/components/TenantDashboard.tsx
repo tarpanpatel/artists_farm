@@ -430,14 +430,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     )}
 
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <a
-                        href={dashboardUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors"
+                      <button
+                        onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')}
+                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         {t('open_dashboard_link', 'Open Property')} <ExternalLink className="w-3 h-3" />
-                      </a>
+                      </button>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }}
