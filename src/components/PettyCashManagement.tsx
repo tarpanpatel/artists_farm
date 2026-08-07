@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer, useRef } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
@@ -76,8 +76,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     paymentScreenshotUrl: '',
   }));
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
-  const invoiceFileRef = useRef<HTMLInputElement>(null);
-  const screenshotFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStaffUsersFromDB().then((users) => {
@@ -585,21 +583,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <label className="block font-bold text-slate-600 dark:text-slate-400">{t('capture_upload_invoice_bill_label', '📁 Capture / Upload Invoice Bill')}</label>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  console.log('[PettyCash] invoice upload clicked', { ref: !!invoiceFileRef.current });
-                  invoiceFileRef.current?.click();
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { console.log('[PettyCash] invoice upload keyboard activated'); invoiceFileRef.current?.click(); } }}
-                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-              >
+              <label htmlFor="invoice-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', '✓ Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
-              </div>
+              </label>
               <input
-                ref={invoiceFileRef}
+                id="invoice-upload-input"
                 type="file"
                 accept="image/*"
                 onChange={e => {
@@ -615,21 +604,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <label className="block font-bold text-slate-600 dark:text-slate-400">{t('upload_payment_screenshot_label', '📸 Upload Payment Screenshot')}</label>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  console.log('[PettyCash] screenshot upload clicked', { ref: !!screenshotFileRef.current });
-                  screenshotFileRef.current?.click();
-                }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { console.log('[PettyCash] screenshot upload keyboard activated'); screenshotFileRef.current?.click(); } }}
-                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-              >
+              <label htmlFor="screenshot-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', '✓ Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
-              </div>
+              </label>
               <input
-                ref={screenshotFileRef}
+                id="screenshot-upload-input"
                 type="file"
                 accept="image/*"
                 onChange={e => {
