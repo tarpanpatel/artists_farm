@@ -360,9 +360,30 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     setEditTitle(item.title);
   };
 
+  // snake_case to match this app's existing route-key convention
+  // (guest_registration, all_bookings, ...) - unlike PlatformPropertyManagement's
+  // tenant/property slugify, which is hyphenated for a different URL scheme.
+  const slugifyForUrl = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
   const handleSaveRename = (id: string) => {
     if (!editTitle.trim()) return;
-    setItems(prev => prev.map(i => i.id === id ? { ...i, title: editTitle.trim() } : i));
+    const newTitle = editTitle.trim();
+    setItems(prev => {
+      const base = slugifyForUrl(newTitle) || 'item';
+      // Keep the slug unique among the OTHER items - a collision would make
+      // two different pages resolve to the same URL hash.
+      let candidate = base;
+      let n = 2;
+      while (prev.some(i => i.id !== id && (i.urlSlug || i.uniqueKey) === candidate)) {
+        candidate = `${base}_${n++}`;
+      }
+      return prev.map(i => i.id === id ? { ...i, title: newTitle, urlSlug: candidate } : i);
+    });
     setEditingTitleId(null);
     markDirty();
   };

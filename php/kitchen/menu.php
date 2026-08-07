@@ -160,12 +160,18 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `custom_url` TEXT DEFAULT NULL"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
                 try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
+                // url_slug is the URL hash a renamed item should now use - kept
+                // separate from unique_key (the stable key components actually key
+                // their rendering off of) so a rename can't break routing. COALESCE
+                // to unique_key below so a row that predates this column, or was
+                // never renamed, keeps resolving exactly as it always did.
+                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `url_slug` VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
 
 
                 // Navigation structure is shared across every property/tenant (unlike
                 // property_modules, which controls per-property feature visibility on
                 // top of this shared structure) — intentionally not property_id-scoped.
-                $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
+                $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
                     return [
@@ -173,6 +179,7 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                         'title' => $r['title'],
                         'tabKey' => $r['tabKey'],
                         'uniqueKey' => $r['uniqueKey'],
+                        'urlSlug' => $r['urlSlug'],
                         'category' => $r['category'],
                         'iconName' => $r['iconName'],
                         'order' => (int)$r['order'],
@@ -195,16 +202,18 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $items = is_array($input) ? $input : ($input['items'] ?? []);
                 try {
                     try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
+                    try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `url_slug` VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
 
                     // Navigation structure is shared across every property/tenant, so a
                     // save here is not scoped to $propertyId — see get_nav_menu above.
                     $pdo->beginTransaction();
-                    $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab, parent_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO nav_menu_items (id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, custom_url, open_in_new_tab, parent_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             title = VALUES(title),
                             tab_key = VALUES(tab_key),
                             unique_key = VALUES(unique_key),
+                            url_slug = VALUES(url_slug),
                             category = VALUES(category),
                             icon_name = VALUES(icon_name),
                             display_order = VALUES(display_order),
@@ -220,6 +229,7 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                             $item['title'] ?? 'Menu Item',
                             $item['tabKey'] ?? 'dashboard',
                             $item['uniqueKey'] ?? '',
+                            $item['urlSlug'] ?? ($item['uniqueKey'] ?? null),
                             $item['category'] ?? 'Main Sections',
                             $item['iconName'] ?? 'Grid',
                             $item['order'] ?? ((int)$idx + 1),

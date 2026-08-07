@@ -77,6 +77,12 @@ export interface NavMenuItem {
   title: string;
   tabKey: string;
   uniqueKey?: string;
+  // URL hash this item links to - independent of uniqueKey (which stays
+  // stable and is what components actually key their rendering off of, via
+  // activeMenuItemKey). Auto-regenerated from title on rename so the URL
+  // follows a renamed item; falls back to uniqueKey when unset so items
+  // that have never been renamed keep working unchanged.
+  urlSlug?: string;
   category?: string;
   description?: string;
   iconName: string;

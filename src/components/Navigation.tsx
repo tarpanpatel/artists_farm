@@ -53,6 +53,7 @@ interface FlatNavItem {
   id: string;
   tabKey: string;
   uniqueKey: string;
+  urlSlug?: string;
   label: string;
   icon: React.ElementType;
   badge?: string | null;
@@ -238,6 +239,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           id: item.tabKey,
           tabKey: item.tabKey,
           uniqueKey: item.uniqueKey || item.tabKey,
+          urlSlug: item.urlSlug,
           // item.title is the DB-backed value NavMenuEditor writes ("Click title to
           // rename") - it must win outright, not just as a t() fallback. en.ts has
           // entries for several of these same uniqueKeys (from the i18n extraction
@@ -306,7 +308,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     const iconSize = depth === 0 ? 'w-4 h-4' : 'w-3.5 h-3.5';
 
     const itemKey = node.uniqueKey || node.tabKey;
-    const linkHref = node.customUrl || `#${itemKey}`;
+    // The URL hash follows urlSlug (regenerated on rename) - itemKey stays the
+    // stable routing key everything else here (data-uniquekey, active-state
+    // matching, handleTabClick) keys off of, so a rename can't break routing.
+    const linkHref = node.customUrl || `#${node.urlSlug || itemKey}`;
 
     return (
       <a
@@ -349,7 +354,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const renderIconItem = (item: FlatNavItem, i: number) => {
     const ItemIcon = item.icon;
     const isActive = activeMenuItemKey === item.uniqueKey;
-    const linkHref = item.customUrl || `#${item.uniqueKey}`;
+    const linkHref = item.customUrl || `#${item.urlSlug || item.uniqueKey}`;
     return (
       <a
         key={`${item.uniqueKey}-${i}`}

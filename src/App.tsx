@@ -161,6 +161,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
         return routeMap[hash];
       }
 
+      // A nav item renamed via NavMenuEditor gets a fresh urlSlug that won't be
+      // in the static routeMap above - resolve those from the live nav item
+      // list. uniqueKey (not urlSlug) is the actual routing key everything else
+      // in the app keys off of; urlSlug is only what the browser bar shows.
+      if (hash && preloadedData.navItems) {
+        const matched = preloadedData.navItems.find((item) => item.urlSlug === hash);
+        if (matched) {
+          const key = matched.uniqueKey || matched.tabKey;
+          const tab = routeMap[key]?.tab || (matched.tabKey as TabType) || 'dashboard';
+          return { tab, key };
+        }
+      }
+
       // If hash is not in routeMap but exists, assume it's a room slug
       if (hash) {
         return { tab: 'dashboard', key: hash };
@@ -211,17 +224,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
   useEffect(() => {
     sessionStorage.setItem('artists_farm_active_tab', activeTab);
     sessionStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
-    // Only update hash for menu items, NOT for room slugs (which start with "room-" or other room patterns)
-    if (typeof window !== 'undefined' && activeMenuItemKey) {
-      const isRoomSlug = activeMenuItemKey.match(/^(room-|vr-|[a-z]+-\d+)/);
-      if (!isRoomSlug) {
-        const targetHash = `#${activeMenuItemKey}`;
-        if (window.location.hash !== targetHash) {
-          window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
-        }
-      }
-    }
   }, [activeTab, activeMenuItemKey]);
+
+  // The rest of what this effect used to do - writing activeMenuItemKey to the
+  // address bar - lives further down, right after navItems is declared, since
+  // it needs to look up the current item's urlSlug.
 
   // Preserve room hash when room is selected
   useEffect(() => {
@@ -434,6 +441,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
     preloadedData.navItems || []
   );
 
+  // Keeps the address bar in sync with activeMenuItemKey - shows the item's
+  // current urlSlug (regenerated on rename) rather than the stable routing
+  // key itself, so a renamed nav item's URL actually reflects the rename
+  // instead of snapping back to the old key on every render.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !activeMenuItemKey) return;
+    // Only update hash for menu items, NOT for room slugs (which start with "room-" or other room patterns)
+    const isRoomSlug = activeMenuItemKey.match(/^(room-|vr-|[a-z]+-\d+)/);
+    if (isRoomSlug) return;
+    const currentItem = navItems.find((i) => (i.uniqueKey || i.tabKey) === activeMenuItemKey);
+    const targetHash = `#${currentItem?.urlSlug || activeMenuItemKey}`;
+    if (window.location.hash !== targetHash) {
+      window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
+    }
+  }, [activeTab, activeMenuItemKey, navItems]);
+
   // Application Data States
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -617,6 +640,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
               title: dbItem.title,
               tabKey: dbItem.tabKey,
               uniqueKey: dbItem.uniqueKey,
+              urlSlug: dbItem.urlSlug,
               category: dbItem.category,
               iconName: dbItem.iconName,
               order: initial ? prev.indexOf(initial) + 1 : idx + 1,
@@ -824,7 +848,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
       if (!routeMap[hash]) {
-        const dynamicItem = visibleNavItems.find((n) => n.uniqueKey === hash || n.tabKey === hash);
+        // urlSlug first - that's what a renamed item's link actually points at now;
+        // uniqueKey/tabKey stay as fallbacks for items that were never renamed.
+        const dynamicItem = visibleNavItems.find((n) => n.urlSlug === hash || n.uniqueKey === hash || n.tabKey === hash);
         if (dynamicItem && dynamicItem.isVisible) {
           setActiveTab(dynamicItem.tabKey as any || 'dashboard');
           setActiveMenuItemKey(dynamicItem.uniqueKey || hash);
