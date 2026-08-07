@@ -418,7 +418,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [activeMenuItemKey]);
 
   // Staff Meals State
-  const [smDateRecord, setSmDateRecord] = useState('2026-07-25T12:07');
+  const [smDateRecord, setSmDateRecord] = useState<string>(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
   const [smSelectedStaff, setSmSelectedStaff] = useState<string[]>([]);
   const [smConsumptionType, setSmConsumptionType] = useState('Freshly Prepared (New Stock)');
   const [smCustomMeal, setSmCustomMeal] = useState('');

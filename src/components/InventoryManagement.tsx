@@ -524,6 +524,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const fulfillToRef = React.useRef<HTMLInputElement>(null);
   const [fulfillFilterRange, setFulfillFilterRange] = useState<{ from: string; to: string } | null>(null);
 
+  const todayDate = new Date();
+  const padDate = (n: number) => String(n).padStart(2, '0');
+  const todayStr = `${todayDate.getFullYear()}-${padDate(todayDate.getMonth() + 1)}-${padDate(todayDate.getDate())}`;
+  const weekAgoDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - 6);
+  const weekAgoStr = `${weekAgoDate.getFullYear()}-${padDate(weekAgoDate.getMonth() + 1)}-${padDate(weekAgoDate.getDate())}`;
+
   const handleFilterFulfill = () => {
     const from = fulfillFromRef.current?.value || '';
     const to = fulfillToRef.current?.value || '';
@@ -684,7 +690,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Kitchen Purchases Ledger State
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
-  const [purDate, setPurDate] = useState('2026-07-25');
+  const [purDate, setPurDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [purItemName, setPurItemName] = useState('');
   const [purSpec, setPurSpec] = useState('N/A');
   const [purQty, setPurQty] = useState<number | ''>('');
@@ -2009,11 +2015,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
            <div className="flex items-center gap-2">
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('from_label')}</span>
-              <input type="date" ref={fulfillFromRef} onChange={(e) => { if (fulfillToRef.current && e.target.value > fulfillToRef.current.value) fulfillToRef.current.value = e.target.value; }} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-18" />
+              <input type="date" ref={fulfillFromRef} onChange={(e) => { if (fulfillToRef.current && e.target.value > fulfillToRef.current.value) fulfillToRef.current.value = e.target.value; }} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue={weekAgoStr} />
             </div>
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('to_label')}</span>
-              <input type="date" ref={fulfillToRef} min={fulfillFromRef.current?.value || '2026-07-18'} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue="2026-07-25" />
+              <input type="date" ref={fulfillToRef} min={fulfillFromRef.current?.value || weekAgoStr} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue={todayStr} />
             </div>
             <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
 {t('enter_button')}
