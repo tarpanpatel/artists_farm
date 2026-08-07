@@ -171,9 +171,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
                     $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
 
-                    $prevStmt = $pdo->prepare("SELECT no_of_guests FROM guests WHERE id = ? AND property_id = ?");
+                    $prevStmt = $pdo->prepare("SELECT * FROM guests WHERE id = ? AND property_id = ?");
                     $prevStmt->execute([$guestId, $propertyId]);
-                    $previousNoOfGuests = intval($prevStmt->fetchColumn() ?: 0);
+                    $previousGuest = $prevStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                    $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
                     if ($roomId !== null) {
                         $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status = 'Active' AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
@@ -224,6 +225,62 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ]);
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Booking updated successfully']);
+
+                    // Ping Admin with exactly what changed, not just "booking updated" -
+                    // a diff against the pre-update row, one line per field that actually
+                    // moved. Best-effort: notification failure must never fail the save
+                    // that already succeeded and was already reported to the client above.
+                    try {
+                        $fieldLabels = [
+                            'guest_name' => 'Guest Name',
+                            'phone_number' => 'Phone',
+                            'checkin_date' => 'Check-in',
+                            'expected_checkout' => 'Check-out',
+                            'no_of_guests' => 'No. of Guests',
+                            'base_room_rent' => 'Room Rent',
+                            'advance_paid' => 'Advance Paid',
+                            'is_foreign_guest' => 'Foreign Guest',
+                        ];
+                        $newValues = [
+                            'guest_name' => $input['guest_name'] ?? $input['name'] ?? '',
+                            'phone_number' => $input['phone_number'] ?? $input['contact'] ?? '',
+                            'checkin_date' => $input['checkin_date'] ?? date('Y-m-d'),
+                            'expected_checkout' => $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
+                            'no_of_guests' => intval($input['no_of_guests'] ?? 1),
+                            'base_room_rent' => floatval($input['base_room_rent'] ?? 0),
+                            'advance_paid' => $advancePaid,
+                            'is_foreign_guest' => !empty($input['is_foreign_guest']) ? 1 : 0,
+                        ];
+                        $changedLines = [];
+                        foreach ($fieldLabels as $field => $label) {
+                            $oldVal = $previousGuest[$field] ?? null;
+                            $newVal = $newValues[$field];
+                            // Loose comparison - old values come back as strings from MySQL,
+                            // new ones are typed PHP values (int/float) built above.
+                            if ((string)$oldVal === (string)$newVal) continue;
+                            if ($field === 'is_foreign_guest') {
+                                $oldVal = $oldVal ? 'Yes' : 'No';
+                                $newVal = $newVal ? 'Yes' : 'No';
+                            } elseif (in_array($field, ['checkin_date', 'expected_checkout'])) {
+                                $oldVal = $oldVal ? date('d M Y', strtotime($oldVal)) : '(none)';
+                                $newVal = $newVal ? date('d M Y', strtotime($newVal)) : '(none)';
+                            } elseif (in_array($field, ['base_room_rent', 'advance_paid'])) {
+                                $oldVal = '₹' . number_format((float)$oldVal, 2);
+                                $newVal = '₹' . number_format((float)$newVal, 2);
+                            } elseif ($oldVal === null || $oldVal === '') {
+                                $oldVal = '(none)';
+                            }
+                            $changedLines[] = "• <b>{$label}:</b> {$oldVal} → {$newVal}";
+                        }
+                        if (!empty($changedLines) && !empty($previousGuest)) {
+                            require_once __DIR__ . '/../telegram/sender.php';
+                            $editMsg = "✏️ <b>BOOKING UPDATED</b>\n\n";
+                            $editMsg .= "👤 <b>Guest:</b> " . ($previousGuest['guest_name'] ?? '') . "\n";
+                            $editMsg .= "🆔 <b>Booking ID:</b> {$guestId}\n\n";
+                            $editMsg .= implode("\n", $changedLines);
+                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                        }
+                    } catch (Exception $e) {}
 
                     $newNoOfGuests = intval($input['no_of_guests'] ?? 1);
                     if ($newNoOfGuests > $previousNoOfGuests) {
