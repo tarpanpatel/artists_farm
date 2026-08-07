@@ -6,6 +6,26 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### Sidebar nav: only one first-tier group should stay expanded at a time
+
+Currently multiple top-level groups (Team, Admin Control, etc.) can be open
+in the left sidebar simultaneously - e.g. open Team → Members, then
+navigate to Admin Control → Past Receipts Log, and Team stays expanded
+too, cluttering the sidebar with two full groups' worth of children.
+
+Root cause (`src/components/Navigation.tsx`): `expandedParents` is a plain
+`Set<string>` that only ever gets IDs added to it - both the manual
+`toggleExpand(id)` (click handler) and the "auto-expand ancestors of the
+active item" `useEffect` add without ever removing a sibling's ID, so
+previously-opened first-tier groups just accumulate.
+
+Fix should make expansion an accordion at the first-tier level only (per
+the request - nested sub-groups deeper than tier 1 aren't in scope): when a
+new first-tier group is opened (by click or by navigating to one of its
+descendants), any *other* currently-expanded first-tier group should
+collapse. Needs changes in both places `expandedParents` is written:
+`toggleExpand` and the ancestor auto-expand effect.
+
 ### Auto-relay uploaded photos (guest IDs + expense invoices/receipts) to Telegram + Google Drive
 
 Every time a picture is uploaded in either of these two flows, it should be
