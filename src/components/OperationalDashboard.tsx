@@ -25,6 +25,7 @@ import { getPropertySlug, markCFormFiled } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
+import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
@@ -92,6 +93,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [editGuestName, setEditGuestName] = useState<string>('');
   const [editPhone, setEditPhone] = useState<string>('');
   const [editNoOfGuests, setEditNoOfGuests] = useState<number>(1);
+  const [editRoomId, setEditRoomId] = useState<string>('');
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSavingBooking, setIsSavingBooking] = useState(false);
@@ -216,6 +218,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       setEditGuestName(selectedBooking.guestName || '');
       setEditPhone(selectedBooking.phoneNumber || '');
       setEditNoOfGuests((selectedBooking as any).no_of_guests || 1);
+      const bookingRoomId = (selectedBooking as any).room_id || (selectedBooking as any).roomId;
+      setEditRoomId(bookingRoomId ? String(bookingRoomId) : '');
       setShowDateRangePicker(false);
     }
   }, [selectedBooking]);
@@ -962,6 +966,36 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 />
               </div>
 
+              {rooms.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">{t('room_column', 'Room')}</label>
+                  <div className="mt-1">
+                    <StyledSelect
+                      value={editRoomId}
+                      onChange={setEditRoomId}
+                      options={rooms.map((room) => {
+                        const newCheckin = new Date(editCheckin || selectedBooking.checkinDate);
+                        const newCheckout = new Date(editCheckout || selectedBooking.expectedCheckout);
+                        const occupiedByOther = guests.some((g) => {
+                          if (g.id === selectedBooking.id) return false;
+                          if (g.status !== 'Active') return false;
+                          const gRoomId = (g as any).roomId || (g as any).room_id;
+                          if (Number(gRoomId) !== Number(room.id)) return false;
+                          const gCheckin = new Date(g.checkinDate);
+                          const gCheckout = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
+                          return newCheckin < gCheckout && gCheckin < newCheckout;
+                        });
+                        return {
+                          value: String(room.id),
+                          label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`,
+                          disabled: occupiedByOther,
+                        };
+                      })}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <button
                   onClick={() => setShowDateRangePicker(true)}
@@ -1015,6 +1049,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         checkinDate: editCheckin,
                         expectedCheckout: editCheckout,
                         ...( { no_of_guests: editNoOfGuests } as any),
+                        ...(editRoomId ? { room_id: Number(editRoomId) } as any : {}),
                       });
                       showToast('Booking updated successfully', { type: 'success' });
                       setSelectedBooking(null);
