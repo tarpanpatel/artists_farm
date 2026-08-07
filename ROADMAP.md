@@ -6,20 +6,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Assigned Room dropdown missing from Edit Booking (Multi-Key)
-
-Edit Booking only has Guest Name/Dates/Phone/Number of Guests - no way to
-set or change which room a booking belongs to, even though `update_guest`
-already accepts and applies `room_id` (conflict-checked against other
-active bookings on that room). This is also the only way to fix bookings
-already sitting with no room assigned, e.g. "Hans Mueller" on Goa Homes -
-`add_guest` never wrote `room_id` at all until it was just fixed, so every
-booking made before that fix has no stored room to recover automatically.
-
-Add an Assigned Room dropdown (same room list already used on the Add
-Booking form) to the Edit Booking modal in
-`src/components/OperationalDashboard.tsx`, Multi-Key properties only.
-
 ### Pending DB Cleanup (writes blocked in-session, need to run manually)
 
 Both root-caused and code-fixed already; only the one-time data cleanup itself
@@ -32,12 +18,14 @@ UI flow for yet.
    unique_key = 'staff_permissions';` (one global row, applies platform-wide).
    Or: Root Admin → Edit Main Menu → trash icon on "Staff & Permissions" → Save.
 
-2. **~154 fake attendance rows** planted by the `get_attendance` auto-seed bug
-   (fixed in `php/staff/staff.php` - no longer seeds going forward) before it
-   was caught. Contaminated properties (property 1/Jaipur's real staff
-   IDs/names + hardcoded July 2026 dates, inserted under the wrong
-   property_id): Mall Road Cottage, Goa, Goa Homes, Resort Hut, Winter Garen,
-   Room 101, Room 102. Cleanup query:
+2. **264 fake attendance rows** (re-counted 2026-08-07; an earlier pass had
+   found ~154, undercounting because it missed rows under orphaned/deleted
+   property_ids and a `property_id = 0` placeholder) planted by the
+   `get_attendance` auto-seed bug (fixed in `php/staff/staff.php` - no
+   longer seeds going forward) before it was caught. Spans 12 distinct
+   property_ids - property 1/Jaipur's real staff IDs/names + hardcoded
+   July 2026 dates, inserted under the wrong property_id each time. Cleanup
+   query (already scoped correctly - no need to enumerate every property):
    ```sql
    DELETE FROM staff_attendance
    WHERE attendance_date IN ('2026-07-14','2026-07-15')
