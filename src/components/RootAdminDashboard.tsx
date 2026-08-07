@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
+import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { TelegramConfig } from '../types';
@@ -33,9 +34,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'telegram_templates' | 'email_settings';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'telegram_templates', 'email_settings'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -115,6 +116,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       label: t('root_default_expenses_menu_label', 'Default Expenses (MK)'),
       icon: DollarSign,
       section: 'default_expenses' as SectionType,
+    },
+    {
+      id: 'service_request_types',
+      label: t('root_service_request_types_menu_label', 'Service Request Types'),
+      icon: Bell,
+      section: 'service_request_types' as SectionType,
     },
     {
       id: 'edit_main_menu',
@@ -248,6 +255,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
+                {activeSection === 'service_request_types' && t('root_service_request_types_heading', 'Service Request Types')}
                 {activeSection === 'appearance' && t('root_appearance_heading_label', 'Appearance Settings')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_label', 'Telegram Templates')}
                 {activeSection === 'email_settings' && t('root_email_settings_label', 'Email Settings')}
@@ -257,6 +265,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_subtitle', 'Manage all tenants and their properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_subtitle', 'Global navigation menu for all properties')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_subtitle', 'System expense categories and defaults')}
+                {activeSection === 'service_request_types' && t('root_service_request_types_subtitle', 'Per-property service request quick-pick categories')}
                 {activeSection === 'appearance' && t('root_appearance_subtitle', 'Customize theme colors and CSS styling')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_subtitle', "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.")}
                 {activeSection === 'email_settings' && t('root_email_settings_subtitle', 'SMTP connection and the tenant welcome email/WhatsApp message template')}
@@ -336,6 +345,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Default Expenses Section */}
           {activeSection === 'default_expenses' && (
             <DefaultExpensesManager />
+          )}
+
+          {/* Service Request Types Section */}
+          {activeSection === 'service_request_types' && (
+            <ServiceRequestTypesManager />
           )}
 
           {/* Edit Main Menu Section */}

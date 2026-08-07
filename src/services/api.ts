@@ -1115,6 +1115,65 @@ export interface StaleServiceRequestItem {
   elapsed_minutes: number;
 }
 
+export interface ServiceRequestType {
+  id: number;
+  propertyId: number;
+  typeId: string;
+  category: string;
+  label: string;
+  isSystemDefault: boolean;
+  displayOrder: number;
+}
+
+export async function fetchServiceRequestTypesFromDB(propertyId?: number): Promise<ServiceRequestType[]> {
+  try {
+    const qs = propertyId ? `&property_id=${propertyId}` : '';
+    const res = await apiFetch(`${API_BASE}?action=get_service_request_types${qs}`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch service request types:', err);
+  }
+  return [];
+}
+
+export async function saveServiceRequestTypeInDB(
+  type: {
+    type_id: string;
+    category: string;
+    label: string;
+  },
+  propertyId?: number,
+): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=save_service_request_type`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...type, ...(propertyId ? { property_id: propertyId } : {}) }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to save service request type:', err);
+    return false;
+  }
+}
+
+export async function deleteServiceRequestTypeInDB(id: number, propertyId?: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_service_request_type`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...(propertyId ? { property_id: propertyId } : {}) }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete service request type:', err);
+    return false;
+  }
+}
+
 export async function fetchServiceRequestsFromDB(status?: string): Promise<ServiceRequest[]> {
   try {
     const qs = status ? `&status=${encodeURIComponent(status)}` : '';

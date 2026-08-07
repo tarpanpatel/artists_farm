@@ -21,8 +21,51 @@ if (!function_exists('convertSnakeToCamel')) {
     }
 }
 
+/**
+ * Built-in service request types, grouped by category. Seeded once per property
+ * into the service_request_types table (see seedServiceRequestTypes) so the
+ * dropdown is DB-driven and editable per property instead of hardcoded.
+ */
+$SERVICE_REQUEST_TYPES = [
+    ['id' => 'fresh_towels', 'category' => 'Housekeeping', 'label' => 'Fresh Towels'],
+    ['id' => 'extra_bedding', 'category' => 'Housekeeping', 'label' => 'Extra Bedding / Pillows'],
+    ['id' => 'toiletries_refill', 'category' => 'Housekeeping', 'label' => 'Toiletries Refill'],
+    ['id' => 'room_cleaning', 'category' => 'Housekeeping', 'label' => 'Room Cleaning'],
+    ['id' => 'trash_pickup', 'category' => 'Housekeeping', 'label' => 'Trash Pickup'],
+    ['id' => 'drinking_water', 'category' => 'Food & Beverage', 'label' => 'Drinking Water / Ice'],
+    ['id' => 'tea_coffee_replenish', 'category' => 'Food & Beverage', 'label' => 'Tea / Coffee Sachets'],
+    ['id' => 'crockery_cutlery', 'category' => 'Food & Beverage', 'label' => 'Crockery / Cutlery'],
+    ['id' => 'room_service_order', 'category' => 'Food & Beverage', 'label' => 'In-Room Dining Request'],
+    ['id' => 'ac_heating_issue', 'category' => 'Maintenance', 'label' => 'AC / Heating Issue'],
+    ['id' => 'hot_water_geyser', 'category' => 'Maintenance', 'label' => 'Hot Water / Geyser Issue'],
+    ['id' => 'wifi_connectivity', 'category' => 'Maintenance', 'label' => 'Wi-Fi / Internet Issue'],
+    ['id' => 'tv_cable_issue', 'category' => 'Maintenance', 'label' => 'TV / Cable Issue'],
+    ['id' => 'plumbing_leakage', 'category' => 'Maintenance', 'label' => 'Plumbing / Leakage'],
+    ['id' => 'electrical_power', 'category' => 'Maintenance', 'label' => 'Electrical / Power Outlet Issue'],
+    ['id' => 'iron_ironing_board', 'category' => 'Amenities On Request', 'label' => 'Iron & Ironing Board'],
+    ['id' => 'hair_dryer', 'category' => 'Amenities On Request', 'label' => 'Hair Dryer'],
+    ['id' => 'mosquito_repellent', 'category' => 'Amenities On Request', 'label' => 'Mosquito Repellent / Vaporizer'],
+    ['id' => 'luggage_assistance', 'category' => 'Front Desk & Services', 'label' => 'Luggage Assistance'],
+    ['id' => 'cab_travel_booking', 'category' => 'Front Desk & Services', 'label' => 'Taxi / Travel Booking'],
+    ['id' => 'late_checkout_request', 'category' => 'Front Desk & Services', 'label' => 'Late Check-out Request'],
+    ['id' => 'early_checkin_request', 'category' => 'Front Desk & Services', 'label' => 'Early Check-in Request'],
+    ['id' => 'first_aid_assistance', 'category' => 'Front Desk & Services', 'label' => 'First Aid Kit'],
+    ['id' => 'other_special_request', 'category' => 'General', 'label' => 'Other / Custom Request'],
+];
+
 function ensureServiceRequestsSchema($pdo) {
     try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `service_request_types` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `property_id` INT NOT NULL,
+            `type_id` VARCHAR(100) NOT NULL,
+            `category` VARCHAR(100) NOT NULL,
+            `label` VARCHAR(255) NOT NULL,
+            `is_system_default` BOOLEAN DEFAULT FALSE,
+            `display_order` INT NOT NULL DEFAULT 0,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `unique_type_per_property` (property_id, type_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     } catch (PDOException $e) {}
 
     // Nav items are DB-driven and shared across every property (see get_nav_menu
@@ -33,6 +76,26 @@ function ensureServiceRequestsSchema($pdo) {
         $pdo->exec("INSERT IGNORE INTO nav_menu_items
             (id, property_id, title, tab_key, unique_key, category, icon_name, display_order)
             VALUES ('nav-svcreq', 1, 'Service Requests', 'service_requests', 'service_requests', 'Residents & Billing', 'Bell', 4)");
+    } catch (PDOException $e) {}
+}
+
+/**
+ * Populate built-in service request types for a property the first time it asks
+ * (mirrors populateDefaultExpenses). Idempotent via INSERT IGNORE; only runs when
+ * the property has no system-default rows yet, so admin deletions persist.
+ */
+function seedServiceRequestTypes($pdo, $propertyId) {
+    global $SERVICE_REQUEST_TYPES;
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM service_request_types WHERE property_id = ? AND is_system_default = TRUE");
+        $stmt->execute([$propertyId]);
+        if (intval($stmt->fetch(PDO::FETCH_ASSOC)['cnt']) > 0) return;
+
+        $insert = $pdo->prepare("INSERT IGNORE INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order) VALUES (?, ?, ?, ?, TRUE, ?)");
+        $order = 0;
+        foreach ($SERVICE_REQUEST_TYPES as $type) {
+            $insert->execute([$propertyId, $type['id'], $type['category'], $type['label'], $order++]);
+        }
     } catch (PDOException $e) {}
 }
 
@@ -80,6 +143,61 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
     ensureServiceRequestsSchema($pdo);
 
     switch ($action) {
+        case 'get_service_request_types':
+            seedServiceRequestTypes($pdo, $propertyId);
+            $stmt = $pdo->prepare("SELECT * FROM service_request_types WHERE property_id = ? ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
+            $stmt->execute([$propertyId]);
+            echo json_encode(['status' => 'success', 'data' => array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC))]);
+            break;
+
+        case 'save_service_request_type':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $typeId = trim($input['type_id'] ?? '');
+                $category = trim($input['category'] ?? '');
+                $label = trim($input['label'] ?? '');
+                if (!$typeId || !$category || !$label) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'type_id, category and label are required']);
+                    break;
+                }
+                $stmt = $pdo->prepare("
+                    INSERT INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order)
+                    VALUES (?, ?, ?, ?, FALSE, 999)
+                    ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label)
+                ");
+                $stmt->execute([$propertyId, $typeId, $category, $label]);
+                echo json_encode(['status' => 'success', 'message' => 'Service request type saved']);
+            }
+            break;
+
+        case 'delete_service_request_type':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $id = intval($input['id'] ?? 0);
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                $stmt = $pdo->prepare("SELECT is_system_default FROM service_request_types WHERE id = ? AND property_id = ?");
+                $stmt->execute([$id, $propertyId]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$row) {
+                    http_response_code(404);
+                    echo json_encode(['status' => 'error', 'message' => 'Service request type not found']);
+                    break;
+                }
+                if ($row['is_system_default']) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'System default types cannot be deleted']);
+                    break;
+                }
+                $pdo->prepare("DELETE FROM service_request_types WHERE id = ? AND property_id = ?")->execute([$id, $propertyId]);
+                echo json_encode(['status' => 'success', 'message' => 'Service request type deleted']);
+            }
+            break;
+
         case 'get_service_requests':
             $statusFilter = $_GET['status'] ?? null;
             $sql = "
