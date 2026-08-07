@@ -84,7 +84,25 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    // add_guest never actually wrote room_id - every booking landed
+                    // in guests with room_id NULL regardless of which room the admin
+                    // picked in the form, which is why bookings piled up under
+                    // "Other / Unassigned Rooms" on All Bookings even when a real
+                    // room had been selected at check-in. The form only ever sends
+                    // the room's NAME (room_number/roomNumber), so resolve it against
+                    // this property's actual MULTI_KEY_ROOM children here.
+                    $roomId = null;
+                    $roomName = trim($input['room_number'] ?? $input['roomNumber'] ?? '');
+                    if ($roomName !== '') {
+                        $roomLookup = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND name = ? AND is_deleted = 0 LIMIT 1");
+                        $roomLookup->execute([$propertyId, $roomName]);
+                        $foundRoomId = $roomLookup->fetchColumn();
+                        if ($foundRoomId) {
+                            $roomId = intval($foundRoomId);
+                        }
+                    }
+
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, total_charge, pending_amount, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -99,6 +117,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         intval($input['no_of_guests'] ?? 1),
                         $propertyId,
                         !empty($input['is_foreign_guest']) ? 1 : 0,
+                        $roomId,
                     ]);
                     $newId = $pdo->lastInsertId();
                     $advance = floatval($input['advance_paid'] ?? 0);
