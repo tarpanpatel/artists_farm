@@ -372,9 +372,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <p className="text-xs text-slate-500 dark:text-slate-400">{t('no_more_slots_available_message', 'No more slots available')}</p>
                 <button
                   onClick={() => setModal({ type: 'upgrade' })}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  <Zap className="w-3 h-3" /> {t('upgrade_package_button', 'Upgrade Package')}
+                  <Zap className="w-3.5 h-3.5" /> {t('upgrade_package_button', 'Upgrade Package')}
                 </button>
               </div>
             )}
