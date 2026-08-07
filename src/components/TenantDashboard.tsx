@@ -4,11 +4,6 @@ import {
   Edit2, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, X,
 } from 'lucide-react';
-import {
-  DEFAULT_WHATSAPP_VOUCHER_TEMPLATE,
-  WHATSAPP_VOUCHER_VARIABLES,
-  renderWhatsappVoucherTemplate,
-} from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 
 interface SlotBreakdownItem {
@@ -40,6 +35,7 @@ interface Property {
   phone?: string;
   google_maps_link?: string;
   whatsapp_voucher_template?: string;
+  instructions?: string;
 }
 
 interface TenantInfo {
@@ -93,7 +89,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [editTelegramTemplateCustomization, setEditTelegramTemplateCustomization] = useState(false);
   const [editPhone, setEditPhone] = useState('');
   const [editMapsLink, setEditMapsLink] = useState('');
-  const [editWhatsappTemplate, setEditWhatsappTemplate] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
   const [editLoading, setEditLoading] = useState(false);
 
   const showSuccess = (msg: string) => {
@@ -232,7 +228,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           telegram_template_customization_enabled: editTelegramTemplateCustomization,
           phone: editPhone.trim(),
           google_maps_link: editMapsLink.trim(),
-          whatsapp_voucher_template: editWhatsappTemplate,
+          instructions: editInstructions,
         }),
       });
       const data = await res.json();
@@ -481,7 +477,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       </a>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditWhatsappTemplate(property.whatsapp_voucher_template || ''); setModal({ type: 'edit', property }); }}
+                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }}
                           className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                           title={t('edit_tooltip', 'Edit')}
                         >
@@ -634,7 +630,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       {/* ── Edit Modal ── */}
       {modal.type === 'edit' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('tenant_edit_property_heading', 'Edit Property')}</h3>
               <button onClick={() => setModal({ type: 'none' })} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
@@ -669,12 +665,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
                   className="w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
                 />
-                <span>
-                  <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{t('allow_telegram_template_customization_label', 'Allow Telegram Template Customization')}</span>
-                  <span className="block text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    {t('telegram_template_customization_help_text', "When off, this property's Super Admin can view templates and the live preview but can't edit the wording. All templates are otherwise designed here at the root admin level.")}
-                  </span>
-                </span>
+                <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</span>
               </label>
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -701,61 +692,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     />
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
                   {t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, those lines are simply omitted.')}
                 </p>
-
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{t('message_template_label', 'Message Template')}</label>
-                  <button
-                    type="button"
-                    onClick={() => setEditWhatsappTemplate('')}
-                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                  >
-                    {t('reset_to_default_button', 'Reset to default')}
-                  </button>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
+                  <textarea
+                    value={editInstructions}
+                    onChange={e => setEditInstructions(e.target.value)}
+                    placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+                    rows={3}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                  />
                 </div>
-                <textarea
-                  value={editWhatsappTemplate}
-                  onChange={e => setEditWhatsappTemplate(e.target.value)}
-                  placeholder={DEFAULT_WHATSAPP_VOUCHER_TEMPLATE}
-                  rows={8}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 mb-2">
-                  {t('whatsapp_template_help_text', 'Blank = use the default shown above as a placeholder. Click a variable to insert it:')}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {WHATSAPP_VOUCHER_VARIABLES.map((v) => (
-                    <button
-                      key={v.token}
-                      type="button"
-                      onClick={() => setEditWhatsappTemplate((prev) => (prev || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE) + v.token)}
-                      title={v.label}
-                      className="text-[10px] font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
-                    >
-                      + {v.token}
-                    </button>
-                  ))}
-                </div>
-
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-slate-500 dark:text-slate-400 font-semibold">{t('preview_with_sample_data_summary', 'Preview with sample data')}</summary>
-                  <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
-                    {renderWhatsappVoucherTemplate(editWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
-                      guest_name: 'Priya Sharma',
-                      room_name: 'Room 204',
-                      property_name: editName || 'Your Property',
-                      checkin_date: '2026-08-10',
-                      checkout_date: '2026-08-12',
-                      guest_count: '2',
-                      room_tariff: '4500.00',
-                      advance_paid: '1500.00',
-                      maps_link: editMapsLink,
-                      contact_phone: editPhone,
-                    })}
-                  </pre>
-                </details>
               </div>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
