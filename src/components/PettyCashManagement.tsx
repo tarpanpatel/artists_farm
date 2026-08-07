@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useState, useEffect, useReducer, useRef } from 'react';
 import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry, StaffMember } from '../types';
@@ -76,6 +76,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     paymentScreenshotUrl: '',
   }));
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
+  const invoiceFileRef = useRef<HTMLInputElement>(null);
+  const screenshotFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStaffUsersFromDB().then((users) => {
@@ -568,35 +570,49 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           {/* Proof uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2 relative">
+            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <label className="block font-bold text-slate-600 dark:text-slate-400">{t('capture_upload_invoice_bill_label', '📁 Capture / Upload Invoice Bill')}</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice')}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-20"
-              />
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => invoiceFileRef.current?.click()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') invoiceFileRef.current?.click(); }}
+                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
                 <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', '✓ Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
               </div>
+              <input
+                ref={invoiceFileRef}
+                type="file"
+                accept="image/*"
+                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice')}
+                className="hidden"
+              />
               {formState.invoiceBillUrl && (
                 <img src={formState.invoiceBillUrl} alt={t('invoice_image_alt', 'Invoice')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
             </div>
 
-            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2 relative">
+            <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <label className="block font-bold text-slate-600 dark:text-slate-400">{t('upload_payment_screenshot_label', '📸 Upload Payment Screenshot')}</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot')}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-20"
-              />
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => screenshotFileRef.current?.click()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') screenshotFileRef.current?.click(); }}
+                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', '✓ Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
               </div>
+              <input
+                ref={screenshotFileRef}
+                type="file"
+                accept="image/*"
+                onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot')}
+                className="hidden"
+              />
               {formState.paymentScreenshotUrl && (
                 <img src={formState.paymentScreenshotUrl} alt={t('screenshot_image_alt', 'Screenshot')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
               )}
