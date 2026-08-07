@@ -147,6 +147,12 @@ $platform_admin_actions = ['toggle_property_module', 'update_property', 'edit_pr
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
 
+// Was read at the bottom of this file (originally just for the request-logging
+// call below) but referenced up here in the unauthorized-call log too, before
+// it was ever assigned - every rejected write action threw an "Undefined
+// variable $request_user" warning. Moved up so both uses see the real value.
+$request_user = $_SESSION['username'] ?? 'Anonymous';
+
 if ($is_write_action && $provided_key !== $api_key && !$is_authenticated_user && !$is_public_action) {
     // Special case: allow platform admins to use certain actions without API key
     if (!($is_platform_admin && $is_platform_admin_action)) {
@@ -166,7 +172,6 @@ if ($is_write_action && $provided_key !== $api_key && !$is_authenticated_user &&
 }
 
 // Log all API requests to Telescope
-$request_user = $_SESSION['username'] ?? 'Anonymous';
 $request_origin = "{$request_method} /{$action}";
 $auth_status = $is_authenticated_user ? 'Authenticated' : 'Unauthenticated';
 
