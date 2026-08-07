@@ -574,7 +574,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice')}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-20"
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <FileText className="w-4 h-4 text-slate-400" />
@@ -591,7 +591,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={e => e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot')}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-20"
               />
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
