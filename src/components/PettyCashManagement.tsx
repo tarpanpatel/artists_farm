@@ -383,8 +383,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
 
 
-      {/* Visible inline Form */}
-      <div className="add-expenses-container max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+      {/* Add Expenses form on the left, registered expenses (filter + Cost
+          Logs table) on the right on wide screens - stacks to form-then-logs
+          on narrow screens since a fixed side-by-side track can't fit. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
+      <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-red-500 pl-2.5 mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', '📝 ADD EXPENSES')}
         </h3>
@@ -643,6 +646,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </form>
       </div>
 
+      <div className="space-y-6 min-w-0">
       {/* Live Search & Filter Panel */}
       <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -791,6 +795,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           }
         />
+      </div>
+      </div>
       </div>
 
       {/* Edit Entry Modal for Admin & Super Admin */}
