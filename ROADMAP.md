@@ -18,5 +18,13 @@ This document tracks identified bugs, pending backend API integrations, and upco
   pattern was copied from. Check the property's actual Admin Telegram chat
   after an edit to confirm the message arrives and reads correctly.
 
+### Dark Mode Toggle — Revisit After 1 Week
+
+- Dark mode toggle is **temporarily disabled** in the header. The toggle
+  button is visible but non-functional, and `onToggleDarkMode` is a no-op.
+  Revisit after **one week** to decide whether to re-enable the toggle or
+  remove it entirely. Do not merge any dark-mode theme changes until then.
+
 ---
+
 *Last Updated: August 2026*

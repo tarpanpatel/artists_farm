@@ -366,12 +366,12 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Dark Mode Toggle Button */}
+          {/* Dark Mode Toggle Button - DISABLED per current roadmap, will revisit after one week */}
           <button
-            onClick={onToggleDarkMode}
-            title={isDarkMode ? t('switch_to_light_tooltip', 'Switch to Light Mode') : t('switch_to_dark_tooltip', 'Switch to Dark Mode')}
+            disabled
+            title={t('switch_to_light_tooltip', 'Switch to Light Mode')}
             aria-label={t('toggle_dark_mode_aria', 'Toggle Dark Mode')}
-            className="btn-toggle-darkmode p-2 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="btn-toggle-darkmode p-2 text-gray-400 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-not-allowed opacity-60"
           >
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
           </button>

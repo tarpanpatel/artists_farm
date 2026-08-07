@@ -1410,7 +1410,9 @@ ${itemsStr}
             onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
             isDarkMode={isDarkMode}
             currentPropertyColorScheme={currentPropertyColorScheme}
-            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+            onToggleDarkMode={() => {
+              // Dark mode toggle disabled per current roadmap — revisit after one week
+            }}
             propertyName={propertyName}
             isTestModeActive={isTestModeActive}
             isTestingMode={isTestingMode}
