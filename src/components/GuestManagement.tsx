@@ -295,6 +295,34 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setBookingAdvance(bookingRoomTariff - val);
   };
 
+  // Used right after a successful save (the form previously stayed populated
+  // with the just-submitted guest's details - the "Booking saved" toast fired,
+  // but nothing was actually cleared for the next entry) and by the voucher's
+  // Close button.
+  const resetBookingForm = () => {
+    setGuestName('');
+    setPhoneNumber('');
+    setBookingSourceLocal('Offline');
+    setAdvanceReceivedBy('');
+    setPendingReceivedBy('');
+    setCheckinDate(new Date().toISOString().split('T')[0]);
+    setCheckinTime('14:00');
+    setExpectedCheckout(new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+    setCheckoutTime('11:00');
+    setNotes('');
+    setShowGuestNotes(false);
+    setIsForeignGuest(false);
+    setShowDynamicIncidentals(false);
+    setNoOfGuests(1);
+    setBookingRoomTariff(0);
+    setBookingAdvance(0);
+    setBookingPending(0);
+    setBookingIncidentals([]);
+    if (isMultiKeyProperty && rooms && rooms.length > 0) {
+      setRoomNumber(rooms[0].name);
+    }
+  };
+
   // Selected Active Guest for Billing
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -830,7 +858,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             onAddGuest(guestObj);
             setCreatedBooking(guestObj);
-            setIsForeignGuest(false);
+            resetBookingForm();
             showToast('Guest booked successfully!', { type: 'success' });
           }}>
             {/* Row 0: Guest Name (Full width) */}
@@ -955,15 +983,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
 
-            {/* Advance Paid - Only show when Room Tariff has value */}
+            {/* Advance Paid + Advance Received By - one row, 2 columns. Advance
+                Paid shows once Room Tariff has a value; Advance Received By
+                only joins it once an actual advance amount is entered. */}
             {bookingRoomTariff > 0 && (
-              <>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1">{t('advance_paid', 'Advance Paid (₹)')}</label>
                   <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
 
-                {/* Advance Received By - Only show when Advance Paid has value */}
                 {bookingAdvance > 0 && (
                   <div>
                     <label className="block mb-1">{t('advance_received_by', 'Advance Received By *')}</label>
@@ -975,18 +1004,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     />
                   </div>
                 )}
-              </>
+              </div>
             )}
 
-            {/* Pending Balance - Only show when Advance Paid has value */}
+            {/* Pending Balance + Pending Received By - same one row, 2 column
+                pattern as Advance above. */}
             {bookingAdvance > 0 && (
-              <>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1">{t('pending_balance_label', 'Pending Balance (₹)')}</label>
                   <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
 
-                {/* Pending Received By - Only show when Pending Balance has value */}
                 {bookingPending > 0 && (
                   <div>
                     <label className="block mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
@@ -998,7 +1027,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     />
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {/* Guest Notes & Additional Charges on same row */}
@@ -1151,7 +1180,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   }
 
   // For ALL properties, show the unified BillingCheckout view
-  if (activeMenuItemKey === 'billing_checkout') {
+  if (activeMenuItemKey === 'all_bookings') {
     return (
       <BillingCheckout
         guests={guests}
@@ -1187,7 +1216,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* ========================================================================= */}
       {/* BILLING & CHECKOUT WORKSPACE - FOR SINGLE-PROPERTY SYSTEMS                   */}
       {/* ========================================================================= */}
-      {activeMenuItemKey === 'billing_checkout' && (
+      {activeMenuItemKey === 'all_bookings' && (
         <div className="space-y-6">
           {/* BUG 5 FIX: Guard for empty Active guest list */}
           {activeGuests.length === 0 ? (
@@ -1997,16 +2026,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 type="button"
                 onClick={() => {
                   setCreatedBooking(null);
-                  // Clear form fields
-                  setGuestName('');
-                  setPhoneNumber('');
-                  setBookingRoomTariff(0);
-                  setBookingAdvance(0);
-                  setBookingPending(0);
-                  setAdvanceReceivedBy('');
-                  setPendingReceivedBy('');
-                  setShowGuestNotes(false);
-                  setNotes('');
+                  resetBookingForm();
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
               >

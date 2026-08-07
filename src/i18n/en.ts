@@ -1016,7 +1016,7 @@ export const strings: Record<string, string> = {
   skip_for_now_button: "Skip for now",
 
   // Billing Checkout
-  guest_billing_checkout_title: "Guest Billing & Checkout",
+  guest_billing_checkout_title: "All Bookings",
   today_tab: "Today",
   upcoming_tab: "Upcoming",
   past_bookings_tab: "Past Bookings",

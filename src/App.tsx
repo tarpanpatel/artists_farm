@@ -110,7 +110,11 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'guest_registration' },
-        billing_checkout: { tab: 'guests', key: 'billing_checkout' },
+        // "Billing & Checkout" was renamed "All Bookings" in the nav editor -
+        // all_bookings is the canonical key now; billing_checkout stays as an
+        // alias so old bookmarks/links keep working.
+        all_bookings: { tab: 'guests', key: 'all_bookings' },
+        billing_checkout: { tab: 'guests', key: 'all_bookings' },
         guests: { tab: 'guests', key: 'guest_registration' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
@@ -758,7 +762,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const reserved = new Set([
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
-        'guest_registration', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
+        'guest_registration', 'all_bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
         'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
@@ -774,7 +778,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
         guest_registration: { tab: 'guests', key: 'guest_registration' },
-        billing_checkout: { tab: 'guests', key: 'billing_checkout' },
+        all_bookings: { tab: 'guests', key: 'all_bookings' },
+        billing_checkout: { tab: 'guests', key: 'all_bookings' },
         guests: { tab: 'guests', key: 'guest_registration' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },

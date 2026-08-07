@@ -80,7 +80,7 @@ try {
     $pageOptions = [
       ['label' => 'Dashboard', 'tabKey' => 'dashboard', 'uniqueKey' => 'dashboard'],
       ['label' => 'Guest Registration', 'tabKey' => 'guests', 'uniqueKey' => 'guest_registration'],
-      ['label' => 'Billing & Checkout', 'tabKey' => 'guests', 'uniqueKey' => 'billing_checkout'],
+      ['label' => 'All Bookings', 'tabKey' => 'guests', 'uniqueKey' => 'all_bookings'],
       ['label' => 'Take Food Order', 'tabKey' => 'kitchen', 'uniqueKey' => 'take_food_order'],
       ['label' => 'Kitchen Orders', 'tabKey' => 'kitchen', 'uniqueKey' => 'kitchen_orders'],
       ['label' => 'Staff Meals', 'tabKey' => 'kitchen', 'uniqueKey' => 'staff_meals'],
