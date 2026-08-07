@@ -6,6 +6,51 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### Auto-relay uploaded photos (guest IDs + expense invoices/receipts) to Telegram + Google Drive
+
+Every time a picture is uploaded in either of these two flows, it should be
+(1) sent as an actual photo to the property's Telegram Admin channel - not
+just a text notification like today - and (2) uploaded to Google Drive into
+a consistent, browsable folder structure.
+
+**In scope (uploads of "ids and invoices" specifically):**
+- Guest ID documents - `CheckinVerificationModal.tsx` → `guests.php`
+  `upload_id_document`. Today this only sends a *text* progress message to
+  Telegram ("📸 ID Document Uploaded... 2/2 required ID(s) uploaded") - the
+  photo itself never reaches Telegram.
+- Expense Invoice Bill + Payment Screenshot - `PettyCashManagement.tsx`
+  (compressed client-side to base64 before submit). Today these aren't sent
+  to Telegram or anywhere else at all beyond the DB row.
+
+Other upload points in the app (staff QR codes, menu/inventory item photos,
+CSS import) are guest/expense-*unrelated* and out of scope here.
+
+**Telegram part:** `php/telegram/sender.php` already has
+`sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $caption, $templateKey)`
+and `sendRawTelegramPhoto(...)` - this is a wiring job (call it from both
+upload handlers with the actual image), not new infrastructure.
+
+**Google Drive part is net-new** - no Drive integration exists in this
+codebase yet. Needs: a Google Cloud service account + Drive API
+credentials, a small PHP wrapper (folder-exists-or-create, then file
+upload), and a shared path-building helper so both upload flows produce
+the same structure:
+
+```
+{tenant_name}/{property_name}/{category}/{Month YYYY}/{descriptive_name}_{DD-MM-YYYY}_{HHMM}hrs.{ext}
+```
+
+Worked example (₹3000 diesel expense logged 12 July 2026, 2:00 PM):
+```
+Vrikshawan/Goa Homes/Expenses/July 2026/Diesel_12-07-2026_1400hrs.jpg
+```
+Guest ID documents would follow the same pattern under an `ID Documents`
+category, e.g. `Vrikshawan/Goa Homes/ID Documents/July 2026/PriyaSharma_12-07-2026_1400hrs.jpg`.
+
+Every relevant page already has its own datalog (expense date/category,
+guest name/room, upload timestamp) to derive this path from - no new
+fields needed, just wiring the existing values through.
+
 ### Needs Manual Verification
 
 - **Telegram delivery on booking edits.** `update_guest` now diffs the
