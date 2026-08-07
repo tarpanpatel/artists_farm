@@ -4,6 +4,12 @@
  * Artists Farm Resort & Kitchen Management Backend System
  */
 
+// PHP's default session lifetime (session.gc_maxlifetime, 1440s = 24min) is
+// too short for an admin tool where reading/deciding between actions
+// routinely exceeds it - the session silently expires mid-task, and the
+// next write comes back as a false "Unauthorized" error even though the
+// user never logged out. Extend to 8 hours (a full admin work session).
+ini_set('session.gc_maxlifetime', 28800);
 session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
@@ -1303,6 +1309,21 @@ switch ($action) {
     case 'fulfill_service_request':
     case 'update_service_request_reminder_timestamp':
     case 'check_stale_service_requests':
+    case 'get_service_request_types':
+    case 'save_service_request_type':
+    case 'delete_service_request_type':
+        // Platform admin (Root Admin Dashboard) can target any property explicitly;
+        // otherwise the URL-resolved property context applies (staff/tenant pages).
+        if ($is_platform_admin) {
+            $targetPropertyId = $_GET['property_id'] ?? null;
+            if (!$targetPropertyId && $request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $targetPropertyId = $input['property_id'] ?? null;
+            }
+            if ($targetPropertyId) {
+                $propertyId = intval($targetPropertyId);
+            }
+        }
         handleServiceRequestActions($pdo, $request_method, $action, $propertyId);
         break;
 
