@@ -285,6 +285,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
   const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
 
+  // Role hierarchy: lower index = higher privilege
+  const ROLE_HIERARCHY = ['Root Admin', 'Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
+
+  const getRoleLevel = (role: string) => ROLE_HIERARCHY.indexOf(role) >= 0 ? ROLE_HIERARCHY.indexOf(role) : ROLE_HIERARCHY.length;
+
+  const canEditUser = (currentUserRole: string, targetUserRole: string) => {
+    const currentLevel = getRoleLevel(currentUserRole);
+    const targetLevel = getRoleLevel(targetUserRole);
+    if (targetLevel < 0) return false; // Root Admin or unknown - hide
+    return currentLevel <= targetLevel;
+  };
+
+  const visibleUsers = users.filter(u => u.role !== 'Root Admin');
+
   // Handlers for Control Center
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,18 +345,29 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewIsFinancialHandler(false);
   };
 
-  const handleDeleteUser = async (id: string) => {
-    const confirmed = await confirm({
-      title: 'Delete User Profile',
-      message: 'Delete user profile permanently?',
-      confirmText: 'Delete User',
-      variant: 'danger',
-    });
-    if (confirmed) {
-      if (await deleteStaffUserDB(id)) refreshStaff?.();
-      else showToast('Unable to delete the staff member from the database.', { type: 'error' });
-    }
-  };
+   const handleDeleteUser = async (id: string) => {
+     const confirmed = await confirm({
+       title: 'Delete User Profile',
+       message: 'Delete user profile permanently?',
+       confirmText: 'Delete User',
+       variant: 'danger',
+     });
+     if (confirmed) {
+       if (await deleteStaffUserDB(id)) refreshStaff?.();
+       else showToast('Unable to delete the staff member from the database.', { type: 'error' });
+     }
+   };
+
+   const handleEditUser = (user: any) => {
+     setSelectedUpdateUserId(user.id);
+     setUpdateFullName(user.fullName);
+     setUpdateUsername(user.username);
+     setUpdateRole(user.role);
+     setUpdatePasscode('');
+     setUpdateIsFinancialHandler(user.isFinancialHandler);
+     setUpdateQrCodeUrl(user.qrCodeUrl || '');
+     setUserFormTab('update');
+   };
 
   const handleCreatePayee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -609,11 +634,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   {t('active_system_users_heading', 'Active System Users & Staff')}
                 </h3>
                 <div className="flex items-center gap-3">
-                  {tenantId && (
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 px-3 py-1.5 rounded-lg shadow-md">
-                      <p className="text-xs text-white font-bold">Tenant ID: <span className="font-mono text-sm">{tenantId}</span></p>
-                    </div>
-                  )}
                   <span className="text-xs text-slate-400 font-mono">{users.length} {t('registered_suffix', 'Registered')}</span>
                 </div>
               </div>
@@ -665,15 +685,34 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   {
                     name: t('actions_column', 'Actions'),
                     right: true,
-                    width: '120px',
-                    cell: (row: any) => currentUser?.id === row.id ? (
-                      <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
-                    ) : (
-                      <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
-                    ),
+                    width: '160px',
+                    cell: (row: any) => {
+                      const isCurrentUser = currentUser?.id === row.id;
+                      const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                      const canDelete = !isCurrentUser && canEdit;
+                      return (
+                        <div className="flex items-center gap-2 justify-end">
+                          {isCurrentUser ? (
+                            <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
+                          ) : (
+                            <>
+                              {canEdit && (
+                                <button onClick={() => handleEditUser(row)} className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer">{t('edit_button', 'Edit')}</button>
+                              )}
+                              {canDelete && (
+                                <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
+                              )}
+                              {!canEdit && !canDelete && (
+                                <span className="text-slate-400 italic text-[11px]">-</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    },
                   },
                 ]}
-                data={filteredUsers}
+                data={visibleUsers}
                 pagination
                 paginationPerPage={15}
                 paginationRowsPerPageOptions={[10, 15, 25, 50]}
