@@ -126,7 +126,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
   // Search & Pagination State
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-07');
+  // Was hardcoded to '2026-07' - every month after July this silently filtered out
+  // newly added expenses, since the Add Expense form's date defaults to today (see
+  // expenseDate init below) but the ledger view stayed stuck showing July forever.
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -165,8 +168,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Derive list of unique months in entries for dropdown
   const uniqueMonths = Array.from(new Set(pettyCash.map(e => e.date.substring(0, 7)))).sort().reverse();
-  if (uniqueMonths.length === 0 && !uniqueMonths.includes('2026-07')) {
-    uniqueMonths.push('2026-07');
+  // Was hardcoded to '2026-07' - with zero expenses recorded yet, the dropdown's only
+  // option was permanently "July 2026" regardless of the real date, which didn't match
+  // selectedMonth (today's month) and rendered the picker as a blank "Select..." with
+  // no way to pick the month that would actually show a freshly-added expense.
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  if (uniqueMonths.length === 0 && !uniqueMonths.includes(currentMonthKey)) {
+    uniqueMonths.push(currentMonthKey);
   }
 
   // Float balance logic
