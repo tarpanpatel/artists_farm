@@ -6,6 +6,26 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### Design consistency sweep — see DESIGN_CONSISTENCY_SWEEP.md
+
+Full plan (conventions, grep-based discovery commands, known instances with
+exact file:line) is in `DESIGN_CONSISTENCY_SWEEP.md` at the project root -
+written as a standalone handoff doc, not duplicated here. Builds on
+`CSS_THEMING_PLAN.md` (done - token infrastructure works correctly,
+verified). Covers: button colors not matching their semantic role, the
+random per-page card/section accent-color pattern (decided: drop it
+entirely), a `font-mono` inconsistency affecting 113 instances across 21
+files (same kind of element - e.g. a currency total - rendering in
+different fonts depending which page you're on), emoji standing in for
+Lucide icons, and a couple of remaining raw form elements.
+
+### Tailwind animations — later, not scoped yet
+
+Noted for a future pass (11 Aug 2026): add Tailwind's built-in
+transition/animation utilities somewhere in the UI. Not scoped to
+anything specific yet - revisit when picked up, probably after the design
+consistency sweep above lands rather than in parallel with it.
+
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
 Fixed and shipped, see git history for details on each: cross-tenant
