@@ -2,7 +2,7 @@
  * API service helper for Artists Farm Resort PHP/MySQL backend.
  */
 
-import { PropertyTelegramConfig, ApiStatus } from '../types';
+import { PropertyTelegramConfig } from '../types';
 
 // Dynamically resolve the API base to handle subfolder deployment (e.g. /artists_farm/)
 // On Vite dev server (ports 3000, 5173, 5174, 8080), the proxy handles /php routing, so _base must be empty.

@@ -5,7 +5,6 @@ import { Input } from './Input';
 import DataTable from 'react-data-table-component';
 import {
   Plus,
-  Users,
   IndianRupee,
   X,
   Check,
@@ -33,11 +32,11 @@ interface StaffManagementProps {
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
   activeMenuItemKey,
-  auditLogs,
+  auditLogs: _auditLogs,
   onLogAudit,
   onDispatchTelegram,
   onAddDrawerEntry,
-  tenantId,
+  tenantId: _tenantId,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -269,7 +268,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, cashCollected, handovers, outOfPocket, netDrawer, pendingPayout };
   });
 
-  const filteredUsers = users.filter(u => !searchUsers || u.fullName.toLowerCase().includes(searchUsers.toLowerCase()) || u.username.toLowerCase().includes(searchUsers.toLowerCase()) || u.role.toLowerCase().includes(searchUsers.toLowerCase()));
   const filteredPayees = payees.filter(p => !searchPayees || p.name.toLowerCase().includes(searchPayees.toLowerCase()) || p.type.toLowerCase().includes(searchPayees.toLowerCase()));
   const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
   const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
@@ -709,7 +707,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 highlightOnHover
                 subHeader={
                   <div className="w-full flex items-center py-2">
-                    <input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                    <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
                   </div>
                 }
                 customStyles={{
@@ -782,7 +780,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 highlightOnHover
                 subHeader={
                   <div className="w-full flex items-center py-2">
-                    <input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                    <Input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs" />
                   </div>
                 }
                 customStyles={{
@@ -967,14 +965,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
-                        <input
+                        <Input
+                          label={t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}
                           type="password"
                           maxLength={6}
                           value={updatePasscode}
                           onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="••••••"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                          className="text-center font-mono font-bold tracking-widest text-sm"
                         />
                       </div>
                     </div>
@@ -1043,14 +1041,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <form onSubmit={handleCreatePayee} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('payee_account_name_label', 'Payee Account Name')}</label>
-                      <input
+                      <Input
+                        label={t('payee_account_name_label', 'Payee Account Name')}
                         type="text"
                         required
                         value={newPayeeName}
                         onChange={(e) => setNewPayeeName(e.target.value)}
                         placeholder="e.g. Raju Grocery / Pool Supplier"
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                       />
                     </div>
 
@@ -1443,7 +1440,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               highlightOnHover
               subHeader={
                 <div className="w-full flex items-center py-2">
-                  <input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs p-2 border border-amber-300 dark:border-amber-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                  <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
                 </div>
               }
               customStyles={{
@@ -1538,7 +1535,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 sortable: true,
                 width: '140px',
                 cell: (row: any) => editingStaffId === row.id ? (
-                  <input type="tel" value={editStaffPhone} onChange={e => setEditStaffPhone(e.target.value)} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-mono bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                  <Input
+                    type="tel"
+                    value={editStaffPhone}
+                    onChange={e => setEditStaffPhone(e.target.value)}
+                    className="font-mono text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
+                    fullWidth={false}
+                  />
                 ) : (
                   <span className="font-mono text-gray-600 dark:text-gray-300">{row.phone}</span>
                 ),
@@ -1550,7 +1553,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 right: true,
                 width: '130px',
                 cell: (row: any) => editingStaffId === row.id ? (
-                  <input type="number" value={editStaffSalary} onChange={e => setEditStaffSalary(Number(e.target.value))} className="w-full p-1.5 border border-blue-300 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700" />
+                  <Input
+                    type="number"
+                    value={editStaffSalary}
+                    onChange={e => setEditStaffSalary(Number(e.target.value))}
+                    className="font-bold text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
+                    fullWidth={false}
+                  />
                 ) : (
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{row.monthlySalary.toLocaleString('en-IN')}</span>
                 ),
@@ -1595,7 +1604,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             highlightOnHover
             subHeader={
               <div className="w-full flex items-center py-2">
-                <input type="text" value={searchStaff} onChange={e => setSearchStaff(e.target.value)} placeholder="Search by name or role..." className="w-full max-w-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-white" />
+                <Input type="text" value={searchStaff} onChange={e => setSearchStaff(e.target.value)} placeholder="Search by name or role..." className="w-full max-w-xs" />
               </div>
             }
             customStyles={{
@@ -1646,13 +1655,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <form onSubmit={handleUpdatePayeeSave} className="space-y-3">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">{t('payee_account_name_label', 'Payee Account Name')}</label>
-                <input
+                <Input
+                  label={t('payee_account_name_label', 'Payee Account Name')}
                   type="text"
                   required
                   value={editingPayee.name}
                   onChange={(e) => setEditingPayee({ ...editingPayee, name: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-medium"
+                  className="font-medium"
                 />
               </div>
 
@@ -1722,14 +1731,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
             <form onSubmit={handleAddStaffSubmit} className="space-y-3">
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('staff_name_required_label', 'Staff Name *')}</label>
-                <input
+                <Input
+                  label={t('staff_name_required_label', 'Staff Name *')}
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Ratan Singh"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -1743,38 +1751,38 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('phone_login_username_required_label', 'Phone Number (Login Username) *')}</label>
-                <input
+                <Input
+                  label={t('phone_login_username_required_label', 'Phone Number (Login Username) *')}
                   type="tel"
                   required
                   maxLength={10}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="10-digit mobile number"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg font-mono focus:ring-blue-500 focus:border-blue-500"
+                  className="font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}</label>
-                <input
+                <Input
+                  label={t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}
                   type="password"
                   required
                   maxLength={6}
                   value={rosterPasscode}
                   onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••••"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg text-center font-mono font-bold tracking-widest focus:ring-blue-500 focus:border-blue-500"
+                  className="text-center font-mono font-bold tracking-widest"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">Monthly Salary (₹)</label>
-                <input
+                <Input
+                  label="Monthly Salary (₹)"
                   type="number"
                   value={monthlySalary}
                   onChange={(e) => setMonthlySalary(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg font-bold"
+                  className="font-bold"
                 />
               </div>
 
@@ -1810,25 +1818,24 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Amount (₹) *</label>
-              <input
+              <Input
+                label="Amount (₹) *"
                 type="number"
                 min={0}
                 value={advanceAmount || ''}
                 onChange={(e) => setAdvanceAmount(Number(e.target.value))}
                 placeholder="e.g. 2000"
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="text-sm font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('reason_label', 'Reason')}</label>
-              <input
+              <Input
+                label={t('reason_label', 'Reason')}
                 type="text"
                 value={advanceReason}
                 onChange={(e) => setAdvanceReason(e.target.value)}
                 placeholder="e.g. Personal emergency"
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
 

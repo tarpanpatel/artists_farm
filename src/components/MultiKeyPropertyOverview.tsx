@@ -82,8 +82,8 @@ interface MultiKeyPropertyOverviewProps {
 export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> = ({
   propertyId,
   propertySlug,
-  onNavigateToRoom,
-  onBackToOverview,
+  onNavigateToRoom: _onNavigateToRoom,
+  onBackToOverview: _onBackToOverview,
   selectedRoomSlug,
   activeTab,
   setActiveTab,
@@ -96,14 +96,14 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onDeleteBooking,
   onGuestVerificationUpdated,
   onCFormFiledUpdated,
-  onAddMenuItem,
-  onUpdateStock,
-  onAddInventoryItem,
-  onUpdateItemImage,
+  onAddMenuItem: _onAddMenuItem,
+  onUpdateStock: _onUpdateStock,
+  onAddInventoryItem: _onAddInventoryItem,
+  onUpdateItemImage: _onUpdateItemImage,
   onDispatchTelegram,
   activeMenuItemKey = '',
-  onSetActiveMenuItemKey,
-  isTestingMode = false,
+  onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
+  isTestingMode: _isTestingMode = false,
   kitchenModuleEnabled = false,
   hideHeader = false,
   serviceRequests = [],
@@ -112,8 +112,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [staffCount, setStaffCount] = useState<number>(0);
-  const [slotUsage, setSlotUsage] = useState<any>(null);
+  const [, setStaffCount] = useState<number>(0);
+  const [, setSlotUsage] = useState<any>(null);
 
   // Guards against firing a duplicate/overlapping load for the same
   // propertyId - StrictMode's dev-only double-invoke and rapid re-renders
@@ -164,28 +164,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
       setError('Failed to load property data');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSaveLocation = async (address: string, googleMapsLink: string): Promise<boolean> => {
-    try {
-      const response = await fetch('/php/api/router.php?action=update_property', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: propertyId, address, google_maps_link: googleMapsLink }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        await loadData();
-        return true;
-      }
-      setError(data.message || 'Failed to save address');
-      return false;
-    } catch (err) {
-      console.error('Failed to save address:', err);
-      setError('Failed to save address');
-      return false;
     }
   };
 

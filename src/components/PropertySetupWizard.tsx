@@ -66,8 +66,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     }
   };
 
-  const allDone = step1Done && step2Done && (!showRoomsStep || step3Done);
-
   return (
     <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden">
       <div className="px-6 py-4 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">

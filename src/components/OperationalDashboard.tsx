@@ -22,6 +22,7 @@ import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { useToast } from './ToastContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface OperationalDashboardProps {
@@ -64,9 +65,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   rooms = [],
   roomName,
   roomId,
-  propertySlug,
+  propertySlug: _propertySlug,
   onNavigate,
-  onOpenCheckin,
+  onOpenCheckin: _onOpenCheckin,
   onAddGuest,
   onCheckoutGuest,
   onDispatchTelegram,
@@ -75,19 +76,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onDeleteBooking,
   onGuestVerificationUpdated,
   onCFormFiledUpdated,
-  activeMenuItemKey,
+  activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
   propertyName = '',
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
-  propertyAddress = '',
-  propertyGoogleMapsLink = '',
-  propertyInstructions = '',
-  onSavePropertyLocation,
+  propertyAddress: _propertyAddress = '',
+  propertyGoogleMapsLink: _propertyGoogleMapsLink = '',
+  propertyInstructions: _propertyInstructions = '',
+  onSavePropertyLocation: _onSavePropertyLocation,
   isMultiKeyProperty = false,
   serviceRequests = [],
-  onCheckout,
+  onCheckout: _onCheckout,
 }) => {
   const { showToast } = useToast();
   const { orders } = useKitchenContext();
@@ -101,40 +102,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
-  const [blockedDates, setBlockedDates] = useState<Array<{
+  const [, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
     event_title: string;
     reservation_url?: string;
     source?: string;
   }>>([]);
-
-  // Get blocked dates from other guests (excluding current guest)
-  const getBlockedDateRanges = (currentGuest: Guest | null) => {
-    if (!currentGuest) return [];
-    return guests
-      .filter(g => g.id !== currentGuest.id) // Exclude current guest
-      .flatMap(g => {
-        const start = new Date(g.checkinDate);
-        const end = new Date(g.expectedCheckout);
-        return { start, end };
-      });
-  };
-
-  // Check if a date falls within any blocked range
-  const isDateBlocked = (dateStr: string, blockedRanges: Array<{ start: Date; end: Date }>) => {
-    if (!dateStr) return false;
-    const date = new Date(dateStr);
-    return blockedRanges.some(range => date >= range.start && date < range.end);
-  };
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    const dateOnly = dateStr.split(' ')[0];
-    const parts = dateOnly.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  };
 
   // Fetch blocked dates from iCal sync
   useEffect(() => {
@@ -430,8 +404,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex-1">
             {isEditingRoomName ? (
-              <input
-                type="text"
+              <Input
                 value={editingRoomName}
                 onChange={(e) => setEditingRoomName(e.target.value)}
                 onBlur={() => {
@@ -457,7 +430,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }
                 }}
                 autoFocus
-                className="text-2xl font-bold text-gray-900 border-b-2 border-blue-600 focus:outline-none"
+                className="text-2xl font-bold text-slate-900 dark:text-white"
               />
             ) : (
               <div className="flex items-center gap-2">

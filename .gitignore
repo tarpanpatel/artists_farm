@@ -53,6 +53,12 @@ php/database/
 # Tool-generated cache/logs (Playwright MCP console dumps)
 .playwright-mcp/
 
+# Not part of this project - unrelated cloned repo used to help other AI tooling
+agency-agents/
+
+# Business/market-research doc, not webapp code
+AI_MARKET_RESEARCH_PROMPT.md
+
 # Uploaded guest ID documents - real PII, never version-controlled
 # (menu/catalog images stay tracked - those are demo content, not guest data)
 php/uploads/images/id_documents/

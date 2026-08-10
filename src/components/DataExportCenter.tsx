@@ -18,6 +18,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -31,12 +32,12 @@ interface DataExportCenterProps {
 
 export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   guests,
-  receipts,
-  menu,
-  auditLogs,
+  receipts: _receipts,
+  menu: _menu,
+  auditLogs: _auditLogs,
   kitchenModuleEnabled = true,
 }) => {
-  const { orders } = useKitchenContext();
+  const { orders: _orders } = useKitchenContext();
   const { staff, attendance } = useStaff();
   const { pettyCash: expenses } = useFinance();
   const { inventory } = useInventoryContext();
@@ -301,135 +302,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
     triggerDownload(`Farm_Report_MASTER_LEDGER_${getFilenameSuffix()}.csv`, csvContent);
   };
 
-  // 6. Export Billing Receipts
-  const exportReceipts = () => {
-    const headers = [
-      'Receipt ID',
-      'Guest Name',
-      'Room Number',
-      'Check-In Date',
-      'Check-Out Date',
-      'Room Rent (INR)',
-      'Food Total (INR)',
-      'Misc Total (INR)',
-      'Discount (INR)',
-      'Grand Total (INR)',
-      'Advance Paid (INR)',
-      'Payment Method',
-      'Payment Status',
-      'Paid At',
-    ];
-
-    const filteredReceipts = getFilteredData(receipts, 'checkinDate');
-
-    const rows = filteredReceipts.map((r) => [
-      `"${r.id}"`,
-      `"${r.guestName}"`,
-      `"${r.roomNumber}"`,
-      `"${r.checkinDate || ''}"`,
-      `"${r.checkoutDate || ''}"`,
-      r.roomRent || r.roomTotal || 0,
-      r.foodTotal || r.kitchenTotal || 0,
-      r.miscTotal || 0,
-      r.discount || 0,
-      r.grandTotal,
-      r.advancePaid || 0,
-      `"${r.paymentMethod || 'Cash'}"`,
-      `"${r.status}"`,
-      `"${r.paidAt || ''}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_RECEIPTS_${getFilenameSuffix()}.csv`, csvContent);
-  };
-
-  // 7. Export Kitchen Orders
-  const exportOrders = () => {
-    const headers = [
-      'Order ID',
-      'Guest Name',
-      'Room Number',
-      'Order Time',
-      'Status',
-      'Items',
-      'Item Count',
-      'Total Amount (INR)',
-    ];
-
-    const filteredOrders = getFilteredData(orders, 'orderTime');
-
-    const rows = filteredOrders.map((o) => [
-      `"${o.id}"`,
-      `"${o.guestName}"`,
-      `"${o.roomNumber}"`,
-      `"${o.orderTime}"`,
-      `"${o.status}"`,
-      `"${o.items.map((i) => `${i.name} x${i.quantity}`).join('; ')}"`,
-      o.items.reduce((sum, i) => sum + i.quantity, 0),
-      o.totalAmount,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_ORDERS_${getFilenameSuffix()}.csv`, csvContent);
-  };
-
-  // 8. Export Menu Catalog
-  const exportMenu = () => {
-    const headers = [
-      'Item ID',
-      'Item Name',
-      'Category',
-      'Price (INR)',
-      'Available',
-    ];
-
-    const rows = menu.map((m) => [
-      `"${m.id}"`,
-      `"${m.name}"`,
-      `"${m.category}"`,
-      m.price,
-      m.available ? 'Yes' : 'No',
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_MENU_CATALOG_${getFilenameSuffix()}.csv`, csvContent);
-  };
-
-  // 9. Export Audit Logs
-  const exportAuditLogs = () => {
-    const headers = [
-      'Log ID',
-      'Timestamp',
-      'User',
-      'Action',
-      'Status',
-      'Module',
-      'Browser',
-      'OS',
-      'Device Type',
-      'IP Address',
-    ];
-
-    const filteredLogs = getFilteredData(auditLogs, 'timestamp');
-
-    const rows = filteredLogs.map((l) => [
-      `"${l.id}"`,
-      `"${l.timestamp}"`,
-      `"${l.user}"`,
-      `"${l.action}"`,
-      `"${l.status || 'Success'}"`,
-      `"${l.module || ''}"`,
-      `"${l.browser || ''}"`,
-      `"${l.os || ''}"`,
-      `"${l.device_type || ''}"`,
-      `"${l.ip_address || ''}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    triggerDownload(`Farm_Report_AUDIT_LOGS_${getFilenameSuffix()}.csv`, csvContent);
-  };
-
-  // 10. Export Full SQL Database Snapshot Backup (Server-Side)
+  // 6. Export Full SQL Database Snapshot Backup (Server-Side)
   const exportFullSqlBackup = () => {
     const _base = window.location.pathname.replace(/#.*$/, '').replace(/\/[^/]*$/, '');
     const timestamp = Date.now();
@@ -551,29 +424,23 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {exportRangeType === 'custom' && (
             <>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>{t('start_date_label', 'Start Date')}</span>
-                </label>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-xs"
-                />
+                  <Input
+                    label={t('start_date_label', 'Start Date')}
+                    leftIcon={<Calendar className="w-4 h-4 text-gray-500" />}
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                  />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span>{t('end_date_label', 'End Date')}</span>
-                </label>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-xs"
-                />
+                  <Input
+                    label={t('end_date_label', 'End Date')}
+                    leftIcon={<Calendar className="w-4 h-4 text-gray-500" />}
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                  />
               </div>
             </>
           )}

@@ -3,6 +3,7 @@ import { Mail, Send, Loader, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { TENANT_WELCOME_VARIABLES, DEFAULT_TENANT_WELCOME_TEMPLATE, renderTenantWelcomeTemplate } from '../utils/tenantWelcomeTemplate';
 import { t } from '../i18n/en';
 
@@ -273,7 +274,7 @@ export const EmailSettingsPanel: React.FC = () => {
           {t('tenant_welcome_message_description', 'Sent as the welcome email and used to build the "Share via WhatsApp" message when a new tenant is created.')}
         </p>
 
-        <textarea
+        <Textarea
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
           placeholder={DEFAULT_TENANT_WELCOME_TEMPLATE}

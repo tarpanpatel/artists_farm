@@ -4,7 +4,6 @@ import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
 import { PropertySetupWizard } from './components/PropertySetupWizard';
-import { PropertyAddressBar } from './components/PropertyAddressBar';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { KitchenDashboard } from './components/KitchenDashboard';
@@ -27,13 +26,13 @@ import { EditPropertyPage } from './components/EditPropertyPage';
 import { GlobalModal } from './components/GlobalModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
-import { ConfirmDialogProvider, useConfirm } from './components/ConfirmDialogContext';
+import { ConfirmDialogProvider } from './components/ConfirmDialogContext';
 import { LoginModal } from './components/LoginModal';
 import { StaffProvider, useStaff } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { FinanceProvider, useFinance } from './contexts/FinanceContext';
+import { FinanceProvider } from './contexts/FinanceContext';
 import { InventoryProvider, useInventoryContext } from './contexts/InventoryContext';
-import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
+import { KitchenProvider } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
@@ -59,7 +58,6 @@ import {
   MenuItem,
   InventoryItem,
   Requisition,
-  PettyCashEntry,
   StaffMember,
   AuditLog,
   TelegramConfig,
@@ -73,9 +71,6 @@ interface AppBodyProps {
 
 function AppBody({ preloadedData }: AppBodyProps) {
   const { isEnabled: isModuleEnabled } = useModules();
-  const [showMultiKeyOverview, setShowMultiKeyOverview] = useState(
-    preloadedData.isMultiKeyProperty && !preloadedData.currentRoomSlug
-  );
   const [selectedRoomSlugOverride, setSelectedRoomSlugOverride] = useState<string | null>(null);
   const [selectedRoomForGuestRegistration, setSelectedRoomForGuestRegistration] = useState<string | null>(null);
   const selectedRoomSlugOverrideRef = useRef<string | null>(null);
@@ -193,16 +188,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const initialActive = getInitialActiveState();
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
-  const [propertyName, setPropertyName] = useState<string>(
+  const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
-  const [currentPropertyColorScheme, setCurrentPropertyColorScheme] = useState<string>(
+  const [currentPropertyColorScheme] = useState<string>(
     preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
   );
   const [isTestModeActive, setIsTestModeActive] = useState(false);
 
   // MultiKey room navigation handlers
-  const { propertySlug: multiKeyPropertySlug, tenantSlug } = getPropertyAndRoomSlugs();
+  const { propertySlug: multiKeyPropertySlug } = getPropertyAndRoomSlugs();
 
   const handleNavigateToMultiKeyOverview = () => {
     setSelectedRoomSlugOverride(null);
@@ -350,7 +345,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   };
 
-  const { currentUser, activeRole, isAuthenticated, setActiveRole, login, logout } = useAuth();
+  const { currentUser, activeRole, isAuthenticated, login, logout } = useAuth();
 
   const handleLoginSuccess = (staffMember: StaffMember) => {
     login(staffMember);
@@ -402,19 +397,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Telegram Notifications State
   // NOTE: Bot token moved to backend .env file - DO NOT hardcode in frontend
-  const TELEGRAM_BOT_TOKEN = null; // Backend will handle token securely
-
-  const getTelegramChannelIds = () => {
-    // NOTE: Group IDs now fetched from backend config
-    // DO NOT hardcode group IDs in frontend source code - security risk!
-    return {
-      kitchen: null,
-      admin: null,
-      finance: null,
-    };
-  };
-
-  const activeChannelIds = getTelegramChannelIds();
 
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
@@ -485,29 +467,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // wrong-property) result once it resolves.
   const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
-  const { confirm } = useConfirm();
   const { staff, staffLoading, refreshStaff, refreshAttendance } = useStaff();
 
-  const handleResetTestDatabase = async () => {
-    const confirmed = await confirm({
-      title: "Reset Sandbox Database",
-      message: "Are you sure you want to reset the Sandbox Database? This will overwrite all test data with a fresh snapshot from the live production database.",
-      confirmText: "Reset Database",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-
-    const res = await resetTestDatabaseInDB();
-    if (res.success) {
-      showToast("✔ Sandbox Database reset to live production snapshot successfully!", { type: 'success' });
-      setTimeout(() => window.location.reload(), 1000);
-    } else {
-      showToast(`Failed to reset Sandbox Database: ${res.message || 'Unknown error'}`, { type: 'error' });
-    }
-  };
-  const { refreshPettyCash, pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
-  const { refreshInventory, inventory, requisitions, lowStockCount, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
-  const { orders, addOrder, updateOrderStatus } = useKitchenContext();
+  const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // PWA Install Prompt State
@@ -1331,64 +1293,11 @@ ${itemsStr}
     logAudit(`${currentUserName} updated image for inventory item ${item?.name || itemId}`);
   };
 
-  const handleAddPettyCash = async (entry: PettyCashEntry) => {
-    addPettyCash(entry);
-    logAudit(`Recorded petty cash ${entry.type}: ₹${entry.amount} - ${entry.description}`);
-
-    if (telegramConfig.enabledEvents.pettyCashExpenses) {
-      const pettyVars: Record<string, string> = {
-        entry_type: entry.type.toUpperCase(),
-        amount: String(entry.amount),
-        category: entry.category,
-        vendor: entry.vendor || '',
-        description: entry.description,
-      };
-      const resolved = await resolveTelegramTemplate('finance_petty_cash_expense', pettyVars);
-      const pettyMsg = resolved || `💰 <b>PETTY CASH ${entry.type.toUpperCase()} RECORDED</b>\n• Amount: <b>₹${entry.amount}</b>\n• Category: <b>${entry.category}</b>\n• Vendor / Payee: <b>${entry.vendor}</b>\n• Description: ${entry.description}`;
-      dispatchTelegramAlert('Petty Cash', pettyMsg, 'finance', undefined, 'finance_petty_cash_expense');
-    }
-
-    recordTelescopeLog({
-      portal: 'requests',
-      severity: 'INFO',
-      msg: `POST /api/petty-cash - Logged ${entry.type} of ₹${entry.amount}`,
-      origin: '/src/App.tsx -> handleAddPettyCash',
-      details: entry,
-    });
-  };
-
-  const handleUpdatePettyCash = (updated: PettyCashEntry) => {
-    updatePettyCash(updated);
-    const oldEntry = pettyCash.find(e => e.id === updated.id);
-    const changes: string[] = [];
-    if (oldEntry) {
-      if (updated.amount !== undefined && updated.amount !== oldEntry.amount) changes.push(`amount from ₹${oldEntry.amount} to ₹${updated.amount}`);
-      if (updated.description !== undefined && updated.description !== oldEntry.description) changes.push(`description from "${oldEntry.description}" to "${updated.description}"`);
-      if (updated.vendor !== undefined && updated.vendor !== oldEntry.vendor) changes.push(`vendor from "${oldEntry.vendor || ''}" to "${updated.vendor || ''}"`);
-      if (updated.category !== undefined && updated.category !== oldEntry.category) changes.push(`category from "${oldEntry.category || ''}" to "${updated.category || ''}"`);
-    }
-    const detail = changes.length > 0 ? changes.join(', ') : `petty cash entry #${updated.id}`;
-    const currentUserName = currentUser?.name || activeRole;
-    logAudit(`${currentUserName} updated ${detail}`);
-  };
-
-  const handleDeletePettyCash = (id: string) => {
-    deletePettyCash(id);
-    const oldEntry = pettyCash.find(e => e.id === id);
-    const detail = oldEntry ? ` #${id}: ₹${oldEntry.amount} - "${oldEntry.description}"` : ` #${id}`;
-    const currentUserName = currentUser?.name || activeRole;
-    logAudit(`${currentUserName} deleted petty cash entry${detail}`);
-  };
-
   const handleSendTestNotification = () => {
     const testTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Artists Farm Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
     dispatchTelegramAlert('Test Dispatch', testMsg, 'all');
   };
-
-  // Badge counts
-  const { pendingOrdersCount } = useKitchenContext();
-  const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
 
   const handleSavePropertyLocation = async (address: string, googleMapsLink: string, instructions?: string): Promise<boolean> => {
     try {
@@ -1667,7 +1576,7 @@ ${itemsStr}
                     propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                     propertyPhone={preloadedData.currentProperty?.phone || ''}
                     propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
-                    onNavigateToBilling={(guestId) => {
+                    onNavigateToBilling={(_guestId) => {
                       // Navigate to billing view for guest
                     }}
                   />

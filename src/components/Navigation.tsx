@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
 import { ChevronDown, ChevronRight, LogOut, Link as LinkIcon } from 'lucide-react';
 import { NavMenuItem } from '../types';
@@ -66,31 +66,30 @@ interface FlatNavItem {
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
-  activeTab,
+  activeTab: _activeTab,
   setActiveTab,
   activeMenuItemKey,
   setActiveMenuItemKey,
   isSidebarOpen,
   onCloseSidebar,
-  onOpenTelegramModal,
+  onOpenTelegramModal: _onOpenTelegramModal,
   isIconOnly,
   onToggleIconOnly,
   navItems,
-  guests,
-  isMultiKeyProperty = false,
-  multiKeyPropertyId,
-  multiKeyPropertyName,
-  multiKeyPropertySlug,
-  currentRoomSlug,
-  onNavigateToMultiKeyOverview,
-  onNavigateToRoom,
-  multiKeyRooms,
+  guests: _guests,
+  isMultiKeyProperty: _isMultiKeyProperty = false,
+  multiKeyPropertyId: _multiKeyPropertyId,
+  multiKeyPropertyName: _multiKeyPropertyName,
+  multiKeyPropertySlug: _multiKeyPropertySlug,
+  currentRoomSlug: _currentRoomSlug,
+  onNavigateToMultiKeyOverview: _onNavigateToMultiKeyOverview,
+  onNavigateToRoom: _onNavigateToRoom,
+  multiKeyRooms: _multiKeyRooms,
   kitchenModuleEnabled = true,
 }) => {
   const { activeRole, logout, currentUser } = useAuth();
   const { lowStockCount, requisitions } = useInventoryContext();
   const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
-  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
   // Scroll active item into center of sidebar viewport
@@ -192,6 +191,18 @@ export const Navigation: React.FC<NavigationProps> = ({
   // First-tier group ids (top-level sidebar sections) - used to make expansion
   // an accordion at this level only: opening one collapses any other that's
   // open. Nested sub-groups deeper than tier 1 keep independent expand state.
+  //
+  // SECOND ATTEMPT at this fix (11 Aug 2026) - the first one (10 Aug 2026,
+  // commit dd94421) built this exact memo plus a toggleExpand() callback with
+  // the right collapse-siblings logic, but the manual click handler below
+  // never actually called it (still did a bare .add(node.id), no removal) -
+  // so the "fix" was dead code from the moment it was committed, never live.
+  // Caught this time because tsc's noUnusedLocals flagged firstTierGroupIds/
+  // toggleExpand as unused, which is what an unwired fix looks like to the
+  // compiler. This time the accordion logic is inlined directly into the
+  // click handler itself (see onClick below) instead of a separate callback,
+  // specifically so there's only one place for the wiring to silently drift
+  // apart again.
   const firstTierGroupIds = useMemo(() => new Set(tree.map(n => n.id)), [tree]);
 
   // Auto-expand active top-tier parent group and auto-collapse non-active top-tier parent groups
@@ -217,7 +228,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     const activeParentId = findOwningTopLevelParentId(tree);
 
-    setExpandedParents(prev => {
+    setExpandedParents(() => {
       const next = new Set<string>();
       if (activeParentId) {
         next.add(activeParentId);
@@ -264,24 +275,6 @@ export const Navigation: React.FC<NavigationProps> = ({
     }
   }, [logout, confirm]);
 
-  const toggleExpand = useCallback((id: string) => {
-    setExpandedParents(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        // Opening a first-tier group collapses every other first-tier group.
-        if (firstTierGroupIds.has(id)) {
-          firstTierGroupIds.forEach(otherId => {
-            if (otherId !== id) next.delete(otherId);
-          });
-        }
-        next.add(id);
-      }
-      return next;
-    });
-  }, [firstTierGroupIds]);
-
   const flattenAllItems = useCallback((nodes: TreeNode[]): FlatNavItem[] => {
     const result: FlatNavItem[] = [];
     const walk = (items: TreeNode[]) => {
@@ -323,7 +316,21 @@ export const Navigation: React.FC<NavigationProps> = ({
           <button
             type="button"
             onClick={() => {
-              setExpandedParents(prev => new Set(prev).add(node.id));
+              setExpandedParents(prev => {
+                const next = new Set(prev);
+                if (next.has(node.id)) {
+                  next.delete(node.id);
+                } else {
+                  // Opening a first-tier group collapses every other first-tier group.
+                  if (firstTierGroupIds.has(node.id)) {
+                    firstTierGroupIds.forEach(otherId => {
+                      if (otherId !== node.id) next.delete(otherId);
+                    });
+                  }
+                  next.add(node.id);
+                }
+                return next;
+              });
               handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
             }}
             className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${

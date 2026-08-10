@@ -35,10 +35,6 @@ export const DefaultExpensesManager: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const [iconPickerItemId, setIconPickerItemId] = useState<number | null>(null);
-  const [iconPickerForNew, setIconPickerForNew] = useState(false);
-  const [iconPickerForEdit, setIconPickerForEdit] = useState(false);
-
   useEffect(() => {
     loadExpenses();
   }, []);

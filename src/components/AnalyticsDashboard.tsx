@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt } from '../types';
-import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
+import { fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { StyledSelect } from './StyledSelect';
@@ -61,8 +61,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       setActiveTab('overview');
     }
   }, [kitchenModuleEnabled, activeTab]);
-  const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
-  const [priceSearch, setPriceSearch] = useState('');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
   const [ledgerData, setLedgerData] = useState<any[]>([]);
@@ -72,11 +70,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   });
 
   useEffect(() => {
-    fetchExpenseItemPricesFromDB().then((prices) => {
-      if (prices && Object.keys(prices).length > 0) {
-        setItemPrices(prices);
-      }
-    });
     fetchKitchenPurchasesFromDB().then((data) => {
       if (Array.isArray(data)) {
         setKitchenPurchases(data);
@@ -143,12 +136,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const netOperatingMargin = totalGrossRevenue - totalOutflowExpenses;
   const kitchenNetProfit = kitchenRevenue - totalKitchenPurchaseCost;
 
-  const bookingSources = filteredReceipts.reduce((acc, r) => {
-    const source = r.guestName?.toLowerCase().includes('airbnb') ? 'Airbnb' : 'Direct / Offline';
-    acc[source] = (acc[source] || 0) + (r.roomTotal || 0);
-    return acc;
-  }, {} as Record<string, number>);
-
   const menuItemSales = filteredOrders.reduce((acc, order) => {
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach(item => {
@@ -165,12 +152,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   const sortedMenuItems = Object.entries(menuItemSales)
     .sort((a, b) => b[1].revenue - a[1].revenue);
-
-  const expenseCategories = filteredExpenses.reduce((acc, exp) => {
-    const cat = exp.category || 'Other';
-    acc[cat] = (acc[cat] || 0) + exp.amount;
-    return acc;
-  }, {} as Record<string, number>);
 
   const bookingsByMonth = filteredReceipts.reduce((acc, r) => {
     const date = new Date(r.checkinDate);

@@ -11,7 +11,6 @@ import {
   fetchReceiptsFromDB,
   fetchMenuFromDB,
   getPropertySlug,
-  getPropertyAndRoomSlugs,
   getRoomSlugFromHash,
 } from '../services/api';
 import { t } from '../i18n/en';
@@ -37,7 +36,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const [data, setData] = useState<PreloadedData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentRoomSlug, setCurrentRoomSlug] = useState<string | null>(null);
+  const [, setCurrentRoomSlug] = useState<string | null>(null);
 
   const [invalidProperty, setInvalidProperty] = useState<string | null>(null);
 
@@ -49,7 +48,6 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
         // Check if property slug is present in URL
         const propertySlug = getPropertySlug();
-        const { propertySlug: slugFromPath, roomSlug } = getPropertyAndRoomSlugs();
 
         if (!propertySlug || propertySlug === 'default') {
           setInvalidProperty(propertySlug);

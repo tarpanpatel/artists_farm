@@ -4,7 +4,10 @@ import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Image as ImageIcon
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
+import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
+import { DateRangePicker } from './DateRangePicker';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -25,7 +28,7 @@ interface InventoryManagementProps {
 export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   onUpdateStock,
   onAddInventoryItem,
-  onUpdateItemImage,
+  onUpdateItemImage: _onUpdateItemImage,
   activeMenuItemKey,
   onDispatchTelegram,
   onLogAudit,
@@ -111,7 +114,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [catPackSize, setCatPackSize] = useState(1);
   const [catUnit, setCatUnit] = useState('Kg');
   const [catImagePath, setCatImagePath] = useState('');
-  const [liveCashHandlers, setLiveCashHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
+  const [, setLiveCashHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
 
   useEffect(() => {
     fetchStaffUsersFromDB().then((users) => {
@@ -532,8 +535,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([]);
   const [fulfillSearch, setFulfillSearch] = useState('');
 
-  const fulfillFromRef = React.useRef<HTMLInputElement>(null);
-  const fulfillToRef = React.useRef<HTMLInputElement>(null);
+  const [fulfillRangeOpen, setFulfillRangeOpen] = useState(false);
   const [fulfillFilterRange, setFulfillFilterRange] = useState<{ from: string; to: string } | null>(null);
 
   const todayDate = new Date();
@@ -542,10 +544,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const weekAgoDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - 6);
   const weekAgoStr = `${weekAgoDate.getFullYear()}-${padDate(weekAgoDate.getMonth() + 1)}-${padDate(weekAgoDate.getDate())}`;
 
+  // Draft from/to while the picker is open - only committed to
+  // fulfillFilterRange (which actually drives the table) via "Enter", same
+  // apply-on-demand behavior the old ref-based inputs had.
+  const [fulfillFromDraft, setFulfillFromDraft] = useState(weekAgoStr);
+  const [fulfillToDraft, setFulfillToDraft] = useState(todayStr);
+
   const handleFilterFulfill = () => {
-    const from = fulfillFromRef.current?.value || '';
-    const to = fulfillToRef.current?.value || '';
-    setFulfillFilterRange({ from, to });
+    setFulfillFilterRange({ from: fulfillFromDraft, to: fulfillToDraft });
   };
 
   const filteredFulfillSheets = fulfillFilterRange
@@ -709,10 +715,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [purUnit, setPurUnit] = useState('Kg');
   const [purTotalPrice, setPurTotalPrice] = useState<number | ''>('');
   const [purRecordedBy, setPurRecordedBy] = useState(currentUser?.name || 'System');
-  const [purVendor, setPurVendor] = useState('');
-  const [purSettlementStatus, setPurSettlementStatus] = useState('Paid');
-  const [purSettlementMethod, setPurSettlementMethod] = useState('Paid using Farm Cash');
-  const [purPaidByStaff, setPurPaidByStaff] = useState('Tarpan Patel');
 
   // Bulk Finance Interceptor state
   const [selectedPurIds, setSelectedPurIds] = useState<string[]>([]);
@@ -849,7 +851,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div>
                 <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Wasted / Spilled Quantity *</label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="number"
                     required
                     min="0.1"
@@ -857,7 +859,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     value={wastedQty}
                     onChange={e => setWastedQty(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0.00"
-                    className="wastage-qty-input w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                    className="wastage-qty-input w-full font-bold"
                   />
                   <StyledSelect
                     className="w-28 shrink-0"
@@ -887,24 +889,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Reported By</label>
-                <input
+                <Input
+                  label="Reported By"
                   type="text"
                   required
                   value={wastedReportedBy}
                   onChange={e => setWastedReportedBy(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Incident Notes / Explanation</label>
-                <input
+                <Input
+                  label="Incident Notes / Explanation"
                   type="text"
                   value={wastedNotes}
                   onChange={e => setWastedNotes(e.target.value)}
                   placeholder="e.g. Container dropped during morning prep..."
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
                 />
               </div>
             </div>
@@ -1170,16 +1170,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
           <form onSubmit={handleSavePurchase} className="space-y-4">
             <div>
-              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('purchase_date_label', 'Purchase Date')}
-              </label>
-              <input
+              <Input
+                label={t('purchase_date_label', 'Purchase Date')}
                 type="date"
                 required
                 value={purDate}
                 onChange={e => setPurDate(e.target.value)}
                 onClick={e => { try { e.currentTarget.showPicker(); } catch {} }}
-                className="w-full p-2.5 text-xs font-semibold text-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden focus:border-cyan-500 bg-white dark:bg-slate-900 cursor-pointer"
+                className="cursor-pointer"
               />
             </div>
 
@@ -1215,23 +1213,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('specification_label')}
-              </label>
-              <input
-                type="text"
-                readOnly
-                value={purSpec}
-                placeholder={t('locked_from_catalog_placeholder')}
-                  className="w-full p-2.5 text-xs font-semibold text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-100 dark:bg-slate-900/80 cursor-not-allowed"
+                <Input
+                  label={t('specification_label')}
+                  type="text"
+                  readOnly
+                  value={purSpec}
+                  placeholder={t('locked_from_catalog_placeholder')}
+                  className="cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('quantity_volume_label')}
-              </label>
-                <input
+                <Input
+                  label={t('quantity_volume_label')}
                   type="number"
                   required
                   step="any"
@@ -1248,48 +1242,40 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     }
                   }}
                   placeholder="0.000"
-                  className="w-full p-2.5 text-xs font-semibold text-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden bg-white dark:bg-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('unit_locked_label')}
-              </label>
-                <input
+                <Input
+                  label={t('unit_locked_label')}
                   type="text"
                   readOnly
                   value={purUnit}
                   placeholder="Locked from Master Catalog"
-                  className="w-full p-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-100 dark:bg-slate-900/80 cursor-not-allowed"
+                  className="cursor-not-allowed font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('total_price_label')}
-              </label>
-                <input
+                <Input
+                  label={t('total_price_label')}
                   type="number"
                   required
                   step="any"
                   value={purTotalPrice}
                   onChange={e => setPurTotalPrice(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="0.00"
-                  className="w-full p-2.5 text-xs font-extrabold text-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-hidden bg-white dark:bg-slate-900"
+                  className="font-extrabold"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">
-                {t('recorded_by_label')}
-              </label>
-              <input
+              <Input
+                label={t('recorded_by_label')}
                 type="text"
                 readOnly
                 value={purRecordedBy}
-                className="w-full p-2.5 text-xs font-semibold text-slate-500 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900"
               />
             </div>
 
@@ -1500,12 +1486,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             data={filteredKitchenPurchases}
             subHeader={
               <div className="w-full flex items-center gap-2 py-2 px-1">
-                <input
+                <Input
                   type="text"
                   placeholder={t('search_by_item_vendor_placeholder')}
                   value={purSearch}
                   onChange={e => setPurSearch(e.target.value)}
-                  className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                  className="w-full max-w-sm"
                 />
               </div>
             }
@@ -1950,8 +1936,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <form onSubmit={handleSaveCatalogItem} className="p-4 space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('item_name_label')}</label>
-                  <input type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" placeholder="e.g. Tomato Puree" />
+                  <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
                 </div>
 
                 <div>
@@ -1967,13 +1952,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('base_price_label')}</label>
-                    <input type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
+                    <Input label={t('base_price_label')} type="number" step="0.01" required value={catPrice} onChange={e => setCatPrice(Number(e.target.value))} />
                   </div>
                   <div className="flex gap-2">
                     <div className="w-1/2">
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('pack_size_label')}</label>
-                      <input type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg focus:border-blue-500 focus:outline-hidden" />
+                      <Input label={t('pack_size_label')} type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} />
                     </div>
                     <div className="w-1/2">
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('unit_label')}</label>
@@ -1988,7 +1971,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                 <div>
                   <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_image_label')}</label>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
+                  <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
                   {catImagePath && (
                     <div className="mt-2">
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">{t('preview_label')}</p>
@@ -2020,19 +2003,33 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
           
            <div className="flex items-center gap-2">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('from_label')}</span>
-              <input type="date" ref={fulfillFromRef} onChange={(e) => { if (fulfillToRef.current && e.target.value > fulfillToRef.current.value) fulfillToRef.current.value = e.target.value; }} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue={weekAgoStr} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-slate-500 mb-0.5">{t('to_label')}</span>
-              <input type="date" ref={fulfillToRef} min={fulfillFromRef.current?.value || weekAgoStr} className="border border-slate-300 rounded-md px-2 py-1 text-xs text-slate-700 bg-white shadow-2xs" defaultValue={todayStr} />
-            </div>
-            <button onClick={handleFilterFulfill} className="mt-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
+            <button
+              type="button"
+              onClick={() => setFulfillRangeOpen(true)}
+              className="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white shadow-2xs hover:border-slate-400 transition-colors"
+            >
+              {formatDateDDMMYYYY(fulfillFromDraft)} → {formatDateDDMMYYYY(fulfillToDraft)}
+            </button>
+            <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
 {t('enter_button')}
             </button>
           </div>
         </div>
+
+        {fulfillRangeOpen && (
+          <DateRangePicker
+            isOpen={fulfillRangeOpen}
+            onClose={() => setFulfillRangeOpen(false)}
+            checkinDate={fulfillFromDraft}
+            checkoutDate={fulfillToDraft}
+            onCheckinChange={setFulfillFromDraft}
+            onCheckoutChange={setFulfillToDraft}
+            heading={t('stock_request_log_header')}
+            description={t('fulfill_stock_range_description', 'Pick a from/to range to filter requisitions below')}
+            fromLabel={t('from_label')}
+            toLabel={t('to_label')}
+          />
+        )}
 
          {/* Table */}
          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -2103,13 +2100,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                })}
                 subHeader={
                   <div className="w-full flex items-center gap-2 py-2">
-                    <input
+                    <Input
                       type="text"
                       placeholder={t('search_by_date_status_material_placeholder')}
-                     value={fulfillSearch}
-                     onChange={(e) => setFulfillSearch(e.target.value)}
-                     className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
-                   />
+                      value={fulfillSearch}
+                      onChange={(e) => setFulfillSearch(e.target.value)}
+                      className="w-full max-w-sm"
+                    />
                  </div>
                }
                pagination
@@ -2439,7 +2436,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               {/* Special Request Textarea */}
               <div>
-                <textarea
+                <Textarea
                   rows={2}
                   value={specialRequestText}
                   onChange={(e) => setSpecialRequestText(e.target.value)}
@@ -2544,7 +2541,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Action Footer */}
             <div className="p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
-              <textarea
+              <Textarea
                 rows={1}
                 value={specialRequestText}
                 onChange={(e) => setSpecialRequestText(e.target.value)}
@@ -2648,13 +2645,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const stockLogSubHeader = (
     <div className="flex items-center justify-between gap-3 py-2">
       <div className="relative flex-1 max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+        <Input
           type="text"
           value={stockLogSearch}
           onChange={(e) => setStockLogSearch(e.target.value)}
           placeholder={t('search_inventory_placeholder')}
-          className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="pl-9"
         />
       </div>
       <button
@@ -2750,14 +2747,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <form onSubmit={handleCreateItem} className="space-y-3">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('item_name_label')} *</label>
-                <input
+                <Input
+                  label={`${t('item_name_label')} *`}
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Milk or Basmati Rice"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                 />
               </div>
 
@@ -2778,22 +2774,20 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">{t('stock_level_label')}</label>
-                  <input
+                  <Input
+                    label={t('stock_level_label')}
                     type="number"
                     value={currentStock}
                     onChange={(e) => setCurrentStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">{t('min_threshold_column_header')}</label>
-                  <input
+                  <Input
+                    label={t('min_threshold_column_header')}
                     type="number"
                     value={minThreshold}
                     onChange={(e) => setMinThreshold(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                   />
                 </div>
 
@@ -2819,7 +2813,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button')}</span>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -2836,12 +2830,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       />
                     </label>
 
-                    <input
+                    <Input
                       type="text"
                       value={imagePath}
                       onChange={(e) => setImagePath(e.target.value)}
                       placeholder={t('or_enter_image_url_placeholder')}
-                      className="flex-1 p-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono text-[11px]"
+                      className="flex-1 font-mono text-[11px]"
                     />
                   </div>
 

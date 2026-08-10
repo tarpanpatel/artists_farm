@@ -34,6 +34,7 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
@@ -450,7 +451,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   useEffect(() => {
     fetchStaffMealLogsFromDB().then(setSmLogs);
   }, []);
-  const [smVisibleCount, setSmVisibleCount] = useState(10);
 
   const { staff } = useStaff();
 
@@ -505,43 +505,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setSmSelectedStaff(prev => 
       prev.includes(staff) ? prev.filter(s => s !== staff) : [...prev, staff]
     );
-  };
-
-  const handleDispatchStaffMeal = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (smSelectedStaff.length === 0) {
-      showToast("Please select at least one staff member.", { type: 'warning' });
-      return;
-    }
-    const staffName = smSelectedStaff.join(', ');
-    const foodStr = smCustomMeal ? smCustomMeal : smConsumptionType;
-
-    const staffOrder: Order = {
-      id: `STF-${Math.floor(100 + Math.random() * 900)}`,
-      guestId: 'staff-duty',
-      guestName: `[STAFF MEAL] ${staffName}`,
-      roomNumber: 'Staff Pantry',
-      orderTime: 'Just now',
-      status: 'Pending',
-      items: [
-        {
-          menuItemId: 0,
-          name: `Staff Meal: ${foodStr}`,
-          quantity: smQuantity,
-          unitPrice: 0,
-        },
-      ],
-      totalAmount: 0,
-    };
-    addOrder(staffOrder);
-    showToast(`Staff meal ticket ${staffOrder.id} dispatched to Kitchen KDS Queue!`, { type: 'success' });
-    
-    // Reset Form
-    setSmSelectedStaff([]);
-    setSmQuantity(1);
-    setSmCustomMeal('');
-    setSmEstCost('');
-    setActiveTab('kds');
   };
 
   // ─── Beta Recipe Builder State (DB-backed) ───
@@ -725,7 +688,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const checkedInGuests = isTestingMode
     ? guests
     : guests.filter((g) => g.status === 'Active');
-  const [selectedGuestId, setSelectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
+  const [selectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
   });
@@ -1090,18 +1053,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 dark:border-slate-700 shadow-2xs rounded-t-xl">
                   {/* Quick Search Bar */}
                   <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3" />
-                    <input
+                    <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3 z-10" />
+                    <Input
                       type="text"
                       value={posSearch}
                       onChange={(e) => setPosSearch(e.target.value)}
                       placeholder={t('quick_search_menu_placeholder')}
-                      className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-2xs"
+                      className="pl-9"
                     />
                     {posSearch && (
                       <button
                         onClick={() => setPosSearch('')}
-                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer z-10"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1581,12 +1544,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             highlightOnHover
             responsive
             subHeader={
-              <input
+              <Input
                 type="text"
                 value={reqSearch}
                 onChange={(e) => setReqSearch(e.target.value)}
                 placeholder={t('search_requisition_placeholder')}
-                className="w-full max-w-xs px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:border-cyan-500 bg-white dark:bg-slate-900 dark:text-slate-200"
+                className="w-full max-w-xs"
               />
             }
             customStyles={{
@@ -1638,15 +1601,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </h3>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('date_time_of_record_label')}</label>
-                <input 
-                  type="datetime-local" 
-                  value={smDateRecord}
-                  onChange={(e) => setSmDateRecord(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden focus:border-cyan-500 shadow-2xs"
-                />
-              </div>
+              <Input 
+                label={t('date_time_of_record_label')}
+                type="datetime-local" 
+                value={smDateRecord}
+                onChange={(e) => setSmDateRecord(e.target.value)}
+              />
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('consuming_staff_label')}</label>
@@ -1691,7 +1651,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         if (selected) setSmEstCost(selected.cost.toString());
                       }}
                       placeholder={t('select_database_meal_placeholder')}
-                      options={smMealOptions.map((opt, i) => ({ value: opt.name, label: opt.name }))}
+                      options={smMealOptions.map((opt) => ({ value: opt.name, label: opt.name }))}
                     />
                     <button 
                       onClick={() => setIsCustomMealModalOpen(true)}
@@ -1703,12 +1663,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase text-right">{t('est_cost_value_label')}</label>
-                  <input 
+                  <Input 
+                    label={t('est_cost_value_label')}
                     type="number" 
                     value={smEstCost}
                     onChange={(e) => setSmEstCost(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs focus:outline-hidden shadow-2xs text-right"
+                    className="text-right"
                   />
                 </div>
               </div>
@@ -1809,26 +1769,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
               
               <div className="p-6 space-y-5">
-                <div>
-                  <label className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">{t('combo_meal_name_label')}</label>
-                  <input 
-                    type="text"
-                    placeholder={t('e_g_roti_placeholder')}
-                    value={newMealName}
-                    onChange={(e) => setNewMealName(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-2">{t('default_estimated_price_label')}</label>
-                  <input 
-                    type="number"
-                    placeholder="50.00"
-                    value={newMealCost}
-                    onChange={(e) => setNewMealCost(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 focus:outline-hidden focus:border-emerald-500 shadow-xs"
-                  />
-                </div>
+                <Input 
+                  label={t('combo_meal_name_label')}
+                  type="text"
+                  placeholder={t('e_g_roti_placeholder')}
+                  value={newMealName}
+                  onChange={(e) => setNewMealName(e.target.value)}
+                />
+                <Input 
+                  label={t('default_estimated_price_label')}
+                  type="number"
+                  placeholder="50.00"
+                  value={newMealCost}
+                  onChange={(e) => setNewMealCost(e.target.value)}
+                />
               </div>
               
               <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
@@ -1865,12 +1819,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-500">{t('save_preset_description')}</p>
-                <input
+                <Input
                   type="text"
                   value={presetNameInput}
                   onChange={(e) => setPresetNameInput(e.target.value)}
                   placeholder={t('e_g_butter_chicken_placeholder')}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                   autoFocus
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); }}
                 />
@@ -1949,7 +1902,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setYieldFactor(Math.max(1, yieldFactor - 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Minus className="w-3 h-3" /></button>
-                  <input type="range" min="1" max="50" value={yieldFactor} onChange={(e) => setYieldFactor(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                  <Input type="range" min="1" max="50" value={yieldFactor} onChange={(e) => setYieldFactor(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
                   <button onClick={() => setYieldFactor(Math.min(50, yieldFactor + 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Plus className="w-3 h-3" /></button>
                 </div>
               </div>
@@ -1962,7 +1915,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setServings(Math.max(1, servings - 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Minus className="w-3 h-3" /></button>
-                  <input type="range" min="1" max="100" value={servings} onChange={(e) => setServings(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                  <Input type="range" min="1" max="100" value={servings} onChange={(e) => setServings(Number(e.target.value))} className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                   <button onClick={() => setServings(Math.min(100, servings + 1))} className="p-1.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"><Plus className="w-3 h-3" /></button>
                 </div>
               </div>
@@ -2078,12 +2031,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <Boxes className="w-4 h-4 text-indigo-500" /> {t('ingredients_heading')}
                     <span className="text-[10px] font-mono text-slate-400">({recipeIngredients.length})</span>
                   </h4>
-                  <input
+                  <Input
                     type="text"
                     value={recipeSearch}
                     onChange={(e) => setRecipeSearch(e.target.value)}
                     placeholder={t('search_placeholder')}
-                    className="w-44 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-[11px] text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                    className="w-44"
                   />
                 </div>
                 <DataTable
@@ -2197,14 +2150,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Qty / Portion</label>
-                    <input
+                    <Input
+                      label="Qty / Portion"
                       type="number"
                       step="0.001"
                       required
                       value={newIngQty}
                       onChange={(e) => setNewIngQty(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
@@ -2224,13 +2176,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Cost per Unit (₹)</label>
-                  <input
+                  <Input
+                    label="Cost per Unit (₹)"
                     type="number"
                     required
                     value={newIngCost}
                     onChange={(e) => setNewIngCost(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white"
                   />
                 </div>
 
@@ -2259,14 +2210,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
             <form onSubmit={handleCreateMenuItem} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('item_name_required_label')}</label>
-                <input
+                <Input
+                  label={t('item_name_required_label')}
                   type="text"
                   required
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="e.g. Tandoori Butter Roti"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                 />
               </div>
 
@@ -2286,13 +2236,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('price_label')}</label>
-                <input
+                <Input
+                  label={t('price_label')}
                   type="number"
                   required
                   value={newItemPrice}
                   onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                 />
               </div>
 
@@ -2303,7 +2252,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button')}</span>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -2320,12 +2269,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       />
                     </label>
 
-                    <input
+                    <Input
                       type="text"
                       value={newItemImagePath}
                       onChange={(e) => setNewItemImagePath(e.target.value)}
                       placeholder={t('or_enter_image_url_placeholder')}
-                      className="flex-1 p-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono text-[11px]"
+                      className="flex-1 font-mono text-[11px]"
                     />
                   </div>
 
@@ -2383,25 +2332,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
             <form onSubmit={handleReqSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('material_name_required_label')}</label>
-                <input
+                <Input
+                  label={t('material_name_required_label')}
                   type="text"
                   required
                   value={reqItemName}
                   onChange={(e) => setReqItemName(e.target.value)}
                   placeholder={t('e_g_milk_placeholder')}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">{t('quantity_label')}</label>
-                  <input
+                  <Input
+                    label={t('quantity_label')}
                     type="number"
                     value={reqQty}
                     onChange={(e) => setReqQty(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
                   />
                 </div>
 
@@ -2478,7 +2425,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
           ]}
           data={servedLogs}
           subHeader={
-            <input type="text" placeholder={t('search_served_dishes_placeholder')} className="w-full max-w-sm px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 bg-white" />
+            <Input type="text" placeholder={t('search_served_dishes_placeholder')} className="w-full max-w-sm" />
           }
           pagination
           paginationPerPage={15}

@@ -23,8 +23,8 @@ interface MultiKeyRoomDrawerProps {
 export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
   propertyId,
   propertyName,
-  propertySlug,
-  currentRoomSlug,
+  propertySlug: _propertySlug,
+  currentRoomSlug: _currentRoomSlug,
   activeMenuItemKey,
   onNavigateToOverview,
   onNavigateToRoom,

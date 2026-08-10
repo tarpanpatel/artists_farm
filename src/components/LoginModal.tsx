@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, Phone, KeyRound, ShieldAlert, ArrowRight } from 'lucide-react';
 import { StaffMember } from '../types';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface LoginModalProps {
@@ -111,15 +112,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('mobile_number_label')}
             </label>
             <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-400 dark:text-gray-500">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-400 dark:text-gray-500 z-10">
                 <span className="text-xs font-bold border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
               </div>
-              <input
+              <Input
                 type="text"
                 value={mobileNumber}
                 onChange={handleMobileChange}
                 placeholder={t('ten_digit_mobile_placeholder')}
-                className="w-full pl-16 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                className="pl-16 font-semibold"
                 autoFocus
               />
             </div>
@@ -130,7 +131,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('six_digit_pin_label')}
             </label>
-            <input
+            <Input
               type="password"
               value={passcode}
               onChange={(e) => {
@@ -140,7 +141,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               }}
               placeholder={t('passcode_dots_placeholder')}
               maxLength={6}
-              className="w-full text-center tracking-widest text-2xl font-black py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="text-center tracking-widest text-2xl font-black py-3"
             />
           </div>
 

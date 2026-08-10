@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { MapPin, Pencil, Loader, CheckCircle2, X, ExternalLink, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { t } from '../i18n/en';
+import { Input } from './Input';
+import { Textarea } from './Textarea';
 
 interface PropertyAddressBarProps {
   address: string;
@@ -108,30 +110,22 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               </button>
             </div>
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('address_label', 'Address')}</label>
-                <input
-                  type="text"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  placeholder={t('full_property_address_placeholder', 'Full property address')}
-                  autoFocus
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('google_maps_link_optional_label', 'Google Maps Link (optional)')}</label>
-                <input
-                  type="text"
-                  value={editMapsLink}
-                  onChange={(e) => setEditMapsLink(e.target.value)}
-                  placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+              <Input
+                label={t('address_label', 'Address')}
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                placeholder={t('full_property_address_placeholder', 'Full property address')}
+                autoFocus
+              />
+              <Input
+                label={t('google_maps_link_optional_label', 'Google Maps Link (optional)')}
+                value={editMapsLink}
+                onChange={(e) => setEditMapsLink(e.target.value)}
+                placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
+              />
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('instructions_label', 'Instructions')}</label>
-                <textarea
+                <Textarea
                   rows={4}
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}

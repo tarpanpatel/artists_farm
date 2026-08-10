@@ -122,10 +122,6 @@ export const ExpenseItemsManagement: React.FC = () => {
   };
 
   const allItems = Object.values(expenses).flat();
-  const filtered = allItems.filter(item =>
-    item.label.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  );
   const categories = Object.keys(expenses).sort();
 
   return (

@@ -11,6 +11,7 @@ import {
   resizeImageFile,
 } from '../services/api';
 import { t } from '../i18n/en';
+import { Input } from './Input';
 
 // upload_image.php saves a small thumbnail alongside every id_documents
 // upload, at <same folder>/thumbs/<same filename> - derived here rather than
@@ -201,7 +202,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                           : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-slate-50 dark:bg-slate-700'
                       }`}
                     >
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         className="hidden"

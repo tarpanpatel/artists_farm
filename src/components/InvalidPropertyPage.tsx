@@ -2,16 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, Home } from 'lucide-react';
 import { t } from '../i18n/en';
 
-interface Property {
-  id: number;
-  slug: string;
-  name: string;
-  tenant_id?: number;
-}
-
-export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ propertySlug }) => {
-  const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
+export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ propertySlug: _propertySlug }) => {
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch available properties from a dedicated API endpoint

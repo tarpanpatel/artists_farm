@@ -58,8 +58,6 @@ const DEFAULT_SERVICE_REQUEST_TYPES = [
   { type_id: 'other_special_request', category: 'General', label: 'Other / Custom Request' },
 ];
 
-const OTHER_REQUEST_TYPE_ID = 'other_special_request';
-
 // Reminder cadence for still-unfulfilled requests - same shared nudge engine
 // shape as KitchenManagement's stale-order poll (php/kitchen/orders.php's
 // check_stale_reminders), mirrored here for service requests.

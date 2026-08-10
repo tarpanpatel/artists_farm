@@ -68,22 +68,6 @@ interface TelegramNotificationModalProps {
   hideRoutingControls?: boolean;
 }
 
-// Identifies which templates are kitchen-related (hidden if kitchen module disabled)
-const KITCHEN_TEMPLATE_KEYS = new Set([
-  'kitchen_single_dish_ready',
-  'kitchen_new_order',
-  'kitchen_order_status',
-  'kitchen_staff_meal',
-  'kitchen_requisition_approved',
-  'item_served',
-  'staff_meal_request',
-  'material_requisition_single',
-  'requisition_material_request',
-  'requisition_stock_fulfilled',
-  'webhook_dish_served_edit',
-  'webhook_order_completed',
-]);
-
 const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT/gi, replace: '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Guest:(<\/b>)?/gi, replace: '👤 <b>Guest:</b>' },
@@ -396,9 +380,9 @@ function visualHtmlToTelegramHtml(visualHtml: string): string {
 export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps> = ({
   isOpen = true,
   onClose,
-  telegramConfig,
-  onUpdateConfig,
-  dispatchLogs,
+  telegramConfig: _telegramConfig,
+  onUpdateConfig: _onUpdateConfig,
+  dispatchLogs: _dispatchLogs,
   onSendTestNotification,
   isEmbedded = false,
   onLogAudit,
@@ -412,7 +396,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   // Admin can only edit them here if the root admin has explicitly turned on
   // customization for this property.
   const canEditTemplates = isRootAdmin || templateCustomizationEnabled;
-  const [config, setConfig] = useState<TelegramConfig>(telegramConfig);
   const getLoggedInUserName = () => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem(`artists_farm_user_${getPropertySlug()}`);
@@ -429,7 +412,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [activeTemplateId, setActiveTemplateId] = useState<string>(FALLBACK_TEMPLATES[0].id);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [testSent, setTestSent] = useState(false);
-  const [showBotSettings, setShowBotSettings] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [activeCategory, setActiveCategory] = useState<'All' | 'Kitchen' | 'Admin' | 'Finances'>('All');
@@ -495,8 +477,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   // routing) — shared between the Connection Settings drawer and the per-template
   // "Send to" picker in the editor below, so both read/write the same state.
   const [tgSettings, setTgSettings] = useState<PropertyTelegramConfig | null>(null);
-  const [tgSaving, setTgSaving] = useState(false);
-  const [tgSaved, setTgSaved] = useState(false);
   const [tgRoutingSaving, setTgRoutingSaving] = useState(false);
 
   // Live template content/metadata from system_telegram_templates - the catalog
@@ -567,23 +547,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideRoutingControls]);
-
-  const updateTgSettings = (patch: Partial<PropertyTelegramConfig>) => {
-    setTgSettings((prev) => (prev ? { ...prev, ...patch } : prev));
-  };
-
-  const saveTgSettings = async (override?: PropertyTelegramConfig) => {
-    const toSave = override ?? tgSettings;
-    if (!toSave) return false;
-    setTgSaving(true);
-    const ok = await saveTelegramConfigDB(toSave);
-    setTgSaving(false);
-    if (ok) {
-      setTgSaved(true);
-      setTimeout(() => setTgSaved(false), 2000);
-    }
-    return ok;
-  };
 
   // Routing changes save immediately — no separate "did you remember to click
   // Save?" step for picking a notification's destination group.

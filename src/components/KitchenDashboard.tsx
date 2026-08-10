@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   UtensilsCrossed,
   Soup,
@@ -10,12 +10,10 @@ import {
   BookOpen,
   Sliders,
   ArrowRight,
-  Sparkles,
   AlertTriangle,
   Clock,
   Package,
   GripVertical,
-  RotateCcw,
   CookingPot,
 } from 'lucide-react';
 import { Button } from './Button';
@@ -285,13 +283,6 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
   const handleDragEnd = () => {
     setDraggedCardId(null);
     setDragOverCardId(null);
-  };
-
-  const handleResetOrder = () => {
-    try {
-      localStorage.removeItem('kitchen_dashboard_card_order');
-    } catch {}
-    setCustomCardOrder(null);
   };
 
   return (

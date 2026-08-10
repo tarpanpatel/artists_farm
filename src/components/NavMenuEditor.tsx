@@ -3,7 +3,7 @@ import Sortable from 'sortablejs';
 import * as LucideIcons from 'lucide-react';
 import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
-  Check, X, Search, LayoutDashboard, Navigation as NavIcon,
+  Check, X, LayoutDashboard, Navigation as NavIcon,
   Layers, PanelLeftClose, PanelRightOpen,
   ExternalLink
 } from 'lucide-react';
@@ -107,7 +107,7 @@ const SEARCH_TAGS: Record<string, string[]> = {
 export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   navItems,
   onUpdateNavItems,
-  activeRole,
+  activeRole: _activeRole,
   hideKitchenItems = false,
 }) => {
   const [items, setItems] = useState<NavMenuItem[]>(navItems);
@@ -227,18 +227,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     return result;
   }, [expandedIds]);
 
-  const getDepth = (item: NavMenuItem): number => {
-    let depth = 0;
-    let current = item;
-    while (current.parentId) {
-      depth++;
-      const parent = items.find(i => i.id === current.parentId);
-      if (!parent) break;
-      current = parent;
-    }
-    return depth;
-  };
-
   // ========== SORTABLE.JS ==========
   const extractFromDOM = useCallback((): NavMenuItem[] => {
     const result: NavMenuItem[] = [];
@@ -312,7 +300,6 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   const handleAddItem = () => {
     if (!newItem.title.trim()) return;
     const id = `nav-${Date.now().toString().slice(-6)}`;
-    const page = pageOptions.find(p => p.tabKey === newItem.tabKey && p.uniqueKey === newItem.uniqueKey);
     const item: NavMenuItem = {
       id,
       title: newItem.title.trim(),
@@ -601,9 +588,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {showIconPickerFor === item.id && (
           <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[380px]">
             <div className="relative mb-2">
-              <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1.5" />
-              <input type="text" autoFocus value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
-                className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              <Input
+                type="text"
+                autoFocus
+                value={iconSearch}
+                onChange={(e) => setIconSearch(e.target.value)}
+                placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
+              />
             </div>
             <div className="text-[9px] text-slate-400 mb-1 font-mono">{filteredIcons.length} icons</div>
             <div className="grid grid-cols-8 gap-1 max-h-[240px] overflow-y-auto">
@@ -645,9 +636,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {showTabPickerFor === item.id && (
           <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[280px]">
             <div className="relative mb-2">
-              <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1.5" />
-              <input type="text" autoFocus value={tabSearch} onChange={(e) => setTabSearch(e.target.value)} placeholder={t('nav_search_pages_placeholder', 'Search pages...')}
-                className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              <Input
+                type="text"
+                autoFocus
+                value={tabSearch}
+                onChange={(e) => setTabSearch(e.target.value)}
+                placeholder={t('nav_search_pages_placeholder', 'Search pages...')}
+              />
             </div>
             <div className="max-h-[200px] overflow-y-auto space-y-0.5">
               {filteredTabs.map(page => (
@@ -666,7 +661,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             </div>
             {item.tabKey === 'custom' && (
               <div className="mt-2 flex gap-1">
-                <input type="url" value={customUrlInput[item.id] ?? item.customUrl ?? ''} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+                <Input type="url" value={customUrlInput[item.id] ?? item.customUrl ?? ''} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." className="flex-1" />
                 <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
               </div>
             )}
@@ -677,8 +672,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {/* Custom URL Input */}
         {customUrlInput[item.id] !== undefined && showTabPickerFor !== item.id && (
           <div className="ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
-            <input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus
-              className="flex-1 px-2 py-1 bg-white border border-purple-200 rounded text-[11px] focus:ring-1 focus:ring-purple-500 focus:outline-none" />
+            <Input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus className="flex-1" />
             <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
             <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
@@ -771,9 +765,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Title */}
-            <input type="text" value={newItem.title} onChange={(e) => setNewItem(p => ({ ...p, title: e.target.value }))}
-              placeholder={t('nav_item_title_placeholder', 'Item title')} autoFocus
-              className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            <Input
+              type="text"
+              value={newItem.title}
+              onChange={(e) => setNewItem(p => ({ ...p, title: e.target.value }))}
+              placeholder={t('nav_item_title_placeholder', 'Item title')}
+              autoFocus
+            />
             {/* Page selector */}
             <StyledSelect
               value={`${newItem.tabKey}|${newItem.uniqueKey}`}

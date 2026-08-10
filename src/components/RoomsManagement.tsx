@@ -42,7 +42,7 @@ interface RoomsManagementProps {
 
 export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   propertyId,
-  propertySlug,
+  propertySlug: _propertySlug,
   propertyType,
   onUpdated,
 }) => {

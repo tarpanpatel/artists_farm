@@ -18,6 +18,8 @@ import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { BillingCheckout } from './BillingCheckout';
@@ -101,7 +103,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   isMultiKeyProperty = false,
   rooms = [],
   onNavigateToBilling,
-  onSetActiveMenuItemKey,
+  onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
   selectedRoomSlug,
   preSelectRoom,
   onClose,
@@ -118,8 +120,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const { confirm } = useConfirm();
   const { staff } = useStaff();
   const { miscCharges } = useConfigurationData();
-  const [filterStatus, setFilterStatus] = useState<string>('All');
-  const [searchTerm, setSearchTerm] = useState('');
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
 
 
@@ -147,7 +147,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // same page - carried over to BillingCheckout below so it lands on the
   // right Today/Upcoming/Past tab with this exact booking already filtered
   // into view, instead of just dropping the admin on the page in general.
-  const [focusBookingGuestId, setFocusBookingGuestId] = useState<string | null>(null);
+  const [focusBookingGuestId] = useState<string | null>(null);
   const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
 
   // Set default room for MultiKey properties on component mount
@@ -219,13 +219,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     };
     fetchBlockedDates();
   }, []);
-
-  // Check if a date is blocked
-  const isDateBlocked = (dateStr: string): boolean => {
-    return blockedDates.some(
-      (bd) => dateStr >= bd.event_start.split(' ')[0] && dateStr < bd.event_end.split(' ')[0]
-    );
-  };
 
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {
@@ -348,9 +341,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Lodging Breakdown Data — initialized from guest data (BUG 6 FIX)
   const [baseLodging, setBaseLodging] = useState(0);
   const [advancePaid, setAdvancePaid] = useState(0);
-  const [advancePayer, setAdvancePayer] = useState('');
-  const [pendingSettled, setPendingSettled] = useState(0);
-  const [pendingSettledBy, setPendingSettledBy] = useState('');
+  const [advancePayer] = useState('');
+  const [pendingSettledBy] = useState('');
 
   // Incidentals Log Items
   const [incidentals, setIncidentals] = useState<IncidentalsItem[]>([]);
@@ -399,10 +391,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     const set = getRemovedIds(guestId);
     set.add(itemId);
     localStorage.setItem(getRemovedKey(guestId), JSON.stringify([...set]));
-  };
-
-  const clearRemovedIds = (guestId: string) => {
-    localStorage.removeItem(getRemovedKey(guestId));
   };
 
   // GST optional toggle — rate auto-detected from room tariff slab
@@ -469,7 +457,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     .reduce((sum, a) => sum + a.amount, 0);
   const netAdjustments = extraCharges - discounts;
 
-  const incidentalsSubtotal = foodTotal;
   const lodgingPendingDue = Math.max(0, baseLodging - advancePaid);
   const preGstTotal = Math.max(0, lodgingPendingDue + foodTotal + netAdjustments);
   const gstAccommodationAmount = gstEnabled ? Math.round((lodgingPendingDue + netAdjustments) * gstAccommodationRate) / 100 : 0;
@@ -749,15 +736,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   };
 
 
-  const filteredGuests = guests.filter((g) => {
-    const matchesStatus = filterStatus === 'All' || g.status === filterStatus;
-    const matchesSearch =
-      g.guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      g.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      g.phoneNumber.includes(searchTerm);
-    return matchesStatus && matchesSearch;
-  });
-
   if (activeMenuItemKey === 'guest_history') {
     return <GuestHistory guests={guests} onCFormFiledUpdated={onCFormFiledUpdated} />;
   }
@@ -882,12 +860,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 0: Guest Name (Full width) */}
             <div>
               <label className="block mb-1">{t('guest_name_label', 'Guest Name *')}</label>
-              <input
+              <Input
+                label={t('guest_name_label', 'Guest Name *')}
                 type="text"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="Enter guest's full name"
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 required
               />
             </div>
@@ -896,7 +874,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1">{t('contact_phone_label', 'Contact Phone Number *')}</label>
-                <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter mobile number" className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" required />
+                <Input
+                  label={t('contact_phone_label', 'Contact Phone Number *')}
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={e => setPhoneNumber(e.target.value)}
+                  placeholder="Enter mobile number"
+                  required
+                />
               </div>
 
               {/* Room Selector for MultiKey Properties */}
@@ -929,12 +914,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
               <div>
                 <label className="block mb-1">{t('no_of_guests_label', 'No. of Guests')}</label>
-                <input
+                <Input
+                  label={t('no_of_guests_label', 'No. of Guests')}
                   type="number"
                   min="1"
                   value={noOfGuests}
                   onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
@@ -989,18 +974,33 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1 text-xs font-bold">{t('checkin_time_label', 'Check-In Time (Optional)')}</label>
-                <input type="time" value={checkinTime} onChange={e => setCheckinTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                <Input
+                  label={t('checkin_time_label', 'Check-In Time (Optional)')}
+                  type="time"
+                  value={checkinTime}
+                  onChange={e => setCheckinTime(e.target.value)}
+                />
               </div>
               <div>
                 <label className="block mb-1 text-xs font-bold">{t('checkout_time_label', 'Check-Out Time (Optional)')}</label>
-                <input type="time" value={checkoutTime} onChange={e => setCheckoutTime(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                <Input
+                  label={t('checkout_time_label', 'Check-Out Time (Optional)')}
+                  type="time"
+                  value={checkoutTime}
+                  onChange={e => setCheckoutTime(e.target.value)}
+                />
               </div>
             </div>
 
             {/* Total Room Tariff */}
             <div>
               <label className="block mb-1">{t('room_rent', 'Room Rent / Price (₹)')}</label>
-              <input type="number" value={bookingRoomTariff || ''} onChange={e => handleTariffChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+              <Input
+                label={t('room_rent', 'Room Rent / Price (₹)')}
+                type="number"
+                value={bookingRoomTariff || ''}
+                onChange={e => handleTariffChange(Number(e.target.value))}
+              />
             </div>
 
             {/* Advance Paid + Advance Received By - one row, 2 columns. Advance
@@ -1010,7 +1010,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1">{t('advance_paid', 'Advance Paid (₹)')}</label>
-                  <input type="number" value={bookingAdvance || ''} onChange={e => handleAdvanceChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <Input
+                    label={t('advance_paid', 'Advance Paid (₹)')}
+                    type="number"
+                    value={bookingAdvance || ''}
+                    onChange={e => handleAdvanceChange(Number(e.target.value))}
+                  />
                 </div>
 
                 {bookingAdvance > 0 && (
@@ -1033,7 +1038,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1">{t('pending_balance_label', 'Pending Balance (₹)')}</label>
-                  <input type="number" value={bookingPending || ''} onChange={e => handlePendingChange(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <Input
+                    label={t('pending_balance_label', 'Pending Balance (₹)')}
+                    type="number"
+                    value={bookingPending || ''}
+                    onChange={e => handlePendingChange(Number(e.target.value))}
+                  />
                 </div>
 
                 {bookingPending > 0 && (
@@ -1063,7 +1073,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <span className="text-xs font-bold">{t('guest_notes_label', 'Guest Notes')}</span>
                 </label>
                 {showGuestNotes && (
-                  <textarea
+                  <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Dietary adjustments..."
@@ -1142,18 +1152,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                                 };
                               })}
                             />
-                            <input
-                              type="number"
-                              value={inc.amount || ''}
-                              onChange={(e) => {
-                                const newInc = [...bookingIncidentals];
-                                newInc[idx].amount = Number(e.target.value);
-                                setBookingIncidentals(newInc);
-                              }}
-                              placeholder="Amount"
-                              className="w-24 p-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                              required={!!inc.type}
-                            />
+                              <Input
+                                type="number"
+                                value={inc.amount || ''}
+                                onChange={(e) => {
+                                  const newInc = [...bookingIncidentals];
+                                  newInc[idx].amount = Number(e.target.value);
+                                  setBookingIncidentals(newInc);
+                                }}
+                                placeholder="Amount"
+                                className="w-24"
+                                fullWidth={false}
+                                required={!!inc.type}
+                              />
                             <button
                               type="button"
                               onClick={() => setBookingIncidentals(bookingIncidentals.filter((_, i) => i !== idx))}
@@ -1388,13 +1399,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">
                           Quantity
                         </label>
-                        <input
+                        <Input
+                          label="Quantity"
                           type="number"
                           value={insertQty}
                           min={1}
                           required
                           onChange={(e) => setInsertQty(Number(e.target.value))}
-                          className="w-full p-2 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
+                          className="text-center"
+                          fullWidth={false}
                         />
                       </div>
 
@@ -1415,20 +1428,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           <label className="block text-[11px] font-bold text-slate-600 mb-1">
                             Custom Dish Name *
                           </label>
-                          <input
+                          <Input
+                            label="Custom Dish Name *"
                             type="text"
                             required
                             value={customDishName}
                             onChange={(e) => setCustomDishName(e.target.value)}
                             placeholder="e.g. Special Thali / Extra Raita"
-                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                           />
                         </div>
                         <div className="w-32">
                           <label className="block text-[11px] font-bold text-slate-600 mb-1">
                             Price (₹) *
                           </label>
-                          <input
+                          <Input
+                            label="Price (₹) *"
                             type="number"
                             step="0.01"
                             required
@@ -1436,8 +1450,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             onChange={(e) =>
                               setCustomDishPrice(e.target.value === '' ? '' : Number(e.target.value))
                             }
-                            placeholder="0.00"
-                            className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
+                            className="w-32"
+                            fullWidth={false}
                           />
                         </div>
                       </div>
@@ -1585,12 +1599,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <label className="block text-[11px] font-bold text-slate-600 mb-1">
                         Discount Label
                       </label>
-                      <input
+                      <Input
+                        label="Discount Label"
                         type="text"
                         value={adjReasonDiscount}
                         onChange={(e) => setAdjReasonDiscount(e.target.value)}
                         placeholder="e.g. Service Apology..."
-                        className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white"
                       />
                     </div>
                   )}
@@ -1599,7 +1613,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       Amount (₹)
                     </label>
-                    <input
+                    <Input
+                      label="Amount (₹)"
                       type="number"
                       step="0.01"
                       required
@@ -1608,7 +1623,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         setAdjAmount(e.target.value === '' ? '' : Number(e.target.value))
                       }
                       placeholder="0.00"
-                      className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
                     />
                   </div>
 
@@ -1717,11 +1731,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
                       Desk Cashier Handling checkout:
                     </label>
-                    <input
+                    <Input
+                      label="Desk Cashier Handling checkout:"
                       type="text"
                       readOnly
                       value={deskCashier}
-                      className="w-full p-2 bg-slate-100 border border-slate-300 rounded-lg font-bold text-slate-600 cursor-not-allowed"
+                      disabled
                     />
                   </div>
 
@@ -1749,17 +1764,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           )}
 
                           <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              value={row.amount}
-                              onChange={(e) =>
-                                handleUpdateSplitRow(row.id, 'amount', Number(e.target.value))
-                              }
-                              placeholder="Amount (₹)"
-                              className="flex-1 p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-slate-900 dark:text-white"
-                            />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                required
+                                value={row.amount}
+                                onChange={(e) =>
+                                  handleUpdateSplitRow(row.id, 'amount', Number(e.target.value))
+                                }
+                                placeholder="Amount (₹)"
+                                className="flex-1"
+                                fullWidth={false}
+                              />
                             <StyledSelect
                               className="w-24"
                               value={row.mode}

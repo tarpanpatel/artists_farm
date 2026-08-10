@@ -11,6 +11,14 @@ interface DateRangePickerProps {
   onCheckoutChange: (date: string) => void;
   onClear?: () => void;
   blockedDates?: string[];
+  // Overrides for non-booking uses (e.g. a plain "from/to" report filter) -
+  // default text is booking-specific ("Select dates", "CHECK-IN"/"CHECKOUT",
+  // "reservation dates"), which is wrong copy anywhere this is reused outside
+  // an actual check-in/check-out flow.
+  heading?: string;
+  description?: string;
+  fromLabel?: string;
+  toLabel?: string;
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
@@ -22,6 +30,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onCheckoutChange,
   onClear,
   blockedDates = [],
+  heading,
+  description,
+  fromLabel,
+  toLabel,
 }) => {
   const today = new Date();
   const [startMonth, setStartMonth] = useState(
@@ -180,10 +192,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10">
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              {t('select_dates_heading', 'Select dates')}
+              {heading ?? t('select_dates_heading', 'Select dates')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {t('select_dates_description', 'Add your reservation dates for exact pricing & availability')}
+              {description ?? t('select_dates_description', 'Add your reservation dates for exact pricing & availability')}
             </p>
           </div>
 
@@ -198,7 +210,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{t('checkin_pill_label', 'CHECK-IN')}</div>
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
               <div className="text-xs font-semibold">{formatDisplayDate(checkinDate)}</div>
             </button>
 
@@ -213,7 +225,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
               }`}
             >
-              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{t('checkout_pill_label', 'CHECKOUT')}</div>
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-gray-500">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
               <div className="text-xs font-semibold">{formatDisplayDate(checkoutDate)}</div>
             </button>
           </div>

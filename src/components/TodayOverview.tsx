@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User } from 'lucide-react';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -28,8 +28,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
   rooms = [],
   isMultiKeyProperty = false,
-  kitchenModuleEnabled = true,
-  onNavigateToRoom,
+  kitchenModuleEnabled: _kitchenModuleEnabled = true,
+  onNavigateToRoom: _onNavigateToRoom,
   onAddBooking,
   onUpdateGuest,
   onDeleteGuest,
@@ -42,6 +42,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -126,6 +127,26 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     setCurrentMonth(newMonth);
     setCurrentYear(newYear);
   };
+
+  // Autoscroll calendar container to position the current day on the left
+  useEffect(() => {
+    if (!calendarScrollRef.current) return;
+    const now = new Date();
+    if (currentMonth === now.getMonth() && currentYear === now.getFullYear()) {
+      const todayDate = now.getDate();
+      const targetScrollLeft = Math.max(0, (todayDate - 1) * 64);
+      const timer = setTimeout(() => {
+        if (calendarScrollRef.current) {
+          calendarScrollRef.current.scrollLeft = targetScrollLeft;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      if (calendarScrollRef.current) {
+        calendarScrollRef.current.scrollLeft = 0;
+      }
+    }
+  }, [currentMonth, currentYear]);
 
   return (
     <div className="space-y-6">
@@ -241,7 +262,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Calendar Container with scroll */}
-      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative">
+      <div ref={calendarScrollRef} className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative">
         <div className="min-w-max">
           {/* Date Header */}
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">

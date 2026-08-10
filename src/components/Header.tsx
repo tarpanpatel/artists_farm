@@ -40,25 +40,25 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  onLogout,
-  onOpenTelegramModal,
+  onLogout: _onLogout,
+  onOpenTelegramModal: _onOpenTelegramModal,
   onOpenDemoModal,
   onToggleTestingMode,
-  isSidebarOpen,
+  isSidebarOpen: _isSidebarOpen,
   onToggleSidebar,
   isIconOnly,
   onToggleIconOnly,
-  currentPropertyColorScheme,
+  currentPropertyColorScheme: _currentPropertyColorScheme,
   propertyName,
-  isTestModeActive = false,
+  isTestModeActive: _isTestModeActive = false,
   isTestingMode = false,
-  onCloseDemoModal,
+  onCloseDemoModal: _onCloseDemoModal,
   kitchenModuleEnabled = true,
   isMultiKeyProperty = false,
   guests = [],
-  rooms = [],
+  rooms: _rooms = [],
 }) => {
-  const { activeRole, setActiveRole, currentUser, isAuthenticated } = useAuth();
+  const { activeRole, setActiveRole: _setActiveRole, currentUser, isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);

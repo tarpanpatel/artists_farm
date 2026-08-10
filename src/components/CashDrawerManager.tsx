@@ -6,9 +6,9 @@ import { t } from '../i18n/en';
 import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate } from '../services/api';
 import DataTable from 'react-data-table-component';
 import { useStaff } from '../contexts/StaffContext';
-import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface CashDrawerManagerProps {
@@ -23,7 +23,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   onAddDrawerEntry,
 }) => {
   const { staff } = useStaff();
-  const { activeRole } = useAuth();
   const { confirm } = useConfirm();
   const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
   const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
@@ -36,8 +35,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState('');
-
-  const isAdmin = activeRole === 'Super Admin' || activeRole === 'Admin';
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -215,8 +212,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('cash_amount_label', 'Amount (₹) *')}</label>
-              <input
+              <Input
+                label={t('cash_amount_label', 'Amount (₹) *')}
                 type="number"
                 required
                 min="1"
@@ -224,7 +221,6 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 value={amount}
                 onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder={t('enter_amount_placeholder', 'Enter amount')}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-lg"
               />
               {selectedStaff && activeForm === 'handover' && amount && Number(amount) > selectedStaff.netBalance && (
                 <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">

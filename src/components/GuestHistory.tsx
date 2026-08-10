@@ -3,8 +3,6 @@ import DataTable from 'react-data-table-component';
 import {
   History,
   Search,
-  CheckCircle2,
-  AlertTriangle,
   Phone,
   Home,
   Loader2,
@@ -14,6 +12,7 @@ import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { markCFormFiled } from '../services/api';
 import { useToast } from './ToastContext';
+import { Input } from './Input';
 
 interface GuestHistoryProps {
   guests: Guest[];
@@ -233,12 +232,12 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
         {/* Search */}
         <div className="relative w-full lg:w-96">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <Input
             type="text"
             placeholder={t('search_guest_history_placeholder', 'Search by guest name, phone, room...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+            leftIcon={<Search className="w-4 h-4 text-slate-400" />}
           />
         </div>
 

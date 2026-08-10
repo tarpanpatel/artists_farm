@@ -5,7 +5,7 @@ import './index.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 
 // Smart error filtering - only log REAL user errors, not development issues
-const shouldLogError = (message: string, filename?: string): boolean => {
+const shouldLogError = (message: string, _filename?: string): boolean => {
   // Skip development-only errors
   const devOnlyPatterns = [
     'is not defined',           // Component import issues

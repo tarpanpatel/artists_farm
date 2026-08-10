@@ -55,7 +55,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   onAddGuest,
   isMultiKeyProperty = false,
   rooms = [],
-  onCheckoutClick,
+  onCheckoutClick: _onCheckoutClick,
   onNavigateToGuestRegistration,
   kitchenModuleEnabled = true,
   propertyGstin = '',
@@ -66,8 +66,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
-  const [selectedGuestForCheckout, setSelectedGuestForCheckout] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [showAddBookingModal, setShowAddBookingModal] = useState(false);
   const [guestForReceipt, setGuestForReceipt] = useState<Guest | null>(null);
@@ -353,7 +352,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Handle edit and checkout
   const handleEditAndCheckoutGuest = (guest: Guest) => {
-    setSelectedGuestForCheckout(guest.id);
     setGuestForReceipt(guest);
     setModalMode('edit-and-checkout');
     setReceiptModalOpen(true);
@@ -372,8 +370,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       return 0;
     }
   };
-
-  const totalFilteredGuestsCount = filteredGroups.reduce((acc, g) => acc + g.guests.length, 0);
 
   // Renders the room-column grid for a given set of room groups - shared by
   // the main Today/Past view and each date-section under Upcoming, so the

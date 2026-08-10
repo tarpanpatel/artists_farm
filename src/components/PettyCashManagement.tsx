@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Wallet, X, Search, Edit2, FileText, ImageIcon, Landmark } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
@@ -8,7 +8,10 @@ import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { PageHeader } from './PageHeader';
+import { DatePicker } from './DatePicker';
 import { t } from '../i18n/en';
+import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
@@ -119,7 +122,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   }
 
   // Structured expense data from get_misc_catalog
-  const [expensesByCategory, setExpensesByCategory] = useState<CategoryGroup>({});
+  const [, setExpensesByCategory] = useState<CategoryGroup>({});
 
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
@@ -133,7 +136,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // expenseDate init below) but the ledger view stayed stuck showing July forever.
   const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
 
   // Fetch prices and item list from DB on mount
   useEffect(() => {
@@ -180,15 +182,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   }
 
   // Float balance logic
-  const totalReplenishments = pettyCash
-    .filter((e) => e.type === 'Replenishment')
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const totalExpenses = pettyCash
-    .filter((e) => e.type === 'Expense' || !e.type)
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const netBalance = totalReplenishments - totalExpenses;
 
   // Compress & Crop Image Engine
   const handleCompressFile = (file: File, type: 'invoice' | 'screenshot') => {
@@ -362,10 +355,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     return matchesMonth && matchesSearch;
   });
 
-  const paginatedEntries = filteredEntries.slice(0, visibleCount);
-
-  return (
-    <div className="expenses-page-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
+  return (    <div className="expenses-page-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {/* Datalist for Details Descriptions Autocomplete */}
       <datalist id="expense-items-list">
         {expenseItems.map(item => (
@@ -390,14 +380,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         <form onSubmit={handleSubmit} className="add-expense-form space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('expense_date_label', 'Expense Date')}</label>
-              <input
-                type="date"
-                required
+              <DatePicker
+                label={t('expense_date_label', 'Expense Date')}
+                title={t('expense_date_label', 'Expense Date')}
                 value={formState.expenseDate}
-                onChange={e => dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: e.target.value })}
-                onClick={e => { try { e.currentTarget.showPicker(); } catch {} }}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold cursor-pointer"
+                onChange={val => dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: val })}
               />
             </div>
 
@@ -432,7 +419,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
             ) : (
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   required
                   value={formState.description}
@@ -443,7 +430,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     setShowSuggestions(true);
                   }}
                   placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
                 />
                 
                 {/* Interactive Auto-suggestions Dropdown Menu */}
@@ -483,7 +469,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           <div>
             <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('more_information_label', '& More Information (If Any)')}</label>
-            <textarea
+            <Textarea
               value={formState.moreInfoNotes}
               onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
               placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
@@ -493,15 +479,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('expense_amount_rupees_required_label', 'Amount (₹) *')}</label>
-              <input
+              <Input
+                label={t('expense_amount_rupees_required_label', 'Amount (₹) *')}
                 type="number"
                 step="0.01"
                 required
                 value={formState.amount}
                 onChange={e => dispatch({ type: 'SET_FIELD', field: 'amount', value: e.target.value === '' ? '' : Number(e.target.value) })}
                 placeholder={t('expense_amount_placeholder', 'e.g., 450')}
-                className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                className="font-bold"
               />
               {formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
@@ -539,8 +525,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             {formState.showDrawerSplit && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Landmark size={14} className="text-slate-500" /> {t('cash_drawer_rupees_label', 'Cash Drawer (₹)')}</label>
-                  <input
+                  <Input
+                    label={t('cash_drawer_rupees_label', 'Cash Drawer (₹)')}
                     type="number"
                     min="0"
                     value={formState.drawerAmount}
@@ -552,12 +538,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       }
                     }}
                     placeholder="0"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1 font-bold text-slate-600 dark:text-slate-400 mb-1"><Wallet size={14} className="text-slate-500" /> {t('out_of_pocket_rupees_label', 'Out of Pocket (₹)')}</label>
-                  <input
+                  <Input
+                    label={t('out_of_pocket_rupees_label', 'Out of Pocket (₹)')}
                     type="number"
                     min="0"
                     value={formState.staffAmount}
@@ -569,7 +554,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       }
                     }}
                     placeholder="0"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -593,7 +577,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', '✓ Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
               </label>
-              <input
+              <Input
                 id="invoice-upload-input"
                 type="file"
                 accept="image/*"
@@ -614,7 +598,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', '✓ Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
               </label>
-              <input
+              <Input
                 id="screenshot-upload-input"
                 type="file"
                 accept="image/*"
@@ -659,13 +643,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
 
         <div className="relative flex-1 max-w-md w-full">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-          <input
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 z-10" />
+          <Input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={t('search_expenses_placeholder', 'Search descriptions, payment modes, payees...')}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+            className="pl-9"
           />
         </div>
       </div>
@@ -809,13 +793,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             <form onSubmit={handleSaveModalEdit} className="space-y-4">
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('expense_date_label', 'Expense Date')}</label>
-                <input
+                <Input
+                  label={t('expense_date_label', 'Expense Date')}
                   type="date"
                   required
                   value={editingEntry.date}
                   onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
                 />
               </div>
 
@@ -834,26 +817,25 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('details_description_label', 'Details Description')}</label>
-                <input
+                <Input
+                  label={t('details_description_label', 'Details Description')}
                   type="text"
                   required
                   list="expense-items-list"
                   value={editingEntry.description}
                   onChange={e => setEditingEntry({ ...editingEntry, description: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1">{t('expense_amount_rupees_label', 'Amount (₹)')}</label>
-                <input
+                <Input
+                  label={t('expense_amount_rupees_label', 'Amount (₹)')}
                   type="number"
                   required
                   step="any"
                   value={editingEntry.amount}
                   onChange={e => setEditingEntry({ ...editingEntry, amount: Number(e.target.value) })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                  className="font-bold"
                 />
               </div>
 

@@ -373,10 +373,6 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     );
   };
 
-  const handleRemoveIncidental = (id: string) => {
-    setIncidentals(prev => prev.filter(i => i.id !== id));
-  };
-
   // Add Custom Adjustment
   const handleAddAdjustment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -792,20 +788,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   )}
                   {adjType === 'discount' && (
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('discount_label_label', 'Discount Label')}</label>
-                      <input
+                      <Input
+                        label={t('discount_label_label', 'Discount Label')}
                         type="text"
                         value={adjReasonDiscount}
                         onChange={(e) => setAdjReasonDiscount(e.target.value)}
                         placeholder={t('discount_label_placeholder', 'e.g. Service Apology...')}
-                        className="w-full px-3 py-2 font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl"
+                        className="font-bold"
                       />
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('amount_label', 'Amount (₹)')}</label>
-                    <input
+                    <Input
+                      label={t('amount_label', 'Amount (₹)')}
                       type="number"
                       step="0.01"
                       min="0"
@@ -813,7 +809,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
                       placeholder="0.00"
                       inputMode="decimal"
-                      className="w-full px-3 py-2 font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl"
+                      className="font-bold"
                     />
                   </div>
 
@@ -927,19 +923,19 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                       {/* Optional guest/company GSTIN for a proper tax invoice */}
                       <div className="grid grid-cols-2 gap-2 pt-1">
-                        <input
+                        <Input
                           type="text"
                           value={guestGstin}
                           onChange={(e) => setGuestGstin(e.target.value.toUpperCase())}
                           placeholder={t('guest_gstin_placeholder', 'Guest/Company GSTIN (optional)')}
-                          className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 text-[11px]"
+                          className="text-[11px]"
                         />
-                        <input
+                        <Input
                           type="text"
                           value={guestBillingName}
                           onChange={(e) => setGuestBillingName(e.target.value)}
                           placeholder={t('billing_name_placeholder', 'Billing Name (optional)')}
-                          className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 text-[11px]"
+                          className="text-[11px]"
                         />
                       </div>
 
@@ -1042,13 +1038,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     freely editable, so checkout accountability can't be
                     misattributed to someone who wasn't at the desk. */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('desk_cashier_label', 'Desk Cashier Handling Checkout')}</label>
-                  <input
+                  <Input
+                    label={t('desk_cashier_label', 'Desk Cashier Handling Checkout')}
                     type="text"
                     value={deskCashier}
                     readOnly
                     disabled
-                    className="w-full px-3 py-1.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 cursor-not-allowed"
+                    className="font-bold cursor-not-allowed"
                   />
                 </div>
 
@@ -1071,7 +1067,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       return (
                       <div key={row.id} className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <input
+                          <Input
                             type="number"
                             step="0.01"
                             min="0"
@@ -1079,7 +1075,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                             value={row.amount}
                             onChange={(e) => handleUpdateSplitRow(row.id, 'amount', Math.max(0, Number(e.target.value)))}
                             placeholder={t('amount_placeholder', 'Amount (₹)')}
-                            className="flex-1 px-3 py-1.5 text-xs font-extrabold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl"
+                            className="flex-1 font-extrabold"
                           />
                           <StyledSelect
                             value={row.mode}

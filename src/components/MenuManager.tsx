@@ -125,13 +125,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   });
 
   // Navigation / Main Menu state
-  const [navSearch, setNavSearch] = useState('');
-  const [selectedNavCategory, setSelectedNavCategory] = useState('All Categories');
   const [iconPickerTargetId, setIconPickerTargetId] = useState<string | null>(null);
 
   // Add / Edit Navigation Item Modal state
   const [isNavModalOpen, setIsNavModalOpen] = useState(false);
-  const [editingNavItem, setEditingNavItem] = useState<NavMenuItem | null>(null);
+  const [editingNavItem] = useState<NavMenuItem | null>(null);
   const [navForm, setNavForm] = useState<{
     title: string;
     tabKey: string;
@@ -157,8 +155,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   });
 
   // Drag and Drop state for Navigation items
-  const [draggedNavIndex, setDraggedNavIndex] = useState<number | null>(null);
-  const [dragOverNavIndex, setDragOverNavIndex] = useState<number | null>(null);
 
   // Drag and Drop state for Food items
   const [draggedFoodIndex, setDraggedFoodIndex] = useState<number | null>(null);
@@ -175,16 +171,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const filteredFoodItems = foodMenu.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(foodSearch.toLowerCase());
     const matchesCat = selectedFoodCategory === 'All' || item.category === selectedFoodCategory;
-    return matchesSearch && matchesCat;
-  });
-
-  const filteredNavItems = navItems.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(navSearch.toLowerCase()) ||
-      item.tabKey.toLowerCase().includes(navSearch.toLowerCase()) ||
-      (item.uniqueKey && item.uniqueKey.toLowerCase().includes(navSearch.toLowerCase()));
-    const matchesCat =
-      selectedNavCategory === 'All Categories' || item.category === selectedNavCategory;
     return matchesSearch && matchesCat;
   });
 
@@ -304,117 +290,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     setDragOverFoodIndex(null);
   };
 
-  // Navigation Menu Handlers & Drag-and-Drop
-  const handleToggleNavVisibility = (id: string) => {
-    const updated = navItems.map((item) =>
-      item.id === id ? { ...item, isVisible: !item.isVisible } : item
-    );
-    onUpdateNavItems(updated);
-  };
-
-  const handleMoveNavItem = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= navItems.length) return;
-
-    const copy = [...navItems];
-    const temp = copy[index];
-    copy[index] = copy[targetIndex];
-    copy[targetIndex] = temp;
-
-    const reordered = copy.map((item, idx) => ({ ...item, order: idx + 1 }));
-    onUpdateNavItems(reordered);
-  };
-
-  const handleNavDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedNavIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleNavDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverNavIndex !== index) {
-      setDragOverNavIndex(index);
-    }
-  };
-
-  const handleNavDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (draggedNavIndex === null || draggedNavIndex === targetIndex) {
-      setDraggedNavIndex(null);
-      setDragOverNavIndex(null);
-      return;
-    }
-
-    const copy = [...navItems];
-    const [draggedItem] = copy.splice(draggedNavIndex, 1);
-    copy.splice(targetIndex, 0, draggedItem);
-
-    const reordered = copy.map((item, idx) => ({ ...item, order: idx + 1 }));
-    onUpdateNavItems(reordered);
-
-    setDraggedNavIndex(null);
-    setDragOverNavIndex(null);
-  };
-
-  const handleNavDragEnd = () => {
-    setDraggedNavIndex(null);
-    setDragOverNavIndex(null);
-  };
-
-  const handleToggleRolePermission = (navId: string, roleName: string) => {
-    const updated = navItems.map((item) => {
-      if (item.id !== navId) return item;
-      const hasRole = item.roles.includes(roleName);
-      const newRoles = hasRole
-        ? item.roles.filter((r) => r !== roleName)
-        : [...item.roles, roleName];
-      return { ...item, roles: newRoles };
-    });
-    onUpdateNavItems(updated);
-  };
-
   const handleSelectIcon = (navId: string, iconName: string) => {
     const updated = navItems.map((item) =>
       item.id === navId ? { ...item, iconName } : item
     );
     onUpdateNavItems(updated);
     setIconPickerTargetId(null);
-  };
-
-  const handleOpenAddNavModal = () => {
-    setEditingNavItem(null);
-    setNavForm({
-      title: '',
-      tabKey: 'dashboard',
-      uniqueKey: '',
-      category: 'Main Sections',
-      iconName: 'LayoutDashboard',
-      roles: ['Super Admin', 'Manager', 'Staff'],
-      isVisible: true,
-      customUrl: '',
-      openInNewTab: false,
-      parentId: null,
-    });
-    setIsNavModalOpen(true);
-  };
-
-  const handleOpenEditNavModal = (item: NavMenuItem) => {
-    setEditingNavItem(item);
-    setNavForm({
-      title: item.title,
-      tabKey: item.tabKey,
-      uniqueKey: item.uniqueKey || '',
-      category: item.category || 'Main Sections',
-      iconName: item.iconName,
-      roles: item.roles,
-      isVisible: item.isVisible,
-      customUrl: (item as any).customUrl || '',
-      openInNewTab: (item as any).openInNewTab || false,
-      parentId: item.parentId || null,
-    });
-    setIsNavModalOpen(true);
   };
 
   const handleSaveNavItem = (e: React.FormEvent) => {
@@ -458,13 +339,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       onUpdateNavItems([...navItems, newItem]);
     }
     setIsNavModalOpen(false);
-  };
-
-  const handleDeleteNavItem = (id: string) => {
-    (window as any).showConfirm('Are you sure you want to remove this menu item from the system menu?', () => {
-      const updated = navItems.filter((i) => i.id !== id).map((item, idx) => ({ ...item, order: idx + 1 }));
-      onUpdateNavItems(updated);
-    });
   };
 
   const isStandalonePage = activeMenuItemKey === 'edit_food_menu' || activeMenuItemKey === 'edit_main_menu';
@@ -601,7 +475,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     >
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button', 'Upload Image')}</span>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -934,7 +808,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button', 'Upload Image')}</span>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         className="hidden"

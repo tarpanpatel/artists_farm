@@ -67,33 +67,6 @@ const EMPTY_STEP_STATE: StepState = {
   errorMessage: null,
 };
 
-const TelegramBubble: React.FC<{ text: React.ReactNode; outgoing?: boolean; mono?: boolean }> = ({ text, outgoing, mono }) => (
-  <div className={`flex ${outgoing ? 'justify-end' : 'justify-start'}`}>
-    <div
-      className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-[11px] leading-snug ${mono ? 'font-mono' : ''} ${
-        outgoing
-          ? 'bg-sky-600 text-white rounded-br-sm'
-          : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-sm'
-      }`}
-    >
-      {text}
-    </div>
-  </div>
-);
-
-const TelegramMockScreen: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="bg-slate-100 dark:bg-slate-900 rounded-xl p-2.5 space-y-1.5 border border-slate-200 dark:border-slate-700">
-    {children}
-  </div>
-);
-
-const TelegramAppIcon: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" className="shrink-0">
-    <circle cx="20" cy="20" r="20" fill="#29A9EA" />
-    <path d="M9 20.5l19-7.5-3 17-6-4.5-3 3-1-5.5 11-9-14 6.5z" fill="white" opacity="0.95" />
-  </svg>
-);
-
 interface TelegramSetupWizardProps {
   isOpen: boolean;
   onClose: () => void;

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock } from 'lucide-react';
 import { t } from '../i18n/en';
+import { Input } from './Input';
+import { Textarea } from './Textarea';
 
-const STORAGE_KEY = 'artists_farm_custom_css';
 const STYLE_ID = 'artists-farm-custom-css-override';
 const LUCIDE_STORAGE_KEY = 'artists_farm_lucide_settings';
 const LUCIDE_STYLE_ID = 'artists-farm-lucide-global';
@@ -457,7 +458,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
             >
               <Upload className="w-3.5 h-3.5" />
             </button>
-            <input
+            <Input
               ref={fileInputRef}
               type="file"
               accept=".css,.txt"
@@ -483,7 +484,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
         {/* Textarea */}
         <div className="relative">
-          <textarea
+          <Textarea
             ref={textareaRef}
             value={css}
             onChange={(e) => setCss(e.target.value)}
@@ -572,7 +573,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <input
+                    <Input
                       type="range"
                       min="8"
                       max="64"
@@ -602,7 +603,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <input
+                    <Input
                       type="range"
                       min="0.5"
                       max="4"
@@ -638,7 +639,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                       />
                     ))}
                     <div className="relative">
-                      <input
+                      <Input
                         type="color"
                         value={customColor}
                         onChange={(e) => { setCustomColor(e.target.value); setIconColor(e.target.value); }}

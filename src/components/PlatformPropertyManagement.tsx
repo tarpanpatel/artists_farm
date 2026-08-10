@@ -833,7 +833,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               const isTogglingModule = moduleToggleLoading === `kitchen-${prop.id}`;
                               const isRoom = (prop as any).property_type === 'MULTI_KEY_ROOM';
                               const isMultiKey = (prop as any).property_type === 'MULTI_KEY';
-                              const parentPropertyId = (prop as any).parent_property_id;
 
                               // Get children rooms if this is a MultiKey property
                               const childRooms = isMultiKey
@@ -1205,7 +1204,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         name="propertyType"
                         value="SINGLE"
                         checked={editingProperty.property_type === 'SINGLE'}
-                        onChange={(e) =>
+                        onChange={() =>
                           setEditingProperty({ ...editingProperty, property_type: 'SINGLE' })
                         }
                         className="w-4 h-4"
@@ -1221,7 +1220,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         name="propertyType"
                         value="MULTI_KEY"
                         checked={editingProperty.property_type === 'MULTI_KEY'}
-                        onChange={(e) =>
+                        onChange={() =>
                           setEditingProperty({ ...editingProperty, property_type: 'MULTI_KEY' })
                         }
                         className="w-4 h-4"

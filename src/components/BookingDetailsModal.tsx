@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { X, Save, Share2, Printer, Trash2, IdCard, Loader2, Pencil, CheckCircle2, AlertTriangle } from 'lucide-react';
-import * as htmlToImage from 'html-to-image';
+import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2 } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
-import { Button } from './Button';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -213,30 +212,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   };
 
-  const handleShareVoucherPng = async () => {
-    const box = document.getElementById('printableBookingDetailsContent');
-    if (!box) return;
-    const actionsBar = document.getElementById('printableBookingDetailsActionsBar');
-    if (actionsBar) actionsBar.style.display = 'none';
-    try {
-      const blob = await htmlToImage.toBlob(box, { pixelRatio: 2, backgroundColor: '#ffffff' });
-      if (!blob) return;
-      const file = new File([blob], `Booking_${guest.guestName || 'Details'}_${Date.now()}.png`, { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Booking Details' });
-      } else {
-        const link = document.createElement('a');
-        link.download = `Booking_${guest.guestName || 'Details'}_${Date.now()}.png`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-      }
-    } catch (err) {
-      showToast('Failed to generate image: ' + (err instanceof Error ? err.message : String(err)), { type: 'error' });
-    } finally {
-      if (actionsBar) actionsBar.style.display = '';
-    }
-  };
-
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
 
   const fieldLabelClass = 'text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase';
@@ -247,16 +222,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
         <div
           id="printableBookingDetailsContent"
-          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+          className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+          {/* Sticky Floating Top-Right Close Cross Button */}
+          <button
+            type="button"
+            onClick={() => { onClose(); setIsEditing(false); }}
+            className="sticky top-0 float-right z-30 p-1.5 rounded-full bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-xs -mr-2 -mt-2"
+            title="Close Modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
             </h2>
-            <button onClick={() => { onClose(); setIsEditing(false); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg cursor-pointer text-slate-400">
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
           {onOpenIdVerification && !isEditing && (
@@ -526,7 +508,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               )
             )}
             {isEditing && editShowNotes && (
-              <textarea
+              <Textarea
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 rows={2}
@@ -536,70 +518,76 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             )}
           </div>
 
-          <div id="printableBookingDetailsActionsBar" className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div id="printableBookingDetailsActionsBar" className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
-              <>
-                <div className="flex items-center gap-2">
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      leftIcon={<Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />}
-                      className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                    >
-                      {isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}
-                    </Button>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                {(guest.status === 'Booked' || (guest.status as string) === 'Reserved') && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const updated = { ...guest, status: 'Active' as const };
+                      await onSave(updated);
+                      showToast(`✔ ${guest.guestName} marked as Checked In!`, { type: 'success' });
+                    }}
+                    className="w-full h-9 px-3.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-1 sm:col-span-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
+                  </button>
+                )}
 
-                <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {(guest.status === 'Booked' || (guest.status as string) === 'Reserved') && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const updated = { ...guest, status: 'Active' as const };
-                        await onSave(updated);
-                        showToast(`✔ ${guest.guestName} marked as Checked In!`, { type: 'success' });
-                      }}
-                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
-                    </button>
-                  )}
+                <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="w-full">
+                  <button
+                    type="button"
+                    className="w-full h-9 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 text-emerald-600 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
+                    </svg>
+                    <span>Share with guest</span>
+                  </button>
+                </a>
 
-                  <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer">
-                    <Button variant="secondary" size="sm" leftIcon={<Share2 className="w-4 h-4 text-emerald-600" />}>
-                      {t('today_share_via_whatsapp_button', 'Share Voucher')}
-                    </Button>
-                  </a>
-                  <Button variant="secondary" size="sm" onClick={handleShareVoucherPng} leftIcon={<Printer className="w-4 h-4 text-cyan-600" />}>
-                    {t('share_png_button', 'Share PNG')}
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={startEditing} leftIcon={<Pencil className="w-4 h-4" />}>
-                    {t('edit_button', 'Edit')}
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={onClose}>
-                    {t('close_button', 'Close')}
-                  </Button>
-                </div>
-              </>
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="w-full h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>{t('edit_button', 'Edit')}</span>
+                </button>
+
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-1 sm:col-span-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                    <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}</span>
+                  </button>
+                )}
+              </div>
             ) : (
-              <div className="flex items-center gap-2 ml-auto">
-                <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="h-9 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
                   {t('cancel_button', 'Cancel')}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
+                </button>
+                <button
+                  type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  {t('save_button', 'Save')}
-                </Button>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>{t('save_button', 'Save')}</span>
+                </button>
               </div>
             )}
           </div>

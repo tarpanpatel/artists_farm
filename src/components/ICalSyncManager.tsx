@@ -19,6 +19,7 @@ import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
+import { Input } from './Input';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Calendar {
@@ -41,7 +42,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
-  const [currentRoomSlug, setCurrentRoomSlug] = useState<string | null>(null);
+  const [, setCurrentRoomSlug] = useState<string | null>(null);
   const [propertyRooms, setPropertyRooms] = useState<any[]>([]);
   const [copiedUrls, setCopiedUrls] = useState<Set<string | number>>(new Set());
 
@@ -451,13 +452,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           <div className="flex items-center gap-3 flex-1 min-w-[240px]">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-9"
               />
             </div>
 
@@ -720,14 +721,14 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         />
                       </div>
 
-                      <input
+                      <Input
                         type="url"
                         value={url}
                         onChange={(e) =>
                           setRoomImportUrls((prev) => ({ ...prev, [room.id]: e.target.value }))
                         }
                         placeholder={t('url_placeholder', 'https://...')}
-                        className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 font-mono"
                       />
 
                       <button
@@ -750,11 +751,11 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase">{t('export_ical_feed_label', 'Export iCal Feed')} ({room.name})</span>
                     <div className="flex gap-2">
-                      <input
+                      <Input
                         type="text"
                         value={roomExportUrl}
                         readOnly
-                        className="flex-1 px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-[11px] font-mono truncate"
+                        className="flex-1 font-mono truncate"
                       />
                       <button
                         onClick={() => copyToClipboard(roomExportUrl, room.id)}
@@ -809,15 +810,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
               {newServiceName === 'Other' && (
                 <div>
-                  <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                    {t('custom_feed_name_label', 'Custom Feed Name')}
-                  </label>
-                  <input
+                  <Input
+                    label={t('custom_feed_name_label', 'Custom Feed Name')}
                     type="text"
                     value={customServiceName}
                     onChange={(e) => setCustomServiceName(e.target.value)}
                     placeholder={t('custom_feed_name_placeholder', 'e.g. Direct Booking Channel')}
-                    className="w-full px-3 py-2.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               )}
@@ -839,15 +837,13 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               )}
 
               <div>
-                <label className="block font-extrabold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider text-[10px]">
-                  {propertyRooms.length > 0 ? '3' : '2'}. {t('paste_ical_feed_url_label', 'Paste iCal Feed URL')}
-                </label>
-                <input
+                <Input
+                  label={`${propertyRooms.length > 0 ? '3' : '2'}. ${t('paste_ical_feed_url_label', 'Paste iCal Feed URL')}`}
                   type="url"
                   value={newImportUrl}
                   onChange={(e) => setNewImportUrl(e.target.value)}
                   placeholder={t('ical_url_example_placeholder', 'https://www.airbnb.com/calendar/ical/...')}
-                  className="w-full px-3.5 py-2.5 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono placeholder-slate-400 focus:ring-2 focus:ring-blue-500"
+                  className="font-mono"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
                   {t('ical_url_helper_text', 'Copy the export .ics calendar link from your OTA host dashboard and paste it here.')}
