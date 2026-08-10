@@ -49,3 +49,10 @@ BILLING_*.md
 # Temp directories
 deploylite/
 php/database/
+
+# Tool-generated cache/logs (Playwright MCP console dumps)
+.playwright-mcp/
+
+# Uploaded guest ID documents - real PII, never version-controlled
+# (menu/catalog images stay tracked - those are demo content, not guest data)
+php/uploads/images/id_documents/

@@ -6,53 +6,13 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Sidebar nav: only one first-tier group should stay expanded at a time
+### Google Drive photo archival — descoped, not started
 
-Currently multiple top-level groups (Team, Admin Control, etc.) can be open
-in the left sidebar simultaneously - e.g. open Team → Members, then
-navigate to Admin Control → Past Receipts Log, and Team stays expanded
-too, cluttering the sidebar with two full groups' worth of children.
-
-Root cause (`src/components/Navigation.tsx`): `expandedParents` is a plain
-`Set<string>` that only ever gets IDs added to it - both the manual
-`toggleExpand(id)` (click handler) and the "auto-expand ancestors of the
-active item" `useEffect` add without ever removing a sibling's ID, so
-previously-opened first-tier groups just accumulate.
-
-Fix should make expansion an accordion at the first-tier level only (per
-the request - nested sub-groups deeper than tier 1 aren't in scope): when a
-new first-tier group is opened (by click or by navigating to one of its
-descendants), any *other* currently-expanded first-tier group should
-collapse. Needs changes in both places `expandedParents` is written:
-`toggleExpand` and the ancestor auto-expand effect.
-
-### Auto-relay uploaded photos (guest IDs + expense invoices/receipts) to Telegram + Google Drive
-
-Every time a picture is uploaded in either of these two flows, it should be
-(1) sent as an actual photo to the property's Telegram Admin channel - not
-just a text notification like today - and (2) uploaded to Google Drive into
-a consistent, browsable folder structure.
-
-**In scope (uploads of "ids and invoices" specifically):**
-- Guest ID documents - `CheckinVerificationModal.tsx` → `guests.php`
-  `upload_id_document`. Today this only sends a *text* progress message to
-  Telegram ("📸 ID Document Uploaded... 2/2 required ID(s) uploaded") - the
-  photo itself never reaches Telegram.
-- Expense Invoice Bill + Payment Screenshot - `PettyCashManagement.tsx`
-  (compressed client-side to base64 before submit). Today these aren't sent
-  to Telegram or anywhere else at all beyond the DB row.
-
-Other upload points in the app (staff QR codes, menu/inventory item photos,
-CSS import) are guest/expense-*unrelated* and out of scope here.
-
-**Telegram part:** `php/telegram/sender.php` already has
-`sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $caption, $templateKey)`
-and `sendRawTelegramPhoto(...)` - this is a wiring job (call it from both
-upload handlers with the actual image), not new infrastructure.
-
-**Google Drive part is net-new** - no Drive integration exists in this
-codebase yet. Needs: a Google Cloud service account + Drive API
-credentials, a small PHP wrapper (folder-exists-or-create, then file
+Guest ID documents and expense invoice photos now relay to Telegram (see
+git history, 10 Aug 2026); Google Drive archival on top of that was
+explicitly descoped for now - no Drive integration exists in this
+codebase. If picked up later, needs a Google Cloud service account + Drive
+API credentials, a small PHP wrapper (folder-exists-or-create, then file
 upload), and a shared path-building helper so both upload flows produce
 the same structure:
 
@@ -69,39 +29,126 @@ category, e.g. `Vrikshawan/Goa Homes/ID Documents/July 2026/PriyaSharma_12-07-20
 
 Every relevant page already has its own datalog (expense date/category,
 guest name/room, upload timestamp) to derive this path from - no new
-fields needed, just wiring the existing values through.
+fields needed, just wiring the existing values through, whenever this
+gets picked back up.
+
+### Security: open follow-ups from the 11 Aug 2026 auth audit
+
+The critical items from that audit are fixed and shipped (see git history:
+cross-tenant property-access gate, removed `123456` universal login
+bypass, rate limiter on login). What's left, none of it fixed yet:
+
+- **Login identifier wildcard bug.** `login_user` cleans the identifier to
+  digits-only for phone matching; a non-numeric identifier (e.g. a username
+  with no digits) collapses to an empty string, and the fallback
+  `phone_number LIKE '%' . $mobileNumber` becomes `LIKE '%'` — matching *any*
+  row with a non-null phone number instead of failing to match. Affects both
+  the `users` and `staff_users` login queries. Not exploitable for
+  passcode-free entry (the matched row's real passcode still has to match),
+  but it means a username-style login attempt can land on an arbitrary
+  unrelated account if that account's real passcode happens to guessed.
+  Needs a proper fix (skip the phone LIKE clause entirely when the cleaned
+  digit string is empty), not a drive-by one.
+- **`resolveCallerTenantIds()` id-collision risk.** This existing helper
+  (used by `isTenantAccessAllowed()`, unrelated to the new property gate
+  above) joins `staff_users.id = session.user_id` regardless of whether the
+  session actually authenticated via the `staff_users` table. `users.id` and
+  `staff_users.id` are independent sequences that can collide (confirmed in
+  this DB). The new `isPropertyAccessAllowed()` deliberately avoids this
+  helper for that reason; `isTenantAccessAllowed()`'s other call sites still
+  use it as-is and weren't audited for real-world impact.
+- **Staff with multiple property assignments.** Some staff accounts have
+  multiple `staff_users` rows (same person, one row per assigned property).
+  Login only reads one row (`LIMIT 1`, no explicit order), so a multi-property
+  staff member's session now gets locked to whichever single property that
+  query happens to return — the other properties they're assigned to become
+  unreachable for that session. Pre-existing limitation, just newly
+  *enforced* (and therefore visible) now that property access is actually
+  checked. Needs a real fix to the staff-property data model, not a config
+  tweak.
+- **`php/api/authenticate.php`** — a separate legacy endpoint still called by
+  `LoginModal.tsx` (a secondary/session-timeout login modal, not the main
+  `LoginPage.tsx` flow). Not covered by any of the above since it's a
+  different file entirely from `router.php`'s action dispatch — not audited.
+- **CSRF still unwired**, and it's a bigger lift than it looked: 61 raw
+  `fetch()` calls across ~22 files (including the login screens themselves)
+  bypass `src/services/api.ts`'s single `apiFetch()` chokepoint, so a
+  token-header scheme needs either that refactor or a different mechanism
+  (Origin/Referer allow-list check server-side, zero frontend changes).
+  Recommended: the Origin/Referer approach, given the call-site fragmentation.
+- **General input-format validation** (`php/security/input_validator.php` -
+  validateEmail/String/Float/Date/URL/Boolean/Slug/JSON) still unwired
+  across ~166 router actions. Lower urgency than the above — prepared
+  statements already prevent SQL injection, so this is a data-integrity/UX
+  gap, not a breach vector. A full pass across every action is a big audit;
+  worth scoping down to a first pass (e.g. guest PII fields) rather than
+  doing all 166 at once.
+- **Default-admin bootstrap fallback** (`admin`/`root`/`9999999999`/any
+  identifier containing `vrikshawan`, with passcode `123456` or `admin`) —
+  deliberately left untouched. Unlike the removed bypass, this one is scoped
+  to specific identifiers only, but it's still a hardcoded backdoor with no
+  expiry. Worth a decision on whether/how to replace it with a real
+  initial-setup credential, separately from everything above.
+
+### Orphaned tenant-onboarding / property-approval subsystem — finish or remove
+
+`php/modules/onboarding_workflow.php` (requestTenantOnboarding/
+approveTenantOnboarding/rejectTenantOnboarding/getPendingOnboardingRequests)
+and `php/modules/property_manager.php` (getAllProperties/getPropertyDetails/
+getPendingPropertyRequests/approvePropertyRequest/rejectPropertyRequest/
+deactivateProperty/requestPropertyModification/getPropertyRequestHistory)
+are never `require`'d by `router.php` or anything else - fully unreachable
+from the live app. Both were added in a single commit each on 31 Jul 2026
+as part of the 6-digit passcode auth work and haven't been touched since,
+while several unrelated features shipped in between - reads as parked
+mid-stream rather than active WIP. Needs a decision: finish wiring the
+approval workflow in, or delete both files if the feature's been
+superseded/deprioritized.
+
+### Remaining unused-code cleanup (lower priority)
+
+The dead-code audit (10 Aug 2026) also flagged 173 unused local variables/
+parameters/destructured props across `src/` (as opposed to the unused
+*imports*, which are already cleaned up - and `isDarkMode`/`onToggleDarkMode`
+in `Header.tsx`, removed 10 Aug 2026 along with the whole dark-mode toggle
+feature). These need a per-file look rather than a bulk pass, because a
+couple are props received but never used inside the component body - which
+can mean either harmless leftover from a refactor or a real wiring bug.
+Checked `onLogout` in `Header.tsx` - logout itself works fine (handled by
+`TenantDashboard.tsx`/`RootAdminDashboard.tsx`/`PlatformPropertyManagement.tsx`,
+which each call their own `onLogout()`), so Header's copy is just a
+vestigial prop, not a bug. Safe to remove whenever the rest of this bucket
+gets cleaned up.
 
 ### Needs Manual Verification
 
+- **Property-access gate, real browser session.** The new universal
+  `isPropertyAccessAllowed()` check (see Security section above) was
+  verified thoroughly via curl against every login type (root admin, tenant
+  admin, staff, staff with no property/tenant) and the property-setup
+  wizard's pre-auth path, all behaving as expected — but not yet exercised
+  through the actual React app in a browser (no Playwright this session, per
+  standing instruction). Do one full normal session end-to-end: log in as
+  each role you actually use day-to-day and click through a few pages,
+  watching the Network tab for any unexpected 401/403 on an action that used
+  to work. Most likely-to-surface issue: a page that calls an action with a
+  `property_slug` the logged-in session doesn't own (shouldn't happen in
+  normal use, but worth confirming nothing in the frontend does this today).
 - **Telegram delivery on booking edits.** `update_guest` now diffs the
   pre-update row and pings the property's Admin Telegram channel with the
   changed fields (see `php/guests/guests.php`) - verified the diff logic
   runs cleanly and doesn't break the save (edited/reverted a live guest name
   with no errors), but actual message delivery to Telegram wasn't confirmed
   from this session (no visibility into the bot/chat from here). Same open
-  question for the pre-existing new-booking and ID-upload notifications this
-  pattern was copied from. Check the property's actual Admin Telegram chat
-  after an edit to confirm the message arrives and reads correctly.
-
-### Dark Mode Toggle — Revisit After 1 Week
-
-- Dark mode toggle is **temporarily disabled** in the header. The toggle
-  button is visible but non-functional, and `onToggleDarkMode` is a no-op.
-  Revisit after **one week** to decide whether to re-enable the toggle or
-  remove it entirely. Do not merge any dark-mode theme changes until then.
-
-### CSV Export Consolidated
-
-- Merged the Guest History CSV export into the Data Export Center's
-  **Accommodations Booking Spreadsheet**. The export now includes Status,
-  C-Form Status, and Filing Time in addition to the existing booking fields.
-  Removed the duplicate "Export filtered list (CSV)" button from Guest History.
-
-### Slot Usage Widget — Minimal Redesign
-
-- Replaced the detailed Slot Usage widget on the Tenant Dashboard with a
-  compact inline pill showing used/total slots and a slim progress bar.
-  Removed the per-property breakdown tree to reduce visual noise.
+  question for the pre-existing new-booking notification this pattern was
+  copied from. Check the property's actual Admin Telegram chat after an
+  edit to confirm the message arrives and reads correctly.
+- **Telegram photo relay (guest ID documents + expense invoices).** Both
+  flows send the actual photo, not just a text notification (see git
+  history, 10 Aug 2026) - traced end-to-end but never live-tested, since
+  that would post a real message to the property's actual Telegram chat.
+  Upload an ID document and an expense invoice for a live property and
+  confirm the photo (not just text) lands in the right chat.
 
 ---
 

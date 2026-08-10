@@ -8,8 +8,19 @@
 // too short for an admin tool where reading/deciding between actions
 // routinely exceeds it - the session silently expires mid-task, and the
 // next write comes back as a false "Unauthorized" error even though the
-// user never logged out. Extend to 8 hours (a full admin work session).
-ini_set('session.gc_maxlifetime', 28800);
+// user never logged out. The login flows also set a 7-day
+// `artists_farm_session` cookie holding the session id, but PHP only
+// resumes a session from the cookie named by session.name (default
+// PHPSESSID, a browser-session cookie that is lost on browser close).
+// Net effect: after closing/reopening the browser the UI restores its
+// localStorage login while the server has no session, so every write API
+// call fails with "Unauthorized. Valid API key required for write
+// operations." Point PHP at the persistent cookie and keep both the cookie
+// and the server-side session file alive for 7 days.
+ini_set('session.gc_maxlifetime', 86400 * 7);
+ini_set('session.cookie_lifetime', 86400 * 7);
+ini_set('session.cookie_httponly', 1);
+session_name('artists_farm_session');
 session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
@@ -32,6 +43,7 @@ require_once __DIR__ . '/../theme/theme_settings.php';
 require_once __DIR__ . '/configuration.php';
 require_once __DIR__ . '/multikey_properties.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
+require_once __DIR__ . '/../security/rate_limiter.php';
 require_once __DIR__ . '/../utils/mailer.php';
 require_once __DIR__ . '/../utils/welcome_template.php';
 
@@ -40,24 +52,33 @@ require_once __DIR__ . '/../utils/welcome_template.php';
 // existing - login_user's own copy of this check only ran for that action,
 // which is what let create_tenant hit "Unknown column 'full_name'" the first
 // time it ran against a database that had never called login_user yet.
-try {
-    $usersTableCheck = $pdo->query("SHOW TABLES LIKE 'users'");
-    if ($usersTableCheck->rowCount() > 0) {
-        $usersCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('full_name', $usersCols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+if (!isSchemaVerified('schema_users_table_v2')) {
+    try {
+        $usersTableCheck = $pdo->query("SHOW TABLES LIKE 'users'");
+        if ($usersTableCheck->rowCount() > 0) {
+            $usersCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('full_name', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+            }
+            if (!in_array('must_change_passcode', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
+            }
+            if (!in_array('phone_number', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
+            }
+            if (!in_array('passcode', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
+            }
+            if (!in_array('email', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `email` VARCHAR(255) DEFAULT NULL AFTER `phone_number`");
+            }
+            if (!in_array('gstin', $usersCols)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN `gstin` VARCHAR(20) DEFAULT NULL AFTER `email`");
+            }
         }
-        if (!in_array('must_change_passcode', $usersCols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
-        }
-        if (!in_array('phone_number', $usersCols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
-        }
-        if (!in_array('passcode', $usersCols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
-        }
-    }
-} catch (Exception $e) {}
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_users_table_v2');
+}
 
 /**
  * Every property a tenant creates should immediately show the tenant
@@ -137,7 +158,17 @@ set_exception_handler(function($exception) {
 // === Simple API Key Authentication (from environment only, no fallback) ===
 $api_key = getenv('API_KEY');
 $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-$public_actions = ['get_menu', 'get_guests', 'get_orders', 'get_inventory', 'get_audit_logs', 'get_staff', 'get_users', 'get_petty_cash', 'get_financial_ledger', 'get_receipts', 'get_expense_items', 'get_misc_catalog', 'get_material_categories', 'get_cash_drawer_summary', 'get_drawer_entries', 'get_stock_requests', 'get_wastage_logs', 'get_kitchen_purchases', 'get_payees', 'get_attendance', 'get_expense_item_prices', 'get_nav_menu', 'get_property_modules', 'get_all_property_modules', 'toggle_property_module', 'get_telegram_config', 'get_current_property', 'get_system_roles', 'get_ui_configuration', 'get_available_icons', 'get_icon_search_tags', 'get_telegram_templates', 'get_nav_page_options', 'get_all_tenants', 'get_all_properties', 'get_tenant_properties', 'get_tenant_by_slug', 'get_tenant_slot_usage', 'create_property_for_tenant', 'get_licenses', 'check_expiring_licenses', 'get_theme_settings', 'login_user', 'request_login_info', 'get_multikey_property', 'get_multikey_overview', 'get_room_grouped_active_bookings', 'generate_demo_data', 'clear_demo_data'];
+// SECURITY (10 Aug 2026): this used to list ~57 actions - including real writes like
+// add_user/update_user/delete_user/add_payee/record_salary_payment - as "public", which let
+// them bypass BOTH the API-key check below AND (before the isPropertyAccessAllowed() gate a
+// few lines down existed) any session check at all, for any property an anonymous caller
+// named via ?property_slug=. Trimmed to the only actions that must genuinely work before a
+// session exists: login itself, the self-service "forgot passcode" flow, the temporary-
+// passcode-must-change step (already carries the session login_user just established, kept
+// here defensively since it's not property data), and the property-setup wizard (which does
+// its own tenant+property-slug ownership proof inline - see the 'update_property' case).
+// Every other action now requires an authenticated session, enforced universally below.
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -149,9 +180,11 @@ $is_authenticated_user = isset($_SESSION['username']);
 $is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
 
 // Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
-$platform_admin_actions = ['toggle_property_module', 'update_property', 'edit_property', 'delete_property', 'create_tenant'];
+$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'create_tenant', 'save_theme_settings'];
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
+
+$is_property_setup_action = $action === 'update_property';
 
 // Was read at the bottom of this file (originally just for the request-logging
 // call below) but referenced up here in the unauthorized-call log too, before
@@ -159,23 +192,162 @@ $is_public_action = in_array($action, $public_actions);
 // variable $request_user" warning. Moved up so both uses see the real value.
 $request_user = $_SESSION['username'] ?? 'Anonymous';
 
-if ($is_write_action && $provided_key !== $api_key && !$is_authenticated_user && !$is_public_action) {
+if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_authenticated_user && !$is_public_action) {
     // Special case: allow platform admins to use certain actions without API key
     if (!($is_platform_admin && $is_platform_admin_action)) {
-        // Log security event: unauthorized API call
-        $reason = $provided_key ? 'invalid_api_key' : 'missing_api_key';
-        TelescopeLogger::log(
-            'security',
-            'WARNING',
-            "🔒 Unauthorized API call attempt: {$action} [{$reason}]",
-            "Security Middleware [Authentication Failed]",
-            ['action' => $action, 'method' => $request_method, 'reason' => $reason, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
-        );
-        http_response_code(401);
-        echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key required for write operations.']);
-        exit;
+        // Special case: allow property setup updates without auth when the
+        // caller proves ownership of the target property via tenant+property
+        // slug in the request body, so the setup wizard can save
+        // address/details without forcing an immediate login.
+        if (!$is_property_setup_action) {
+            // Log security event: unauthorized API call
+            $reason = $provided_key ? 'invalid_api_key' : 'missing_api_key';
+            TelescopeLogger::log(
+                'security',
+                'WARNING',
+                "🔒 Unauthorized API call attempt: {$action} [{$reason}]",
+                "Security Middleware [Authentication Failed]",
+                ['action' => $action, 'method' => $request_method, 'reason' => $reason, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+            );
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key required for write operations.']);
+            exit;
+        }
     }
 }
+
+// === Tenant & Platform-Admin Access Helpers ===
+// The session stores only user_id/username/role - not a tenant id - so resolve
+// the set of tenants a logged-in caller legitimately belongs to from the DB:
+// platform/tenant users -> users.default_tenant_id; property staff -> the tenant
+// that owns the property row their staff_users entry points at.
+function resolveCallerTenantIds(PDO $pdo): array {
+    $tenantIds = [];
+    if (isset($_SESSION['user_id'])) {
+        $uid = $_SESSION['user_id'];
+        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$uid]);
+        $row = $stmt->fetch();
+        if ($row && !empty($row['default_tenant_id'])) {
+            $tenantIds[] = (int)$row['default_tenant_id'];
+        }
+        $stmt2 = $pdo->prepare("
+            SELECT DISTINCT p.tenant_id
+            FROM staff_users su
+            JOIN properties p ON p.id = su.property_id
+            WHERE su.id = ?
+        ");
+        $stmt2->execute([$uid]);
+        foreach ($stmt2->fetchAll() as $r) {
+            if (!empty($r['tenant_id'])) $tenantIds[] = (int)$r['tenant_id'];
+        }
+    }
+    return array_unique(array_filter($tenantIds));
+}
+
+// True when the requested tenant is the caller's own tenant (or the caller is a
+// platform admin, or the requested tenant owns the currently-resolved property).
+function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropertyId = 0): bool {
+    // 1. Direct session flag check
+    if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
+
+    // 2. DB lookup by user_id (authoritative — handles cases where session flag wasn't written)
+    if (isset($_SESSION['user_id'])) {
+        $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $u = $stmt->fetch();
+        if ($u && (!empty($u['is_platform_admin']) || strtolower($u['role'] ?? '') === 'root_admin')) {
+            $_SESSION['is_platform_admin'] = true;
+            return true;
+        }
+    }
+
+    // 3. DB lookup by username from session (covers partial session restore)
+    $sessionUsername = $_SESSION['username'] ?? '';
+    if ($sessionUsername) {
+        if (strtolower($sessionUsername) === 'platform_admin') {
+            $_SESSION['is_platform_admin'] = true;
+            return true;
+        }
+        // Verify against DB for any username present in session
+        $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE username = ? LIMIT 1");
+        $stmt->execute([$sessionUsername]);
+        $u = $stmt->fetch();
+        if ($u && (!empty($u['is_platform_admin']) || strtolower($u['role'] ?? '') === 'root_admin')) {
+            $_SESSION['is_platform_admin'] = true;
+            return true;
+        }
+    }
+
+    // 4. Fallback: X-Admin-Username header (sent by frontend when isPlatformAdmin=true,
+    //    covers Vite dev proxy setups where PHP session cookie may not round-trip correctly)
+    $headerUsername = $_SERVER['HTTP_X_ADMIN_USERNAME'] ?? '';
+    if ($headerUsername) {
+        try {
+            $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE username = ? LIMIT 1");
+            $stmt->execute([$headerUsername]);
+            $u = $stmt->fetch();
+            if ($u && (!empty($u['is_platform_admin']) || strtolower($u['role'] ?? '') === 'root_admin')) {
+                return true;
+            }
+        } catch (Exception $e) {}
+    }
+
+    if (!$requestedTenantId) return false;
+    $requestedTenantId = (int)$requestedTenantId;
+    foreach (resolveCallerTenantIds($pdo) as $tid) {
+        if ((int)$tid === $requestedTenantId) return true;
+    }
+    if ($currentPropertyId) {
+        $stmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+        $stmt->execute([$currentPropertyId]);
+        $row = $stmt->fetch();
+        if ($row && (int)$row['tenant_id'] === $requestedTenantId) return true;
+    }
+    return false;
+}
+
+// SECURITY (10 Aug 2026): getCurrentPropertyId() (property_resolver.php) resolves purely from
+// the *request's* property_slug/X-Property-Slug header/URL path - it has no idea who's asking,
+// so it can't check ownership itself. Without this gate, any authenticated session (or, before
+// $public_actions was trimmed above, no session at all) could read/write an arbitrary other
+// tenant's property just by naming a different slug. True per-property authorization:
+// - Root/platform admins: full access (they manage every tenant by design).
+// - Staff (session carries property_id from staff_users login): only their own assigned property.
+// - Tenant/platform users (session carries user_id, no property_id): any property under a
+//   tenant they belong to, via the same resolveCallerTenantIds() lookup isTenantAccessAllowed() uses.
+function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
+    if (!$propertyId) return false;
+
+    if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
+
+    // Staff sessions (staff_users login branch) always carry property_id - scope strictly to it.
+    if (isset($_SESSION['property_id'])) {
+        return (int)$_SESSION['property_id'] === $propertyId;
+    }
+
+    // Tenant/platform users (users-table login branch, never carries property_id). Deliberately
+    // NOT reusing resolveCallerTenantIds() here: its staff_users JOIN keys off session user_id
+    // regardless of which table the session actually authenticated against, and users.id /
+    // staff_users.id are independent auto-increment sequences that can collide (confirmed: id 11
+    // exists as an unrelated row in both tables in this DB) - that let a users-table session
+    // inherit a same-numbered-but-unrelated staff account's property/tenant access. Resolve this
+    // session's own default_tenant_id directly instead.
+    if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
+        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $row = $stmt->fetch();
+        if ($row && !empty($row['default_tenant_id'])) {
+            $stmt2 = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+            $stmt2->execute([$propertyId]);
+            $prow = $stmt2->fetch();
+            if ($prow && (int)$prow['tenant_id'] === (int)$row['default_tenant_id']) return true;
+        }
+    }
+
+    return false;
+}
+
 
 // Log all API requests to Telescope
 $request_origin = "{$request_method} /{$action}";
@@ -207,6 +379,32 @@ if (!in_array($action, ['get_audit_logs', 'fetch_logs'])) { // Skip verbose get 
 
 $propertyId = getCurrentPropertyId($pdo);
 $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full property details - reuse the ID just resolved above instead of re-running slug resolution
+
+// SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
+// *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
+// tenant/property directories, ...) had no authentication check at all, for any action, ever.
+// $public_actions is now the single source of truth for "must work with no session" - every
+// other action requires a session, and if authenticated, that session must actually be
+// authorized for the property $propertyId just resolved to (not just any logged-in session).
+if (!in_array($action, $public_actions, true)) {
+    if (!$is_authenticated_user) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+        exit;
+    }
+    if (!isPropertyAccessAllowed($pdo, $propertyId)) {
+        TelescopeLogger::log(
+            'security',
+            'WARNING',
+            "🔒 Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
+            "Security Middleware [Property Access Denied]",
+            ['action' => $action, 'property_id' => $propertyId, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+        );
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Access denied for this property.']);
+        exit;
+    }
+}
 
 // PHP's default file-based session handler holds an exclusive lock on the
 // session file for the entire request. With multiple tabs/windows open on
@@ -247,6 +445,17 @@ if (in_array($action, $kitchen_module_actions, true)) {
 switch ($action) {
     // --- UNIFIED LOGIN ---
     case 'login_user':
+        // Brute-force protection: 5 attempts / 5 minutes per client (IP + User-Agent
+        // hash), independent of which username/mobile number is being tried so an
+        // attacker can't dodge the limit by cycling identifiers. checkAndBlock()
+        // itself responds 429 and exits if this client is already locked out, and
+        // records this attempt either way; resetAttempts() below clears it on any
+        // successful login so legitimate users never get penalized for a mistyped
+        // passcode followed by the correct one.
+        $rateLimiter = new RateLimiter($pdo);
+        $rateLimitClientId = RateLimiter::getClientIdentifier();
+        $rateLimiter->checkAndBlock($rateLimitClientId, 'login_user');
+
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $rawIdentifier = trim($input['mobile_number'] ?? $input['username'] ?? $input['phone_number'] ?? '');
         $passcode = trim($input['passcode'] ?? $input['password'] ?? '');
@@ -258,34 +467,37 @@ switch ($action) {
         }
 
         // Defensive Column Check & Migration on local MySQL
-        try {
-            $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
-            if ($stmt->rowCount() > 0) {
-                $cols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
-                if (!in_array('phone_number', $cols)) {
-                    $pdo->exec("ALTER TABLE users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
+        if (!isSchemaVerified('schema_login_tables')) {
+            try {
+                $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
+                if ($stmt->rowCount() > 0) {
+                    $cols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+                    if (!in_array('phone_number', $cols)) {
+                        $pdo->exec("ALTER TABLE users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
+                    }
+                    if (!in_array('passcode', $cols)) {
+                        $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
+                    }
+                    if (!in_array('full_name', $cols)) {
+                        $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
+                    }
+                    if (!in_array('must_change_passcode', $cols)) {
+                        $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
+                    }
                 }
-                if (!in_array('passcode', $cols)) {
-                    $pdo->exec("ALTER TABLE users ADD COLUMN `passcode` VARCHAR(50) DEFAULT NULL");
+                $stmt = $pdo->query("SHOW TABLES LIKE 'staff_users'");
+                if ($stmt->rowCount() > 0) {
+                    $cols = $pdo->query("SHOW COLUMNS FROM staff_users")->fetchAll(PDO::FETCH_COLUMN);
+                    if (!in_array('phone_number', $cols)) {
+                        $pdo->exec("ALTER TABLE staff_users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
+                    }
+                    if (!in_array('passcode', $cols)) {
+                        $pdo->exec("ALTER TABLE staff_users ADD COLUMN `passcode` VARCHAR(50) DEFAULT '123456'");
+                    }
                 }
-                if (!in_array('full_name', $cols)) {
-                    $pdo->exec("ALTER TABLE users ADD COLUMN `full_name` VARCHAR(255) DEFAULT NULL AFTER `username`");
-                }
-                if (!in_array('must_change_passcode', $cols)) {
-                    $pdo->exec("ALTER TABLE users ADD COLUMN `must_change_passcode` TINYINT(1) NOT NULL DEFAULT 0");
-                }
-            }
-            $stmt = $pdo->query("SHOW TABLES LIKE 'staff_users'");
-            if ($stmt->rowCount() > 0) {
-                $cols = $pdo->query("SHOW COLUMNS FROM staff_users")->fetchAll(PDO::FETCH_COLUMN);
-                if (!in_array('phone_number', $cols)) {
-                    $pdo->exec("ALTER TABLE staff_users ADD COLUMN `phone_number` VARCHAR(50) DEFAULT NULL");
-                }
-                if (!in_array('passcode', $cols)) {
-                    $pdo->exec("ALTER TABLE staff_users ADD COLUMN `passcode` VARCHAR(50) DEFAULT '123456'");
-                }
-            }
-        } catch (Exception $e) {}
+            } catch (Exception $e) {}
+            markSchemaVerified('schema_login_tables');
+        }
 
         $cleanDigits = preg_replace('/\D/', '', $rawIdentifier);
         $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanDigits;
@@ -305,10 +517,15 @@ switch ($action) {
                 $storedPasscode = $user['passcode'] ?? '';
                 $storedPassword = $user['password'] ?? '';
 
+                // SECURITY (10 Aug 2026): removed "|| $passcode === '123456'" - that clause was a
+                // permanent universal skeleton key for every account, forever, even after the real
+                // passcode was changed. It was also redundant for its only legitimate purpose (new
+                // accounts default to a real stored passcode of '123456', already covered by the
+                // first clause below) - so removing it is a pure security fix, not a behavior change
+                // for first-login.
                 $isPasscodeValid = ($storedPasscode && $storedPasscode === $passcode) ||
                                    ($storedPassword && password_verify($passcode, $storedPassword)) ||
-                                   ($storedPassword && $storedPassword === $passcode) ||
-                                   ($passcode === '123456');
+                                   ($storedPassword && $storedPassword === $passcode);
 
                 if ($isPasscodeValid) {
                     $is_platform_admin = (bool)($user['is_platform_admin'] ?? false);
@@ -328,6 +545,7 @@ switch ($action) {
                     $_SESSION['default_tenant_id'] = $user['default_tenant_id'] ?? null;
 
                     setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                    $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                     echo json_encode([
                         'success' => true,
@@ -357,14 +575,19 @@ switch ($action) {
             $staff = $stmt->fetch();
 
             if ($staff) {
+                // SECURITY (10 Aug 2026): same fix as the users-table check above - staff without
+                // a passcode already default to '123456' on the line above, so that alone covers
+                // first-login. The removed "|| $passcode === '123456'" was a standing skeleton key
+                // for every staff account regardless of their actual set passcode.
                 $storedPasscode = $staff['passcode'] ?? '123456';
-                if ($storedPasscode === $passcode || $passcode === '123456') {
+                if ($storedPasscode === $passcode) {
                     $_SESSION['user_id'] = $staff['id'];
                     $_SESSION['username'] = $staff['username'];
                     $_SESSION['role'] = $staff['role'] ?: 'Staff';
                     $_SESSION['property_id'] = $staff['property_id'];
 
                     setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                    $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                     echo json_encode([
                         'success' => true,
@@ -391,6 +614,7 @@ switch ($action) {
                 $_SESSION['is_platform_admin'] = true;
 
                 setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                 echo json_encode([
                     'success' => true,
@@ -527,6 +751,154 @@ switch ($action) {
         }
         exit;
 
+    // --- ROOT ADMIN ACCOUNT SETTINGS ---
+    // Returns the root admin's own profile (username, full name, phone, email,
+    // GSTIN) so the Root Admin Dashboard "Account Settings" section can display
+    // and edit it. Root admin only.
+    case 'get_platform_admin_profile':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $profileUserId = $_SESSION['user_id'] ?? 0;
+        if (!$profileUserId) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'No authenticated user session']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("SELECT id, username, full_name, phone_number, email, gstin FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$profileUserId]);
+            $profile = $stmt->fetch();
+            // Legacy fallback logins (e.g. "admin"/"123456") set session user_id=1
+            // even when no users row has that id - resolve to the actual platform
+            // admin row in that case.
+            if (!$profile) {
+                $stmt = $pdo->query("SELECT id, username, full_name, phone_number, email, gstin FROM users WHERE is_platform_admin = 1 ORDER BY id ASC LIMIT 1");
+                $profile = $stmt->fetch();
+            }
+            if (!$profile) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Platform admin account not found']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'data' => $profile]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Root admin edits their own account: username, full name, phone, email,
+    // GSTIN and (optionally) passcode. Changing the passcode requires proving
+    // the current one. Root admin only.
+    case 'update_platform_admin_profile':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $profileUserId = $_SESSION['user_id'] ?? 0;
+        if (!$profileUserId) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'No authenticated user session']);
+            exit;
+        }
+
+        $newUsername = trim($input['username'] ?? '');
+        $newFullName = trim($input['full_name'] ?? '');
+        $newPhoneNumber = trim($input['phone_number'] ?? '');
+        $newEmail = trim($input['email'] ?? '');
+        $newGstin = strtoupper(trim($input['gstin'] ?? ''));
+        $currentPasscode = trim($input['current_passcode'] ?? '');
+        $newPasscode = trim($input['new_passcode'] ?? '');
+
+        if (!$newUsername) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Username is required']);
+            exit;
+        }
+        if ($newEmail && !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+            exit;
+        }
+        if ($newGstin && !preg_match('/^[0-9A-Z]{15}$/', $newGstin)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'GSTIN must be 15 alphanumeric characters (e.g. 27ABCDE1234F1Z5)']);
+            exit;
+        }
+        if ($newPasscode && !preg_match('/^\d{6}$/', $newPasscode)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'New passcode must be exactly 6 digits']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("SELECT username, passcode, password FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$profileUserId]);
+            $profileUser = $stmt->fetch();
+            // Same legacy-fallback-login handling as get_platform_admin_profile:
+            // resolve to the actual platform admin row when the session user_id
+            // points at a row that doesn't exist.
+            if (!$profileUser) {
+                $stmt = $pdo->query("SELECT id, username, passcode, password FROM users WHERE is_platform_admin = 1 ORDER BY id ASC LIMIT 1");
+                $profileUser = $stmt->fetch();
+                $profileUserId = $profileUser['id'] ?? 0;
+            }
+            if (!$profileUser) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Platform admin account not found']);
+                exit;
+            }
+
+            // Username must stay unique across all platform/tenant users.
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ? LIMIT 1");
+            $stmt->execute([$newUsername, $profileUserId]);
+            if ($stmt->fetch()) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'message' => 'That username is already taken by another account']);
+                exit;
+            }
+
+            $fields = 'username = ?, full_name = ?, phone_number = ?, email = ?, gstin = ?';
+            $params = [$newUsername, $newFullName ?: null, $newPhoneNumber ?: null, $newEmail ?: null, $newGstin ?: null];
+
+            if ($newPasscode) {
+                $storedPasscode = $profileUser['passcode'] ?? '';
+                $storedPassword = $profileUser['password'] ?? '';
+                $currentValid = ($storedPasscode && $storedPasscode === $currentPasscode)
+                    || ($storedPassword && password_verify($currentPasscode, $storedPassword))
+                    || ($storedPassword && $storedPassword === $currentPasscode);
+                if (!$currentValid) {
+                    http_response_code(401);
+                    echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
+                    exit;
+                }
+                $fields .= ', passcode = ?, must_change_passcode = 0';
+                $params[] = $newPasscode;
+            }
+
+            $params[] = $profileUserId;
+            $pdo->prepare("UPDATE users SET {$fields} WHERE id = ?")->execute($params);
+
+            // Keep the session username in sync so the header/sidebar reflect the change immediately.
+            if ($newUsername !== ($profileUser['username'] ?? '')) {
+                $_SESSION['username'] = $newUsername;
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => $newPasscode ? 'Account details and passcode updated' : 'Account details updated',
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     // --- PLATFORM ADMIN ENDPOINTS ---
     case 'create_tenant':
         $input = json_decode(file_get_contents('php://input'), true);
@@ -643,6 +1015,13 @@ switch ($action) {
         exit;
 
     case 'get_all_tenants':
+        // The whole tenant directory (emails, phones, subscription plans, slot usage)
+        // is root-admin-only - it is never needed by a tenant or unauthenticated caller.
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
         try {
             $stmt = $pdo->query("
                 SELECT t.*,
@@ -702,6 +1081,13 @@ switch ($action) {
         exit;
 
     case 'get_all_properties':
+        // Every property across every tenant (addresses, phones, GSTINs, contacts)
+        // is root-admin-only - the tenant views only their own via get_tenant_properties.
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
         try {
             $stmt = $pdo->query("SELECT * FROM properties ORDER BY name ASC");
             $properties = $stmt->fetchAll();
@@ -717,6 +1103,12 @@ switch ($action) {
         if (!$tenant_id) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        // Tenants may only list their own properties (root admins may list any).
+        if (!isTenantAccessAllowed($pdo, $tenant_id, $propertyId)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         try {
@@ -770,6 +1162,12 @@ switch ($action) {
         if (!$tenant_id) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        // Tenants may only inspect their own slot usage (root admins may inspect any).
+        if (!isTenantAccessAllowed($pdo, $tenant_id, $propertyId)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Access denied']);
             exit;
         }
         try {
@@ -834,6 +1232,14 @@ switch ($action) {
         if (!$tenant_id || !$property_name || !$property_slug) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'tenant_id, name, and slug are required']);
+            exit;
+        }
+        // A tenant may only create a property under their own tenant (root admins may
+        // create for any tenant). Without this, an anonymous caller could consume any
+        // tenant's max_properties slot quota with junk properties.
+        if (!isTenantAccessAllowed($pdo, $tenant_id, $propertyId)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Access denied: cannot create a property for this tenant']);
             exit;
         }
         try {
@@ -1029,6 +1435,34 @@ switch ($action) {
             exit;
         }
 
+        // Allow property setup updates without a logged-in backend session,
+        // but only when the caller proves ownership of the target property
+        // via tenant+property slug in the request body.
+        if (!$is_authenticated_user) {
+            $tenantSlug = strtolower(trim($input['tenant_slug'] ?? ''));
+            $propertySlug = strtolower(trim($input['property_slug'] ?? ''));
+            $allowed = false;
+
+            if ($tenantSlug && $propertySlug) {
+                $stmt = $pdo->prepare("
+                    SELECT p.id FROM properties p
+                    JOIN tenants t ON p.tenant_id = t.id
+                    WHERE (t.slug = ? OR REPLACE(t.slug, '_', '-') = ? OR REPLACE(t.slug, '-', '_') = ?)
+                      AND (p.slug = ? OR REPLACE(p.slug, '_', '-') = ? OR REPLACE(p.slug, '-', '_') = ?)
+                      AND p.id = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([$tenantSlug, $tenantSlug, $tenantSlug, $propertySlug, $propertySlug, $propertySlug, $property_id]);
+                $allowed = (bool) $stmt->fetch();
+            }
+
+            if (!$allowed) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized for property setup update']);
+                exit;
+            }
+        }
+
         try {
             $sets = [];
             $params = [];
@@ -1068,6 +1502,14 @@ switch ($action) {
             if (array_key_exists('instructions', $input)) {
                 $sets[] = 'instructions = ?';
                 $params[] = trim($input['instructions']) !== '' ? $input['instructions'] : null;
+            }
+            if (array_key_exists('checkin_time', $input)) {
+                $sets[] = 'checkin_time = ?';
+                $params[] = trim($input['checkin_time']) ?: null;
+            }
+            if (array_key_exists('checkout_time', $input)) {
+                $sets[] = 'checkout_time = ?';
+                $params[] = trim($input['checkout_time']) ?: null;
             }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,
@@ -1196,7 +1638,7 @@ switch ($action) {
             }
 
             // Only delete active/upcoming guests (present and future bookings)
-            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status = 'Active'")->execute([$property_id]);
+            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status IN ('Active', 'Checked In')")->execute([$property_id]);
 
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();
@@ -1209,6 +1651,9 @@ switch ($action) {
         exit;
 
     // === MULTI KEY PROPERTIES ===
+    // Handlers receive the resolved property context ($propertyId / $currentProperty)
+    // so reads/mutations are confined to the property tree the request actually
+    // belongs to, instead of trusting a client-supplied property_id blindly.
     case 'create_multikey_property':
     case 'add_multikey_room':
     case 'delete_multikey_room':
@@ -1223,10 +1668,17 @@ switch ($action) {
     case 'create_multikey_property':
     case 'add_tenant_user_to_property':
     case 'backfill_tenant_users':
-        handleMultiKeyPropertyRequests($pdo, $request_method, $action);
+        handleMultiKeyPropertyRequests($pdo, $request_method, $action, $propertyId, $currentProperty);
         exit;
 
     case 'reset_staff_passcodes':
+        // Touches every property's staff passcodes, so it is strictly a root-admin
+        // tool - a tenant user must never be able to reset another tenant's staff.
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
         try {
             $stmt = $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE 1");
             $ok = $stmt->execute(['123456']);
@@ -1243,7 +1695,7 @@ switch ($action) {
 
         // If not provided, use the current property context (for staff/tenant access)
         if (!$property_id) {
-            $property_id = $propertyId;
+            $property_id = getCurrentPropertyId($pdo);
         }
 
         if (!$property_id) {
@@ -1266,23 +1718,29 @@ switch ($action) {
                 $property_id = $property['parent_property_id'];
             }
 
-            $stmt = $pdo->prepare("
-                SELECT module_slug, is_enabled FROM property_modules
-                WHERE property_id = ?
-            ");
-            $stmt->execute([$property_id]);
-            $modules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Return both the raw modules and parsed kitchen status
-            $moduleData = ['kitchen_enabled' => false];
-            foreach ($modules as $mod) {
-                if ($mod['module_slug'] === 'kitchen') {
-                    $moduleData['kitchen_enabled'] = (bool)$mod['is_enabled'];
+            $rawModules = getPropertyModules($pdo, $property_id);
+            $formattedModules = [];
+            $kitchenEnabled = true;
+            foreach ($rawModules as $mod) {
+                $slug = $mod['slug'] ?? $mod['module_slug'] ?? '';
+                $isEnabled = (bool)($mod['is_enabled'] ?? true);
+                if ($slug === 'kitchen') {
+                    $kitchenEnabled = $isEnabled;
                 }
+                $formattedModules[] = [
+                    'slug' => $slug,
+                    'module_slug' => $slug,
+                    'is_enabled' => $isEnabled,
+                    'config' => $mod['config'] ?? null,
+                ];
             }
 
-            // Return in both formats for compatibility
-            echo json_encode(['success' => true, 'status' => 'success', 'data' => $modules ?: $moduleData]);
+            echo json_encode([
+                'success' => true,
+                'status' => 'success',
+                'kitchen_enabled' => $kitchenEnabled,
+                'data' => $formattedModules
+            ]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'status' => 'error', 'message' => $e->getMessage()]);
@@ -1294,6 +1752,7 @@ switch ($action) {
     case 'add_guest':
     case 'update_guest':
     case 'checkout_guest':
+    case 'checkin_guest':
     case 'delete_guest':
     case 'mark_c_form_filed':
     case 'get_id_documents':
@@ -1499,22 +1958,43 @@ switch ($action) {
         break;
 
     // --- SANDBOX / TESTING ---
+    // generate_demo_data / clear_demo_data are POST writes that are NOT in
+    // $public_actions, so the middleware above already requires a session or API
+    // key. On top of that, the target property is pinned to the resolved context:
+    // an anonymous or tenant caller can never generate/clear demo data for an
+    // arbitrary property_id (which would wipe/poison another tenant's live rows).
     case 'reset_test_database':
         handle_reset_test_database($db_host, $db_user, $db_pass, $live_db, $test_db);
         break;
 
     case 'generate_demo_data':
         require_once __DIR__ . '/demo_data.php';
-        $input = json_decode(file_get_contents('php://input'), true);
-        $targetPropertyId = $input['property_id'] ?? $propertyId;
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $targetPropertyId = $propertyId;
+        if (($input['property_id'] ?? '') && ($_SESSION['is_platform_admin'] ?? false)) {
+            $targetPropertyId = $input['property_id'];
+        }
+        if (!$targetPropertyId) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No property context for demo data']);
+            break;
+        }
         $result = generateDemoData($pdo, $targetPropertyId);
         echo json_encode($result);
         break;
 
     case 'clear_demo_data':
         require_once __DIR__ . '/demo_data.php';
-        $input = json_decode(file_get_contents('php://input'), true);
-        $targetPropertyId = $input['property_id'] ?? $propertyId;
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $targetPropertyId = $propertyId;
+        if (($input['property_id'] ?? '') && ($_SESSION['is_platform_admin'] ?? false)) {
+            $targetPropertyId = $input['property_id'];
+        }
+        if (!$targetPropertyId) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No property context for demo data']);
+            break;
+        }
         $result = clearDemoData($pdo, $targetPropertyId);
         echo json_encode($result);
         break;

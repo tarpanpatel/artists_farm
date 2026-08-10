@@ -4,6 +4,8 @@
  * Prevents brute force attacks on login and API endpoints
  */
 
+require_once __DIR__ . '/../config/schema_cache.php';
+
 class RateLimiter {
 
     private $pdo;
@@ -16,6 +18,7 @@ class RateLimiter {
     }
 
     private function ensureTableExists() {
+        if (isSchemaVerified('schema_rate_limiter')) return;
         try {
             $this->pdo->exec("CREATE TABLE IF NOT EXISTS `rate_limit_attempts` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -31,6 +34,7 @@ class RateLimiter {
         } catch (PDOException $e) {
             error_log("Rate limiter table error: " . $e->getMessage());
         }
+        markSchemaVerified('schema_rate_limiter');
     }
 
     public function isBlocked($identifier, $endpoint) {
