@@ -6,7 +6,6 @@
 
 session_start();
 require_once __DIR__ . '/php/config/database.php';
-require_once __DIR__ . '/php/auth/saas_auth.php';
 
 // Set correct content type for HTML (database.php sets application/json by default)
 header('Content-Type: text/html; charset=UTF-8');

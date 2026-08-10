@@ -1,0 +1,15 @@
+# Archived pre-React legacy code (server-rendered tenant dashboard/analytics/
+# property-request pages + their own separate api/ backend + saas_auth.php).
+# Superseded by the React SPA - kept in version control for reference only,
+# never meant to be web-servable again. Block all direct access regardless
+# of which file inside here someone requests.
+#
+# Apache 2.4+ (current directive)
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+# Apache 2.2 fallback
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
