@@ -8,93 +8,21 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
-The critical items from that audit are fixed and shipped (see git history:
-cross-tenant property-access gate, removed `123456` universal login
-bypass, rate limiter on login, `ical_sync.php`'s missing auth check -
-found while checking on the iCal Sync feature separately the same day,
-same fix shape extracted into `php/security/access_control.php` so both
-files share it instead of router.php-only; swept for other standalone
-endpoints with the same gap via `grep -rn "getCurrentPropertyId($pdo)"`,
-none found. Also fixed: the login identifier wildcard bug - a non-numeric
-identifier collapsed `$mobileNumber` to an empty string, and the fallback
-`phone_number LIKE '%' . $mobileNumber` became `LIKE '%'`, matching *any*
-row with a non-null phone number. Both the `users` and `staff_users`
-login queries now skip the phone-matching clause entirely when there's no
-actual digit string to match against, falling back to exact `username =`
-only. Curl-verified: a nonexistent non-numeric identifier tried against
-two different real accounts' real passcodes now correctly fails on both;
-real username login, real phone-number login, and the default-admin
-bootstrap fallback all still work unchanged. Also fixed: CSRF protection,
-via an Origin/Referer allow-list check in `php/config/database.php`
-(reuses the same `$allowed_origins` the existing CORS header already
-used, rather than a second independently-maintained list - also fixed a
-latent CORS gap while in there: only port 5173 was allowed for local dev,
-missing 3000/5174/8080 that `src/services/api.ts`'s own dev-port list
-already recognizes). Since `database.php` is `require_once`'d by nearly
-every write-capable endpoint (`router.php`, `ical_sync.php`,
-`demo_data.php`, ...), one check covers all of them - sidesteps the
-61-raw-`fetch()`-call-sites fragmentation problem entirely, since there's
-no frontend token to attach and every one of those call sites already
-gets an `Origin` header from the browser automatically. Rejects
-POST/PUT/DELETE/PATCH requests whose `Origin` (or `Referer` fallback) is
-present but not in the allow-list; requests with no `Origin`/`Referer` at
-all (curl, server-to-server tooling) are let through rather than
-rejected, since that's not the shape of a real cross-site CSRF attack.
-Curl-verified: malicious `Origin` → 403 on both `router.php` and
-`ical_sync.php`; no `Origin` → still works; correct dev `Origin` → still
-works; GET requests unaffected (this only ever gates write methods); the
-property-access gate still layers correctly on top). What's left, none of
-it fixed yet - and one more now fixed: `resolveCallerTenantIds()`'s
-id-collision risk (used by `isTenantAccessAllowed()`, the 3 actions -
-`get_tenant_properties`/`get_tenant_slot_usage`/`create_property_for_tenant`
-- that check tenant membership directly rather than going through
-`isPropertyAccessAllowed()`). It used to query *both* `users.default_tenant_id`
-and the `staff_users` JOIN unconditionally for every session, regardless of
-which table the session actually authenticated against - collision risk in
-both directions (a staff session could inherit an unrelated `users` row's
-tenant, and vice versa), not just the one direction already worked around
-in `isPropertyAccessAllowed()`. Fixed with the same discriminator (session
-`property_id` isset = staff session, only join `staff_users`; not set =
-users-table session, only check `default_tenant_id` - never both). Curl-
-verified: a `users`-table session with no `default_tenant_id` (but whose
-numeric id collides with an unrelated staff account assigned to a real
-tenant) can no longer list that tenant's properties.
+Fixed and shipped, see git history for details on each: cross-tenant
+property-access gate; removed the `123456` universal login bypass;
+rate limiter on login; `ical_sync.php`'s missing auth check; the login
+identifier wildcard bug (fixed in both `router.php` and its unpatched
+duplicate `authenticate.php`, which also got a rate limiter sharing
+`router.php`'s bucket); CSRF protection via an Origin/Referer allow-list;
+`resolveCallerTenantIds()`'s id-collision risk, plus a property-gate
+regression that fix surfaced (tenant admins briefly couldn't list their
+own tenant's properties). True de-duplication of the now-twice-fixed
+login logic (`router.php` and `authenticate.php` still independently
+carry the same code, which is exactly how one drifted unpatched from the
+other) is worth doing, just bigger scope than any single pass so far.
 
-Fixing this surfaced a real, separate regression from earlier today's
-property-access gate (unrelated to the collision bug itself): those same
-3 tenant-directory actions take `tenant_id` explicitly and were never
-meant to depend on "the currently resolved property" at all, but the
-blanket gate added earlier ran before their own `isTenantAccessAllowed()`
-check and 403'd legitimate tenant admins whenever no `property_slug` was
-in the request (falls back to an unrelated default property that
-obviously doesn't belong to their tenant). Fixed by exempting just those
-3 actions from the property-match part of the gate (still requires
-authentication) - they rely on their own more precise check instead.
-Curl-verified: a real tenant admin can list their own tenant's properties
-and check their own slot usage again (both were silently broken since
-this morning's fix), still correctly denied for a different tenant, root
-admin unaffected throughout.
+What's still open:
 
-Also audited and fixed: **`php/api/authenticate.php`** - a separate legacy
-endpoint (still called by `LoginModal.tsx`'s session-timeout re-auth
-modal, not the main `LoginPage.tsx` flow) that turned out to be an
-unpatched near-duplicate of `router.php`'s `login_user` - it had the
-`123456` universal bypass still live, the same identifier-wildcard `LIKE`
-bug, and *zero* rate limiting at all, bypassing everything fixed on
-`router.php` earlier today. Applied the identical three fixes (removed
-the `123456` clause from both the `users` and `staff_users` branches;
-fixed the wildcard by only including the phone-matching clause when
-there's an actual digit string; wired in the same `RateLimiter`, using
-the *same* `'login_user'` endpoint identifier so attempts against this
-endpoint and `router.php`'s share one rate-limit counter per client -
-otherwise an attacker could dodge one endpoint's limit by hitting the
-other). Curl-verified all three independently, plus confirmed the shared
-bucket actually closes the evasion path: exhausting the limit via
-`authenticate.php` also blocks a subsequent *correct-passcode* attempt
-against `router.php`'s `login_user`. True de-duplication (one shared
-login function both endpoints call, instead of two copies that can drift
-apart again) would be the real fix and is worth doing, just bigger scope
-than this pass.
 - **Staff with multiple property assignments.** Some staff accounts have
   multiple `staff_users` rows (same person, one row per assigned property).
   Login only reads one row (`LIMIT 1`, no explicit order), so a multi-property
