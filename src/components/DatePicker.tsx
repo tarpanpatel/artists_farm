@@ -168,16 +168,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   return (
     <div className="relative">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
           {label}
         </label>
       )}
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="app-input w-full h-10 px-3.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none bg-[var(--input-bg-default)] text-[var(--input-text-default)] border border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)] text-left"
       >
-        {value ? new Date(value).toLocaleDateString('en-GB') : placeholder}
+        <span className={value ? '' : 'text-[var(--input-placeholder)]'}>
+          {value ? new Date(value).toLocaleDateString('en-GB') : placeholder}
+        </span>
       </button>
 
       {isOpen && (

@@ -46,7 +46,22 @@ grep -rln "<select\b" src/components --include="*.tsx" | grep -v StyledSelect.ts
 # ranges are legitimate text, not icon violations. Triage each hit manually,
 # don't bulk-replace)
 grep -rlP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' src/components --include="*.tsx"
+
+# Card/panel padding spread (should converge on one value - see finding below)
+grep -rhoE 'rounded-(xl|2xl)[^"]*\bp-[0-9]+\b' src/components --include="*.tsx" | grep -oE '\bp-[0-9]+\b' | sort | uniq -c | sort -rn
+
+# Micro-label font sizes (uppercase field labels like "DATE & TIME OF RECORD") -
+# should converge on one or two sizes, not seven
+grep -rhoE 'text-\[1?[0-9]px\]|text-(xs|sm|base)' src/components --include="*.tsx" | sort | uniq -c | sort -rn | head -10
 ```
+
+**Non-Lucide icons — checked separately, already fully covered, no further action needed**: searched `package.json` and every import statement for `react-icons`/`@heroicons`/`@mui/icons-material`/`flowbite-react`/etc. — none exist anywhere in the codebase (`flowbite-react` was a dependency once, fully removed in an earlier commit). The *only* non-Lucide-icon violation is emoji standing in for icons, already covered above.
+
+**Padding — real, confirmed inconsistency.** Audited every `rounded-xl`/`rounded-2xl` card-style wrapper's own padding: `p-6` (41 uses), `p-4` (34), `p-5` (28), `p-3` (20), plus smaller pockets of `p-8`/`p-2`/`p-12`/`p-1`/`p-0`. Four different values each used dozens of times for what's supposed to be the same "card" role - this is why some pages feel airier and others feel cramped for no reason. Recommend converging the standard card wrapper on **one** padding value (`p-5` is a reasonable middle ground given the spread, or match whatever `PageHeader.tsx`'s own containing card already uses, since that's already sitewide) - go card by card, don't blindly find-and-replace since a handful of genuinely denser/tighter contexts (e.g. compact table-action cells) may legitimately need less.
+
+**Font size on micro-labels — real, confirmed inconsistency.** The small uppercase field-label pattern (things like "DATE & TIME OF RECORD", "QUANTITY") uses **seven different sizes** across the app: `text-[10px]` (289 uses), `text-[11px]` (172), `text-xs` (46, which itself renders 12px), `text-[9px]` (25), `text-sm` (5), `text-[8px]` (4), `text-[7px]` (1). This is the single largest source of the "different font size" feeling - converge on one, `text-[10px]` or `text-[11px]` are the two real contenders given how dominant they already are (together ~80% of all uses), not a fresh third choice.
+
+**Also found while investigating a user-reported screenshot (Expenses page): `DatePicker.tsx`'s trigger button used hardcoded `border-gray-300`/`bg-white`/`py-2` and `focus:ring-blue-500` instead of the `--input-*` tokens and `h-10` fixed height every other field on the same form uses - a leftover from restoring it out of git history earlier this session, never updated to match today's conventions. Already fixed directly (not left for this sweep) since it was a clear, contained bug in a single component - see git history. Worth checking `DateRangePicker.tsx`'s own trigger buttons (built ad-hoc per call site, e.g. `InventoryManagement.tsx`'s Fulfill Stock Requisitions filter) for the same class of drift while doing this sweep, since that pattern - copy old styling, don't reconnect it to current tokens - is exactly how this kind of bug happens.**
 
 ## Known instances (a starting punch list — not exhaustive, the greps above will find more)
 
