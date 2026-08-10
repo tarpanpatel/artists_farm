@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Plus, CheckCircle2, Clock, X, Home } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, X, Home } from 'lucide-react';
 import {
   ServiceRequest,
   ServiceRequestType,
@@ -16,6 +16,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
+import { Button } from './Button';
+import { PageHeader, PageHeaderButton } from './PageHeader';
+import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface Room {
   id: number;
@@ -196,26 +199,16 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
   return (
     <div className="space-y-6 max-w-[550px]">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
-        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-4 mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Bell className="w-5 h-5 text-indigo-500" />
-              {t('guest_service_requests_heading', 'Guest Service Requests')}
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
-            </p>
-          </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            {t('new_request_button', 'New Request')}
-          </button>
-        </div>
+      <PageHeader
+        title={t('guest_service_requests_heading', 'Guest Service Requests')}
+        subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
+      >
+        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+          {t('new_request_button', 'New Request')}
+        </PageHeaderButton>
+      </PageHeader>
 
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
         {loading ? (
           <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">{t('loading_spinner_default_message', 'Loading...')}</div>
         ) : requests.length === 0 ? (
@@ -236,16 +229,18 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           </span>
                         </div>
                         {r.description && <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">{r.description}</p>}
-                        <p className="text-[11px] text-gray-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {r.createdAt}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
                       </div>
-                       <button
-                         onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
-                         disabled={fulfillingId === r.id}
-                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50 transition-colors"
-                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
-                      </button>
+                        <Button
+                          variant="success"
+                          size="sm"
+                          disabled={fulfillingId === r.id}
+                          onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
+                          className="shrink-0"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
+                        </Button>
                     </div>
                   ))}
                 </div>
@@ -325,12 +320,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">
+                <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
                   {t('cancel_button', 'Cancel')}
-                </button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-50">
+                </Button>
+                <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm">
                   {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

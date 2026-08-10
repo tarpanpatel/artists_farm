@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { isKitchenModuleNavItem } from '../data/appConfig';
 
 export type TabType =
   | 'dashboard'
@@ -22,7 +23,8 @@ export type TabType =
   | 'misc_charges'
   | 'custom_css'
   | 'ical_sync'
-  | 'service_requests';
+  | 'service_requests'
+  | 'edit_property';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -91,30 +93,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
-  // Auto-expand ancestors of the active item
-  useEffect(() => {
-    const findAndExpandAncestors = () => {
-      const activeItem = navItems.find(i => i.uniqueKey === activeMenuItemKey);
-      if (!activeItem) return;
-      const ancestorIds: string[] = [];
-      let current = activeItem;
-      while (current.parentId) {
-        ancestorIds.push(current.parentId);
-        const parent = navItems.find(i => i.id === current.parentId);
-        if (!parent) break;
-        current = parent;
-      }
-      if (ancestorIds.length > 0) {
-        setExpandedParents(prev => {
-          const next = new Set(prev);
-          ancestorIds.forEach(id => next.add(id));
-          return next;
-        });
-      }
-    };
-    findAndExpandAncestors();
-  }, [activeMenuItemKey, navItems]);
-
   // Scroll active item into center of sidebar viewport
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -126,11 +104,9 @@ export const Navigation: React.FC<NavigationProps> = ({
     return () => clearTimeout(timer);
   }, [activeMenuItemKey]);
 
-  const isVisible = useCallback((allowedRoles?: string[], itemTabKey?: string) => {
+  const isVisible = useCallback((allowedRoles?: string[], itemTabKey?: string, uniqueKey?: string) => {
     // Hide kitchen items if kitchen module is disabled
-    const kitchenItems = new Set(['kitchen', 'take_food_order', 'kitchen_orders', 'staff_meals']);
-    if (kitchenItems.has(itemTabKey || '') && !kitchenModuleEnabled) {
-      console.log(`[Navigation] Hiding kitchen item: ${itemTabKey} (kitchenModuleEnabled: ${kitchenModuleEnabled})`);
+    if (!kitchenModuleEnabled && isKitchenModuleNavItem({ tabKey: itemTabKey || '', uniqueKey })) {
       return false;
     }
 
@@ -157,13 +133,43 @@ export const Navigation: React.FC<NavigationProps> = ({
   const buildTree = useCallback((flat: NavMenuItem[]): TreeNode[] => {
     const map = new Map<string, TreeNode>();
     const roots: TreeNode[] = [];
-    const visible = flat.filter(i => i.isVisible && isVisible(i.roles, i.tabKey));
+    const visible = [...flat.filter(i => i.isVisible && isVisible(i.roles, i.tabKey, i.uniqueKey))];
+
+    // Ensure root 'nav-kitchen-overview' node exists in tree even if DB hasn't seeded it yet
+    let kitchenRoot = visible.find(i => i.id === 'nav-kitchen-overview' || i.uniqueKey === 'kitchen_overview');
+    if (!kitchenRoot && kitchenModuleEnabled) {
+      const syntheticKitchen: NavMenuItem = {
+        id: 'nav-kitchen-overview',
+        title: 'Kitchen',
+        tabKey: 'kitchen',
+        uniqueKey: 'kitchen_overview',
+        category: 'Kitchen & Food',
+        iconName: 'Utensils',
+        order: 10,
+        roles: ['Super Admin', 'Admin', 'Staff Kitchen', 'Staff Supervisor', 'Staff'],
+        isVisible: true,
+        parentId: null,
+      };
+      visible.push(syntheticKitchen);
+      kitchenRoot = syntheticKitchen;
+    }
 
     visible.forEach(item => map.set(item.id, { ...item, children: [] }));
+
+    const kitchenChildKeys = new Set([
+      'take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests',
+      'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
+      'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock'
+    ]);
+
     visible.forEach(item => {
       const node = map.get(item.id)!;
-      if (item.parentId && map.has(item.parentId)) {
-        map.get(item.parentId)!.children.push(node);
+      let effectiveParentId = item.parentId;
+      if (!effectiveParentId && kitchenChildKeys.has(item.uniqueKey || '') && item.id !== kitchenRoot!.id) {
+        effectiveParentId = kitchenRoot!.id;
+      }
+      if (effectiveParentId && map.has(effectiveParentId)) {
+        map.get(effectiveParentId)!.children.push(node);
       } else {
         roots.push(node);
       }
@@ -176,12 +182,49 @@ export const Navigation: React.FC<NavigationProps> = ({
     return roots;
   }, [navItems, isVisible]);
 
-  // Hide Overview menu item since it's merged into Operational Dashboard
+  // Hide Overview and Add Booking (guest_registration) sidebar items as they are merged
   const filteredNavItems = useMemo(() => {
-    return navItems.filter(item => item.uniqueKey !== 'overview');
+    return navItems.filter(item => item.uniqueKey !== 'overview' && item.uniqueKey !== 'guest_registration');
   }, [navItems]);
 
   const tree = useMemo(() => buildTree(filteredNavItems), [buildTree, filteredNavItems]);
+
+  // First-tier group ids (top-level sidebar sections) - used to make expansion
+  // an accordion at this level only: opening one collapses any other that's
+  // open. Nested sub-groups deeper than tier 1 keep independent expand state.
+  const firstTierGroupIds = useMemo(() => new Set(tree.map(n => n.id)), [tree]);
+
+  // Auto-expand active top-tier parent group and auto-collapse non-active top-tier parent groups
+  useEffect(() => {
+    const activeKey = activeMenuItemKey;
+
+    const findOwningTopLevelParentId = (nodes: TreeNode[]): string | null => {
+      for (const parentNode of nodes) {
+        if (parentNode.children.length > 0) {
+          if (parentNode.uniqueKey === activeKey || parentNode.tabKey === activeKey || parentNode.id === activeKey) {
+            return parentNode.id;
+          }
+          const isDescendant = (children: TreeNode[]): boolean => {
+            return children.some(c => (c.uniqueKey === activeKey || c.tabKey === activeKey || c.id === activeKey) || isDescendant(c.children));
+          };
+          if (isDescendant(parentNode.children)) {
+            return parentNode.id;
+          }
+        }
+      }
+      return null;
+    };
+
+    const activeParentId = findOwningTopLevelParentId(tree);
+
+    setExpandedParents(prev => {
+      const next = new Set<string>();
+      if (activeParentId) {
+        next.add(activeParentId);
+      }
+      return next;
+    });
+  }, [activeMenuItemKey, tree]);
 
   const customUrlRootItems = useMemo(() => {
     return filteredNavItems.filter(i => i.isVisible && i.customUrl && !i.parentId && isVisible(i.roles, i.tabKey));
@@ -211,12 +254,12 @@ export const Navigation: React.FC<NavigationProps> = ({
     } else {
       const confirmed = await confirm({
         title: 'Sign Out',
-        message: 'Sign out of Artists Farm Jaipur Terminal?',
+        message: 'Are you sure you want to sign out?',
         confirmText: 'Sign Out',
-        variant: 'warning',
+        variant: 'danger',
       });
       if (confirmed) {
-        window.location.reload();
+        window.location.href = '#login';
       }
     }
   }, [logout, confirm]);
@@ -224,11 +267,20 @@ export const Navigation: React.FC<NavigationProps> = ({
   const toggleExpand = useCallback((id: string) => {
     setExpandedParents(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        // Opening a first-tier group collapses every other first-tier group.
+        if (firstTierGroupIds.has(id)) {
+          firstTierGroupIds.forEach(otherId => {
+            if (otherId !== id) next.delete(otherId);
+          });
+        }
+        next.add(id);
+      }
       return next;
     });
-  }, []);
+  }, [firstTierGroupIds]);
 
   const flattenAllItems = useCallback((nodes: TreeNode[]): FlatNavItem[] => {
     const result: FlatNavItem[] = [];
@@ -240,12 +292,6 @@ export const Navigation: React.FC<NavigationProps> = ({
           tabKey: item.tabKey,
           uniqueKey: item.uniqueKey || item.tabKey,
           urlSlug: item.urlSlug,
-          // item.title is the DB-backed value NavMenuEditor writes ("Click title to
-          // rename") - it must win outright, not just as a t() fallback. en.ts has
-          // entries for several of these same uniqueKeys (from the i18n extraction
-          // pass finding this same default text elsewhere), so routing this through
-          // t(item.uniqueKey, item.title) silently returned the frozen en.ts string
-          // and made every Root Admin rename of a built-in item a no-op.
           label: item.title,
           icon: getIconComponent(item.iconName),
           badge: badge?.text || null,
@@ -271,15 +317,23 @@ export const Navigation: React.FC<NavigationProps> = ({
     const badge = getBadge(node.uniqueKey || '');
 
     if (hasChildren) {
+      const itemKey = node.uniqueKey || node.tabKey;
       return (
         <div key={node.id} className="pt-1">
           <button
             type="button"
-            onClick={() => toggleExpand(node.id)}
-            className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700`}
+            onClick={() => {
+              setExpandedParents(prev => new Set(prev).add(node.id));
+              handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
+            }}
+            className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${
+              isActive
+                ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
+                : 'text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700'
+            }`}
           >
             <div className="flex items-center gap-2.5 truncate">
-              <ItemIcon className={`w-4 h-4 shrink-0 ${depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
+              <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
               <span className="truncate">{node.title}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -289,9 +343,9 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </span>
               )}
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
               )}
             </div>
           </button>

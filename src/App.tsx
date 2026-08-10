@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { t } from './i18n/en';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -8,6 +7,7 @@ import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { PropertyAddressBar } from './components/PropertyAddressBar';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
+import { KitchenDashboard } from './components/KitchenDashboard';
 import { KitchenManagement } from './components/KitchenManagement';
 import { InventoryManagement } from './components/InventoryManagement';
 import { PettyCashManagement } from './components/PettyCashManagement';
@@ -23,7 +23,9 @@ import { ServiceRequestsManagement } from './components/ServiceRequestsManagemen
 import { ICalSyncManager } from './components/ICalSyncManager';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { DemoDataModal } from './components/DemoDataModal';
+import { EditPropertyPage } from './components/EditPropertyPage';
 import { GlobalModal } from './components/GlobalModal';
+import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { ConfirmDialogProvider, useConfirm } from './components/ConfirmDialogContext';
 import { LoginModal } from './components/LoginModal';
@@ -34,10 +36,9 @@ import { InventoryProvider, useInventoryContext } from './contexts/InventoryCont
 import { KitchenProvider, useKitchenContext } from './contexts/KitchenContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
-import { trackDeadEnd, trackSessionLoss, trackAPIError, trackPropertyIssue } from './utils/userFlowTracker';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, saveNavMenuDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, fetchPropertyModulesFromDB, fetchCurrentProperty, getPropertySlug } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
@@ -48,8 +49,6 @@ import { PlatformPropertyManagement } from './components/PlatformPropertyManagem
 import { TenantDashboard } from './components/TenantDashboard';
 import { RootAdminDashboard } from './components/RootAdminDashboard';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
-import { MultiKeyRoomDrawer } from './components/MultiKeyRoomDrawer';
-import { RoomSelectorModal } from './components/RoomSelectorModal';
 import { getPropertyAndRoomSlugs } from './services/api';
 
 
@@ -108,17 +107,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const hash = window.location.hash.replace('#', '').trim();
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
-        guest_registration: { tab: 'guests', key: 'guest_registration' },
-        // "Billing & Checkout" was renamed "All Bookings" in the nav editor -
-        // all_bookings is the canonical key now; billing_checkout stays as an
-        // alias so old bookmarks/links keep working.
+        guest_registration: { tab: 'guests', key: 'all_bookings' },
+        // "Billing & Checkout" and "Add Booking" were merged into "Bookings" (all_bookings)
         all_bookings: { tab: 'guests', key: 'all_bookings' },
         billing_checkout: { tab: 'guests', key: 'all_bookings' },
-        guests: { tab: 'guests', key: 'guest_registration' },
+        guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
-        kitchen: { tab: 'kitchen', key: 'kitchen_orders' },
+        edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
+        menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
+        kitchen_overview: { tab: 'kitchen', key: 'kitchen_overview' },
+        kitchen: { tab: 'kitchen', key: 'kitchen_overview' },
         stock_requests: { tab: 'inventory', key: 'stock_requests' },
         fulfill_stock_req: { tab: 'inventory', key: 'fulfill_stock_req' },
         deficit_shortfalls_log: { tab: 'inventory', key: 'deficit_shortfalls_log' },
@@ -143,11 +143,9 @@ function AppBody({ preloadedData }: AppBodyProps) {
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
         system_health: { tab: 'audit_logs', key: 'system_health' },
-        edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         admin_control_group: { tab: 'menu_manager', key: 'edit_main_menu' },
         edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
-        menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
@@ -322,31 +320,33 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
 
     // When navigating to a menu tab, clear room selection
-    if (selectedRoomSlugOverride) {
-      setSelectedRoomSlugOverride(null);
+    setSelectedRoomSlugOverride(null);
+    if (selectedRoomSlugOverrideRef) {
+      selectedRoomSlugOverrideRef.current = null;
     }
     setActiveTab(tab);
-    if (menuItemKey) {
-      setActiveMenuItemKey(menuItemKey);
-    } else {
-      const defaults: Record<TabType, string> = {
-        dashboard: 'dashboard',
-        guests: 'guest_registration',
-        kitchen: 'kitchen_orders',
-        inventory: 'stock_requests',
-        petty_cash: 'expenses',
-        staff: 'staff_payees_control',
-        analytics: 'dashboard_analytics',
-        audit_logs: 'past_receipts_log',
-        export: 'data_export_center',
-        menu_manager: 'edit_food_menu',
-        telegram: 'telegram',
-        misc_charges: 'misc_charges',
-        ical_sync: 'ical_sync_manager',
-        custom_css: 'custom_css',
-        service_requests: 'service_requests',
-      };
-      setActiveMenuItemKey(defaults[tab] || tab);
+    const defaults: Record<TabType, string> = {
+      dashboard: 'dashboard',
+      guests: 'all_bookings',
+      kitchen: 'kitchen_orders',
+      inventory: 'stock_requests',
+      petty_cash: 'expenses',
+      staff: 'staff_payees_control',
+      analytics: 'dashboard_analytics',
+      audit_logs: 'past_receipts_log',
+      export: 'data_export_center',
+      menu_manager: 'edit_food_menu',
+      telegram: 'telegram',
+      misc_charges: 'misc_charges',
+      ical_sync: 'ical_sync_manager',
+      custom_css: 'custom_css',
+      service_requests: 'service_requests',
+      edit_property: 'edit_property',
+    };
+    const targetKey = menuItemKey || defaults[tab] || tab;
+    setActiveMenuItemKey(targetKey);
+    if (typeof window !== 'undefined') {
+      window.location.hash = `#${targetKey}`;
     }
   };
 
@@ -446,6 +446,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // instead of snapping back to the old key on every render.
   useEffect(() => {
     if (typeof window === 'undefined' || !activeMenuItemKey) return;
+    // RootAdminDashboard (propertySlug === 'root_dashboard') manages its own
+    // hash entirely (#dashboard, #account_settings, etc. - see its own
+    // activeSection hash-sync effect) and is rendered by this same App
+    // component, so this effect still runs even while it's on screen. With
+    // nothing here ever updating activeMenuItemKey on that path, it stays
+    // frozen at whatever it was on initial load (e.g. '#tenants_properties')
+    // - and once any of this effect's deps happen to change for any reason
+    // (e.g. a late-resolving navItems fetch), it stomps the URL back to that
+    // stale value, undoing whichever root-dashboard section was just clicked.
+    // Bail out early instead of referencing the later-declared
+    // isRootDashboardPath const (would be a TS "used before declaration"
+    // error from inside this closure).
+    if (getPropertySlug() === 'root_dashboard') return;
     // Only update hash for menu items, NOT for room slugs (which start with "room-" or other room patterns)
     const isRoomSlug = activeMenuItemKey.match(/^(room-|vr-|[a-z]+-\d+)/);
     if (isRoomSlug) return;
@@ -457,29 +470,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
   }, [activeTab, activeMenuItemKey, navItems]);
 
   // Application Data States
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('artists_farm_dark_mode');
-      if (saved !== null) return saved === 'true';
-    }
-    const hour = new Date().getHours();
-    return hour >= 20 || hour < 6;
-  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
+  const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem('artists_farm_dark_mode', String(isDarkMode));
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
-
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [receipts, setReceipts] = useState<BillingReceipt[]>([]);
-  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [guests, setGuests] = useState<Guest[]>(() => preloadedData.initialGuests || []);
+  const [receipts, setReceipts] = useState<BillingReceipt[]>(() => preloadedData.initialReceipts || []);
+  const [menu, setMenu] = useState<MenuItem[]>(() => preloadedData.initialMenu || []);
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [focusGuestId, setFocusGuestId] = useState<string | null>(null);
   // Bumped at the start of every guest/menu/audit-log/receipt hydration fetch
   // cycle (see the two effects below) so a slower, older in-flight request
   // can detect it's been superseded and skip applying its (possibly
@@ -487,7 +486,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const hydrationTokenRef = useRef(0);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { staff, refreshStaff, refreshAttendance } = useStaff();
+  const { staff, staffLoading, refreshStaff, refreshAttendance } = useStaff();
 
   const handleResetTestDatabase = async () => {
     const confirmed = await confirm({
@@ -554,7 +553,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
     if (nextState) {
       // Turning ON: Generate demo data
-      await resetTestDatabaseInDB(preloadedData.currentProperty?.id);
+      await resetTestDatabaseInDB();
     } else {
       // Turning OFF: Clear demo data
       try {
@@ -730,7 +729,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       setReceipts(data && data.length > 0 ? data : []);
     });
+    fetchServiceRequestsFromDB().then((data) => {
+      if (isStale()) return;
+      setServiceRequests(data || []);
+    });
   }, [isModuleEnabled, preloadedData.currentProperty?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchGuestsFromDB().then((data) => setGuests(data || []));
+      fetchServiceRequestsFromDB().then((data) => setServiceRequests(data || []));
+    }
+  }, [activeTab]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
@@ -753,8 +763,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
   useEffect(() => {
     if (!isAuthenticated) return;
     if (visibleNavItems.length === 0) return;
-    // Skip RBAC check if viewing a room or property overview
-    if (selectedRoomSlugOverride || activeMenuItemKey === 'multikey_property_overview') return;
+    // Skip RBAC check if viewing a room, property overview, or editing property configuration
+    if (selectedRoomSlugOverride || activeMenuItemKey === 'multikey_property_overview' || activeMenuItemKey === 'edit_property') return;
 
     const currentKey = activeMenuItemKey;
     const allowed = isRouteAllowed(currentKey, activeRole, visibleNavItems);
@@ -790,7 +800,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
         'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
-        'service_requests'
+        'service_requests', 'edit_property'
       ]);
 
       if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
@@ -799,10 +809,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
       const routeMap: Record<string, { tab: TabType; key: string }> = {
         dashboard: { tab: 'dashboard', key: 'dashboard' },
-        guest_registration: { tab: 'guests', key: 'guest_registration' },
+        guest_registration: { tab: 'guests', key: 'all_bookings' },
         all_bookings: { tab: 'guests', key: 'all_bookings' },
         billing_checkout: { tab: 'guests', key: 'all_bookings' },
-        guests: { tab: 'guests', key: 'guest_registration' },
+        guests: { tab: 'guests', key: 'all_bookings' },
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
@@ -842,6 +852,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
         ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
+        edit_property: { tab: 'edit_property', key: 'edit_property' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
@@ -1148,6 +1159,26 @@ ${itemsStr}
       const finalMsg = resolved || msg;
       dispatchTelegramAlert('Checkout', finalMsg, 'finance', undefined, 'checkout_settlement_bill');
     }
+
+    // Auto-log a "Room Cleaning" housekeeping task on every checkout (both
+    // Single and MultiKey properties - MultiKey resolves the guest's actual
+    // room, Single properties have no distinct room list so room_id stays
+    // null and the task is logged at the property level). This reuses the
+    // existing create_service_request flow, which already sends its own
+    // Telegram notification (with an inline "Mark Fulfilled" button) and
+    // stores the message id - that's what lets "Mark Fulfilled" later edit
+    // this same message in place instead of needing a second new message.
+    // Fired after the checkout-bill dispatch above (not awaited, same as it)
+    // so it lands as the follow-up message when both are enabled.
+    const matchedRoom = (preloadedData.currentProperty?.rooms || []).find(
+      (r: any) => r.name === receipt.roomNumber
+    );
+    createServiceRequestInDB({
+      room_id: matchedRoom ? Number(matchedRoom.id) : null,
+      request_type: 'room_cleaning',
+      description: `Checked out: ${receipt.guestName} (Receipt #${receipt.id})`,
+      requested_by: 'System (auto, on checkout)',
+    });
   };
 
   const handleAddMenuItem = (item: MenuItem) => {
@@ -1408,11 +1439,7 @@ ${itemsStr}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isIconOnly={isIconOnly}
             onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
-            isDarkMode={isDarkMode}
             currentPropertyColorScheme={currentPropertyColorScheme}
-            onToggleDarkMode={() => {
-              // Dark mode toggle disabled per current roadmap — revisit after one week
-            }}
             propertyName={propertyName}
             isTestModeActive={isTestModeActive}
             isTestingMode={isTestingMode}
@@ -1485,6 +1512,7 @@ ${itemsStr}
                     address={preloadedData.currentProperty?.address || ''}
                     googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                     staffCount={staff.length}
+                    isStaffLoading={staffLoading}
                     showRoomsStep={!!preloadedData.isMultiKeyProperty}
                     roomCount={preloadedData.currentProperty?.rooms?.length || 0}
                     onSaveLocation={handleSavePropertyLocation}
@@ -1531,14 +1559,6 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'dashboard' ? (
                 preloadedData.isMultiKeyProperty ? (
                   <div className="space-y-6">
-                    <ErrorBoundary section="Property Address">
-                      <PropertyAddressBar
-                        address={preloadedData.currentProperty?.address || ''}
-                        googleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                        instructions={preloadedData.currentProperty?.instructions || ''}
-                        onSaveLocation={handleSavePropertyLocation}
-                      />
-                    </ErrorBoundary>
                     <ErrorBoundary section="Booking Calendar">
                       <TodayOverview
                         guests={guests}
@@ -1549,13 +1569,14 @@ ${itemsStr}
                           return kitchenModule?.is_enabled ?? true;
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
-                        onAddBooking={() => handleNavigateTab('guests', 'guest_registration')}
+                        onAddBooking={() => setIsAddBookingModalOpen(true)}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
                     <ErrorBoundary section="Multi-Key Property Overview">
@@ -1586,6 +1607,7 @@ ${itemsStr}
                       onDeleteBooking={handleDeleteGuest}
                       onGuestVerificationUpdated={handleGuestVerificationUpdated}
                       onCFormFiledUpdated={handleCFormFiledUpdated}
+                      serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1609,6 +1631,12 @@ ${itemsStr}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
                         onSavePropertyLocation={handleSavePropertyLocation}
+                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        onCheckout={(guestId) => {
+                          setFocusGuestId(guestId);
+                          handleNavigateTab('guests', 'all_bookings');
+                        }}
+                        serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1632,6 +1660,8 @@ ${itemsStr}
                     onSetActiveMenuItemKey={setActiveMenuItemKey}
                     selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                    focusGuestId={focusGuestId}
+                    onClearFocusGuest={() => setFocusGuestId(null)}
                     propertyGstin={preloadedData.currentProperty?.gstin || ''}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
@@ -1644,7 +1674,16 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (activeMenuItemKey === 'kitchen_overview' || activeMenuItemKey === 'kitchen') && (
+                <ErrorBoundary section="Kitchen Dashboard">
+                  <KitchenDashboard
+                    onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'kitchen', uniqueKey)}
+                    navItems={visibleNavItems}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && activeMenuItemKey !== 'kitchen_overview' && activeMenuItemKey !== 'kitchen' && (
                 <ErrorBoundary section="Kitchen Management">
                   <KitchenManagement
                     guests={guests}
@@ -1788,7 +1827,43 @@ ${itemsStr}
                   <ICalSyncManager propertyId={preloadedData.currentProperty?.id} />
                 </ErrorBoundary>
               )}
+
+              {!selectedRoomSlugOverride && activeTab === 'edit_property' && (
+                <ErrorBoundary section="Edit Property">
+                  <EditPropertyPage property={preloadedData.currentProperty} />
+                </ErrorBoundary>
+              )}
             </main>
+          </div>
+        )}
+
+        {/* Global Add Booking Modal Overlay */}
+        {isAddBookingModalOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setIsAddBookingModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GuestManagement
+                guests={guests}
+                receipts={receipts}
+                menu={menu}
+                rooms={preloadedData.currentProperty?.rooms || []}
+                onAddGuest={async (guest) => {
+                  await handleAddGuest(guest);
+                  setIsAddBookingModalOpen(false);
+                }}
+                onCheckoutGuest={handleCheckoutGuest}
+                onDispatchTelegram={dispatchTelegramAlert}
+                activeMenuItemKey="guest_registration"
+                isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                selectedRoomSlug={preloadedData.currentRoomSlug}
+                onClose={() => setIsAddBookingModalOpen(false)}
+              />
+            </div>
           </div>
         )}
 
@@ -1825,6 +1900,7 @@ ${itemsStr}
         )}
 
         <GlobalModal />
+        <ScrollToTopButton />
     </div>
   );
 }
@@ -1952,7 +2028,8 @@ export function App() {
     const dashboardTenantId = resolvedTenant ? resolvedTenant.id : userSession.default_tenant_id;
 
     // Security: Only root admin can view other tenants' dashboards
-    if (!userSession.is_platform_admin && dashboardTenantId !== userSession.default_tenant_id) {
+    const isPlatformAdmin = userSession?.is_platform_admin === true;
+    if (!isPlatformAdmin && dashboardTenantId !== userSession?.default_tenant_id) {
       return (
         <div className="min-h-screen bg-red-50 dark:bg-red-950 flex items-center justify-center">
           <div className="text-center">
@@ -1988,16 +2065,24 @@ export function App() {
     }
 
     return (
-      <ConfirmDialogProvider>
-        <RootAdminDashboard
-          username={userSession.username}
-          onLogout={() => {
-            setUserSession(null);
-            localStorage.removeItem('artists_farm_user_session');
-          }}
-          activeRole="Root Admin"
-        />
-      </ConfirmDialogProvider>
+      // AccountSettings (rendered inside RootAdminDashboard) calls useToast()
+      // for its save/error notifications - this branch is rendered directly
+      // by App(), never through AppWithProviders, so it needs its own
+      // ToastProvider or that throws "useToast must be used within
+      // ToastProvider" with no error boundary to catch it, blanking the
+      // entire page (not just the Account Settings section).
+      <ToastProvider>
+        <ConfirmDialogProvider>
+          <RootAdminDashboard
+            username={userSession.username}
+            onLogout={() => {
+              setUserSession(null);
+              localStorage.removeItem('artists_farm_user_session');
+            }}
+            activeRole="Root Admin"
+          />
+        </ConfirmDialogProvider>
+      </ToastProvider>
     );
   }
 

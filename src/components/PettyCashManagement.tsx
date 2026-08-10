@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Wallet, PlusCircle, ArrowUpRight, ArrowDownLeft, IndianRupee, X, Check, Search, Calendar, Edit2, Upload, FileText, ImageIcon, Landmark } from 'lucide-react';
+import { Wallet, X, Search, Edit2, FileText, ImageIcon, Landmark } from 'lucide-react';
 import DataTable from 'react-data-table-component';
-import { PettyCashEntry, StaffMember } from '../types';
+import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -371,17 +373,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         ))}
       </datalist>
 
-      {/* Top Title */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          {t('petty_cash_ledger_heading', 'Operational Expenses Ledger')}
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          {t('petty_cash_ledger_subtitle', 'Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.')}
-        </p>
-      </div>
-
-
+      <PageHeader
+        title={t('petty_cash_ledger_heading', 'Operational Expenses Ledger')}
+        subtitle={t('petty_cash_ledger_subtitle', 'Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.')}
+      />
 
       {/* Add Expenses form on the left, registered expenses (filter + Cost
           Logs table) on the right on wide screens - stacks to form-then-logs
@@ -689,7 +684,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingDate ? (
                   <input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded text-slate-900 text-[11px]" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{entry.date}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
                 );
               },
             },

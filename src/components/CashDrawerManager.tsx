@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Wallet, ArrowRightLeft, HandCoins, ShoppingCart, Settings2, RefreshCw, X, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders } from 'lucide-react';
-import { CashDrawerEntry, CashDrawerSummary, StaffMember } from '../types';
+import { ArrowRightLeft, RefreshCw, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders } from 'lucide-react';
+import { CashDrawerEntry, CashDrawerSummary } from '../types';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
-import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, fetchStaffUsersFromDB, resolveTelegramTemplate } from '../services/api';
+import { fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchDrawerEntriesFromDB, resolveTelegramTemplate } from '../services/api';
 import DataTable from 'react-data-table-component';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface CashDrawerManagerProps {
   onLogAudit?: (action: string, extra?: any) => void;
@@ -127,16 +129,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
   return (
     <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
-      {/* Title */}
-      <div>
-        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-emerald-600" />
-          {t('cash_drawer_manager_title', 'Cash Drawer Manager')}
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          {t('cash_drawer_description', "Digital lockbox tracking who holds the farm's cash. Accountability & reconciliation at a glance.")}
-        </p>
-      </div>
+      <PageHeader
+        title={t('cash_drawer_manager_title', 'Cash Drawer Manager')}
+        subtitle={t('cash_drawer_description', "Digital lockbox tracking who holds the farm's cash. Accountability & reconciliation at a glance.")}
+      />
 
       {/* System Totals Bar */}
       <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-4 text-white shadow-lg">
@@ -418,7 +414,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   selector: (entry: CashDrawerEntry) => entry.created_at,
                   sortable: true,
                   width: '160px',
-                  cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{entry.created_at}</span>,
+                  cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
                 },
                 {
                   name: t('staff_column', 'Staff'),

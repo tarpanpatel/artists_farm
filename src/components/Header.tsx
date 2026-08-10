@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import {
   Building2,
   UserCheck,
-  Clock,
   AlertTriangle,
   Menu,
-  X,
   Bell,
-  Sun,
-  Moon,
   CheckCircle2,
-  LogOut,
-  Beaker,
   Play,
   Square,
   Utensils,
@@ -21,7 +15,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
-import { Guest, Order } from '../types';
+import { Guest } from '../types';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface HeaderProps {
@@ -33,8 +28,6 @@ interface HeaderProps {
   onToggleSidebar: () => void;
   isIconOnly: boolean;
   onToggleIconOnly: () => void;
-  isDarkMode: boolean;
-  onToggleDarkMode: () => void;
   currentPropertyColorScheme: string;
   propertyName: string;
   isTestModeActive?: boolean;
@@ -55,8 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   isIconOnly,
   onToggleIconOnly,
-  isDarkMode,
-  onToggleDarkMode,
   currentPropertyColorScheme,
   propertyName,
   isTestModeActive = false,
@@ -259,7 +250,7 @@ export const Header: React.FC<HeaderProps> = ({
                         {todayGuests.map((guest) => {
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
                           const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
-                          let badgeText = t('active_stay_badge', 'Active Stay');
+                          let badgeText = t('checked_in_badge', 'Active Stay');
                           let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
                           if (checkin === todayStr) {
                             badgeText = t('checkin_today_badge', 'Check-in Today');
@@ -347,34 +338,17 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Test Data Button */}
           {onOpenDemoModal && (
-            <button
+            <Button
+              variant={isTestingMode ? 'danger' : 'secondary'}
+              size="sm"
               onClick={isTestingMode ? onToggleTestingMode : onOpenDemoModal}
               title={isTestingMode ? t('stop_test_mode_tooltip', 'Stop Test Mode') : t('open_test_data_center_tooltip', 'Open Test Data Center')}
               aria-label={t('test_data_center_aria', 'Test Data Center')}
-              className={`btn-test-data px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
-                isTestingMode
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-700 font-bold'
-                  : 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-950/50'
-              }`}
+              leftIcon={isTestingMode ? <Square className="w-3.5 h-3.5 fill-current text-white" /> : <Play className="w-3.5 h-3.5 fill-current text-emerald-600" />}
             >
-              {isTestingMode ? (
-                <Square className="w-4 h-4 fill-current text-white" />
-              ) : (
-                <Play className="w-4 h-4 fill-current" />
-              )}
               <span className="hidden sm:inline">{isTestingMode ? t('stop_test_button', 'Stop Test') : t('test_button', 'Test')}</span>
-            </button>
+            </Button>
           )}
-
-          {/* Dark Mode Toggle Button - DISABLED per current roadmap, will revisit after one week */}
-          <button
-            disabled
-            title={t('switch_to_light_tooltip', 'Switch to Light Mode')}
-            aria-label={t('toggle_dark_mode_aria', 'Toggle Dark Mode')}
-            className="btn-toggle-darkmode p-2 text-gray-400 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-not-allowed opacity-60"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
-          </button>
 
           {/* User Profile */}
           {isAuthenticated ? (
@@ -392,16 +366,6 @@ export const Header: React.FC<HeaderProps> = ({
                   {activeRole}
                 </span>
               </div>
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  title={t('lock_logout_pos_tooltip', 'Lock & Logout POS')}
-                  aria-label={t('logout_pos_aria', 'Logout POS')}
-                  className="btn-onlogout-pos ml-1 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              )}
             </div>
           ) : (
             <div className="pos-user-profile-badge flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-slate-700">
@@ -416,3 +380,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

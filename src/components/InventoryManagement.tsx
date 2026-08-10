@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, ArrowUpDown, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, User, Coins, Package, Check } from 'lucide-react';
-import { InventoryItem, StaffMember, CatalogItem } from '../types';
+import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check } from 'lucide-react';
+import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
+import { PageHeader } from './PageHeader';
 import { StyledSelect } from './StyledSelect';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 
 interface InventoryManagementProps {
@@ -32,6 +34,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const { currentUser } = useAuth();
   const { inventory } = useInventoryContext();
   const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'purchases' | 'fulfill' | 'catalog'>('stock_log');
+
+  useEffect(() => {
+    if (!activeMenuItemKey) return;
+    if (activeMenuItemKey === 'stock_requests') setActiveTab('requisitions');
+    else if (activeMenuItemKey === 'fulfill_stock_req') setActiveTab('fulfill');
+    else if (activeMenuItemKey === 'deficit_shortfalls_log') setActiveTab('deficit');
+    else if (activeMenuItemKey === 'stock_log') setActiveTab('stock_log');
+    else if (activeMenuItemKey === 'kitchen_purchases') setActiveTab('purchases');
+    else if (activeMenuItemKey === 'edit_kitchen_stock') setActiveTab('catalog');
+  }, [activeMenuItemKey]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [selectedCatalogItemIds, setSelectedCatalogItemIds] = useState<number[]>([]);
   const [bulkTargetCategory, setBulkTargetCategory] = useState<string>('');
@@ -557,19 +569,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           {
             id: '1166',
             status: 'PENDING',
-            date: '21 Jul 2026 - 10:21 PM',
+            date: '21/07/2026 - 10:21 PM',
             items: ['Green Pea (x1 Kg)', 'Hari Mirchi (x1 Kg)'],
           },
           {
             id: '1165',
             status: 'PENDING',
-            date: '21 Jul 2026 - 09:05 PM',
+            date: '21/07/2026 - 09:05 PM',
             items: ['Black Pepper (x1 Pcs)', 'Basmati Rice (x1 Pc)'],
           },
           {
             id: '1164',
             status: 'PENDING',
-            date: '21 Jul 2026 - 08:53 PM',
+            date: '21/07/2026 - 08:53 PM',
             items: ['Ajino Moto (x1 Gm)'],
           },
         ]);
@@ -611,7 +623,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const newSheet = {
       id: newSheetId,
       status: 'PENDING',
-      date: `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} - ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+      date: `${new Date().toLocaleDateString('en-GB')} - ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
       items,
     };
     setRecentSheets([newSheet, ...recentSheets]);
@@ -810,15 +822,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   if (activeTab === 'deficit') {
     return (
       <div className="kitchen-wastage-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
-        {/* Title */}
-        <div>
-          <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-            ⚠️ Kitchen Wastage & Spillage Log
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Formally record spillage, spoilage, or kitchen damage with full accountability and audit trail.
-          </p>
-        </div>
+        <PageHeader
+          title="Kitchen Wastage & Spillage Log"
+          subtitle="Formally record spillage, spoilage, or kitchen damage with full accountability and audit trail."
+        />
 
         {/* Wastage Form */}
         <div className="record-wastage-card max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
@@ -922,7 +929,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 selector: (log: any) => log.date,
                 sortable: true,
                 width: '110px',
-                cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{log.date}</span>,
+                cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{formatDateDDMMYYYY(log.date)}</span>,
               },
               {
                 name: 'Item Name',
@@ -2036,7 +2043,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     selector: (row: any) => row.date,
                    sortable: true,
                    grow: 1,
-                   cell: (row: any) => <span className="text-xs font-semibold text-slate-500">{row.date}</span>,
+                   cell: (row: any) => <span className="text-xs font-semibold text-slate-500">{formatDateTimeDDMMYYYY(row.date)}</span>,
                  },
                   {
                     name: t('material_selections_summary_column_header'),
@@ -2289,10 +2296,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <button
                       key={cat}
                       onClick={() => setReqCategory(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                         isSelected
-                          ? 'bg-cyan-500 text-white shadow-2xs'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          ? 'bg-cyan-500 text-white border-cyan-500 shadow-sm'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       {cat}
@@ -2661,15 +2668,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   return (
     <div className="stock-inventory-container space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-          {t('inventory_catalog_heading')}
-        </h2>
-        <p className="text-[11px] text-gray-500 mt-0.5">
-          {t('inventory_catalog_subtitle')}
-        </p>
-      </div>
+      <PageHeader title={t('inventory_catalog_heading')} subtitle={t('inventory_catalog_subtitle')} />
 
       {/* Desktop DataTable */}
       <div className="hidden md:block">

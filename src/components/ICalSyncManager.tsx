@@ -6,23 +6,20 @@ import {
   X, 
   Plus, 
   RefreshCw, 
-  Calendar as CalendarIcon, 
   Globe,
   Clock,
   CheckCircle2,
   Share2,
   ShieldCheck,
   Search,
-  Filter,
-  Link as LinkIcon,
-  Layers,
-  ArrowUpRight
-} from 'lucide-react';
+  Layers} from 'lucide-react';
 import { getPropertySlug, getPropertyAndRoomSlugs, API_ROOT_BASE } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
+import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Calendar {
   id: number;
@@ -359,36 +356,23 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
         </nav>
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-              <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              <span>{t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}</span>
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={handleSyncAll}
-              disabled={isSyncingAll || calendars.length === 0}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-2xs disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 text-blue-600 ${isSyncingAll ? 'animate-spin' : ''}`} />
-              <span>{isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}</span>
-            </button>
-
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('connect_ical_feed_button', 'Connect iCal Feed')}</span>
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title={t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}
+          subtitle={t('ical_ota_channel_integration_subtitle', 'Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.')}
+        >
+          <PageHeaderButton
+            onClick={handleSyncAll}
+            icon={RefreshCw}
+            iconClassName={isSyncingAll ? 'animate-spin' : ''}
+            variant="secondary"
+            disabled={isSyncingAll || calendars.length === 0}
+          >
+            {isSyncingAll ? t('syncing_all_button', 'Syncing All...') : t('sync_all_feeds_button', 'Sync All Feeds')}
+          </PageHeaderButton>
+          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+            {t('connect_ical_feed_button', 'Connect iCal Feed')}
+          </PageHeaderButton>
+        </PageHeader>
       </div>
 
       {/* Top 4 Metric KPI Cards */}
@@ -564,7 +548,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                             {new Date(cal.last_sync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                           <p className="text-[10px] text-slate-400">
-                            {new Date(cal.last_sync).toLocaleDateString()}
+                            {formatDateDDMMYYYY(cal.last_sync)}
                           </p>
                         </div>
                       ) : (

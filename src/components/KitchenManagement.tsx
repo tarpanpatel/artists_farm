@@ -5,12 +5,9 @@ import {
   Clock,
   CheckCircle2,
   ChefHat,
-  ShoppingBag,
   X,
   Boxes,
-  AlertCircle,
   Upload,
-  Image as ImageIcon,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -35,7 +32,10 @@ import DataTable from 'react-data-table-component';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useStaff } from '../contexts/StaffContext';
+import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface KitchenManagementProps {
   guests: Guest[];
@@ -62,6 +62,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
+
+  useEffect(() => {
+    if (!activeMenuItemKey) return;
+    if (activeMenuItemKey === 'take_food_order') setActiveTab('new_order');
+    else if (activeMenuItemKey === 'kitchen_orders') setActiveTab('kds');
+    else if (activeMenuItemKey === 'staff_meals') setActiveTab('staff_meals');
+    else if (activeMenuItemKey === 'edit_food_menu') setActiveTab('menu_catalog');
+    else if (activeMenuItemKey === 'beta_recipe_builder') setActiveTab('beta_recipe_builder');
+  }, [activeMenuItemKey]);
 
   const getCurrentUserName = () => {
     if (currentUser?.name) return currentUser.name;
@@ -225,7 +234,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       servedBy: servedByUser,
       guestName: ord.guestName,
       roomNumber: ord.roomNumber,
-      servedAt: `${new Date().toLocaleDateString()} ${nowTime}`,
+      servedAt: `${formatDateDDMMYYYY(new Date().toISOString())} ${nowTime}`,
     };
     setServedLogs((prev) => [newLog, ...prev]);
     addServedLogToDB({
@@ -251,7 +260,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         item_name: item.name,
         quantity: String(item.quantity),
         guest_name: ord.guestName,
-        table_no: ord.roomNumber,
+        room_no: ord.roomNumber,
         served_by: servedByUser,
         remaining_items: '0',
       };
@@ -282,7 +291,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         order_id: cleanTicketId,
         qty: String(item.quantity),
         dish_name: item.name,
-        table_no: ord.roomNumber,
+        room_no: ord.roomNumber,
         elapsed_minutes: String(elapsedMin),
       };
       const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
@@ -319,7 +328,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         order_id: cleanTicketId,
         qty: String(item.quantity),
         dish_name: item.name,
-        table_no: ord.roomNumber,
+        room_no: ord.roomNumber,
         ready_since: readySince || 'a while ago',
       };
       const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
@@ -366,11 +375,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       order_id: String(stale.order_id),
       qty: String(stale.quantity),
       dish_name: stale.dish_name,
-      table_no: stale.table_no,
+      room_no: stale.room_no,
       elapsed_minutes: String(stale.elapsed_minutes),
     };
     const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
-    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.table_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>`;
+    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>`;
     onDispatchTelegram?.('Kitchen Order Reminder (Auto)', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
@@ -380,7 +389,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       order_id: String(stale.order_id),
       qty: String(stale.quantity),
       dish_name: stale.dish_name,
-      table_no: stale.table_no,
+      room_no: stale.room_no,
       ready_since: `${stale.elapsed_minutes} min ago`,
     };
     const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
@@ -389,7 +398,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
       ]
     };
-    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.table_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>`;
+    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>`;
     onDispatchTelegram?.('Pickup Reminder (Auto)', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
@@ -443,7 +452,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, []);
   const [smVisibleCount, setSmVisibleCount] = useState(10);
 
-  const smStaffList = useMemo(() => guests.filter(g => g.status === 'Active').map(g => g.guestName), [guests]);
+  const { staff } = useStaff();
+
+  const smStaffList = useMemo(() => staff.filter(s => s.status === 'Active').map(s => s.name), [staff]);
 
 
   const handleSaveCustomMeal = () => {
@@ -711,10 +722,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
 
   // New Order Form State
-  const activeGuests = isTestingMode
+  const checkedInGuests = isTestingMode
     ? guests
     : guests.filter((g) => g.status === 'Active');
-  const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
+  const [selectedGuestId, setSelectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
   });
@@ -850,28 +861,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     <div className="space-y-6">
       {/* Top Header (Hidden on Take Food Order POS view) */}
       {activeTab !== 'new_order' && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-2xs">
-          <div>
-            <h2 className="text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-              {t('kitchen_ticketing_header')}
-            </h2>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-              {t('kitchen_subtitle')}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {activeTab !== 'staff_meals' && (
-              <button
-                onClick={() => setActiveTab('new_order')}
-                className="text-white bg-cyan-600 hover:bg-cyan-700 font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{t('create_resident_order_button')}</span>
-              </button>
-            )}
-          </div>
-        </div>
+        <PageHeader title={t('kitchen_ticketing_header')} subtitle={t('kitchen_subtitle')}>
+          {activeTab !== 'staff_meals' && (
+            <PageHeaderButton onClick={() => setActiveTab('new_order')} icon={Plus}>
+              {t('create_resident_order_button')}
+            </PageHeaderButton>
+          )}
+        </PageHeader>
       )}
 
       {/* TAB 1: KDS TICKET QUEUE */}
@@ -1056,8 +1052,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 2: CREATE ORDER POS */}
       {activeTab === 'new_order' && (() => {
-        const activeGuest = activeGuests[0];
-        const selectedGuest = activeGuest || activeGuests.find((g) => g.id === selectedGuestId);
+        const checkedInGuest = checkedInGuests[0];
+        const selectedGuest = checkedInGuest || checkedInGuests.find((g) => g.id === selectedGuestId);
         const filteredPosMenuItems = menu.filter((item) => {
           const matchesSearch = item.name.toLowerCase().includes(posSearch.toLowerCase().trim());
           const categoryKey = String(item.categoryId ?? `name:${item.category}`);
@@ -1322,9 +1318,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && activeGuests.length === 0)}
+                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && checkedInGuests.length === 0)}
                     title={
-                      !isTestingMode && activeGuests.length === 0
+                      !isTestingMode && checkedInGuests.length === 0
                         ? t('no_active_resident_tooltip')
                         : cartItems.length === 0
                         ? t('order_cart_empty_tooltip')
@@ -1413,9 +1409,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="p-3 bg-white border-t border-slate-200 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && activeGuests.length === 0)}
+                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && checkedInGuests.length === 0)}
                     title={
-                      !isTestingMode && activeGuests.length === 0
+                      !isTestingMode && checkedInGuests.length === 0
                         ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
                         : cartItems.length === 0
                         ? 'Order cart is empty'
@@ -1512,7 +1508,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   selector: (row: Requisition) => row.requestedAt,
                 sortable: true,
                 width: '160px',
-                cell: (row: Requisition) => <span className="text-slate-500">{row.requestedAt}</span>,
+                cell: (row: Requisition) => <span className="text-slate-500">{formatDateTimeDDMMYYYY(row.requestedAt)}</span>,
               },
                 {
                   name: t('requested_by_column'),
@@ -2478,7 +2474,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
             { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, sortable: true, cell: (row: ServedLogEntry) => <span className="font-bold text-slate-800 dark:text-slate-200">{row.guestName}</span> },
             { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, sortable: true, width: '70px' },
             { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, sortable: true, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
-            { name: t('date_time_column'), selector: (row: ServedLogEntry) => row.servedAt, sortable: true, width: '150px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.servedAt}</span> },
+            { name: t('date_time_column'), selector: (row: ServedLogEntry) => row.servedAt, sortable: true, width: '150px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
           ]}
           data={servedLogs}
           subHeader={
@@ -2506,3 +2502,4 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
     </div>
   );
 };
+

@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import DataTable, { TableProps } from 'react-data-table-component';
+import DataTable from 'react-data-table-component';
 import {
   ScrollText,
-  Clock,
-  UserCheck,
-  BookOpen,
   ShieldAlert,
   Lock,
-  Activity,
-  CheckCircle2,
   AlertTriangle,
   Receipt,
   Edit2,
@@ -18,14 +13,14 @@ import {
   Utensils,
   PlusCircle,
   CreditCard,
-  Plus,
-  Minus,
   Search
 } from 'lucide-react';
 import { AuditLog, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 interface AuditLogsViewProps {
   logs: AuditLog[];
@@ -250,17 +245,10 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   return (
     <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {!isStandalonePage && (
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <ScrollText className="w-6 h-6 text-blue-600" />
-              <span>{t('audit_trails_system_diagnostics_heading', 'Audit Trails & System Diagnostics')}</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              {t('audit_trails_system_diagnostics_subtitle', 'Timestamped security logs, past receipt settlements, login trace audits, and system health status')}
-            </p>
-          </div>
-
+        <PageHeader
+          title={t('audit_trails_system_diagnostics_heading', 'Audit Trails & System Diagnostics')}
+          subtitle={t('audit_trails_system_diagnostics_subtitle', 'Timestamped security logs, past receipt settlements, login trace audits, and system health status')}
+        >
           <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('audit')}
@@ -296,7 +284,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               <span>{t('login_trace_tab_label', 'Login Trace')}</span>
             </button>
           </div>
-        </div>
+        </PageHeader>
       )}
 
       {/* TAB CONTENT: PAST RECEIPTS LOG */}
@@ -333,7 +321,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 sortable: true,
                 width: '130px',
                 cell: (rec: BillingReceipt) => (
-                  <span className="text-slate-500">{rec.checkoutDate || '—'}</span>
+                  <span className="text-slate-500">{formatDateDDMMYYYY(rec.checkoutDate) || '—'}</span>
                 ),
               },
               {
@@ -487,7 +475,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   grow: 1,
                   cell: (log: AuditLog) => (
                     <span className="font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {log.timestamp.split('T').join(' ')}
+                      {formatDateTimeDDMMYYYY(log.timestamp)}
                     </span>
                   ),
                 },
@@ -554,7 +542,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   sortable: true,
                   width: '170px',
                   cell: (log: AuditLog) => (
-                    <span className="font-mono text-slate-500">{log.timestamp}</span>
+                    <span className="font-mono text-slate-500">{formatDateTimeDDMMYYYY(log.timestamp)}</span>
                   ),
                 },
                 {
@@ -679,7 +667,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   sortable: true,
                   width: '170px',
                   cell: (log: AuditLog) => (
-                    <span className="text-slate-500 font-mono">{log.timestamp}</span>
+                    <span className="text-slate-500 font-mono">{formatDateTimeDDMMYYYY(log.timestamp)}</span>
                   ),
                 },
                 {
@@ -759,7 +747,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
               <div>
                 <h3 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                  <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({editingReceipt.checkoutDate || 'Stay'})</span>
+                  <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({formatDateDDMMYYYY(editingReceipt.checkoutDate) || 'Stay'})</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {t('modify_bill_audit_subtitle', 'Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.')}

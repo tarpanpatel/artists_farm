@@ -4,25 +4,20 @@ import {
   TrendingUp, 
   IndianRupee, 
   PieChart, 
-  Users, 
   Utensils, 
   ShoppingBag, 
   Calendar, 
-  DollarSign, 
   Layers, 
-  Tag,
-  Search,
   Filter,
-  CheckCircle2,
-  AlertCircle,
   BedDouble
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
-import { BillingReceipt, Order } from '../types';
+import { BillingReceipt } from '../types';
 import { fetchExpenseItemPricesFromDB, fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/api';
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface AnalyticsRoom {
@@ -336,27 +331,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   return (
     <div className="analytics-dashboard-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
-      {/* Top Title Banner */}
-      <div className="analytics-header-banner bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            <span>{t('bi_analytics_dashboard_heading', 'Business Intelligence (BI) Analytics Dashboard')}</span>
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {t('bi_analytics_dashboard_subtitle', 'Real-time multi-dimensional financial reports, revenue streams, operational expenses, and procurement price analytics.')}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-500" />
-          <StyledSelect
-            value={dateFilter}
-            onChange={(value) => setDateFilter(value as DateFilter)}
-            options={dateFilterOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title={t('bi_analytics_dashboard_heading', 'Business Intelligence (BI) Analytics Dashboard')}
+        subtitle={t('bi_analytics_dashboard_subtitle', 'Real-time multi-dimensional financial reports, revenue streams, operational expenses, and procurement price analytics.')}
+      >
+        <Filter className="w-4 h-4 text-slate-500" />
+        <StyledSelect
+          value={dateFilter}
+          onChange={(value) => setDateFilter(value as DateFilter)}
+          options={dateFilterOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+        />
+      </PageHeader>
 
       {/* Summary KPI Cards (Always Visible) */}
       <div className={`analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 ${kitchenModuleEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface MiscChargeTemplate {
@@ -307,26 +308,16 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
-        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-4 mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-indigo-500" />
-              {t('misc_charges_heading', 'Expense Categories & Items')}
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t('misc_charges_description', 'System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.')}
-            </p>
-          </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            {t('add_new_service_button', 'Add New Service')}
-          </button>
-        </div>
+      <PageHeader
+        title={t('misc_charges_heading', 'Expense Categories & Items')}
+        subtitle={t('misc_charges_description', 'System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.')}
+      >
+        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+          {t('add_new_service_button', 'Add New Service')}
+        </PageHeaderButton>
+      </PageHeader>
 
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
         <DataTable
           columns={columns}
           data={filteredCharges}

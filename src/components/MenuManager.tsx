@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from './Button';
+import { Input } from './Input';
 import {
   Utensils,
   Navigation as NavIcon,
   Plus,
   Edit2,
   Trash2,
-  Search,
-  Eye,
-  EyeOff,
-  MoveUp,
-  MoveDown,
-  Check,
   X,
   ShieldCheck,
   CheckSquare,
   Square,
-  Sparkles,
-  DollarSign,
-  Tag,
   Grid,
-  ListFilter,
   Image as ImageIcon,
   Upload,
   LayoutDashboard,
@@ -42,14 +34,12 @@ import {
   TrendingDown,
   Package,
   ShoppingBag,
-  Layers,
-  Link as LinkIcon,
-  Info,
 } from 'lucide-react';
-import { MenuItem, NavMenuItem, StaffMember } from '../types';
+import { MenuItem, NavMenuItem } from '../types';
 import { uploadImageDB } from '../services/api';
 import { NavMenuEditor } from './NavMenuEditor';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
 import { useStaff } from '../contexts/StaffContext';
@@ -483,45 +473,30 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     <div className="space-y-5">
       {/* Header Banner (Hidden on direct standalone pages) */}
       {!isStandalonePage && (
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200">
-                <Grid className="w-4 h-4" />
-              </span>
-              <h2 className="text-sm sm:text-base font-bold text-gray-900 tracking-tight">{t('system_menu_manager_heading', 'System Menu Manager')}</h2>
-            </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              {t('system_menu_manager_subtitle', 'Reorder main navigation items with drag & drop, configure access control (RBAC), and manage kitchen food catalog')}
-            </p>
-          </div>
-
+        <PageHeader
+          title={t('system_menu_manager_heading', 'System Menu Manager')}
+          subtitle={t('system_menu_manager_subtitle', 'Reorder main navigation items with drag & drop, configure access control (RBAC), and manage kitchen food catalog')}
+        >
           {/* Sub-tab Navigation Switcher */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg border border-gray-200 w-full md:w-auto shrink-0">
-            <button
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto shrink-0">
+            <Button
+              variant={activeSubTab === 'nav_menu' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setActiveSubTab('nav_menu')}
-              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                activeSubTab === 'nav_menu'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              leftIcon={<NavIcon className="w-4 h-4" />}
             >
-              <NavIcon className="w-4 h-4" />
               <span>{t('edit_main_menu_tab_label', 'Edit Main Menu')} ({navItems.length})</span>
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={activeSubTab === 'food_menu' ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setActiveSubTab('food_menu')}
-              className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                activeSubTab === 'food_menu'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              leftIcon={<Utensils className="w-4 h-4" />}
             >
-              <Utensils className="w-4 h-4" />
               <span>{t('food_catalog_tab_label', 'Food Catalog')} ({foodMenu.length})</span>
-            </button>
+            </Button>
           </div>
-        </div>
+        </PageHeader>
       )}
 
       {/* SUB-TAB 1: WORDPRESS-STYLE MAIN MENU MANAGER */}
@@ -540,15 +515,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           {/* Controls Bar */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
+              <div className="w-full md:w-64">
+                <Input
                   autoComplete="off"
                   value={foodSearch}
                   onChange={(e) => setFoodSearch(e.target.value)}
                   placeholder={t('search_food_items_placeholder', 'Search food items...')}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 p-2"
                 />
               </div>
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  FileSpreadsheet,
   Download,
   Calendar,
   Database,
@@ -11,18 +10,15 @@ import {
   FileText,
   HardDriveDownload,
   CheckCircle2,
-  Receipt,
-  ShoppingCart,
-  ScrollText,
-  Menu
 } from 'lucide-react';
-import { Guest, BillingReceipt, Order, StaffMember, AttendanceRecord, AuditLog, MenuItem } from '../types';
+import { Guest, BillingReceipt, AuditLog, MenuItem } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface DataExportCenterProps {
@@ -452,25 +448,17 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Header */}
-      <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-            <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-            <span>{t('data_export_center_title', 'Data Export & Backup Center')}</span>
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            {t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
-          </p>
-        </div>
-
+      <PageHeader
+        title={t('data_export_center_title', 'Data Export & Backup Center')}
+        subtitle={t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
+      >
         {downloadSuccessMsg && (
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-lg text-xs font-bold animate-fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{downloadSuccessMsg}</span>
           </div>
         )}
-      </div>
+      </PageHeader>
 
       {/* Control Card & Dropdowns */}
       <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-2xs space-y-6">

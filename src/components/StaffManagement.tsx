@@ -1,36 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Tooltip } from './Tooltip';
+import { Button } from './Button';
+import { Input } from './Input';
 import DataTable from 'react-data-table-component';
 import {
-  Calendar as CalendarIcon,
   Plus,
-  UserCheck,
   Users,
-  CheckCircle2,
-  XCircle,
-  Clock,
   IndianRupee,
   X,
   Check,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  ShieldCheck,
-  QrCode,
-  Edit2,
   Trash2,
-  Upload,
-  Key,
-  Store,
   ArrowRight
 } from 'lucide-react';
-import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance, SalaryEntry } from '../types';
+import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface StaffManagementProps {
@@ -562,65 +551,66 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Navigation Sub-Tabs Header */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-500" /> {t('payroll_control_center_heading', 'Property Payroll & Payee Control Center')}
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isAttendancePage
-                ? t('attendance_page_subtitle', 'Track staff attendance and manage salary details.')
-                : t('staff_payee_subtitle', 'Manage login staff credentials, core operational suppliers, and pass-through third parties.')}
-            </p>
+      <PageHeader
+        title={t('payroll_control_center_heading', 'Property Payroll & Payee Control Center')}
+        subtitle={
+          isAttendancePage
+            ? t('attendance_page_subtitle', 'Track staff attendance and manage salary details.')
+            : t('staff_payee_subtitle', 'Manage login staff credentials, core operational suppliers, and pass-through third parties.')
+        }
+      >
+        {/* Bulk Select controls - only relevant on the attendance calendar sub-tab */}
+        {isAttendancePage && activeSubTab === 'calendar' && (
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <Button
+              onClick={() => {
+                setIsBulkSelectEnabled(!isBulkSelectEnabled);
+                setSelectedCells(new Set());
+              }}
+              variant="ghost"
+              size="md"
+              className={`font-bold transition-all cursor-pointer shadow-2xs ${
+                isBulkSelectEnabled
+                  ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
+                  : 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white'
+              }`}
+            >
+              {isBulkSelectEnabled ? '✕ Exit Bulk Mode' : '⚡ Enable Bulk Select'}
+            </Button>
+
+            {isBulkSelectEnabled && (
+              <div className="flex items-center gap-1.5 text-xs flex-wrap sm:flex-nowrap">
+                <Button
+                  onClick={handleSelectTodayCells}
+                  variant="secondary"
+                  size="sm"
+                  className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
+                >
+                  📅 Select Today ({staff.length})
+                </Button>
+                <Button
+                  onClick={handleSelectAllCells}
+                  variant="secondary"
+                  size="sm"
+                  className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
+                >
+                  🗓️ Select Month
+                </Button>
+                {selectedCells.size > 0 && (
+                  <Button
+                    onClick={() => setSelectedCells(new Set())}
+                    variant="ghost"
+                    size="xs"
+                    className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold cursor-pointer"
+                  >
+                    Clear ({selectedCells.size})
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Moved Bulk Select controls here */}
-          {isAttendancePage && activeSubTab === 'calendar' && (
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <button
-                onClick={() => {
-                  setIsBulkSelectEnabled(!isBulkSelectEnabled);
-                  setSelectedCells(new Set());
-                }}
-                className={`font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shadow-2xs ${
-                  isBulkSelectEnabled
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
-                    : 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white'
-                }`}
-              >
-                {isBulkSelectEnabled ? '✕ Exit Bulk Mode' : '⚡ Enable Bulk Select'}
-              </button>
-
-              {isBulkSelectEnabled && (
-                <div className="flex items-center gap-1.5 text-xs flex-wrap sm:flex-nowrap">
-                  <button
-                    onClick={handleSelectTodayCells}
-                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
-                  >
-                    📅 Select Today ({staff.length})
-                  </button>
-                  <button
-                    onClick={handleSelectAllCells}
-                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
-                  >
-                    🗓️ Select Month
-                  </button>
-                  {selectedCells.size > 0 && (
-                    <button
-                      onClick={() => setSelectedCells(new Set())}
-                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold px-2 py-1 cursor-pointer"
-                    >
-                      Clear ({selectedCells.size})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+        )}
+      </PageHeader>
 
       {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
       {activeSubTab === 'control_center' && (
@@ -677,7 +667,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '130px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">{t('view_qr_button', '📸 View QR')}</button>
+                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
                     ) : (
                       <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
                     ),
@@ -697,10 +687,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           ) : (
                             <>
                               {canEdit && (
-                                <button onClick={() => handleEditUser(row)} className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer">{t('edit_button', 'Edit')}</button>
+                                <Button onClick={() => handleEditUser(row)} variant="link" size="sm" className="text-blue-600 hover:text-blue-700 font-bold text-[11px]">{t('edit_button', 'Edit')}</Button>
                               )}
                               {canDelete && (
-                                <button onClick={() => handleDeleteUser(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
+                                <Button onClick={() => handleDeleteUser(row.id)} variant="link" size="sm" className="text-red-600 hover:text-red-700 font-bold text-[11px]">{t('delete_button', 'Delete')}</Button>
                               )}
                               {!canEdit && !canDelete && (
                                 <span className="text-slate-400 italic text-[11px]">-</span>
@@ -768,7 +758,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '130px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <button onClick={() => setLightboxUrl(row.qrCodeUrl!)} className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] flex items-center gap-1 mx-auto cursor-pointer">{t('view_qr_button', '📸 View QR')}</button>
+                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
                     ) : (
                       <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
                     ),
@@ -779,8 +769,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     width: '130px',
                     cell: (row: any) => (
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setEditingPayee(row)} className="text-sky-600 hover:text-sky-700 font-bold text-[11px] cursor-pointer">{t('edit_button', 'Edit')}</button>
-                        <button onClick={() => handleDeletePayee(row.id)} className="text-red-600 hover:text-red-700 font-bold text-[11px] cursor-pointer">{t('delete_button', 'Delete')}</button>
+                        <Button onClick={() => setEditingPayee(row)} variant="link" size="sm" className="text-sky-600 hover:text-sky-700 font-bold text-[11px]">{t('edit_button', 'Edit')}</Button>
+                        <Button onClick={() => handleDeletePayee(row.id)} variant="link" size="sm" className="text-red-600 hover:text-red-700 font-bold text-[11px]">{t('delete_button', 'Delete')}</Button>
                       </div>
                     ),
                   },
@@ -843,38 +833,38 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <form onSubmit={handleCreateUser} className="space-y-3">
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
-                      <input
+                      <Input
                         type="text"
                         required
                         value={newFullName}
                         onChange={(e) => setNewFullName(e.target.value)}
                         placeholder="e.g. Ratan Singh"
-                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                        className="text-slate-900 dark:text-white"
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
-                        <input
+                        <Input
                           type="tel"
                           required
                           maxLength={10}
                           value={newUsername}
                           onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           placeholder="10-digit mobile number"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                          className="text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('six_digit_passcode_label', '6-Digit Passcode PIN')}</label>
-                        <input
+                        <Input
                           type="password"
                           required
                           maxLength={6}
                           value={newPasscode}
                           onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="••••••"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest text-sm"
+                          className="text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest"
                         />
                       </div>
                     </div>
@@ -922,12 +912,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         type="submit"
-                        className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                        size="md"
+                        className="flex-1 text-white font-bold shadow-xs transition-all cursor-pointer"
                       >
                         Register Staff Member
-                      </button>
+                      </Button>
                       {highlightRegisterStaffStep && <ArrowRight className="w-5 h-5 text-indigo-500 animate-bounce shrink-0" />}
                     </div>
                   </form>
@@ -954,23 +945,23 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
-                        <input
+                        <Input
                           type="text"
                           value={updateFullName}
                           onChange={(e) => setUpdateFullName(e.target.value)}
                           placeholder="e.g. Ratan Singh"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          className="text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
-                        <input
+                        <Input
                           type="tel"
                           maxLength={10}
                           value={updateUsername}
                           onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           placeholder="10-digit mobile number"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                          className="text-slate-900 dark:text-white font-mono"
                         />
                       </div>
                     </div>
@@ -1391,25 +1382,30 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {
                   name: 'Actions',
                   center: true,
-                  width: '200px',
+                  width: '240px',
                   cell: (row: any) => {
                     const isPaid = paidStaff.has(row.staff.id);
                     const isPaying = payingStaff === row.staff.id;
                     return (
-                      <div className="flex items-center gap-1.5">
-                        <button
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                        <Button
+                          variant="secondary"
+                          size="xs"
                           onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
-                          className="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 transition-all cursor-pointer flex items-center gap-1"
+                          leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
                         >
-                          <Plus className="w-3 h-3" /> Advance
-                        </button>
+                          Advance
+                        </Button>
                         {isPaid ? (
                           <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
                             <Check className="w-3 h-3" /> Paid
                           </span>
                         ) : (
-                          <button
+                          <Button
+                            variant="primary"
+                            size="xs"
                             disabled={isPaying || row.pendingPayout <= 0}
+                            leftIcon={<IndianRupee className="w-3 h-3" />}
                             onClick={async () => {
                               setPayingStaff(row.staff.id);
                               const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -1431,14 +1427,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                                 }
                               }
                             }}
-                            className={`font-bold text-[10px] px-2 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                              row.pendingPayout <= 0
-                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'
-                            }`}
                           >
-                            {isPaying ? 'Paying...' : <><IndianRupee className="w-3 h-3" /> Pay Now</>}
-                          </button>
+                            {isPaying ? 'Paying...' : 'Pay Now'}
+                          </Button>
                         )}
                       </div>
                     );

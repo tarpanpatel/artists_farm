@@ -1,27 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Receipt,
-  Users,
   Calendar,
-  DollarSign,
   CheckCircle2,
   LogOut,
   Search,
   AlertCircle,
-  IndianRupee,
   Building,
+  Plus,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Badge } from './Badge';
 import { useToast } from './ToastContext';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { StyledSelect } from './StyledSelect';
+import { BookingDetailsModal } from './BookingDetailsModal';
+import { PageHeader, PageHeaderButton } from './PageHeader';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface BillingCheckoutProps {
   guests: Guest[];
   receipts: BillingReceipt[];
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
+  onAddGuest?: (guest: Guest) => void;
   isMultiKeyProperty?: boolean;
   rooms?: Array<{ id: number; name: string; slug: string }>;
   onCheckoutClick?: (guestId: string) => void;
@@ -29,10 +33,6 @@ interface BillingCheckoutProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
-  // Set by the "Manage" button on the Add Booking page's recent-bookings
-  // list - jumps straight to the right Today/Upcoming/Past tab with this
-  // one booking already filtered into view, instead of landing on the page
-  // in general and making the admin search for it themselves.
   focusGuestId?: string | null;
 }
 
@@ -43,11 +43,16 @@ interface GroupedRoomBooking {
   guests: Guest[];
 }
 
+const LazyGuestManagement = React.lazy(() =>
+  import('./GuestManagement').then(m => ({ default: m.GuestManagement }))
+);
+
 export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   guests,
   receipts,
   onCheckoutGuest,
   onUpdateGuest,
+  onAddGuest,
   isMultiKeyProperty = false,
   rooms = [],
   onCheckoutClick,
@@ -64,8 +69,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const [selectedGuestForCheckout, setSelectedGuestForCheckout] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [showAddBookingModal, setShowAddBookingModal] = useState(false);
   const [guestForReceipt, setGuestForReceipt] = useState<Guest | null>(null);
   const [modalMode, setModalMode] = useState<'edit-only' | 'edit-and-checkout'>('edit-only');
+  const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -78,13 +85,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // Format date for display
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return '—';
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return '—';
-      return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-    } catch {
-      return '—';
-    }
+    return formatDateDDMMYYYY(dateStr) || '—';
   };
 
   // Fine-grained status (used for per-guest badges, and to derive the
@@ -347,10 +348,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Handle edit only
   const handleEditGuest = (guest: Guest) => {
-    setSelectedGuestForCheckout(guest.id);
-    setGuestForReceipt(guest);
-    setModalMode('edit-only');
-    setReceiptModalOpen(true);
+    setSelectedGuestForDetails(guest);
   };
 
   // Handle edit and checkout
@@ -549,74 +547,67 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-6">
-        <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <Receipt className="w-7 h-7 text-blue-600" />
-          {t('guest_billing_checkout_title', 'Guest Billing & Checkout')}
-        </h2>
-      </div>
+      <PageHeader
+        title={t('bookings_page_title', 'Bookings')}
+        subtitle="Manage all guest stays, reservations, and billing checkouts."
+      >
+        <PageHeaderButton
+          onClick={() => {
+            if (onNavigateToGuestRegistration) {
+              onNavigateToGuestRegistration();
+            } else {
+              setShowAddBookingModal(true);
+            }
+          }}
+          icon={Plus}
+        >
+          {t('add_booking_button', 'Add Booking')}
+        </PageHeaderButton>
+      </PageHeader>
 
       {/* Tabs Navigation & Search Bar */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-4">
         {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
-          <button
+          <Button
+            variant={activeTab === 'today' ? 'success' : 'ghost'}
+            size="sm"
             onClick={() => setActiveTab('today')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'today'
-                ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-600/30'
-                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
+            rightIcon={<Badge variant="success">{tabCounts.today}</Badge>}
           >
-            <span>{t('today_tab', 'Today')}</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'today' ? 'bg-white/20 text-white font-extrabold' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold'}`}>
-              {tabCounts.today}
-            </span>
-          </button>
+            {t('today_tab', 'Today')}
+          </Button>
 
-          <button
+          <Button
+            variant={activeTab === 'upcoming' ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => setActiveTab('upcoming')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'upcoming'
-                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600/30'
-                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
+            rightIcon={<Badge variant="info">{tabCounts.upcoming}</Badge>}
           >
-            <span>{t('upcoming_tab', 'Upcoming')}</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'upcoming' ? 'bg-white/20 text-white font-extrabold' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-bold'}`}>
-              {tabCounts.upcoming}
-            </span>
-          </button>
+            {t('upcoming_tab', 'Upcoming')}
+          </Button>
 
-          <button
+          <Button
+            variant={activeTab === 'past_bookings' ? 'secondary' : 'ghost'}
+            size="sm"
             onClick={() => setActiveTab('past_bookings')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'past_bookings'
-                ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-600/30'
-                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
+            rightIcon={<Badge variant="neutral">{tabCounts.past_bookings}</Badge>}
           >
-            <span>{t('past_bookings_tab', 'Past Bookings')}</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'past_bookings' ? 'bg-white/20 text-white font-extrabold' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold'}`}>
-              {tabCounts.past_bookings}
-            </span>
-          </button>
+            {t('past_bookings_tab', 'Past Bookings')}
+          </Button>
         </div>
 
         {/* Search Bar & Room Filter Dropdown */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="flex-1 w-full">
+            <Input
+              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
               placeholder={t('search_guest_placeholder', 'Search guest name, phone, or room...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 outline-none"
             />
           </div>
-          <div className="w-full sm:w-56">
+          <div className="w-full sm:w-60 shrink-0">
             <StyledSelect
               value={selectedRoomFilter}
               onChange={setSelectedRoomFilter}
@@ -682,6 +673,53 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         propertyGstin={propertyGstin}
         propertyName={propertyName}
       />
+
+      {/* Standard Booking Details & Editing Modal */}
+      {selectedGuestForDetails && (
+        <BookingDetailsModal
+          guest={selectedGuestForDetails}
+          onClose={() => setSelectedGuestForDetails(null)}
+          onSave={async (updatedGuest) => {
+            onUpdateGuest?.(updatedGuest);
+            setSelectedGuestForDetails(null);
+            showToast(`Booking changes saved successfully!`, { type: 'success' });
+          }}
+          rooms={rooms}
+          checkedInGuests={guests}
+          propertyName={propertyName}
+        />
+      )}
+
+      {/* Add Booking Modal */}
+      {showAddBookingModal && (
+        <React.Suspense fallback={null}>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setShowAddBookingModal(false)}
+          >
+            <div
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <LazyGuestManagement
+                guests={guests}
+                receipts={receipts}
+                menu={[]}
+                rooms={rooms}
+                onAddGuest={(guest) => {
+                  onAddGuest?.(guest);
+                  setShowAddBookingModal(false);
+                }}
+                onCheckoutGuest={onCheckoutGuest}
+                activeMenuItemKey="guest_registration"
+                isMultiKeyProperty={isMultiKeyProperty}
+                onClose={() => setShowAddBookingModal(false)}
+              />
+            </div>
+          </div>
+        </React.Suspense>
+      )}
     </div>
   );
 };
+

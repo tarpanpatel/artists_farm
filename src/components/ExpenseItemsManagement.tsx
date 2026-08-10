@@ -3,7 +3,10 @@ import { Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
+import { Input } from './Input';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface ExpenseItem {
@@ -127,17 +130,10 @@ export const ExpenseItemsManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            {t('predefined_expense_items_heading', 'Predefined Expense Items')}
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-            {t('expense_items_description', 'System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.')}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t('predefined_expense_items_heading', 'Predefined Expense Items')}
+        subtitle={t('expense_items_description', 'System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.')}
+      />
 
       {/* Messages */}
       {allItems.length === 0 && !loading && (
@@ -151,47 +147,47 @@ export const ExpenseItemsManagement: React.FC = () => {
       {/* Toolbar */}
       {allItems.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="success"
+                size="md"
                 onClick={() => setIsAddingNew(!isAddingNew)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+                leftIcon={<Plus className="w-4 h-4" />}
               >
-                <Plus className="w-4 h-4" />
                 {t('add_custom_item_button', 'Add Custom Item')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={loadItems}
-                className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+                leftIcon={<RefreshCw className="w-4 h-4" />}
               >
-                <RefreshCw className="w-4 h-4" />
                 {t('refresh_button', 'Refresh')}
-              </button>
+              </Button>
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('search_items_categories_placeholder', 'Search items or categories...')}
-              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
-            />
+            <div className="w-full sm:w-64">
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={t('search_items_categories_placeholder', 'Search items or categories...')}
+              />
+            </div>
           </div>
 
           {/* Add New Item Form */}
           {isAddingNew && (
             <form onSubmit={handleAddItem} className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('add_custom_expense_item_heading', 'Add Custom Expense Item')}</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     {t('item_name_required_label', 'Item Name *')}
                   </label>
-                  <input
-                    type="text"
+                  <Input
                     value={newItem.label}
                     onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                     placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -210,30 +206,31 @@ export const ExpenseItemsManagement: React.FC = () => {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     {t('default_amount_label', 'Default Amount (₹)')}
                   </label>
-                  <input
+                  <Input
                     type="number"
                     value={newItem.default_amount}
                     onChange={(e) => setNewItem({ ...newItem, default_amount: e.target.value })}
                     placeholder={t('default_amount_placeholder', '0.00')}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="submit"
+                  variant="success"
+                  size="md"
                   disabled={saving}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
                 >
                   {saving ? t('saving_ellipsis_button', 'Saving...') : t('add_item_button', 'Add Item')}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="md"
                   onClick={() => setIsAddingNew(false)}
-                  className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
                 >
                   {t('cancel_button', 'Cancel')}
-                </button>
+                </Button>
               </div>
             </form>
           )}

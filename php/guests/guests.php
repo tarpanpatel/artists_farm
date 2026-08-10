@@ -13,15 +13,17 @@ function convertSnakeToCamel($array) {
     return $result;
 }
 
+require_once __DIR__ . '/../config/schema_cache.php';
+
 function ensureIdVerificationSchema($pdo) {
+    if (isSchemaVerified('schema_id_verification')) return;
     try {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_status` VARCHAR(20) DEFAULT 'Pending'");
     } catch (PDOException $e) {}
     try {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `id_verification_last_reminder_at` DATETIME DEFAULT NULL");
     } catch (PDOException $e) {}
-    try {
-    } catch (PDOException $e) {}
+    markSchemaVerified('schema_id_verification');
 }
 
 // Foreign-guest flag + C-Form (FRRO) filing tracking. C-Form must be filed
@@ -29,20 +31,96 @@ function ensureIdVerificationSchema($pdo) {
 // staff at registration, c_form_filed_at is stamped once staff confirms they
 // submitted it on the government portal (this app doesn't file it for them).
 function ensureComplianceSchema($pdo) {
+    if (isSchemaVerified('schema_compliance')) return;
     try {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `is_foreign_guest` TINYINT(1) DEFAULT 0");
     } catch (PDOException $e) {}
     try {
         $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `c_form_filed_at` DATETIME DEFAULT NULL");
     } catch (PDOException $e) {}
+    markSchemaVerified('schema_compliance');
+}
+
+/**
+ * ID-document uploads are temporary, not permanent records (24h TTL): the
+ * check-in completion flow sends them to Telegram in one message and then
+ * deletes them, and anything never completed (or whose completion skipped
+ * because Telegram was off) gets swept here. Both the disk copy and the now
+ * dangling guest_id_documents row are removed.
+ */
+
+function idDocumentsUploadDir(): string {
+    return __DIR__ . '/../uploads/images/id_documents';
+}
+
+// Delete the full-size + thumb disk files behind a set of stored URL paths.
+function deleteIdDocumentFiles(array $urls): void {
+    $dir = idDocumentsUploadDir();
+    foreach ($urls as $url) {
+        $pos = strpos((string)$url, '/uploads/');
+        if ($pos === false) {
+            continue;
+        }
+        $fullPath = __DIR__ . '/../' . substr((string)$url, $pos + 1);
+        @unlink($fullPath);
+        @unlink($dir . '/thumbs/' . basename($fullPath));
+    }
+}
+
+// Opportunistic 24h TTL sweep of the temporary ID-document store - removes
+// files whose mtime is past the TTL, then drops the guest_id_documents rows
+// pointing at the swept files so the reminder counter and document list never
+// report a photo that is gone. Best-effort: never fails the caller.
+function cleanupExpiredIdDocuments($pdo, int $hours = 24, int $propertyId = 0): int {
+    $dir = idDocumentsUploadDir();
+    if (!is_dir($dir)) {
+        return 0;
+    }
+    $expireBefore = time() - ($hours * 3600);
+    $removed = 0;
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $file) {
+        if ($file->isFile() && $file->getMTime() < $expireBefore) {
+            @unlink($file->getPathname());
+            $removed++;
+        }
+    }
+    try {
+        // $propertyId > 0 scopes the sweep to one property (per-request calls);
+        // 0 sweeps every property (the daily cron, which is intentionally global).
+        if ($propertyId) {
+            $stmt = $pdo->prepare("SELECT id, file_path FROM guest_id_documents WHERE property_id = ? AND uploaded_at < DATE_SUB(NOW(), INTERVAL ? HOUR)");
+            $stmt->execute([$propertyId, $hours]);
+        } else {
+            $stmt = $pdo->prepare("SELECT id, file_path FROM guest_id_documents WHERE uploaded_at < DATE_SUB(NOW(), INTERVAL ? HOUR)");
+            $stmt->execute([$hours]);
+        }
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $pos = strpos((string)$row['file_path'], '/uploads/');
+            if ($pos === false) {
+                continue;
+            }
+            $fullPath = __DIR__ . '/../' . substr((string)$row['file_path'], $pos + 1);
+            if (!file_exists($fullPath)) {
+                if ($propertyId) {
+                    $pdo->prepare("DELETE FROM guest_id_documents WHERE id = ? AND property_id = ?")->execute([$row['id'], $propertyId]);
+                } else {
+                    $pdo->prepare("DELETE FROM guest_id_documents WHERE id = ?")->execute([$row['id']]);
+                }
+                $removed++;
+            }
+        }
+    } catch (PDOException $e) {
+        // best-effort - cleanup must never fail the surrounding request
+    }
+    return $removed;
 }
 
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
-            try {
-                $pdo->exec("INSERT IGNORE INTO nav_menu_items (id, property_id, title, tab_key, unique_key, category, icon_name, display_order) VALUES ('nav-history', 1, 'Guest History', 'guests', 'guest_history', 'Residents & Billing', 'History', 5)");
-            } catch (Exception $e) {}
             try {
                 // A Single property has no separate "room" to assign - it IS the one
                 // bookable unit, so a guest there should show the property's own name,
@@ -105,12 +183,21 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // advance_received_by/pending_received_by columns have existed on
                     // this table all along - the Add Booking form collects both as
                     // *required* fields, but nothing ever actually wrote them here.
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    // New bookings always start as 'Booked' (reservation) - they only
+                    // become 'Checked In' via the explicit Check-In action/verification.
+                    $incomingStatus = strtolower(trim($input['status'] ?? ''));
+                    if (in_array($incomingStatus, ['checked in', 'checkedin', 'checked-in', 'active'], true)) {
+                        $status = 'Checked In';
+                    } else {
+                        $status = 'Booked';
+                    }
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
                         $input['checkin_date'] ?? date('Y-m-d'),
                         $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
+                        $status,
                         floatval($input['advance_paid'] ?? 0),
                         $input['advance_received_by'] ?? '',
                         floatval($input['total_charge'] ?? 0),
@@ -201,7 +288,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
                     if ($roomId !== null) {
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status = 'Active' AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN ('Active', 'Checked In') AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
                         $conflictStmt->execute([$roomId, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         if ($conflictStmt->fetch()) {
                             http_response_code(409);
@@ -272,46 +359,57 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // that already succeeded and was already reported to the client above.
                     try {
                         $fieldLabels = [
-                            'guest_name' => 'Guest Name',
-                            'phone_number' => 'Phone',
-                            'checkin_date' => 'Check-in',
-                            'expected_checkout' => 'Check-out',
-                            'no_of_guests' => 'No. of Guests',
-                            'base_room_rent' => 'Room Rent',
-                            'advance_paid' => 'Advance Paid',
-                            'advance_received_by' => 'Advance Received By',
-                            'pending_received_by' => 'Pending Received By',
-                            'booking_source' => 'Booking Source',
-                            'notes' => 'Guest Notes',
-                            'is_foreign_guest' => 'Foreign Guest',
+                            'guest_name'           => 'Guest Name',
+                            'phone_number'         => 'Phone',
+                            'checkin_date'         => 'Check-in',
+                            'expected_checkout'    => 'Check-out',
+                            'no_of_guests'         => 'No. of Guests',
+                            'base_room_rent'       => 'Room Rent',
+                            'advance_paid'         => 'Advance Paid',
+                            'advance_received_by'  => 'Advance Received By',
+                            'pending_received_by'  => 'Pending Received By',
+                            'booking_source'       => 'Booking Source',
+                            'notes'                => 'Guest Notes',
+                            'is_foreign_guest'     => 'Foreign Guest',
                         ];
+                        // New values built from the incoming payload.
+                        // Date fields are normalised to Y-m-d so they match the DB
+                        // regardless of whether the stored value includes a time component.
                         $newValues = [
-                            'guest_name' => $input['guest_name'] ?? $input['name'] ?? '',
-                            'phone_number' => $input['phone_number'] ?? $input['contact'] ?? '',
-                            'checkin_date' => $input['checkin_date'] ?? date('Y-m-d'),
-                            'expected_checkout' => $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
-                            'no_of_guests' => intval($input['no_of_guests'] ?? 1),
-                            'base_room_rent' => floatval($input['base_room_rent'] ?? 0),
-                            'advance_paid' => $advancePaid,
-                            'advance_received_by' => $advanceReceivedBy,
-                            'pending_received_by' => $pendingReceivedBy,
-                            'booking_source' => $bookingSource,
-                            'notes' => $notes,
-                            'is_foreign_guest' => !empty($input['is_foreign_guest']) ? 1 : 0,
+                            'guest_name'           => $input['guest_name'] ?? $input['name'] ?? '',
+                            'phone_number'         => $input['phone_number'] ?? $input['contact'] ?? '',
+                            'checkin_date'         => date('Y-m-d', strtotime($input['checkin_date'] ?? 'today')),
+                            'expected_checkout'    => date('Y-m-d', strtotime($input['expected_checkout'] ?? 'tomorrow')),
+                            'no_of_guests'         => intval($input['no_of_guests'] ?? 1),
+                            'base_room_rent'       => floatval($input['base_room_rent'] ?? 0),
+                            'advance_paid'         => $advancePaid,
+                            'advance_received_by'  => $advanceReceivedBy,
+                            'pending_received_by'  => $pendingReceivedBy,
+                            'booking_source'       => $bookingSource,
+                            'notes'                => $notes,
+                            'is_foreign_guest'     => !empty($input['is_foreign_guest']) ? 1 : 0,
                         ];
                         $changedLines = [];
                         foreach ($fieldLabels as $field => $label) {
                             $oldVal = $previousGuest[$field] ?? null;
                             $newVal = $newValues[$field];
-                            // Loose comparison - old values come back as strings from MySQL,
-                            // new ones are typed PHP values (int/float) built above.
+                            // Normalise date fields from DB (may carry a time component) to
+                            // Y-m-d before comparing so identical calendar dates are never
+                            // reported as changed just because the time part differs.
+                            if (in_array($field, ['checkin_date', 'expected_checkout'])) {
+                                $oldNorm = $oldVal ? date('Y-m-d', strtotime($oldVal)) : '';
+                                $newNorm = (string)$newVal;
+                                if ($oldNorm === $newNorm) continue;
+                                $oldDisplay = $oldNorm ? date('d M Y', strtotime($oldNorm)) : '(none)';
+                                $newDisplay = $newNorm ? date('d M Y', strtotime($newNorm)) : '(none)';
+                                $changedLines[] = "• <b>{$label}:</b> {$oldDisplay} → {$newDisplay}";
+                                continue;
+                            }
+                            // Loose comparison for other fields
                             if ((string)$oldVal === (string)$newVal) continue;
                             if ($field === 'is_foreign_guest') {
                                 $oldVal = $oldVal ? 'Yes' : 'No';
                                 $newVal = $newVal ? 'Yes' : 'No';
-                            } elseif (in_array($field, ['checkin_date', 'expected_checkout'])) {
-                                $oldVal = $oldVal ? date('d M Y', strtotime($oldVal)) : '(none)';
-                                $newVal = $newVal ? date('d M Y', strtotime($newVal)) : '(none)';
                             } elseif (in_array($field, ['base_room_rent', 'advance_paid'])) {
                                 $oldVal = '₹' . number_format((float)$oldVal, 2);
                                 $newVal = '₹' . number_format((float)$newVal, 2);
@@ -322,10 +420,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                         if (!empty($changedLines) && !empty($previousGuest)) {
                             require_once __DIR__ . '/../telegram/sender.php';
-                            $editMsg = "✏️ <b>BOOKING UPDATED</b>\n\n";
-                            $editMsg .= "👤 <b>Guest:</b> " . ($previousGuest['guest_name'] ?? '') . "\n";
-                            $editMsg .= "🆔 <b>Booking ID:</b> {$guestId}\n\n";
-                            $editMsg .= implode("\n", $changedLines);
+                            require_once __DIR__ . '/../telegram/templates.php';
+                            $editMsg = TelegramTemplates::render($pdo, 'booking_updated', [
+                                'guest_name'   => $previousGuest['guest_name'] ?? '',
+                                'booking_id'   => $guestId,
+                                'changes_list' => implode("\n", $changedLines),
+                            ]);
                             sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
                         }
                     } catch (Exception $e) {}
@@ -403,6 +503,27 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'checkin_guest':
+            if ($request_method === 'POST') {
+                ensureComplianceSchema($pdo);
+                $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = $input['id'] ?? null;
+                if (!$guestId) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("UPDATE guests SET status = 'Checked In', checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?");
+                    $stmt->execute([date('Y-m-d H:i:s'), $guestId, $propertyId]);
+                    echo json_encode(['status' => 'success', 'message' => 'Guest checked in successfully']);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to check in guest: ' . $e->getMessage()]);
+                }
+            }
+            break;
+
         case 'mark_c_form_filed':
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
@@ -470,6 +591,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     echo json_encode(['status' => 'success', 'message' => 'ID document saved', 'data' => $savedDoc]);
 
+                    // Temp-storage TTL: each upload opportunistically sweeps
+                    // files/rows past the 24h window (the daily cron does the
+                    // same, so no upload after a booking's completion means
+                    // the files still get cleaned).
+                    cleanupExpiredIdDocuments($pdo, 24, $propertyId);
+
                     // Live progress ping - lets the tenant follow along in Telegram as
                     // photos come in, rather than only hearing about it at completion.
                     try {
@@ -491,7 +618,32 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $msg .= "👤 <b>Guest:</b> {$guestInfo['guest_name']}\n";
                             $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
                             $msg .= "✅ <b>Progress:</b> {$uploadedCount}/{$required} required ID(s) uploaded";
-                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg);
+                            // templateKey only steers routing - the content is the
+                            // raw message above, routed to the same admin group the
+                            // check-in completion photos go to.
+                            //
+                            // Send the actual photo (caption = the same progress text
+                            // above) instead of a text-only ping, so the tenant can see
+                            // the ID as it comes in rather than just a counter. $filePath
+                            // is the stored URL ("/uploads/images/id_documents/xyz.jpg");
+                            // reconstruct the real disk path the same way
+                            // deleteIdDocumentFiles()/cleanupExpiredIdDocuments() do.
+                            $photoSent = false;
+                            $uploadsPos = strpos((string)$filePath, '/uploads/');
+                            if ($uploadsPos !== false) {
+                                $diskPath = __DIR__ . '/../' . substr((string)$filePath, $uploadsPos + 1);
+                                $photoResult = sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', [$diskPath], $msg, 'checkin_verification_complete');
+                                // sendPropertyTelegramPhoto returns an array only when it
+                                // skipped (Telegram off / no group / file missing) -
+                                // anything else is the raw sendPhoto API response, i.e. it
+                                // actually went out.
+                                $photoSent = !is_array($photoResult);
+                            }
+                            // Fall back to the text-only ping if the photo couldn't be
+                            // sent, so the progress notification is never silently dropped.
+                            if (!$photoSent) {
+                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg, null, 'checkin_verification_complete');
+                            }
                         }
                     } catch (Exception $e) {
                         error_log("Failed to send ID upload Telegram notification: " . $e->getMessage());
@@ -513,8 +665,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'id is required']);
                     break;
                 }
+                $pathStmt = $pdo->prepare("SELECT file_path FROM guest_id_documents WHERE id = ? AND property_id = ?");
+                $pathStmt->execute([$docId, $propertyId]);
+                $removedPath = $pathStmt->fetchColumn();
                 $stmt = $pdo->prepare("DELETE FROM guest_id_documents WHERE id = ? AND property_id = ?");
                 $stmt->execute([$docId, $propertyId]);
+                if ($removedPath) {
+                    deleteIdDocumentFiles([$removedPath]);
+                }
                 echo json_encode(['status' => 'success', 'message' => 'ID document removed']);
             }
             break;
@@ -530,7 +688,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 $stmt = $pdo->prepare("
-                    SELECT g.guest_name, g.no_of_guests, COALESCE(r.name, 'Unassigned') as room_name
+                    SELECT g.guest_name, g.phone_number, g.adults, g.children, g.no_of_guests,
+                           g.checkin_date, g.expected_checkout, g.is_foreign_guest, g.c_form_filed_at,
+                           COALESCE(r.name, 'Unassigned') as room_name
                     FROM guests g
                     LEFT JOIN properties r ON g.room_id = r.id
                     WHERE g.id = ? AND g.property_id = ?
@@ -556,7 +716,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 echo json_encode(['status' => 'success', 'message' => 'Check-in verification complete']);
 
                 // Final compliance record - attaches the actual ID photos, distinct
-                // from the text-only progress pings sent during upload.
+                // from the text-only progress pings sent during upload. The caption
+                // carries the full check details so management gets the complete
+                // booking picture in that one message. Photos are temporary (24h
+                // TTL): once Telegram has them, the on-disk copies are deleted.
                 try {
                     require_once __DIR__ . '/../telegram/sender.php';
                     require_once __DIR__ . '/../telegram/templates.php';
@@ -569,7 +732,25 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         'room_name' => $guest['room_name'],
                         'doc_count' => $uploadedCount,
                     ]);
-                    sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', $fsPaths, $caption, 'checkin_verification_complete');
+                    $guestCount = max(1, intval($guest['no_of_guests'] ?? 1));
+                    $caption .= "\n📞 <b>Phone:</b> " . (!empty($guest['phone_number']) ? $guest['phone_number'] : '—');
+                    $caption .= "\n👥 <b>Guests:</b> {$guestCount}";
+                    if (($guest['adults'] ?? null) !== null || ($guest['children'] ?? null) !== null) {
+                        $caption .= " (" . trim(
+                            (($guest['adults'] ?? null) !== null ? "👨 {$guest['adults']} adults" : '') .
+                            (($guest['adults'] ?? null) !== null && ($guest['children'] ?? null) !== null ? ', ' : '') .
+                            (($guest['children'] ?? null) !== null ? "🧒 {$guest['children']} children" : '')
+                        ) . ")";
+                    }
+                    $caption .= "\n📅 <b>Check-in:</b> " . ($guest['checkin_date'] ?? '—');
+                    $caption .= "\n🛎️ <b>Expected Checkout:</b> " . ($guest['expected_checkout'] ?? '—');
+                    if (intval($guest['is_foreign_guest'] ?? 0) === 1) {
+                        $caption .= "\n🛂 <b>C-Form (FRRO):</b> " . (!empty($guest['c_form_filed_at']) ? '✅ Filed' : '⏳ Pending');
+                    }
+                    $sendResult = sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', $fsPaths, $caption, 'checkin_verification_complete');
+                    if (!is_array($sendResult) || empty($sendResult['skipped'])) {
+                        deleteIdDocumentFiles($docPaths);
+                    }
                 } catch (Exception $e) {
                     error_log("Failed to send check-in completion Telegram photo notification: " . $e->getMessage());
                 }

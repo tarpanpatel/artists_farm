@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
-  Bot,
   ShieldCheck,
   X,
   Sparkles,
@@ -26,9 +25,9 @@ import {
 } from 'lucide-react';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, DbTelegramTemplate } from '../services/api';
-import { TelegramConnectionSettings } from './TelegramConnectionSettings';
 import { TelegramSetupWizard } from './TelegramSetupWizard';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { useAuth } from '../contexts/AuthContext';
 import { t } from '../i18n/en';
 
@@ -221,8 +220,8 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     eventName: 'New Order Alert (Kitchen)',
     category: 'Kitchen & Ordering',
     description: 'Sent to kitchen staff when a new food order ticket is placed.',
-    variables: ['{order_id}', '{guest_name}', '{table_no}', '{waiter_name}', '{order_time}', '{order_items}'],
-    template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Table / Guest:</b> {guest_name} ({table_no})\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
+    variables: ['{order_id}', '{guest_name}', '{room_no}', '{waiter_name}', '{order_time}', '{order_items}'],
+    template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Room / Guest:</b> {guest_name} ({room_no})\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
     buttons: [
       [{ id: 'b7', text: '👨‍🍳 View Kitchen KDS Queue', callback_data: 'open_kds' }]
     ]
@@ -233,8 +232,8 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     eventName: 'Item Served Alert',
     category: 'Kitchen Notifications',
     description: 'Sent when a chef or waiter marks an individual item as served.',
-    variables: ['{item_name}', '{quantity}', '{guest_name}', '{table_no}', '{served_by}', '{remaining_items}'],
-    template: `<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name} (Table {table_no})\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>`,
+    variables: ['{item_name}', '{quantity}', '{guest_name}', '{room_no}', '{served_by}', '{remaining_items}'],
+    template: `<b>✅ DISH SERVED</b>\n\n<b>Dish:</b> {item_name} x{quantity}\n<b>Guest:</b> {guest_name} (Room {room_no})\n<b>Served By:</b> {served_by}\n<i>Remaining items in ticket: {remaining_items}</i>`,
   },
   {
     id: 'tpl-9',
@@ -256,21 +255,6 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     description: 'Sent when a store inventory requisition is fulfilled or issued.',
     variables: ['{header_title}', '{req_id}', '{staff_name}', '{fulfillment_time}', '{status_label}', '{items_manifest}', '{status_title}'],
     template: `{header_title}\n━━━━━━━━━━━━━━━━━━\n🆔 <b>Sheet ID:</b> #{req_id}\n👤 <b>Processed By:</b> {staff_name}\n📅 <b>Fulfillment Time:</b> {fulfillment_time}\n🟢 <b>Global Status:</b> {status_label}\n━━━━━━━━━━━━━━━━━━\n📝 <b>Items Variance Manifest:</b>\n\n{items_manifest}`,
-  },
-  {
-    id: 'tpl-11',
-    dbKey: 'staff_meal_request',
-    eventName: 'Staff Meal Approval Request',
-    category: 'Staff Meals',
-    description: 'Sent to admins when a staff member requests a staff meal.',
-    variables: ['{staff_name}', '{staff_role}', '{meal_name}', '{quantity}'],
-    template: `<b>🍱 STAFF MEAL REQUEST</b>\n\n<b>Staff Member:</b> {staff_name} ({staff_role})\n<b>Meal Requested:</b> {meal_name} x{quantity}\n\nClick buttons below to approve or reject.`,
-    buttons: [
-      [
-        { id: 'b11a', text: '✅ Approve Meal', callback_data: 'approve_staff_meal' },
-        { id: 'b11b', text: '❌ Reject', callback_data: 'reject_staff_meal' }
-      ]
-    ]
   },
   {
     id: 'tpl-12',
@@ -929,7 +913,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       .replace(/{qty}/g, '1')
       .replace(/{dish_name}/g, 'Fried Papad')
       .replace(/{instruction_note}/g, ' (Extra Crispy)')
-      .replace(/{table_no}/g, 'Villa 101')
+      .replace(/{room_no}/g, 'Villa 101')
       .replace(/{waiter_name}/g, 'Tarpan')
       .replace(/{order_time}/g, '10:32 PM')
       .replace(/{order_items}/g, '• 1x French Fries\n• 1x Fried Papad')
@@ -1365,17 +1349,18 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                       >
                         <div className="flex-1">
                           <label className="text-[10px] text-slate-400 block mb-0.5">{t('button_text_label', 'Button Text:')}</label>
-                          <input
+                          <Input
                             type="text"
                             value={btn.text}
                             onChange={(e) => handleUpdateButton(rIdx, bIdx, 'text', e.target.value)}
-                            className="w-full text-xs font-semibold p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                            className="text-xs font-semibold"
+                            fullWidth={false}
                           />
                         </div>
 
                         <div className="flex-1">
                           <label className="text-[10px] text-slate-400 block mb-0.5">{t('action_callback_url_label', 'Action Callback / URL:')}</label>
-                          <input
+                          <Input
                             type="text"
                             value={btn.url || btn.callback_data || ''}
                             onChange={(e) => {
@@ -1387,7 +1372,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                               }
                             }}
                             placeholder={t('callback_placeholder', 'callback_data or https://...')}
-                            className="w-full text-xs font-mono p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                            className="text-xs font-mono"
+                            fullWidth={false}
                           />
                         </div>
 

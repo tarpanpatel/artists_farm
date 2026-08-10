@@ -6,24 +6,22 @@ import {
   Calendar,
   Utensils,
   ArrowRight,
-  TrendingUp,
   CheckCircle2,
-  Clock,
-  IndianRupee,
   Plus,
-  ExternalLink,
   Pencil,
-  IdCard
+  LogOut,
+  Bell,
+  X
 } from 'lucide-react';
-import { Guest, Order } from '../types';
+import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { getPropertySlug, markCFormFiled } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
-import { PropertyAddressBar } from './PropertyAddressBar';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { useToast } from './ToastContext';
+import { PageHeader, PageHeaderButton } from './PageHeader';
 import { t } from '../i18n/en';
 
 interface OperationalDashboardProps {
@@ -34,7 +32,7 @@ interface OperationalDashboardProps {
   roomId?: number;
   propertySlug?: string;
   rooms?: any[];
-  onNavigate: (tab: any) => void;
+  onNavigate: (tab: any, menuItemKey?: string) => void;
   onOpenCheckin: () => void;
   onAddGuest?: (guest: Guest) => void;
   onCheckoutGuest?: (receipt: any) => void;
@@ -54,6 +52,9 @@ interface OperationalDashboardProps {
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
   onSavePropertyLocation?: (address: string, googleMapsLink: string, instructions: string) => Promise<boolean>;
+  isMultiKeyProperty?: boolean;
+  serviceRequests?: any[];
+  onCheckout?: (guestId: string) => void;
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
@@ -84,6 +85,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyGoogleMapsLink = '',
   propertyInstructions = '',
   onSavePropertyLocation,
+  isMultiKeyProperty = false,
+  serviceRequests = [],
+  onCheckout,
 }) => {
   const { showToast } = useToast();
   const { orders } = useKitchenContext();
@@ -96,6 +100,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
   const [showCleared, setShowCleared] = useState(false);
+  const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -169,7 +174,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const todaysCheckins = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr);
 
   // Active resident profile - must be currently staying (today is between checkin and checkout)
-  const activeGuest = guests.find((g) => {
+  const checkedInGuest = guests.find((g) => {
     if (g.status !== 'Active') return false;
     const checkinDate = new Date(g.checkinDate);
     const checkoutDate = new Date(g.expectedCheckout);
@@ -201,6 +206,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const checkout = parseDateOnly(g.expectedCheckout);
     return checkin !== null && checkout !== null && today >= checkin && today < checkout;
   };
+
+  const todaysArrivalsCount = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr).length;
+  const todaysDeparturesCount = guests.filter((g) => (g.expectedCheckout || '').split(' ')[0] === todayStr).length;
+  const inHouseCount = guests.filter((g) => (g.status === 'Active' || g.status === 'Checked In') && isCurrentlyInStay(g)).length;
+  const pendingRequestsCount = (serviceRequests || []).filter((r) => r.status === 'Pending').length;
 
   const overdueCheckins = guests.filter((g) => {
     const checkin = parseDateOnly(g.checkinDate);
@@ -305,13 +315,121 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Room Info Header - Compact Layout. The row itself (and the Add
-          Booking button) always renders, Single or Multi-Key - only the
-          room-name editing UI inside it is room-specific. */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
-          {roomName && (
-            isEditingRoomName ? (
+      <PageHeader
+        title={t('dashboard_heading', 'Dashboard')}
+        subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
+      >
+        <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
+          {t('add_booking_button', 'Add Booking')}
+        </PageHeaderButton>
+      </PageHeader>
+
+      {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
+      <div className={`grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
+        {/* Arrivals Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Arrivals:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysArrivalsCount}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('guests')}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            title="View Bookings"
+          >
+            <span>Bookings</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Departures Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Departures:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysDeparturesCount}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('guests')}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            title="View Bookings"
+          >
+            <span>Bookings</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Guests in-house Block (Only for multi-key property) */}
+        {isMultiKeyProperty && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Guests In-House:</span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white">{inHouseCount}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate('guests')}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              title="View Bookings"
+            >
+              <span>Guests</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Service Requests Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Service Requests:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{pendingRequestsCount}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('service_requests')}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            title="View Service Requests"
+          >
+            <span>Requests</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Room Info / Property Location Bar */}
+      {roomName ? (
+        <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex-1">
+            {isEditingRoomName ? (
               <input
                 type="text"
                 value={editingRoomName}
@@ -345,7 +463,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{roomName}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{roomName}</h3>
                     <button
                       onClick={() => {
                         setIsEditingRoomName(true);
@@ -363,27 +481,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   </div>
                 </div>
               </div>
-            )
-          )}
-          {roomName && isEditingRoomName && <p className="text-xs text-gray-500 mt-1">in Goa Homes {roomId && `(ID: ${roomId})`}</p>}
-          {!roomName && onSavePropertyLocation && (
-            <PropertyAddressBar
-              address={propertyAddress}
-              googleMapsLink={propertyGoogleMapsLink}
-              instructions={propertyInstructions}
-              onSaveLocation={onSavePropertyLocation}
-            />
-          )}
+            )}
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddGuestModal(true)}
-          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('add_booking_button', 'Add Booking')}</span>
-        </button>
-      </div>
-
+      ) : null}
       {/* Front-desk Alerts */}
       {(totalAlerts > 0 || clearedGuests.length > 0) && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
@@ -409,7 +510,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700/60">
-                  {combinedAlerts.map(({ guest: g, severity, reasons }) => (
+                  {combinedAlerts.slice(0, 5).map(({ guest: g, severity, reasons }) => (
                     <tr
                       key={g.id}
                       className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
@@ -446,6 +547,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {combinedAlerts.length > 5 && (
+            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+              <button
+                onClick={() => setShowAllAlertsModal(true)}
+                className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>View All System Alerts ({combinedAlerts.length})</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
           {clearedGuests.length > 0 && (
@@ -529,116 +642,42 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
       )}
 
-      {/* Today's Check-ins & Pending Actions */}
-      {todaysCheckins.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5">
-          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-            <IdCard className="w-4 h-4 text-purple-600" />
-            {t('todays_checkins_heading', "Today's Check-ins & Pending Actions")}
-          </h3>
-          <ul className="space-y-2">
-            {todaysCheckins.map((g) => {
-              const verified = g.idVerificationStatus === 'Complete';
-              return (
-                <li
-                  key={g.id}
-                  className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
-                    verified ? 'border-gray-100 bg-gray-50' : 'border-amber-200 bg-amber-50'
-                  }`}
-                >
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{g.guestName}</p>
-                    <p className="text-xs text-gray-500">{g.roomNumber}</p>
-                  </div>
-                  {verified ? (
-                    <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      {t('id_verified_badge', 'ID Verified')}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(g);
-                        setShowCheckinVerification(true);
-                      }}
-                      className="text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition-colors cursor-pointer whitespace-nowrap"
-                    >
-                      {t('id_upload_pending_button', '⚠️ ID Upload Pending')}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      {/* Additional stat cards below */}
-      {kitchenModuleEnabled && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('kitchen_queue_label', 'Kitchen Queue')}</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">
-                {pendingOrders.length} {t('tickets_suffix', 'Tickets')}
-                </p>
-                <p className="text-xs text-amber-600 font-semibold mt-0.5">{t('active_kitchen_queue_label', 'Live Order Queue')}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-                <Utensils className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('requisitions_label', 'Requisitions')}</p>
-                <p className="text-lg font-bold text-gray-900 mt-1">
-                  {stockAlerts.length} {t('items_low_suffix', 'Items Low')}
-                </p>
-                <p className="text-xs text-red-600 font-semibold mt-0.5">{t('low_stock_warnings_label', 'Low Stock Warnings')}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-            </div>
-        </div>
-      )}
-
-      {/* Content Cards Grid */}
-      <div className={`grid grid-cols-1 ${kitchenModuleEnabled ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
-        {/* Resident Card */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5 flex flex-col justify-between">
+      {/* 3-Column Operational Row: Guest Staying / Check-ins | Kitchen Queue | Requisitions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Column 1: Resident Profile / Today's Check-ins & Pending Actions */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 {t('current_resident_profile_heading', 'Guest Currently Staying')}
               </h3>
               <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
-                {t('active_stay_badge', 'Active Stay')}
+                {t('checked_in_badge', 'Active Stay')}
               </span>
             </div>
 
-            {activeGuest ? (
+            {checkedInGuest ? (
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500 font-medium flex items-center gap-1.5">
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" /> {t('guest_name_colon_label', 'Guest Name:')}
                   </span>
-                  <span className="font-bold text-gray-900 text-sm">{activeGuest.guestName}</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-sm">{checkedInGuest.guestName}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500 font-medium flex items-center gap-1.5">
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-gray-400" /> {t('contact_phone_colon_label', 'Contact Phone:')}
                   </span>
-                  <span className="font-semibold text-gray-800">{activeGuest.phoneNumber}</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{checkedInGuest.phoneNumber}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-gray-500 font-medium flex items-center gap-1.5">
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
+                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('dates_colon_label', 'Dates:')}
                   </span>
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
                     {(() => {
                       const formatDate = (dateStr?: string) => {
                         if (!dateStr) return '';
@@ -647,17 +686,52 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         if (parts.length !== 3) return dateStr;
                         return `${parts[2]}/${parts[1]}/${parts[0]}`;
                       };
-                      return `${formatDate(activeGuest.checkinDate)} → ${formatDate(activeGuest.expectedCheckout)}`;
+                      return `${formatDate(checkedInGuest.checkinDate)} → ${formatDate(checkedInGuest.expectedCheckout)}`;
                     })()}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-500 font-medium">{t('room_label', 'Room:')}</span>
-                  <span className="font-bold bg-gray-100 text-gray-800 px-2.5 py-1 rounded border border-gray-200">
-                    {activeGuest.roomNumber}
+                  <span className="text-gray-500 dark:text-gray-400 font-medium">{t('room_label', 'Room:')}</span>
+                  <span className="font-bold bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white px-2.5 py-1 rounded border border-gray-200 dark:border-slate-600">
+                    {checkedInGuest.roomNumber}
                   </span>
                 </div>
+              </div>
+            ) : todaysCheckins.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 mb-2">{t('todays_checkins_heading', "Today's Check-ins & Pending Actions")}</p>
+                {todaysCheckins.slice(0, 5).map((g) => {
+                  const verified = g.idVerificationStatus === 'Complete';
+                  return (
+                    <div
+                      key={g.id}
+                      className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${
+                        verified ? 'border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50' : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'
+                      }`}
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">{g.guestName}</p>
+                        <p className="text-[11px] text-gray-500">{g.roomNumber}</p>
+                      </div>
+                      {verified ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Verified
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedBooking(g);
+                            setShowCheckinVerification(true);
+                          }}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer"
+                        >
+                          ⚠️ Verification Pending
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="py-8 text-center text-gray-400 text-xs font-medium">
@@ -666,32 +740,39 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             )}
           </div>
 
+          <button
+            onClick={() => onNavigate('guests', 'all_bookings')}
+            className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <span>View All Bookings & Guests ({guests.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        {/* Kitchen KDS Card — nothing to show for a property with no food service */}
-        {kitchenModuleEnabled && (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5 flex flex-col justify-between">
+        {/* Column 2: Kitchen KDS Card */}
+        {kitchenModuleEnabled ? (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
                 </h3>
                 <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
-                  {t('order_queue_badge', 'Order Queue')}
+                  {pendingOrders.length} {t('tickets_suffix', 'Tickets')}
                 </span>
               </div>
 
               {recentOrders.length > 0 ? (
-                <ul className="divide-y divide-gray-100 text-xs">
-                  {recentOrders.map((ord) => (
+                <ul className="divide-y divide-gray-100 dark:divide-slate-700 text-xs">
+                  {recentOrders.slice(0, 5).map((ord) => (
                     <li key={ord.id} className="py-2.5 flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-bold text-gray-900 flex items-center gap-1.5">
+                        <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                           <span>{ord.id}</span>
                           <span className="text-gray-400 font-normal">({ord.roomNumber})</span>
                         </div>
-                        <p className="text-gray-500 text-[11px] mt-0.5 line-clamp-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-0.5 line-clamp-1">
                           {ord.items.map((i) => `${i.name} (${i.quantity})`).join(', ')}
                         </p>
                       </div>
@@ -719,123 +800,157 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
             <button
               onClick={() => onNavigate('kitchen')}
-              className="mt-5 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <span>{t('open_kitchen_orders_button', 'Open Kitchen Orders')}</span>
+              <span>{t('open_kitchen_orders_button', 'Open Kitchen Orders')} ({pendingOrders.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-center items-center text-center text-gray-400 text-xs">
+            <Utensils className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
+          </div>
         )}
 
-        {/* Booking Calendar Card */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-2xs p-5 flex flex-col justify-between">
+        {/* Column 3: Requisitions Card */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
           <div>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                {t('requisitions_label', 'Requisitions')}
               </h3>
-              <span className="text-xs font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                {monthName}
+              <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200">
+                {stockAlerts.length} {t('items_low_suffix', 'Items Low')}
               </span>
             </div>
 
-            {/* Calendar Grid Header */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-2">
-              <div>Sun</div>
-              <div>Mon</div>
-              <div>Tue</div>
-              <div>Wed</div>
-              <div>Thu</div>
-              <div>Fri</div>
-              <div>Sat</div>
-            </div>
-
-            {/* Calendar Grid with Spanning Capsules */}
-            <div className="space-y-2 overflow-x-auto">
-
-              {/* Calendar Grid - Simple per-day bookings */}
-              <div className="grid grid-cols-7 gap-1 text-[11px] min-w-max">
-                {Array.from({ length: firstDay }).map((_, idx) => (
-                  <div key={`empty-${idx}`} className="h-20 rounded bg-gray-50 border border-gray-100" />
-                ))}
-
-                {daysArray.map((d) => {
-                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                  const dayBooking = guests.find(
-                    (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || g.expectedCheckout)
-                  );
-                  const isToday = d === today.getDate();
-
-                  const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
-                  const nightlyRate = Math.round(amount / Math.max(1, 1));
-
-                  const colors = [
-                    'bg-teal-500 dark:bg-teal-600',
-                    'bg-emerald-500 dark:bg-emerald-600',
-                    'bg-blue-500 dark:bg-blue-600',
-                    'bg-purple-500 dark:bg-purple-600',
-                    'bg-pink-500 dark:bg-pink-600',
-                    'bg-orange-500 dark:bg-orange-600',
-                    'bg-red-500 dark:bg-red-600',
-                    'bg-indigo-500 dark:bg-indigo-600',
-                  ];
-
-                  // Assign color based on guest ID for consistency
-                  let guestColorIndex = 0;
-                  if (dayBooking) {
-                    const guestIdNum = parseInt(String(dayBooking.id), 10) || 0;
-                    guestColorIndex = guestIdNum % colors.length;
-                  }
-
-                  return (
-                    <div
-                      key={`day-${d}`}
-                      className={`h-20 rounded border p-1.5 transition-all flex flex-col ${
-                        isToday
-                          ? 'bg-blue-50 border-blue-300'
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <span className={`text-[10px] font-semibold mb-1 ${isToday ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>{d}</span>
-                      {dayBooking && (
-                        <button
-                          onClick={() => setSelectedBooking(dayBooking)}
-                          className={`rounded px-1.5 py-1 text-white text-[9px] font-bold flex-1 flex flex-col justify-center ${colors[guestColorIndex]} shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-pointer`}
-                        >
-                          <div className="truncate">{dayBooking.guestName.split(' ')[0]}</div>
-                          <div className="text-[8px] font-semibold">₹{nightlyRate}</div>
-                        </button>
-                      )}
+            {stockAlerts.length > 0 ? (
+              <ul className="divide-y divide-gray-100 dark:divide-slate-700 text-xs">
+                {stockAlerts.slice(0, 5).map((item) => (
+                  <li key={item.id} className="py-2 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white">{item.name}</p>
+                      <p className="text-gray-500 text-[11px]">{item.category}</p>
                     </div>
-                  );
-                })}
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+                      {item.currentStock} / {item.minThreshold} {item.unit}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="py-8 text-center text-gray-400 text-xs font-medium">
+                {t('all_stocks_sufficient', 'All inventory items sufficient.')}
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-gray-500">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-blue-100 border border-blue-300" />
-                <span>{t('legend_active_resident', 'Active Resident')}</span>
+          <button
+            onClick={() => onNavigate('stock_requests')}
+            className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <span>{t('view_stock_requests_button', 'View Stock Requests')} ({stockAlerts.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
+          </h3>
+          <span className="text-xs font-bold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
+            {monthName}
+          </span>
+        </div>
+
+        {/* Days Header */}
+        <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+          <div>Sun</div>
+          <div>Mon</div>
+          <div>Tue</div>
+          <div>Wed</div>
+          <div>Thu</div>
+          <div>Fri</div>
+          <div>Sat</div>
+        </div>
+
+        {/* Calendar Grid - Full Width Spread Out */}
+        <div className="grid grid-cols-7 gap-2 text-xs">
+          {Array.from({ length: firstDay }).map((_, idx) => (
+            <div key={`empty-${idx}`} className="h-24 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/40" />
+          ))}
+
+          {daysArray.map((d) => {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dayBooking = guests.find(
+              (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || g.expectedCheckout)
+            );
+            const isToday = d === today.getDate();
+
+            const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
+            const nightlyRate = Math.round(amount / Math.max(1, 1));
+
+            const colors = [
+              'bg-teal-600 dark:bg-teal-600',
+              'bg-emerald-600 dark:bg-emerald-600',
+              'bg-blue-600 dark:bg-blue-600',
+              'bg-purple-600 dark:bg-purple-600',
+              'bg-pink-600 dark:bg-pink-600',
+              'bg-orange-600 dark:bg-orange-600',
+              'bg-red-600 dark:bg-red-600',
+              'bg-indigo-600 dark:bg-indigo-600',
+            ];
+
+            let guestColorIndex = 0;
+            if (dayBooking) {
+              const guestIdNum = parseInt(String(dayBooking.id), 10) || 0;
+              guestColorIndex = guestIdNum % colors.length;
+            }
+
+            return (
+              <div
+                key={`day-${d}`}
+                className={`h-24 rounded-lg border p-2 transition-all flex flex-col justify-between ${
+                  isToday
+                    ? 'bg-blue-50/70 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/30'
+                    : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+                }`}
+              >
+                <span className={`text-xs font-bold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'}`}>{d}</span>
+                {dayBooking && (
+                  <button
+                    onClick={() => setSelectedBooking(dayBooking)}
+                    className={`rounded-md px-2 py-1.5 text-white text-xs font-bold flex flex-col justify-center ${colors[guestColorIndex]} shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                  >
+                    <div className="truncate font-bold">{dayBooking.guestName.split(' ')[0]}</div>
+                    {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-gray-300" />
-                <span>{t('legend_checked_out', 'Checked Out')}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-gray-500">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-orange-500" />
-                <span>{t('legend_airbnb_booking', 'Airbnb Booking')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-red-100 border border-red-200" />
-                <span>{t('legend_blocked', 'Blocked')}</span>
-              </div>
-            </div>
+            );
+          })}
+        </div>
+
+        {/* Calendar Legend */}
+        <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-400" />
+            <span>{t('legend_today', 'Today')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-teal-600" />
+            <span>{t('legend_active_resident', 'Confirmed Stay')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-orange-600" />
+            <span>{t('legend_airbnb_booking', 'Airbnb Booking')}</span>
           </div>
         </div>
       </div>
@@ -852,7 +967,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           }}
           onDelete={onDeleteBooking ? async (id) => { await onDeleteBooking(id); setSelectedBooking(null); } : undefined}
           rooms={rooms}
-          activeGuests={guests}
+          checkedInGuests={guests}
           propertyName={propertyName}
           propertyMapsLink={propertyMapsLink}
           propertyPhone={propertyPhone}
@@ -883,34 +998,117 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Add Guest Modal */}
       {showAddGuestModal && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowAddGuestModal(false)} />
-          <div className="fixed z-50 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl overflow-y-auto w-[calc(100%-2rem)] max-w-2xl max-h-[90vh]">
-              <GuestManagement
-                guests={guests}
-                receipts={receipts}
-                menu={menu}
-                rooms={rooms}
-                onAddGuest={(guest) => {
-                  onAddGuest?.(guest);
-                  setShowAddGuestModal(false);
-                }}
-                onCheckoutGuest={onCheckoutGuest || (() => {})}
-                onDispatchTelegram={onDispatchTelegram}
-                activeMenuItemKey="guest_registration"
-                // roomName is only ever passed for the Multi-Key per-room
-                // dashboard (see MultiKeyPropertyOverview) - the Single-property
-                // dashboard renders this same modal with none of that, and
-                // always claiming isMultiKeyProperty broke the form for Single
-                // properties once the Add Booking button became unconditional.
-                isMultiKeyProperty={!!roomName}
-                selectedRoomSlug={roomName}
-                preSelectRoom={roomName}
-                onClose={() => setShowAddGuestModal(false)}
-              />
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowAddGuestModal(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GuestManagement
+              guests={guests}
+              receipts={receipts}
+              menu={menu}
+              rooms={rooms}
+              onAddGuest={(guest) => {
+                onAddGuest?.(guest);
+                setShowAddGuestModal(false);
+              }}
+              onCheckoutGuest={onCheckoutGuest || (() => {})}
+              onDispatchTelegram={onDispatchTelegram}
+              activeMenuItemKey="guest_registration"
+              isMultiKeyProperty={!!roomName}
+              selectedRoomSlug={roomName}
+              preSelectRoom={roomName}
+              onClose={() => setShowAddGuestModal(false)}
+            />
           </div>
-        </>
+        </div>
+      )}
+
+      {/* All System Alerts Modal */}
+      {showAllAlertsModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowAllAlertsModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <span>All System Alerts ({combinedAlerts.length})</span>
+              </h3>
+              <button
+                onClick={() => setShowAllAlertsModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                    <th className="pb-2 pr-3">{t('alerts_col_guest_room', 'Guest / Room')}</th>
+                    <th className="pb-2 pr-3">{t('alerts_col_issue', 'Issue')}</th>
+                    <th className="pb-2 w-36">{t('alerts_col_action', 'Action')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                  {combinedAlerts.map(({ guest: g, severity, reasons }) => (
+                    <tr
+                      key={g.id}
+                      className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
+                    >
+                      <td className="py-3 pr-3 align-top">
+                        <div className={`text-sm font-bold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                          {g.guestName}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
+                      </td>
+                      <td className="py-3 pr-3 align-top">
+                        <div className="space-y-1">
+                          {reasons.map((r, i) => (
+                            <div
+                              key={i}
+                              className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
+                            >
+                              {r.label} — {r.detail}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 align-top">
+                        <button
+                          onClick={() => {
+                            setShowAllAlertsModal(false);
+                            setSelectedBooking(g);
+                          }}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
+                            severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+                          }`}
+                        >
+                          {t('view_resolve_button', 'View & Resolve')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 };
+
+
+
+
+
