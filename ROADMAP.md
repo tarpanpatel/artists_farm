@@ -46,21 +46,6 @@ What's still open:
   expiry. Worth a decision on whether/how to replace it with a real
   initial-setup credential, separately from everything above.
 
-### Orphaned tenant-onboarding / property-approval subsystem — finish or remove
-
-`php/modules/onboarding_workflow.php` (requestTenantOnboarding/
-approveTenantOnboarding/rejectTenantOnboarding/getPendingOnboardingRequests)
-and `php/modules/property_manager.php` (getAllProperties/getPropertyDetails/
-getPendingPropertyRequests/approvePropertyRequest/rejectPropertyRequest/
-deactivateProperty/requestPropertyModification/getPropertyRequestHistory)
-are never `require`'d by `router.php` or anything else - fully unreachable
-from the live app. Both were added in a single commit each on 31 Jul 2026
-as part of the 6-digit passcode auth work and haven't been touched since,
-while several unrelated features shipped in between - reads as parked
-mid-stream rather than active WIP. Needs a decision: finish wiring the
-approval workflow in, or delete both files if the feature's been
-superseded/deprioritized.
-
 ### Needs Manual Verification
 
 - **Property-access gate, real browser session.** The new universal
