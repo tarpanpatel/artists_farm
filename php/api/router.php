@@ -307,46 +307,12 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
     return false;
 }
 
-// SECURITY (10 Aug 2026): getCurrentPropertyId() (property_resolver.php) resolves purely from
-// the *request's* property_slug/X-Property-Slug header/URL path - it has no idea who's asking,
-// so it can't check ownership itself. Without this gate, any authenticated session (or, before
-// $public_actions was trimmed above, no session at all) could read/write an arbitrary other
-// tenant's property just by naming a different slug. True per-property authorization:
-// - Root/platform admins: full access (they manage every tenant by design).
-// - Staff (session carries property_id from staff_users login): only their own assigned property.
-// - Tenant/platform users (session carries user_id, no property_id): any property under a
-//   tenant they belong to, via the same resolveCallerTenantIds() lookup isTenantAccessAllowed() uses.
-function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
-    if (!$propertyId) return false;
-
-    if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
-
-    // Staff sessions (staff_users login branch) always carry property_id - scope strictly to it.
-    if (isset($_SESSION['property_id'])) {
-        return (int)$_SESSION['property_id'] === $propertyId;
-    }
-
-    // Tenant/platform users (users-table login branch, never carries property_id). Deliberately
-    // NOT reusing resolveCallerTenantIds() here: its staff_users JOIN keys off session user_id
-    // regardless of which table the session actually authenticated against, and users.id /
-    // staff_users.id are independent auto-increment sequences that can collide (confirmed: id 11
-    // exists as an unrelated row in both tables in this DB) - that let a users-table session
-    // inherit a same-numbered-but-unrelated staff account's property/tenant access. Resolve this
-    // session's own default_tenant_id directly instead.
-    if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
-        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$_SESSION['user_id']]);
-        $row = $stmt->fetch();
-        if ($row && !empty($row['default_tenant_id'])) {
-            $stmt2 = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
-            $stmt2->execute([$propertyId]);
-            $prow = $stmt2->fetch();
-            if ($prow && (int)$prow['tenant_id'] === (int)$row['default_tenant_id']) return true;
-        }
-    }
-
-    return false;
-}
+// SECURITY (10 Aug 2026, extracted 11 Aug 2026): getCurrentPropertyId() (property_resolver.php)
+// resolves purely from the *request's* property_slug/X-Property-Slug header/URL path - it has no
+// idea who's asking, so it can't check ownership itself. isPropertyAccessAllowed() closes that
+// gap; now lives in security/access_control.php so standalone endpoints outside this router's
+// dispatch (e.g. ical_sync.php) can require the same check instead of going unauthenticated.
+require_once __DIR__ . '/../security/access_control.php';
 
 
 // Log all API requests to Telescope

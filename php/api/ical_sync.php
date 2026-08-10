@@ -422,12 +422,37 @@ if (php_sapi_name() === 'cli') {
     return;
 }
 
+// SECURITY (11 Aug 2026): this endpoint is never routed through router.php, so it never got the
+// property-ownership gate added there - it had ZERO auth check at all (confirmed live: a plain,
+// cookie-less request returned another property's connected calendar feeds, including OTA sync
+// config, in full). Session bootstrap must match router.php exactly so the same login cookie is
+// recognized.
+ini_set('session.gc_maxlifetime', 86400 * 7);
+ini_set('session.cookie_lifetime', 86400 * 7);
+ini_set('session.cookie_httponly', 1);
+session_name('artists_farm_session');
+session_start();
+require_once __DIR__ . '/../security/access_control.php';
+
 // Handle API requests
 $action = $_GET['action'] ?? '';
 
 // Get current property ID from request context
 require_once __DIR__ . '/../config/property_resolver.php';
 $currentPropertyId = getCurrentPropertyId($pdo);
+
+if (empty($_SESSION['username'])) {
+    http_response_code(401);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+    exit;
+}
+if (!isPropertyAccessAllowed($pdo, $currentPropertyId)) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'error', 'message' => 'Access denied for this property.']);
+    exit;
+}
 
 $manager = new ICalSyncManager($pdo);
 
