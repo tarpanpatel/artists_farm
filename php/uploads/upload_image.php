@@ -3,13 +3,37 @@
  * Image Upload Endpoint
  * Receives a multipart/form-data image upload, resizes/crops it, saves to disk, returns URL.
  * POST fields: image=<file>, folder=menu|catalog|misc|id_documents
- * Response: { "status": "success", "url": "/artist_farm/uploads/images/menu/abc123.jpg" }
+ * Response: { "status": "success", "url": "/artist_farm/uploads/images/{tenant}/{property}/{category}/abc123.jpg" }
+ *
+ * Storage layout (11 Aug 2026 - was previously one flat shared folder per
+ * category, no tenant/property isolation at all - see ROADMAP.md):
+ * images/{tenant_slug}/{property_slug}/{category}/{filename}, where category
+ * is food_menu/kitchen_stock/id_documents/misc depending on the `folder`
+ * param. Property context comes from the same X-Property-Slug header
+ * src/services/api.ts's apiFetch() already attaches to every request - no
+ * frontend change needed for this to work.
  */
 
+// Now requires database.php (previously fully standalone) to resolve tenant/property context via
+// the same getCurrentPropertyId() every other endpoint uses, and picks up its session-auth +
+// CORS + CSRF Origin check as a result - this endpoint had none of those before. Worth adding
+// deliberately, not just as a side effect: without an auth/ownership check, an unauthenticated
+// caller could name a different tenant's X-Property-Slug and have their upload routed straight
+// into that tenant's folder - a targeted image-spam vector the old flat-shared-folder layout
+// didn't meaningfully enable (everything went into one undifferentiated pool either way).
+// database.php doesn't start the session itself - every other entry point (router.php,
+// ical_sync.php, authenticate.php) does its own session_name()+session_start() before requiring
+// it, so this needs the same bootstrap or $_SESSION reads below always come back empty.
+ini_set('session.gc_maxlifetime', 86400 * 7);
+ini_set('session.cookie_lifetime', 86400 * 7);
+ini_set('session.cookie_httponly', 1);
+session_name('artists_farm_session');
+session_start();
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../security/access_control.php';
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -18,6 +42,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'POST required']);
+    exit;
+}
+
+if (empty($_SESSION['username'])) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+    exit;
+}
+
+$propertyId = getCurrentPropertyId($pdo);
+if (!isPropertyAccessAllowed($pdo, $propertyId)) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Access denied for this property.']);
     exit;
 }
 
@@ -31,6 +68,24 @@ $isIdDocument = $folder === 'id_documents';
 $targetWidth = ($folder === 'catalog') ? 300 : 400;
 $targetHeight = ($folder === 'catalog') ? 100 : 300;
 
+// Category subfolder name - distinct from the internal $folder param so the on-disk layout can
+// use clearer names than the API's existing menu/catalog vocabulary without a breaking API change.
+$categoryFolderNames = ['menu' => 'food_menu', 'catalog' => 'kitchen_stock', 'id_documents' => 'id_documents', 'misc' => 'misc'];
+$categoryFolder = $categoryFolderNames[$folder];
+
+// Resolve tenant/property slugs for the folder path. Sanitized (alphanumeric/hyphen/underscore
+// only) even though slugs come from the DB via ID lookups rather than directly from client
+// input - cheap defense-in-depth against a malformed slug ever being usable for path traversal.
+$sanitizeSlug = function ($slug) {
+    $clean = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$slug);
+    return $clean !== '' ? $clean : 'unknown';
+};
+$property = getCurrentProperty($pdo, $propertyId);
+$propertySlug = $sanitizeSlug($property['slug'] ?? '');
+$tenantSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
+$tenantSlugStmt->execute([$property['tenant_id'] ?? 0]);
+$tenantSlug = $sanitizeSlug($tenantSlugStmt->fetchColumn());
+
 $tmpPath = $_FILES['image']['tmp_name'];
 $imageInfo = @getimagesize($tmpPath);
 if ($imageInfo === false) {
@@ -41,8 +96,9 @@ if ($imageInfo === false) {
 $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
 $ext = $mimeToExt[$imageInfo['mime']] ?? 'jpg';
 
-// Create uploads directory
-$uploadDir = __DIR__ . '/images/' . $folder;
+// Create uploads directory - now nested per tenant/property/category instead of one flat shared
+// folder per category.
+$uploadDir = __DIR__ . '/images/' . $tenantSlug . '/' . $propertySlug . '/' . $categoryFolder;
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
@@ -177,7 +233,7 @@ if (!$saved) {
 // uses forward slashes while __DIR__-derived paths use backslashes, so the
 // string diff never matched and silently returned an absolute filesystem path.
 $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/php/uploads/upload_image.php'));
-$url = $scriptDir . '/images/' . $folder . '/' . $filename;
+$url = $scriptDir . '/images/' . $tenantSlug . '/' . $propertySlug . '/' . $categoryFolder . '/' . $filename;
 
 // File size
 $fileSize = filesize($filepath);

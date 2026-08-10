@@ -6,42 +6,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Store uploaded images in per-tenant/per-property folders, not one shared pool
-
-Corrected finding (11 Aug 2026 - an earlier version of this note wrongly
-claimed menu/catalog images aren't optimized before storage; checked the
-actual backend and they are): `php/uploads/upload_image.php` already
-resizes/crops/compresses server-side regardless of what the frontend
-sends - menu photos center-crop to 400x300, catalog/kitchen-stock photos
-to 300x100, both re-encoded as JPEG at quality 85; ID documents downscale
-(never crop) to a 1600px max dimension plus get a separate 300px
-thumbnail. That part is already done and doesn't need touching.
-
-What's actually missing: storage is completely flat and **not scoped to
-tenant/property at all**. Every property's menu photos land in the same
-shared `php/uploads/images/menu/` folder (same for `catalog/` and
-`id_documents/`), distinguished only by a random 24-hex-char filename -
-no isolation, no way to see or clean up one tenant's images separately
-from another's.
-
-Requested structure: `{tenant_slug}/{property_slug}/{category}/{filename}`,
-e.g. `vrikshawan/goa-homes/food_menu/image-x.jpg` for a menu photo,
-`vrikshawan/goa-homes/kitchen_stock/image-x.jpg` for a catalog item,
-`vrikshawan/goa-homes/id_documents/image-x.jpg` for a guest ID - same
-rule applied per category, just a different subfolder name for each.
-
-Implementation notes for whoever picks this up: `upload_image.php`
-currently takes only `image` + `folder` (menu/catalog/misc/id_documents)
-in the POST body, no property/tenant context at all, and doesn't
-`require` `database.php` or start a session - it would need to resolve
-`tenant_slug`/`property_slug` (either via `property_resolver.php`'s
-existing pattern, same as `router.php`/`ical_sync.php`, or explicit slug
-fields the frontend already has via `getPropertyAndRoomSlugs()`) and
-build `$uploadDir` from that instead of the current flat
-`__DIR__ . '/images/' . $folder`. Existing already-uploaded images stay
-wherever they are unless a one-off migration script moves them - not
-required for new uploads to start using the new structure.
-
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
 The critical items from that audit are fixed and shipped (see git history:
