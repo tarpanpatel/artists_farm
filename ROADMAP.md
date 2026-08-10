@@ -6,31 +6,30 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Google Drive photo archival — descoped, not started
+### Optimize menu & kitchen-stock (catalog) images before storage
 
-Guest ID documents and expense invoice photos now relay to Telegram (see
-git history, 10 Aug 2026); Google Drive archival on top of that was
-explicitly descoped for now - no Drive integration exists in this
-codebase. If picked up later, needs a Google Cloud service account + Drive
-API credentials, a small PHP wrapper (folder-exists-or-create, then file
-upload), and a shared path-building helper so both upload flows produce
-the same structure:
+Menu item photos (`MenuManager.tsx` - both the add/edit food modal at
+`handleSaveFoodItem` and the per-item "Quick Image Upload" overlay) and
+catalog/kitchen-stock item photos (`InventoryManagement.tsx`'s
+`handleSaveCatalogItem`) currently upload raw base64 straight from
+`FileReader` with zero resizing or compression before hitting
+`uploadImageDB()` (`src/services/api.ts`) - a full-resolution phone photo
+(several MB) gets stored as-is, for every menu item and every catalog
+item. This is inconsistent with two other upload flows that already do
+this correctly: guest ID documents (`CheckinVerificationModal.tsx`, calls
+`resizeImageFile()` from `api.ts` - caps to 1600px max dimension, skips
+re-encoding if already smaller) and petty cash invoice/screenshot uploads
+(`PettyCashManagement.tsx`'s own "Compress & Crop Image Engine",
+`handleCompressFile`).
 
-```
-{tenant_name}/{property_name}/{category}/{Month YYYY}/{descriptive_name}_{DD-MM-YYYY}_{HHMM}hrs.{ext}
-```
-
-Worked example (₹3000 diesel expense logged 12 July 2026, 2:00 PM):
-```
-Vrikshawan/Goa Homes/Expenses/July 2026/Diesel_12-07-2026_1400hrs.jpg
-```
-Guest ID documents would follow the same pattern under an `ID Documents`
-category, e.g. `Vrikshawan/Goa Homes/ID Documents/July 2026/PriyaSharma_12-07-2026_1400hrs.jpg`.
-
-Every relevant page already has its own datalog (expense date/category,
-guest name/room, upload timestamp) to derive this path from - no new
-fields needed, just wiring the existing values through, whenever this
-gets picked back up.
+Goal: route menu/catalog uploads through the same optimize-before-upload
+step (resize to a sensible max dimension + re-encode at a reasonable
+quality/format) so server storage only ever holds optimized copies, not
+raw phone-camera originals, keeping disk usage from creeping up as more
+items get photos over time. `resizeImageFile()` already exists and is the
+obvious reusable piece - likely just needs wiring into the two call sites
+above the same way `CheckinVerificationModal.tsx` already does it, rather
+than building something new.
 
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
@@ -108,21 +107,6 @@ while several unrelated features shipped in between - reads as parked
 mid-stream rather than active WIP. Needs a decision: finish wiring the
 approval workflow in, or delete both files if the feature's been
 superseded/deprioritized.
-
-### Remaining unused-code cleanup (lower priority)
-
-The dead-code audit (10 Aug 2026) also flagged 173 unused local variables/
-parameters/destructured props across `src/` (as opposed to the unused
-*imports*, which are already cleaned up - and `isDarkMode`/`onToggleDarkMode`
-in `Header.tsx`, removed 10 Aug 2026 along with the whole dark-mode toggle
-feature). These need a per-file look rather than a bulk pass, because a
-couple are props received but never used inside the component body - which
-can mean either harmless leftover from a refactor or a real wiring bug.
-Checked `onLogout` in `Header.tsx` - logout itself works fine (handled by
-`TenantDashboard.tsx`/`RootAdminDashboard.tsx`/`PlatformPropertyManagement.tsx`,
-which each call their own `onLogout()`), so Header's copy is just a
-vestigial prop, not a bug. Safe to remove whenever the rest of this bucket
-gets cleaned up.
 
 ### Needs Manual Verification
 
