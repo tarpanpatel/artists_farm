@@ -80,16 +80,36 @@ Curl-verified: malicious `Origin` → 403 on both `router.php` and
 `ical_sync.php`; no `Origin` → still works; correct dev `Origin` → still
 works; GET requests unaffected (this only ever gates write methods); the
 property-access gate still layers correctly on top). What's left, none of
-it fixed yet:
+it fixed yet - and one more now fixed: `resolveCallerTenantIds()`'s
+id-collision risk (used by `isTenantAccessAllowed()`, the 3 actions -
+`get_tenant_properties`/`get_tenant_slot_usage`/`create_property_for_tenant`
+- that check tenant membership directly rather than going through
+`isPropertyAccessAllowed()`). It used to query *both* `users.default_tenant_id`
+and the `staff_users` JOIN unconditionally for every session, regardless of
+which table the session actually authenticated against - collision risk in
+both directions (a staff session could inherit an unrelated `users` row's
+tenant, and vice versa), not just the one direction already worked around
+in `isPropertyAccessAllowed()`. Fixed with the same discriminator (session
+`property_id` isset = staff session, only join `staff_users`; not set =
+users-table session, only check `default_tenant_id` - never both). Curl-
+verified: a `users`-table session with no `default_tenant_id` (but whose
+numeric id collides with an unrelated staff account assigned to a real
+tenant) can no longer list that tenant's properties.
 
-- **`resolveCallerTenantIds()` id-collision risk.** This existing helper
-  (used by `isTenantAccessAllowed()`, unrelated to the new property gate
-  above) joins `staff_users.id = session.user_id` regardless of whether the
-  session actually authenticated via the `staff_users` table. `users.id` and
-  `staff_users.id` are independent sequences that can collide (confirmed in
-  this DB). The new `isPropertyAccessAllowed()` deliberately avoids this
-  helper for that reason; `isTenantAccessAllowed()`'s other call sites still
-  use it as-is and weren't audited for real-world impact.
+Fixing this surfaced a real, separate regression from earlier today's
+property-access gate (unrelated to the collision bug itself): those same
+3 tenant-directory actions take `tenant_id` explicitly and were never
+meant to depend on "the currently resolved property" at all, but the
+blanket gate added earlier ran before their own `isTenantAccessAllowed()`
+check and 403'd legitimate tenant admins whenever no `property_slug` was
+in the request (falls back to an unrelated default property that
+obviously doesn't belong to their tenant). Fixed by exempting just those
+3 actions from the property-match part of the gate (still requires
+authentication) - they rely on their own more precise check instead.
+Curl-verified: a real tenant admin can list their own tenant's properties
+and check their own slot usage again (both were silently broken since
+this morning's fix), still correctly denied for a different tenant, root
+admin unaffected throughout.
 - **Staff with multiple property assignments.** Some staff accounts have
   multiple `staff_users` rows (same person, one row per assigned property).
   Login only reads one row (`LIMIT 1`, no explicit order), so a multi-property

@@ -222,15 +222,24 @@ if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_a
 // platform/tenant users -> users.default_tenant_id; property staff -> the tenant
 // that owns the property row their staff_users entry points at.
 function resolveCallerTenantIds(PDO $pdo): array {
+    if (!isset($_SESSION['user_id'])) {
+        return [];
+    }
+    $uid = $_SESSION['user_id'];
     $tenantIds = [];
-    if (isset($_SESSION['user_id'])) {
-        $uid = $_SESSION['user_id'];
-        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$uid]);
-        $row = $stmt->fetch();
-        if ($row && !empty($row['default_tenant_id'])) {
-            $tenantIds[] = (int)$row['default_tenant_id'];
-        }
+
+    // SECURITY (11 Aug 2026): users.id and staff_users.id are independent auto-increment
+    // sequences that can collide (confirmed in this DB - id 11 exists as unrelated rows in
+    // both tables). This used to query BOTH tables unconditionally for every session, so a
+    // staff session could inherit an unrelated users-table row's default_tenant_id, and a
+    // tenant/platform-user session could just as easily inherit an unrelated staff account's
+    // property/tenant assignment - collision risk in both directions, not just one. Same root
+    // cause already fixed once for isPropertyAccessAllowed() (php/security/access_control.php);
+    // applying the same discriminator here: staff_users logins always carry session property_id
+    // (see the login_user case below), users-table logins never do, so that's what decides
+    // which table's id-space $uid actually belongs to - never query both.
+    if (isset($_SESSION['property_id'])) {
+        // Staff session - resolve tenant via their assigned property only.
         $stmt2 = $pdo->prepare("
             SELECT DISTINCT p.tenant_id
             FROM staff_users su
@@ -241,7 +250,16 @@ function resolveCallerTenantIds(PDO $pdo): array {
         foreach ($stmt2->fetchAll() as $r) {
             if (!empty($r['tenant_id'])) $tenantIds[] = (int)$r['tenant_id'];
         }
+    } else {
+        // Tenant/platform user session.
+        $stmt = $pdo->prepare("SELECT default_tenant_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$uid]);
+        $row = $stmt->fetch();
+        if ($row && !empty($row['default_tenant_id'])) {
+            $tenantIds[] = (int)$row['default_tenant_id'];
+        }
     }
+
     return array_unique(array_filter($tenantIds));
 }
 
@@ -346,19 +364,30 @@ if (!in_array($action, ['get_audit_logs', 'fetch_logs'])) { // Skip verbose get 
 $propertyId = getCurrentPropertyId($pdo);
 $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full property details - reuse the ID just resolved above instead of re-running slug resolution
 
+// Actions that operate on a tenant directly (list/create properties under a tenant, check slot
+// usage) rather than on "the currently resolved property" - they take tenant_id explicitly and
+// already run their own, more precise isTenantAccessAllowed() check inside the case block below.
+// Exempted from the property-match gate only (still requires authentication) - found 11 Aug 2026
+// while testing the resolveCallerTenantIds() fix: a legitimate tenant admin with no property_slug
+// in the request got 403'd by the property gate before ever reaching their own tenant's
+// isTenantAccessAllowed() check, since getCurrentPropertyId() falls back to an unrelated default
+// property when nothing property-specific was requested.
+$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant'];
+
 // SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
 // *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
 // tenant/property directories, ...) had no authentication check at all, for any action, ever.
 // $public_actions is now the single source of truth for "must work with no session" - every
 // other action requires a session, and if authenticated, that session must actually be
-// authorized for the property $propertyId just resolved to (not just any logged-in session).
+// authorized for the property $propertyId just resolved to (not just any logged-in session) -
+// unless it's a $tenant_scope_actions entry, see above.
 if (!in_array($action, $public_actions, true)) {
     if (!$is_authenticated_user) {
         http_response_code(401);
         echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
         exit;
     }
-    if (!isPropertyAccessAllowed($pdo, $propertyId)) {
+    if (!in_array($action, $tenant_scope_actions, true) && !isPropertyAccessAllowed($pdo, $propertyId)) {
         TelescopeLogger::log(
             'security',
             'WARNING',
