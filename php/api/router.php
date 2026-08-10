@@ -468,15 +468,34 @@ switch ($action) {
         $cleanDigits = preg_replace('/\D/', '', $rawIdentifier);
         $mobileNumber = strlen($cleanDigits) >= 10 ? substr($cleanDigits, -10) : $cleanDigits;
 
+        // SECURITY (11 Aug 2026): a non-numeric identifier (e.g. a username with no digits at
+        // all) makes $mobileNumber an empty string, which used to still get bound into the LIKE
+        // clause below as '%' . '' = '%' - matching ANY row with a non-null phone_number instead
+        // of failing to match, so a username-style login attempt could land on an arbitrary
+        // unrelated account (real passcode still required, but wrong-account risk either way).
+        // Only include the phone-matching clause/params at all when there's an actual digit
+        // string to match against.
+        $hasPhoneCandidate = $mobileNumber !== '';
+
         try {
             // 1. Search in users table (Platform & Tenant Admins)
-            $stmt = $pdo->prepare("
-                SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
-                FROM users
-                WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
-                LIMIT 1
-            ");
-            $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
+            if ($hasPhoneCandidate) {
+                $stmt = $pdo->prepare("
+                    SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
+                    FROM users
+                    WHERE username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)
+                    LIMIT 1
+                ");
+                $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT id, username, full_name, phone_number, password, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode
+                    FROM users
+                    WHERE username = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([$rawIdentifier]);
+            }
             $user = $stmt->fetch();
 
             if ($user) {
@@ -531,13 +550,23 @@ switch ($action) {
             }
 
             // 2. Search in staff_users table
-            $stmt = $pdo->prepare("
-                SELECT id, username, phone_number, full_name, role, passcode, property_id
-                FROM staff_users
-                WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
-                LIMIT 1
-            ");
-            $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
+            if ($hasPhoneCandidate) {
+                $stmt = $pdo->prepare("
+                    SELECT id, username, phone_number, full_name, role, passcode, property_id
+                    FROM staff_users
+                    WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
+                    LIMIT 1
+                ");
+                $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT id, username, phone_number, full_name, role, passcode, property_id
+                    FROM staff_users
+                    WHERE username = ? AND status = 'Active'
+                    LIMIT 1
+                ");
+                $stmt->execute([$rawIdentifier]);
+            }
             $staff = $stmt->fetch();
 
             if ($staff) {

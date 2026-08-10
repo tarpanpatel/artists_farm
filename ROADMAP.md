@@ -36,36 +36,23 @@ gets picked back up.
 
 The critical items from that audit are fixed and shipped (see git history:
 cross-tenant property-access gate, removed `123456` universal login
-bypass, rate limiter on login, and - found while checking on the iCal Sync
-feature separately the same day - `php/api/ical_sync.php` had *zero*
-session check at all, since it's a standalone endpoint never routed
-through `router.php`'s dispatch and so never covered by that gate; a
-plain cookie-less request returned another property's connected OTA
-calendar configs in full. Fixed by extracting `isPropertyAccessAllowed()`
-into `php/security/access_control.php` so both files require the same
-check - same fix shape, now shared instead of router.php-only. Found by
-accident (checking on the iCal Sync feature for an unrelated reason), so
-swept for others: `grep -rn "getCurrentPropertyId($pdo)"` across the repo
-turns up only 4 call sites - `router.php` and `ical_sync.php` (both now
-gated), `property_resolver.php` (the function's own definition), and
-`demo_data.php` (only ever `require_once`'d from inside router.php's
-`generate_demo_data`/`clear_demo_data` cases, so it's already behind that
-gate, not independently reachable). No other standalone endpoint has this
-gap as of 11 Aug 2026 - worth re-running that grep if a new `php/api/*.php`
-file is ever added that resolves its own property context directly instead
-of being dispatched through router.php). What's left, none of it fixed yet:
+bypass, rate limiter on login, `ical_sync.php`'s missing auth check -
+found while checking on the iCal Sync feature separately the same day,
+same fix shape extracted into `php/security/access_control.php` so both
+files share it instead of router.php-only; swept for other standalone
+endpoints with the same gap via `grep -rn "getCurrentPropertyId($pdo)"`,
+none found. Also fixed: the login identifier wildcard bug - a non-numeric
+identifier collapsed `$mobileNumber` to an empty string, and the fallback
+`phone_number LIKE '%' . $mobileNumber` became `LIKE '%'`, matching *any*
+row with a non-null phone number. Both the `users` and `staff_users`
+login queries now skip the phone-matching clause entirely when there's no
+actual digit string to match against, falling back to exact `username =`
+only. Curl-verified: a nonexistent non-numeric identifier tried against
+two different real accounts' real passcodes now correctly fails on both;
+real username login, real phone-number login, and the default-admin
+bootstrap fallback all still work unchanged). What's left, none of it
+fixed yet:
 
-- **Login identifier wildcard bug.** `login_user` cleans the identifier to
-  digits-only for phone matching; a non-numeric identifier (e.g. a username
-  with no digits) collapses to an empty string, and the fallback
-  `phone_number LIKE '%' . $mobileNumber` becomes `LIKE '%'` — matching *any*
-  row with a non-null phone number instead of failing to match. Affects both
-  the `users` and `staff_users` login queries. Not exploitable for
-  passcode-free entry (the matched row's real passcode still has to match),
-  but it means a username-style login attempt can land on an arbitrary
-  unrelated account if that account's real passcode happens to guessed.
-  Needs a proper fix (skip the phone LIKE clause entirely when the cleaned
-  digit string is empty), not a drive-by one.
 - **`resolveCallerTenantIds()` id-collision risk.** This existing helper
   (used by `isTenantAccessAllowed()`, unrelated to the new property gate
   above) joins `staff_users.id = session.user_id` regardless of whether the
