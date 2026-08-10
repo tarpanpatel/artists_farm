@@ -1,5 +1,11 @@
 # CSS Theming System — Implementation Plan
 
+**Status (11 Aug 2026): Phases 1-4 done and verified** — `Input.tsx`/`StyledSelect.tsx`/`Badge.tsx` all correctly wired to their tokens, page-scope classes intact, `tsc`/Vite both clean. Phase 5 (raw-element migration) deliberately not started, per this doc's own instruction.
+
+Two follow-ups found *after* this plan was originally handed off (not failures of whoever implemented it - these were never written into the plan below) are now also fixed: `--btn-primary-*`/`--btn-danger-*` in `index.css` were still static hex, disconnected from the Appearance page's `--color-primary`/`--color-error` (now derive from them, with a static fallback for before the JS theme-fetch resolves); `theme-overrides.css` only had 1 `emerald-*` rule despite `emerald-*` being the actually-used success color family (38 real usages vs. 5 for `green-*`) - regenerated systematically (every shade, not hand-picked) via `gen_theme_overrides.js`, kept in the session scratchpad that built it, so coverage doesn't silently rot again.
+
+---
+
 **For:** whoever picks this up next (Kilo or otherwise) — this doc is self-contained, you shouldn't need to re-audit anything below before starting.
 
 **Goal:** WordPress-style theming in this Tailwind v4 + React app — change one CSS rule, have it apply to every instance of a component sitewide, while still being able to override just one page/section if needed. Two layers, both additive (nothing gets removed from existing markup):

@@ -6,12 +6,26 @@
    Design System Tokens (Buttons & Form Controls)
    ========================================================================== */
 :root {
-  /* Button Variants - Light */
-  --btn-primary-bg: #2563eb;
-  --btn-primary-hover: #1d4ed8;
-  --btn-primary-active: #1e40af;
+  /* Button Variants - Light
+     primary/danger deliberately derive from --color-primary/--color-error
+     (set by src/services/themeService.ts's applyThemeSettings() from the
+     Appearance page, php/theme/theme_settings.php) rather than their own
+     hardcoded hex - this was the one gap CSS_THEMING_PLAN.md's Phases 1-3
+     didn't cover: Button.tsx already read --btn-* correctly, but --btn-*
+     itself was never connected to the Appearance page, so changing
+     "Primary" there silently did nothing to actual <Button> instances even
+     though it repainted raw Tailwind bg-blue-600 elements via
+     theme-overrides.css. Percentages match theme-overrides.css's own
+     700/800-shade convention (85%/70% mixed with black) for consistency.
+     secondary/ghost stay hardcoded neutral gray on purpose - not tied to
+     any brand color. Dark-mode block below is left untouched: confirmed
+     unreachable (nothing anywhere sets class="dark" since dark mode was
+     removed), not worth the risk of touching dead code for zero effect. */
+  --btn-primary-bg: var(--color-primary, #2563eb);
+  --btn-primary-hover: color-mix(in srgb, var(--color-primary, #2563eb) 85%, black);
+  --btn-primary-active: color-mix(in srgb, var(--color-primary, #2563eb) 70%, black);
   --btn-primary-text: #ffffff;
-  --btn-primary-ring: rgba(37, 99, 235, 0.35);
+  --btn-primary-ring: color-mix(in srgb, var(--color-primary, #2563eb) 35%, transparent);
 
   --btn-secondary-bg: #ffffff;
   --btn-secondary-border: #cbd5e1;
@@ -20,11 +34,11 @@
   --btn-secondary-text: #0f172a;
   --btn-secondary-ring: rgba(148, 163, 184, 0.3);
 
-  --btn-danger-bg: #dc2626;
-  --btn-danger-hover: #b91c1c;
-  --btn-danger-active: #991b1b;
+  --btn-danger-bg: var(--color-error, #dc2626);
+  --btn-danger-hover: color-mix(in srgb, var(--color-error, #dc2626) 85%, black);
+  --btn-danger-active: color-mix(in srgb, var(--color-error, #dc2626) 70%, black);
   --btn-danger-text: #ffffff;
-  --btn-danger-ring: rgba(220, 38, 38, 0.35);
+  --btn-danger-ring: color-mix(in srgb, var(--color-error, #dc2626) 35%, transparent);
 
   --btn-ghost-bg: transparent;
   --btn-ghost-hover: rgba(241, 245, 249, 0.8);
