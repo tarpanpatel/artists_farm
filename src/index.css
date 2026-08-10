@@ -2,6 +2,159 @@
 @import "./theme-overrides.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ==========================================================================
+   Design System Tokens (Buttons & Form Controls)
+   ========================================================================== */
+:root {
+  /* Button Variants - Light */
+  --btn-primary-bg: #2563eb;
+  --btn-primary-hover: #1d4ed8;
+  --btn-primary-active: #1e40af;
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: rgba(37, 99, 235, 0.35);
+
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-border: #cbd5e1;
+  --btn-secondary-hover: #f8fafc;
+  --btn-secondary-active: #f1f5f9;
+  --btn-secondary-text: #0f172a;
+  --btn-secondary-ring: rgba(148, 163, 184, 0.3);
+
+  --btn-danger-bg: #dc2626;
+  --btn-danger-hover: #b91c1c;
+  --btn-danger-active: #991b1b;
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: rgba(220, 38, 38, 0.35);
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(241, 245, 249, 0.8);
+  --btn-ghost-active: #e2e8f0;
+  --btn-ghost-text: #334155;
+  --btn-ghost-ring: rgba(148, 163, 184, 0.25);
+
+  /* Input States - Light */
+  --input-bg-default: #ffffff;
+  --input-border-default: #cbd5e1;
+  --input-text-default: #0f172a;
+  --input-placeholder: #94a3b8;
+
+  --input-border-focus: #3b82f6;
+  --input-ring-focus: rgba(59, 130, 246, 0.25);
+
+  --input-bg-error: #fef2f2;
+  --input-border-error: #ef4444;
+  --input-ring-error: rgba(239, 68, 68, 0.25);
+  --input-text-error: #991b1b;
+
+  --input-bg-disabled: #f8fafc;
+  --input-border-disabled: #e2e8f0;
+  --input-text-disabled: #94a3b8;
+
+  /* Select - Light */
+  --select-bg: #ffffff;
+  --select-border-default: #cbd5e1;
+  --select-border-hover: #94a3b8;
+  --select-border-focus: #06b6d4;
+  --select-ring-focus: rgba(6, 182, 212, 0.25);
+  --select-dropdown-bg: #ffffff;
+  --select-dropdown-border: #e2e8f0;
+  --select-option-hover: #f8fafc;
+  --select-option-selected-bg: #eff6ff;
+  --select-option-selected-text: #1d4ed8;
+
+  /* Badge - Light */
+  --badge-success-bg: #d1fae5;
+  --badge-success-text: #065f46;
+  --badge-success-border: #a7f3d0;
+  --badge-danger-bg: #fee2e2;
+  --badge-danger-text: #991b1b;
+  --badge-danger-border: #fecaca;
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #92400e;
+  --badge-warning-border: #fde68a;
+  --badge-info-bg: #dbeafe;
+  --badge-info-text: #1e40af;
+  --badge-info-border: #bfdbfe;
+  --badge-neutral-bg: #f1f5f9;
+  --badge-neutral-text: #334155;
+  --badge-neutral-border: #e2e8f0;
+}
+
+html.dark {
+  /* Button Variants - Dark */
+  --btn-primary-bg: #3b82f6;
+  --btn-primary-hover: #2563eb;
+  --btn-primary-active: #1d4ed8;
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: rgba(59, 130, 246, 0.4);
+
+  --btn-secondary-bg: #1e293b;
+  --btn-secondary-border: #475569;
+  --btn-secondary-hover: #334155;
+  --btn-secondary-active: #475569;
+  --btn-secondary-text: #f8fafc;
+  --btn-secondary-ring: rgba(148, 163, 184, 0.4);
+
+  --btn-danger-bg: #ef4444;
+  --btn-danger-hover: #dc2626;
+  --btn-danger-active: #b91c1c;
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: rgba(239, 68, 68, 0.4);
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(51, 65, 85, 0.7);
+  --btn-ghost-active: #334155;
+  --btn-ghost-text: #cbd5e1;
+  --btn-ghost-ring: rgba(148, 163, 184, 0.3);
+
+  /* Input States - Dark */
+  --input-bg-default: #0f172a;
+  --input-border-default: #334155;
+  --input-text-default: #f8fafc;
+  --input-placeholder: #64748b;
+
+  --input-border-focus: #60a5fa;
+  --input-ring-focus: rgba(96, 165, 250, 0.3);
+
+  --input-bg-error: rgba(69, 10, 10, 0.3);
+  --input-border-error: #f87171;
+  --input-ring-error: rgba(248, 113, 113, 0.3);
+  --input-text-error: #fca5a5;
+
+  --input-bg-disabled: #1e293b;
+  --input-border-disabled: #334155;
+  --input-text-disabled: #475569;
+
+  /* Select - Dark */
+  --select-bg: #0f172a;
+  --select-border-default: #475569;
+  --select-border-hover: #64748b;
+  --select-border-focus: #22d3ee;
+  --select-ring-focus: rgba(34, 211, 238, 0.3);
+  --select-dropdown-bg: #1e293b;
+  --select-dropdown-border: #334155;
+  --select-option-hover: #334155;
+  --select-option-selected-bg: rgba(30, 58, 138, 0.4);
+  --select-option-selected-text: #60a5fa;
+
+  /* Badge - Dark */
+  --badge-success-bg: rgba(6, 78, 59, 0.4);
+  --badge-success-text: #6ee7b7;
+  --badge-success-border: #065f46;
+  --badge-danger-bg: rgba(127, 29, 29, 0.4);
+  --badge-danger-text: #fca5a5;
+  --badge-danger-border: #991b1b;
+  --badge-warning-bg: rgba(120, 53, 15, 0.4);
+  --badge-warning-text: #fde68a;
+  --badge-warning-border: #92400e;
+  --badge-info-bg: rgba(30, 58, 95, 0.4);
+  --badge-info-text: #93c5fd;
+  --badge-info-border: #1e40af;
+  --badge-neutral-bg: #334155;
+  --badge-neutral-text: #e2e8f0;
+  --badge-neutral-border: #475569;
+}
+
 /* Global Date Input - Click Anywhere to Open Picker */
 input[type="date"],
 input[type="datetime-local"],
@@ -719,3 +872,14 @@ h5,
 h6 {
   font-weight: 600 !important;
 }
+
+/* Global Font Size Constraint: No heading or text element across the application can exceed 16px (1rem) regardless of screen size */
+h1, h2, h3, h4, h5, h6,
+.text-4xl, .text-3xl, .text-2xl, .text-xl, .text-lg,
+.md\:text-4xl, .md\:text-3xl, .md\:text-2xl, .md\:text-xl, .md\:text-lg,
+.lg\:text-4xl, .lg\:text-3xl, .lg\:text-2xl, .lg\:text-xl, .lg\:text-lg,
+.sm\:text-4xl, .sm\:text-3xl, .sm\:text-2xl, .sm\:text-xl, .sm\:text-lg {
+  font-size: 16px !important;
+  line-height: 1.35 !important;
+}
+

@@ -1,14 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Wind, Fan, Droplet, Droplets, Coffee, Flame, Zap, Microwave, Utensils, Refrigerator,
-  Speaker, Tv, WashingMachine, Shirt, Megaphone, TrendingUp, PenTool, Camera, Gift, Globe,
+  Speaker, Tv, WashingMachine, Shirt, Megaphone, PenTool, Camera, Gift, Globe,
   Hammer, BatteryCharging, Sun, Percent, SprayCan, Trash2, Sparkles, Toilet,
   Armchair, Sofa, Frame, Image, Flower2, DoorClosed, Sprout, Wrench, Umbrella, Leaf,
-  ShowerHead, Scissors, Package, Dumbbell, Gamepad2, Music, Book, Shield, ShieldAlert,
-  ShieldCheck, Bed, BedDouble, Battery, Truck, AlertCircle, Plug, HeartPulse, Lightbulb,
+  ShowerHead, Scissors, Package, Dumbbell, Gamepad2, Music, Book, ShieldAlert,
+  ShieldCheck, Bed, Battery, Truck, AlertCircle, Plug, HeartPulse, Lightbulb,
   CreditCard, Laptop, HardDrive, Folder, Pen, FileText, Printer, Bath, ChefHat, Car, User,
   Users, Briefcase, Waves, Receipt, Calculator, Cloud, LockKeyhole, Server, Monitor,
-  ParkingCircle, Fuel, Smartphone, Wifi, Banknote, Building2,
+  ParkingCircle, Fuel, Smartphone, Wifi, Building2,
 } from 'lucide-react';
 
 // Ordered keyword -> icon rules, checked against the lowercased item label. First match wins,

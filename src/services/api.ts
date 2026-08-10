@@ -203,32 +203,77 @@ export function getTestingHeaders(customHeaders: Record<string, string> = {}): R
   return headers;
 }
 
+// In-memory cache for static catalog GET requests (30-second TTL)
+const apiCache = new Map<string, { timestamp: number; data: any }>();
+const CACHE_TTL_MS = 30000;
+
+// Whitelist of static catalog endpoints safe to cache
+const CACHEABLE_ACTIONS = new Set([
+  'get_material_categories',
+  'get_misc_catalog',
+  'get_expense_item_prices',
+  'get_available_icons',
+  'get_icon_search_tags',
+  'get_system_roles'
+]);
+
+export function clearApiCache(actionPrefix?: string) {
+  if (!actionPrefix) {
+    apiCache.clear();
+    return;
+  }
+  for (const key of apiCache.keys()) {
+    if (key.includes(actionPrefix)) {
+      apiCache.delete(key);
+    }
+  }
+}
+
 export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  const method = (init?.method || 'GET').toUpperCase();
   const customHeaders = (init?.headers as Record<string, string>) || {};
-  // Add property_slug to query params to ensure backend resolves correct property
-  // (headers don't reliably pass through Vite proxy)
   const urlObj = new URL(url, window.location.origin);
   urlObj.searchParams.set('property_slug', getPropertySlug());
-  return fetch(urlObj.toString(), {
+  const action = urlObj.searchParams.get('action') || '';
+  const cacheKey = urlObj.toString();
+  const isCacheable = method === 'GET' && CACHEABLE_ACTIONS.has(action);
+
+  // Clear cache on write operations (POST, PUT, DELETE)
+  if (method !== 'GET') {
+    clearApiCache();
+  }
+
+  // Return cached response if available and fresh for whitelisted static GET requests
+  if (isCacheable && apiCache.has(cacheKey)) {
+    const entry = apiCache.get(cacheKey)!;
+    if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
+      return new Response(JSON.stringify(entry.data), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } else {
+      apiCache.delete(cacheKey);
+    }
+  }
+
+  const response = await fetch(urlObj.toString(), {
     ...init,
     credentials: 'include',
     headers: getTestingHeaders(customHeaders),
   });
-}
 
-export const fetchApiStatus = async (): Promise<ApiStatus | null> => {
-  try {
-    const response = await apiFetch(`${API_BASE}`); // No action parameter for default
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  if (isCacheable && response.ok) {
+    try {
+      const cloned = response.clone();
+      const json = await cloned.json();
+      apiCache.set(cacheKey, { timestamp: Date.now(), data: json });
+    } catch {
+      // Ignore JSON parse errors for non-JSON responses
     }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching API status:", error);
-    return null;
   }
-};
+
+  return response;
+}
 
 export const fetchCurrentProperty = async (): Promise<any | null> => {
   try {
@@ -481,49 +526,6 @@ export async function fetchExpenseItemPricesFromDB(): Promise<Record<string, num
     console.error('Failed to fetch expense item prices from DB:', err);
   }
   return {};
-}
-
-export async function fetchExpenseItemsFromDB(): Promise<string[]> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=get_expense_items`);
-    const json = await res.json();
-    if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data.map((row: any) => row.item_name);
-    }
-  } catch (err) {
-    console.error('Failed to fetch expense items from DB:', err);
-  }
-  return [];
-}
-
-export async function addExpenseItemToDB(name: string): Promise<boolean> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=add_expense_item`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_name: name }),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to add expense item:', err);
-    return false;
-  }
-}
-
-export async function deleteExpenseItemFromDB(name: string): Promise<boolean> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=delete_expense_item`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_name: name }),
-    });
-    const json = await res.json();
-    return json.status === 'success';
-  } catch (err) {
-    console.error('Failed to delete expense item:', err);
-    return false;
-  }
 }
 
 export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string; is_ingredient: number }[]> {
@@ -798,7 +800,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           checkoutDate: g.checkoutDate || g.checkout_date || g.check_out || '',
           roomNumber: room,
           roomId: g.roomId || g.room_id || null,
-          status: g.status || 'Active',
+          status: g.status || 'Checked In',
           notes: g.notes || g.guestNotes || g.guest_notes || g.miscArrangements || g.misc_arrangements || '',
           bookingSource: g.bookingSource || g.booking_source || '',
           numberOfGuests: Number(g.noOfGuests || g.no_of_guests || g.total_guests || g.adults || 0),
@@ -810,6 +812,9 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           roomRate: (parseFloat(g.perNightCharges ?? g.per_night_charges ?? '0') || 0)
             || (parseFloat(g.baseRoomRent ?? g.base_room_rent ?? '0') || 0),
           advanceAmount: Number(g.advancePaid || g.advance_paid || 0),
+          advanceReceivedBy: g.advanceReceivedBy || g.advance_received_by || '',
+          pendingAmount: Number(g.pendingAmount || g.pending_amount || 0),
+          pendingReceivedBy: g.pendingReceivedBy || g.pending_received_by || '',
           foodBill: Number(g.totalFood || g.total_food || 0),
           totalAmount: Number(g.totalCharge || g.total_charge || 0),
           paymentStatus: g.paymentStatus || g.payment_status || g.status || 'Pending',
@@ -1075,7 +1080,7 @@ export interface StaleReminderItem {
   order_id: string | number;
   dish_name: string;
   quantity: number;
-  table_no: string;
+  room_no: string;
   elapsed_minutes: number;
   item_index?: number;
 }
@@ -1104,6 +1109,7 @@ export interface ServiceRequest {
   lastReminderAt: string | null;
   fulfilledAt: string | null;
   fulfilledBy: string | null;
+  scheduledAt: string | null;
 }
 
 export interface StaleServiceRequestItem {
@@ -1113,6 +1119,7 @@ export interface StaleServiceRequestItem {
   requested_by: string;
   room_name: string;
   elapsed_minutes: number;
+  scheduled_at: string | null;
 }
 
 export interface ServiceRequestType {
@@ -1191,6 +1198,7 @@ export async function createServiceRequestInDB(request: {
   request_type: string;
   description?: string;
   requested_by: string;
+  scheduled_at?: string | null;
 }): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=create_service_request`, {
@@ -1280,17 +1288,6 @@ export async function updateInventoryStockInDB(id: string, quantity: number): Pr
   } catch (err) {
     console.error('Failed to update inventory stock in DB:', err);
     return false;
-  }
-}
-
-export async function seedCatalogDB(): Promise<any> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=seed_catalog`);
-    const json = await res.json();
-    return json;
-  } catch (err) {
-    console.error('Failed to seed catalog:', err);
-    return { status: 'error', message: String(err) };
   }
 }
 
@@ -1387,12 +1384,15 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
 export async function fetchMenuFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_menu`);
+    if (!res.ok) {
+      return [];
+    }
     const json = await res.json();
-    if (json.status === 'success' && Array.isArray(json.data)) {
+    if (json && json.status === 'success' && Array.isArray(json.data)) {
       return json.data;
     }
   } catch (err) {
-    console.error('Failed to fetch menu from DB:', err);
+    // Return empty array gracefully if module disabled or network error
   }
   return [];
 }
@@ -1950,12 +1950,29 @@ export async function fetchDrawerEntriesFromDB(): Promise<any[]> {
   return [];
 }
 
+// DB stores served_at as "YYYY-MM-DD HH:MM:SS" - normalize to the app's
+// DD/MM/YYYY display format, keeping the time since a kitchen serve log is a
+// timestamp, not just a date.
+const formatServedAt = (dt: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(dt || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dt;
+};
+
 export async function fetchServedLogsFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_served_logs`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data;
+      return json.data.map((item: any) => ({
+        id: String(item.id ?? ''),
+        orderId: item.order_id ?? '',
+        itemName: item.item_name ?? '',
+        quantity: Number(item.quantity ?? 1),
+        servedBy: item.served_by ?? '',
+        guestName: item.guest_name ?? '',
+        roomNumber: item.room_number ?? '',
+        servedAt: formatServedAt(item.served_at ?? ''),
+      }));
     }
   } catch (err) {
     console.error('Failed to fetch served logs:', err);
@@ -2193,7 +2210,7 @@ export async function fetchStaffMealLogsFromDB(): Promise<StaffMealLog[]> {
         const d = new Date((row.logged_at || '').replace(' ', 'T'));
         const date = isNaN(d.getTime())
           ? row.logged_at
-          : `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+          : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
         return {
           date,
           staff: row.staff_names,
@@ -2222,3 +2239,4 @@ export async function addStaffMealLogToDB(staffNames: string, foodDescription: s
     return false;
   }
 }
+

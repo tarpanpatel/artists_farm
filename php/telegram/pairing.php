@@ -11,9 +11,11 @@
 require_once __DIR__ . '/sender.php';
 require_once __DIR__ . '/webhook_handler.php';
 require_once __DIR__ . '/../modules/module_manager.php';
+require_once __DIR__ . '/../config/schema_cache.php';
 
 if (!function_exists('ensurePairingTables')) {
     function ensurePairingTables($pdo) {
+        if (isSchemaVerified('schema_telegram_pairing')) return;
         try {
             // Keyed by SHA1(bot_token) rather than a single fixed row: each bot
             // token is an independent Telegram account with its own unrelated
@@ -23,6 +25,7 @@ if (!function_exists('ensurePairingTables')) {
         } catch (Exception $e) {
             error_log("Telegram pairing table setup error: " . $e->getMessage());
         }
+        markSchemaVerified('schema_telegram_pairing');
     }
 }
 
@@ -88,7 +91,7 @@ if (!function_exists('pollAndMatchPairingCodes')) {
             }
 
             if (!empty($update['callback_query'])) {
-                handleTelegramCallbackQuery($pdo, $update['callback_query']);
+                handleTelegramCallbackQuery($pdo, $update['callback_query'], $token);
                 continue;
             }
 

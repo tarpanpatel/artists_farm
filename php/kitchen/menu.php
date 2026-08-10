@@ -5,10 +5,15 @@
  */
 
 function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
+    require_once __DIR__ . '/../config/schema_cache.php';
+
     // Ensure menu_items table exists
     try {
         // Upgrade image_path from VARCHAR(255) to TEXT if needed
-        try { $pdo->exec("ALTER TABLE `menu_items` MODIFY COLUMN `image_path` TEXT DEFAULT ''"); } catch (Exception $e) {}
+        if (!isSchemaVerified('schema_menu_items_image')) {
+            try { $pdo->exec("ALTER TABLE `menu_items` MODIFY COLUMN `image_path` TEXT DEFAULT ''"); } catch (Exception $e) {}
+            markSchemaVerified('schema_menu_items_image');
+        }
     } catch (PDOException $e) {}
 
     switch ($action) {
@@ -156,21 +161,24 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_nav_menu':
             try {
-                // Auto-add columns if missing
-                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `custom_url` TEXT DEFAULT NULL"); } catch (Exception $e) {}
-                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `open_in_new_tab` TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
-                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
-                // url_slug is the URL hash a renamed item should now use - kept
-                // separate from unique_key (the stable key components actually key
-                // their rendering off of) so a rename can't break routing. COALESCE
-                // to unique_key below so a row that predates this column, or was
-                // never renamed, keeps resolving exactly as it always did.
-                try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `url_slug` VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
 
 
                 // Navigation structure is shared across every property/tenant (unlike
                 // property_modules, which controls per-property feature visibility on
                 // top of this shared structure) — intentionally not property_id-scoped.
+                // Restore the two active staff views if they were lost from an older
+                // saved navigation layout. Other historic page options deliberately
+                // remain unlinked; these are the only staff pages requested in the
+                // tenant sidebar.
+                $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                    (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                    VALUES
+                    ('nav-kitchen-overview', 1, 'Kitchen', 'kitchen', 'kitchen_overview', 'kitchen_overview', 'Kitchen & Food', 'Utensils', 10, '[\"Super Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]', 1, NULL),
+                    ('nav-staff-permissions', 1, 'Staff & Permissions', 'staff', 'staff_permissions', 'staff_permissions', 'Staff & HR', 'ShieldCheck', 30, '[\"Super Admin\",\"Admin\"]', 1, NULL),
+                    ('nav-attendance-calendar', 1, 'Attendance Calendar', 'staff', 'attendance_calendar', 'attendance_calendar', 'Staff & HR', 'CalendarDays', 31, '[\"Super Admin\",\"Admin\",\"Staff Supervisor\"]', 1, NULL)");
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
+                } catch (Exception $e) {}
                 $stmt = $pdo->query("SELECT id, title, tab_key as tabKey, unique_key as uniqueKey, COALESCE(NULLIF(url_slug, ''), unique_key) as urlSlug, category, icon_name as iconName, display_order as `order`, roles_json, is_visible as isVisible, COALESCE(custom_url, '') as customUrl, IFNULL(open_in_new_tab, 0) as openInNewTab, parent_id as parentId FROM nav_menu_items ORDER BY display_order ASC");
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -201,8 +209,11 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $items = is_array($input) ? $input : ($input['items'] ?? []);
                 try {
-                    try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
-                    try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `url_slug` VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
+                    if (!isSchemaVerified('schema_nav_menu_items')) {
+                        try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `parent_id` VARCHAR(50) DEFAULT NULL"); } catch (Exception $e) {}
+                        try { $pdo->exec("ALTER TABLE `nav_menu_items` ADD COLUMN `url_slug` VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
+                        markSchemaVerified('schema_nav_menu_items');
+                    }
 
                     // Navigation structure is shared across every property/tenant, so a
                     // save here is not scoped to $propertyId — see get_nav_menu above.

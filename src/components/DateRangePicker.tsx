@@ -165,9 +165,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       />
 
       {/* Centered Modal Popover Container */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-gray-100 dark:border-slate-700">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-gray-100 dark:border-slate-700 relative">
+        {/* Close Button Inside Modal */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer z-10"
+          aria-label="Close modal"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10">
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               {t('select_dates_heading', 'Select dates')}

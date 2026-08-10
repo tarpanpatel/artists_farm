@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Save, RotateCcw, Loader } from 'lucide-react';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
+import { Button } from './Button';
+import { Input } from './Input';
 import { useConfirm } from './ConfirmDialogContext';
 import { t } from '../i18n/en';
 
@@ -184,11 +186,12 @@ export const ThemeManagement: React.FC = () => {
                     onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
                     className="w-12 h-10 rounded cursor-pointer"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={value}
                     onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+                    className="flex-1"
+                    fullWidth={false}
                     placeholder={t('hex_color_placeholder', '#000000')}
                   />
                 </div>
@@ -213,11 +216,12 @@ export const ThemeManagement: React.FC = () => {
                     onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
                     className="w-12 h-10 rounded cursor-pointer"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={value}
                     onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+                    className="flex-1"
+                    fullWidth={false}
                     placeholder={t('hex_color_placeholder', '#000000')}
                   />
                 </div>
@@ -234,34 +238,31 @@ export const ThemeManagement: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('font_family_label', 'Font Family')}
               </label>
-              <input
+              <Input
                 type="text"
                 value={settings.typography.fontFamily}
                 onChange={(e) => handleTextChange('typography.fontFamily', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('base_font_size_label', 'Base Font Size')}
               </label>
-              <input
+              <Input
                 type="text"
                 value={settings.typography.baseFontSize}
                 onChange={(e) => handleTextChange('typography.baseFontSize', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('heading_scale_label', 'Heading Scale')}
               </label>
-              <input
+              <Input
                 type="number"
                 step="0.1"
                 value={settings.typography.headingScale}
                 onChange={(e) => handleTextChange('typography.headingScale', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
           </div>
@@ -276,11 +277,10 @@ export const ThemeManagement: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
                   {key}
                 </label>
-                <input
+                <Input
                   type="text"
                   value={value}
                   onChange={(e) => handleTextChange(`borderRadius.${key}`, e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
             ))}
@@ -297,11 +297,10 @@ export const ThemeManagement: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
                 {key}
               </label>
-              <input
+              <Input
                 type="text"
                 value={value}
                 onChange={(e) => handleTextChange(`shadows.${key}`, e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
               />
             </div>
           ))}
@@ -310,22 +309,26 @@ export const ThemeManagement: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="flex gap-3 pt-6 border-t border-gray-200 dark:border-slate-700">
-        <button
+        <Button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2"
+          variant="primary"
+          size="md"
         >
           {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleReset}
           disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-slate-600 dark:hover:bg-slate-700 disabled:opacity-50 text-gray-900 dark:text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2"
+          variant="tertiary"
+          size="md"
         >
           <RotateCcw className="w-4 h-4" />
           {t('reset_button', 'Reset')}
-        </button>
+        </Button>
       </div>
     </div>
   );

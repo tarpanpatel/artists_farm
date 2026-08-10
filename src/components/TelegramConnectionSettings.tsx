@@ -3,6 +3,9 @@ import { Plus, Trash2, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { PropertyTelegramConfig, TelegramGroup } from '../types';
 import { t } from '../i18n/en';
 
+import { Button } from './Button';
+import { Input } from './Input';
+
 function slugify(name: string, existingKeys: string[]): string {
   const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'group';
   let key = base;
@@ -83,12 +86,11 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       {/* Bot token */}
       <div>
         <label className="text-[11px] font-semibold text-slate-300 block mb-1">{t('bot_api_token_label')}</label>
-        <input
+        <Input
           type="text"
           value={config.botToken ?? ''}
           onChange={(e) => onChange({ botToken: e.target.value })}
           placeholder={t('leave_blank_platform_default_placeholder')}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
       </div>
 
@@ -97,13 +99,14 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
         <label className="text-[11px] font-semibold text-slate-300 block mb-1">
           {t('auto_reminder_interval_label')}
         </label>
-        <input
-          type="number"
-          min={1}
-          value={config.reminderThresholdMinutes ?? 5}
-          onChange={(e) => onChange({ reminderThresholdMinutes: Math.max(1, Number(e.target.value) || 5) })}
-          className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
-        />
+        <div className="w-32">
+          <Input
+            type="number"
+            min={1}
+            value={config.reminderThresholdMinutes ?? 5}
+            onChange={(e) => onChange({ reminderThresholdMinutes: Math.max(1, Number(e.target.value) || 5) })}
+          />
+        </div>
       </div>
 
       {/* Groups */}
@@ -114,27 +117,26 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
         <div className="space-y-2">
           {config.groups.map((group) => (
             <div key={group.key} className="flex items-center gap-2">
-              <input
+              <Input
                 type="text"
                 value={group.name}
                 onChange={(e) => updateGroupField(group.key, 'name', e.target.value)}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100"
                 placeholder={t('group_name_placeholder')}
               />
-              <input
+              <Input
                 type="text"
                 value={group.chatId}
                 onChange={(e) => updateGroupField(group.key, 'chatId', e.target.value)}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono"
                 placeholder={t('chat_id_placeholder')}
               />
-              <button
+              <Button
+                variant="danger"
+                size="xs"
                 onClick={() => removeGroup(group.key)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 cursor-pointer"
                 title={t('remove_group_tooltip')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           ))}
           {config.groups.length === 0 && (
@@ -142,29 +144,28 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
           )}
         </div>
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800">
-          <input
+          <Input
             type="text"
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
             placeholder={t('e_g_kitchen_staff_placeholder')}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500"
           />
-          <input
+          <Input
             type="text"
             value={newGroupChatId}
             onChange={(e) => setNewGroupChatId(e.target.value)}
             placeholder={t('chat_id_placeholder')}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono placeholder:text-slate-500"
           />
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="xs"
             onClick={addGroup}
             disabled={!newGroupName.trim() || !newGroupChatId.trim()}
-            className="p-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white cursor-pointer"
             title={t('add_group_tooltip')}
           >
             <Plus className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -174,15 +175,16 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
             <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
           </span>
         )}
-        <button
+        <Button
           type="button"
+          variant="primary"
+          size="md"
           onClick={onSave}
           disabled={saving}
-          className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+          leftIcon={saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
         >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           <span>{saving ? t('saving_ellipsis_text') : t('save_connection_settings_button')}</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

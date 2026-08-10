@@ -57,6 +57,42 @@ if (!function_exists('resolveGroupChatId')) {
  * property hasn't configured Telegram yet — keeps existing properties working
  * unchanged until they set up their own groups/routing.
  */
+/**
+ * Given a callback_query/chat update, figure out which property it belongs to
+ * by matching the chat_id against each property's configured Telegram groups
+ * (disambiguated by the bot token when the platform/shared bot serves several
+ * properties). Returns ['propertyId', 'config'] or null.
+ */
+if (!function_exists('findPropertyForTelegramChat')) {
+    function findPropertyForTelegramChat($pdo, $chatId, $token = null) {
+        try {
+            $stmt = $pdo->query("SELECT property_id, config FROM property_modules WHERE module_slug = 'telegram'");
+            $candidates = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $cfg = json_decode($row['config'], true);
+                if (!is_array($cfg)) continue;
+                $effectiveToken = !empty($cfg['botToken']) ? $cfg['botToken'] : (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+                if ($token !== null && $effectiveToken !== $token) continue;
+                $chatIdMatch = false;
+                foreach (($cfg['groups'] ?? []) as $g) {
+                    if (!empty($g['chatId']) && (string)$g['chatId'] === (string)$chatId) {
+                        $chatIdMatch = true;
+                        break;
+                    }
+                }
+                if ($chatIdMatch) {
+                    return ['propertyId' => (int)$row['property_id'], 'config' => $cfg];
+                }
+                $candidates[] = ['propertyId' => (int)$row['property_id'], 'config' => $cfg];
+            }
+            if (!empty($candidates)) {
+                return $candidates[0];
+            }
+        } catch (Exception $e) {}
+        return null;
+    }
+}
+
 if (!function_exists('legacyCategoryChatId')) {
     function legacyCategoryChatId(string $category) {
         $legacyDefaults = [
@@ -109,6 +145,13 @@ if (!function_exists('sendPropertyTelegramMessage')) {
         if ($templateKey && isset($config['routing'][$templateKey])) {
             $chatId = resolveGroupChatId($config, $config['routing'][$templateKey]);
         }
+        if (!$chatId && isset($config['routing'][$category])) {
+            // Category-level fallback: covers sends that pass a category but no
+            // templateKey (e.g. guest booking, checkout settlement, salary) so a
+            // property can route "everything admin/kitchen/finance" with a single
+            // routing entry instead of needing one per template.
+            $chatId = resolveGroupChatId($config, $config['routing'][$category]);
+        }
         if (!$chatId) {
             $chatId = legacyCategoryChatId($category);
         }
@@ -139,6 +182,9 @@ if (!function_exists('sendPropertyTelegramPhoto')) {
         $chatId = null;
         if ($templateKey && isset($config['routing'][$templateKey])) {
             $chatId = resolveGroupChatId($config, $config['routing'][$templateKey]);
+        }
+        if (!$chatId && isset($config['routing'][$category])) {
+            $chatId = resolveGroupChatId($config, $config['routing'][$category]);
         }
         if (!$chatId) {
             $chatId = legacyCategoryChatId($category);
@@ -307,8 +353,10 @@ if (!function_exists('sendRawTelegramMessage')) {
 }
 
 if (!function_exists('editTelegramMessageText')) {
-    function editTelegramMessageText($chat_id, $message_id, $text, $replyMarkup = null) {
-        $url = "https://api.telegram.org/bot" . TELEGRAM_BOT_TOKEN . "/editMessageText";
+    function editTelegramMessageText($chat_id, $message_id, $text, $replyMarkup = null, $token = null) {
+        $token = $token ?: (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        if (empty($token)) return;
+        $url = "https://api.telegram.org/bot" . $token . "/editMessageText";
 
         $data = [
             'chat_id' => $chat_id,
@@ -340,8 +388,10 @@ if (!function_exists('editTelegramMessageText')) {
 }
 
 if (!function_exists('answerTelegramCallbackQuery')) {
-    function answerTelegramCallbackQuery($callback_query_id, $text = "", $show_alert = false) {
-        $url = "https://api.telegram.org/bot" . TELEGRAM_BOT_TOKEN . "/answerCallbackQuery";
+    function answerTelegramCallbackQuery($callback_query_id, $text = "", $show_alert = false, $token = null) {
+        $token = $token ?: (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        if (empty($token)) return;
+        $url = "https://api.telegram.org/bot" . $token . "/answerCallbackQuery";
 
         $data = [
             'callback_query_id' => $callback_query_id,

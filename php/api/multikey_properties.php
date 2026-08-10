@@ -15,7 +15,7 @@ if (file_exists($seedFile)) {
 /**
  * Route MultiKey property actions
  */
-function handleMultiKeyPropertyRequests($pdo, $request_method, $action) {
+function handleMultiKeyPropertyRequests($pdo, $request_method, $action, $propertyId = 0, $currentProperty = []) {
     switch ($action) {
         case 'create_multikey_property':
             createMultiKeyProperty($pdo);
@@ -26,31 +26,31 @@ function handleMultiKeyPropertyRequests($pdo, $request_method, $action) {
             break;
 
         case 'get_multikey_property':
-            getMultiKeyProperty($pdo);
+            getMultiKeyProperty($pdo, $propertyId, $currentProperty);
             break;
 
         case 'get_multikey_overview':
-            getMultiKeyOverview($pdo);
+            getMultiKeyOverview($pdo, $propertyId, $currentProperty);
             break;
 
         case 'delete_multikey_room':
-            deleteMultiKeyRoom($pdo);
+            deleteMultiKeyRoom($pdo, $propertyId, $currentProperty);
             break;
 
         case 'update_room_order':
-            updateRoomOrder($pdo);
+            updateRoomOrder($pdo, $propertyId, $currentProperty);
             break;
 
         case 'update_room_name':
-            updateRoomName($pdo);
+            updateRoomName($pdo, $propertyId, $currentProperty);
             break;
 
         case 'restore_multikey_room':
-            restoreMultiKeyRoom($pdo);
+            restoreMultiKeyRoom($pdo, $propertyId, $currentProperty);
             break;
 
         case 'get_room_grouped_active_bookings':
-            getRoomGroupedActiveBookings($pdo);
+            getRoomGroupedActiveBookings($pdo, $propertyId, $currentProperty);
             break;
 
         case 'populate_default_expenses':
@@ -72,6 +72,87 @@ function handleMultiKeyPropertyRequests($pdo, $request_method, $action) {
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Unknown MultiKey action']);
+    }
+}
+
+/**
+ * Resolve the MultiKey scope the current request is allowed to touch.
+ *
+ * The resolved property context (from the URL slugs) can be a MULTI_KEY parent,
+ * one of its MULTI_KEY_ROOM children, or anything else. Whichever it is, the
+ * only property ids a legitimate caller may act on are the scope root (the
+ * MULTI_KEY parent) plus its rooms. Returns null when there is no usable
+ * property context at all, in which case all MultiKey access is denied.
+ */
+function resolveMultiKeyScope(PDO $pdo, $currentProperty): ?array {
+    if (empty($currentProperty) || empty($currentProperty['id'])) {
+        return null;
+    }
+    $rootId = (int)$currentProperty['id'];
+    if (!empty($currentProperty['parent_property_id'])) {
+        $rootId = (int)$currentProperty['parent_property_id'];
+    }
+    $stmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND is_active = 1");
+    $stmt->execute([$rootId]);
+    if (!$stmt->fetch()) {
+        return null;
+    }
+    $ids = [$rootId];
+    $stmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+    $stmt->execute([$rootId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $ids[] = (int)$r['id'];
+    }
+    return ['root' => $rootId, 'ids' => $ids];
+}
+
+/**
+ * True when $propertyId belongs to the current request's MultiKey scope.
+ */
+function isPropertyInMultiKeyScope(PDO $pdo, $currentProperty, $propertyId): bool {
+    $scope = resolveMultiKeyScope($pdo, $currentProperty);
+    if (!$scope) {
+        return false;
+    }
+    return in_array((int)$propertyId, $scope['ids'], true);
+}
+
+/**
+ * True when $roomId is a MULTI_KEY_ROOM child of the current request's scope root.
+ */
+function isRoomInMultiKeyScope(PDO $pdo, $currentProperty, $roomId): bool {
+    $scope = resolveMultiKeyScope($pdo, $currentProperty);
+    if (!$scope) {
+        return false;
+    }
+    $stmt = $pdo->prepare("SELECT parent_property_id FROM properties WHERE id = ? AND property_type = 'MULTI_KEY_ROOM'");
+    $stmt->execute([$roomId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return false;
+    }
+    return (int)$row['parent_property_id'] === $scope['root'];
+}
+
+/**
+ * Reject with 403 unless $propertyId is inside the current request's scope.
+ */
+function denyIfNotInMultiKeyScope(PDO $pdo, $currentProperty, $propertyId) {
+    if (!isPropertyInMultiKeyScope($pdo, $currentProperty, $propertyId)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Access denied: property is not part of the current property context']);
+        exit;
+    }
+}
+
+/**
+ * Reject with 403 unless $roomId is a room of the current request's scope root.
+ */
+function denyIfRoomNotInMultiKeyScope(PDO $pdo, $currentProperty, $roomId) {
+    if (!isRoomInMultiKeyScope($pdo, $currentProperty, $roomId)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Access denied: room is not part of the current property context']);
+        exit;
     }
 }
 
@@ -454,7 +535,7 @@ function addMultiKeyRoom($pdo) {
  * Get MultiKey property with all its rooms
  * GET /api/router.php?action=get_multikey_property&property_id=5
  */
-function getMultiKeyProperty($pdo) {
+function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
     $property_id = $_GET['property_id'] ?? '';
 
     if (!$property_id) {
@@ -463,11 +544,15 @@ function getMultiKeyProperty($pdo) {
         exit;
     }
 
+    // Only allow reading a property that belongs to the current URL context.
+    denyIfNotInMultiKeyScope($pdo, $currentProperty, $property_id);
+
     try {
         // Get parent MultiKey property
         $stmt = $pdo->prepare("
             SELECT id, tenant_id, name, slug, property_type, address, currency, timezone, is_active, created_at,
-                   phone, google_maps_link, whatsapp_voucher_template, gstin, instructions
+                   email, phone, google_maps_link, whatsapp_voucher_template, gstin, instructions,
+                   telegram_template_customization_enabled
             FROM properties
             WHERE id = ? AND property_type = 'MULTI_KEY'
         ");
@@ -516,6 +601,11 @@ function getMultiKeyProperty($pdo) {
                 'name' => $property['name'],
                 'slug' => $property['slug'],
                 'property_type' => $property['property_type'],
+                'email' => $property['email'] ?? null,
+                'phone' => $property['phone'] ?? null,
+                'gstin' => $property['gstin'] ?? null,
+                'whatsapp_voucher_template' => $property['whatsapp_voucher_template'] ?? null,
+                'telegram_template_customization_enabled' => (bool)($property['telegram_template_customization_enabled'] ?? false),
                 'address' => $property['address'],
                 'google_maps_link' => $property['google_maps_link'],
                 'instructions' => $property['instructions'],
@@ -540,7 +630,7 @@ function getMultiKeyProperty($pdo) {
  * Get overview/dashboard data for MultiKey property
  * GET /api/router.php?action=get_multikey_overview&property_id=5
  */
-function getMultiKeyOverview($pdo) {
+function getMultiKeyOverview($pdo, $propertyId = 0, $currentProperty = []) {
     $property_id = $_GET['property_id'] ?? '';
 
     if (!$property_id) {
@@ -548,6 +638,9 @@ function getMultiKeyOverview($pdo) {
         echo json_encode(['success' => false, 'message' => 'property_id required']);
         exit;
     }
+
+    // Only allow reading a property that belongs to the current URL context.
+    denyIfNotInMultiKeyScope($pdo, $currentProperty, $property_id);
 
     try {
         // Get parent property
@@ -623,7 +716,7 @@ function getMultiKeyOverview($pdo) {
  * Delete a room (soft delete)
  * DELETE /api/router.php?action=delete_multikey_room
  */
-function deleteMultiKeyRoom($pdo) {
+function deleteMultiKeyRoom($pdo, $propertyId = 0, $currentProperty = []) {
     $input = json_decode(file_get_contents('php://input'), true);
     $room_id = $input['room_id'] ?? '';
 
@@ -632,6 +725,11 @@ function deleteMultiKeyRoom($pdo) {
         echo json_encode(['success' => false, 'message' => 'room_id required']);
         exit;
     }
+
+    // The room must be part of the current request's property tree - without
+    // this, any authenticated user could guess a global room id and delete
+    // another tenant's room (and its active guest bookings).
+    denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $room_id);
 
     try {
         // Verify room exists and is MULTI_KEY_ROOM
@@ -650,7 +748,7 @@ function deleteMultiKeyRoom($pdo) {
         $stmt->execute([$room_id]);
 
         // Clean up: delete present and future (active) bookings associated with this deleted room
-        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status = 'Active'");
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status IN ('Active', 'Checked In')");
         $stmt->execute([$room_id]);
 
         echo json_encode([
@@ -671,7 +769,7 @@ function deleteMultiKeyRoom($pdo) {
  * Update room display order within a MultiKey property
  * PUT /api/router.php?action=update_room_order
  */
-function updateRoomOrder($pdo) {
+function updateRoomOrder($pdo, $propertyId = 0, $currentProperty = []) {
     $input = json_decode(file_get_contents('php://input'), true);
     $rooms = $input['rooms'] ?? [];
 
@@ -679,6 +777,16 @@ function updateRoomOrder($pdo) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'rooms array required']);
         exit;
+    }
+
+    // Every room in the reorder list must belong to the current request's scope.
+    foreach ($rooms as $room) {
+        $room_id = $room['id'] ?? '';
+        if ($room_id !== '' && !isRoomInMultiKeyScope($pdo, $currentProperty, $room_id)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Access denied: room is not part of the current property context']);
+            exit;
+        }
     }
 
     try {
@@ -709,7 +817,7 @@ function updateRoomOrder($pdo) {
  * Rename a room within a MultiKey property
  * POST /api/router.php?action=update_room_name
  */
-function updateRoomName($pdo) {
+function updateRoomName($pdo, $propertyId = 0, $currentProperty = []) {
     $input = json_decode(file_get_contents('php://input'), true);
     $room_id = $input['room_id'] ?? '';
     $new_name = trim($input['new_name'] ?? '');
@@ -719,6 +827,8 @@ function updateRoomName($pdo) {
         echo json_encode(['success' => false, 'message' => 'room_id and new_name are required']);
         exit;
     }
+
+    denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $room_id);
 
     try {
         // Verify room exists and is MULTI_KEY_ROOM
@@ -751,7 +861,7 @@ function updateRoomName($pdo) {
  * Restore a soft-deleted room
  * PUT /api/router.php?action=restore_multikey_room
  */
-function restoreMultiKeyRoom($pdo) {
+function restoreMultiKeyRoom($pdo, $propertyId = 0, $currentProperty = []) {
     $input = json_decode(file_get_contents('php://input'), true);
     $room_id = $input['room_id'] ?? '';
 
@@ -760,6 +870,8 @@ function restoreMultiKeyRoom($pdo) {
         echo json_encode(['success' => false, 'message' => 'room_id required']);
         exit;
     }
+
+    denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $room_id);
 
     try {
         // Verify room exists and is deleted
@@ -796,7 +908,7 @@ function restoreMultiKeyRoom($pdo) {
  * Fetches all active guests grouped by their room for billing
  * GET /api/router.php?action=get_room_grouped_active_bookings&property_id=X
  */
-function getRoomGroupedActiveBookings($pdo) {
+function getRoomGroupedActiveBookings($pdo, $propertyId = 0, $currentProperty = []) {
     $property_id = $_GET['property_id'] ?? '';
 
     if (!$property_id) {
@@ -804,6 +916,9 @@ function getRoomGroupedActiveBookings($pdo) {
         echo json_encode(['success' => false, 'message' => 'property_id required']);
         exit;
     }
+
+    // Only allow reading a property that belongs to the current URL context.
+    denyIfNotInMultiKeyScope($pdo, $currentProperty, $property_id);
 
     try {
         // Get the property and verify it's MultiKey
@@ -831,7 +946,7 @@ function getRoomGroupedActiveBookings($pdo) {
         $stmt = $pdo->prepare("
             SELECT *
             FROM guests
-            WHERE property_id = ? AND status = 'Active'
+            WHERE property_id = ? AND status IN ('Active', 'Checked In')
             ORDER BY room_number ASC, checkin_date ASC
         ");
         $stmt->execute([$property_id]);

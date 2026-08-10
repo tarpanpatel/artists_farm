@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -8,6 +8,8 @@ import { DefaultExpensesManager } from './DefaultExpensesManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
+import { AccountSettings } from './AccountSettings';
+import { ScrollToTopButton } from './ScrollToTopButton';
 import { TelegramConfig } from '../types';
 import { AuthProvider } from '../contexts/AuthContext';
 
@@ -34,15 +36,20 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
   onLogout,
   activeRole,
 }) => {
+  // This dashboard scrolls its own <main> (overflow-auto below) rather than
+  // the window, unlike the other page shells - ScrollToTopButton needs this
+  // ref to know which element to watch/scroll instead of defaulting to window.
+  const mainScrollRef = useRef<HTMLElement>(null);
+
   const [activeSection, setActiveSection] = useState<SectionType>(() => {
     const fromHash = window.location.hash.replace('#', '') as SectionType;
     if (VALID_SECTIONS.includes(fromHash)) return fromHash;
@@ -51,6 +58,10 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   });
   const [navItems, setNavItems] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Kept in local state so a username change in Account Settings reflects
+  // immediately in the sidebar/header without needing a full re-login.
+  const [displayUsername, setDisplayUsername] = useState(username);
+  const handleUsernameChange = (newUsername: string) => setDisplayUsername(newUsername);
 
   // Keep the URL hash and localStorage in sync with the active section
   useEffect(() => {
@@ -147,6 +158,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: Mail,
       section: 'email_settings' as SectionType,
     },
+    {
+      id: 'account_settings',
+      label: t('root_account_settings_label', 'Account Settings'),
+      icon: UserCog,
+      section: 'account_settings' as SectionType,
+    },
   ];
 
   const handleTelescopeOpen = () => {
@@ -183,7 +200,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </div>
 
             <div className="px-3 pb-2 mb-2 border-b border-gray-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
-              Hello, {username}
+              Hello, {displayUsername}
             </div>
 
             {menuItems.map((item) => {
@@ -221,7 +238,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           <div className="pt-4 mt-auto border-t border-gray-200 dark:border-slate-700 space-y-2">
             <div className="px-2.5 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{t('logged_in_as_label', 'Logged in as')}</p>
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{username}</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{displayUsername}</p>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">{activeRole}</p>
             </div>
             <button
@@ -237,7 +254,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:pl-64 overflow-auto">
+      <main ref={mainScrollRef} className="flex-1 md:pl-64 overflow-auto">
         {/* Top Bar */}
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-3 py-2.5 lg:px-8 lg:py-4 flex items-center gap-2">
@@ -259,6 +276,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'appearance' && t('root_appearance_heading_label', 'Appearance Settings')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_label', 'Telegram Templates')}
                 {activeSection === 'email_settings' && t('root_email_settings_label', 'Email Settings')}
+                {activeSection === 'account_settings' && t('root_account_settings_label', 'Account Settings')}
               </h2>
               <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_subtitle', 'System overview and analytics')}
@@ -269,6 +287,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'appearance' && t('root_appearance_subtitle', 'Customize theme colors and CSS styling')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_subtitle', "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.")}
                 {activeSection === 'email_settings' && t('root_email_settings_subtitle', 'SMTP connection and the tenant welcome email/WhatsApp message template')}
+                {activeSection === 'account_settings' && t('root_account_settings_subtitle', 'Edit your root admin username, passcode, email, phone and GSTIN')}
               </p>
             </div>
           </div>
@@ -318,7 +337,16 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               </div>
 
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('system_information_heading', 'System Information')}</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
+                  <button
+                    type="button"
+                    onClick={() => goToSection('account_settings')}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> {t('edit_account_button', 'Edit')}
+                  </button>
+                </div>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
                     <span className="text-slate-600 dark:text-slate-400">{t('current_role_label', 'Current Role')}</span>
@@ -326,7 +354,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   </div>
                   <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-700">
                     <span className="text-slate-600 dark:text-slate-400">{t('username_label', 'Username')}</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">{username}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{displayUsername}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 dark:text-slate-400">{t('access_level_label', 'Access Level')}</span>
@@ -339,7 +367,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           {/* Tenants & Properties Section */}
           {activeSection === 'tenants_properties' && (
-            <PlatformPropertyManagement />
+            <PlatformPropertyManagement username={username} onLogout={onLogout} />
           )}
 
           {/* Default Expenses Section */}
@@ -397,8 +425,15 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
           {/* Email Settings Section */}
           {activeSection === 'email_settings' && <EmailSettingsPanel />}
+
+          {/* Account Settings Section */}
+          {activeSection === 'account_settings' && (
+            <AccountSettings username={displayUsername} onUsernameChange={handleUsernameChange} />
+          )}
         </div>
       </main>
+
+      <ScrollToTopButton scrollContainerRef={mainScrollRef} />
     </div>
   );
 };

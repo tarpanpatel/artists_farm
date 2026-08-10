@@ -16,6 +16,7 @@ interface StyledSelectProps {
   options: StyledSelectOption[];
   placeholder?: string;
   className?: string;
+  buttonClassName?: string;
   disabled?: boolean;
   error?: boolean;
   searchable?: boolean;
@@ -28,6 +29,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   options,
   placeholder = t('styled_select_placeholder'),
   className = '',
+  buttonClassName = '',
   disabled = false,
   error = false,
   searchable = false,
@@ -69,32 +71,42 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
     : options;
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`app-select-wrapper relative ${className}`} ref={containerRef}>
       <button
         type="button"
         id={id}
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-sm text-left transition ${
+        className={`app-select-button w-full flex items-center justify-between gap-2 px-3.5 border transition-all duration-200 outline-none ${
           disabled
-            ? 'opacity-50 cursor-not-allowed border-slate-200 dark:border-slate-700'
+            ? 'opacity-60 cursor-not-allowed border-[var(--select-border-default)] text-[var(--input-text-disabled)]'
             : error
-            ? 'border-red-400 dark:border-red-500 hover:border-red-500 cursor-pointer'
-            : 'border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 cursor-pointer'
-        } ${isOpen ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+            ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)] cursor-pointer'
+            : buttonClassName.includes('border-slate-200')
+            ? 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] cursor-pointer'
+            : 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] focus:border-[var(--select-border-focus)] focus:ring-4 focus:ring-[var(--select-ring-focus)] cursor-pointer'
+        } ${isOpen && !buttonClassName.includes('ring-blue') ? 'border-[var(--select-border-focus)] ring-4 ring-[var(--select-ring-focus)]' : ''} ${
+          isOpen && buttonClassName.includes('ring-blue') ? 'border-blue-500 ring-2 ring-blue-500/20' : ''
+        } ${/(^|\s)(!?)h-/.test(buttonClassName) ? '' : 'h-10'} ${/(^|\s)(!?)rounded-/.test(buttonClassName) ? '' : 'rounded-lg'} ${
+          /(^|\s)(!?)font-/.test(buttonClassName) ? '' : 'font-normal'
+        } ${
+          /(^|\s)(!?)text-/.test(buttonClassName)
+            ? '' 
+            : 'text-xs'
+        } ${buttonClassName}`}
       >
-        <span className={`truncate ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+        <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'}`}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden">
+        <div className="app-select-dropdown absolute z-50 mt-1 w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm">
           {searchable && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)]">
               <Search className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -102,13 +114,13 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                  placeholder={t('searchable_select_placeholder')}
-                className="w-full text-sm bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400"
+                className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400"
               />
             </div>
           )}
           <div className="max-h-60 overflow-auto py-1">
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">{t('no_matches_text')}</div>
+              <div className="px-3 py-2 text-[var(--input-placeholder)]">{t('no_matches_text')}</div>
             ) : (
               filteredOptions.map((option, idx) => {
                 const isSelected = option.value === value;
@@ -117,7 +129,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 return (
                   <React.Fragment key={option.value}>
                     {showGroupHeader && (
-                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      <div className="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-[var(--input-placeholder)]">
                         {option.group}
                       </div>
                     )}
@@ -129,12 +141,12 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                         onChange(option.value);
                         setIsOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left transition ${
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition ${
                         option.disabled
                           ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold cursor-pointer'
-                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+                          ? 'bg-[var(--select-option-selected-bg)] text-[var(--select-option-selected-text)] font-semibold cursor-pointer'
+                          : 'text-[var(--input-text-default)] hover:bg-[var(--select-option-hover)] cursor-pointer'
                       }`}
                     >
                       <span className="truncate">{option.label}</span>
@@ -150,3 +162,5 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
     </div>
   );
 };
+
+

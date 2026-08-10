@@ -23,6 +23,7 @@
     "apexcharts": "^6.6.1",
     "chrome-remote-interface": "^0.34.0",
     "clsx": "^2.1.1",
+    "express": "^5.2.1",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.26.0",

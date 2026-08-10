@@ -81,7 +81,7 @@ $propertyList = $properties->fetchAll();
 // Calculate aggregated stats
 $stats = [
     'total_guests' => 0,
-    'active_guests' => 0,
+    'checked_in_guests' => 0,
     'total_revenue' => 0,
     'occupancy_rate' => 0,
     'avg_daily_revenue' => 0,
@@ -94,14 +94,14 @@ if (!empty($propertyList)) {
     $stmt->execute();
     $guestStats = $stmt->fetch();
     $stats['total_guests'] = (int)$guestStats['total'];
-    $stats['active_guests'] = (int)$guestStats['active'];
+    $stats['checked_in_guests'] = (int)$guestStats['active'];
 
     $stmt = $pdo->prepare("SELECT SUM(amount) FROM financial_ledger WHERE property_id IN ($propIds) AND direction = 'credit' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
     $stmt->execute();
     $stats['total_revenue'] = (float)($stmt->fetchColumn() ?? 0);
 
     $totalCapacity = array_sum(array_map(fn($p) => $pdo->prepare("SELECT max_capacity FROM properties WHERE id = ?")->execute([(int)$p['id']]) || (int)$pdo->query("SELECT max_capacity FROM properties WHERE id = " . (int)$p['id'])->fetchColumn() ?? 0, $propertyList));
-    $stats['occupancy_rate'] = $totalCapacity > 0 ? round(($stats['active_guests'] / $totalCapacity) * 100, 1) : 0;
+    $stats['occupancy_rate'] = $totalCapacity > 0 ? round(($stats['checked_in_guests'] / $totalCapacity) * 100, 1) : 0;
 
     $stmt = $pdo->prepare("SELECT COUNT(DISTINCT DATE(created_at)) as days FROM financial_ledger WHERE property_id IN ($propIds) AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
     $stmt->execute();
@@ -365,3 +365,4 @@ function generatePropertyToken($pdo, $propertyId, $userId) {
     </script>
 </body>
 </html>
+

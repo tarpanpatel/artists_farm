@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
+import { Input } from './Input';
+import { ScrollToTopButton } from './ScrollToTopButton';
 import { t } from '../i18n/en';
 
 interface Tenant {
@@ -544,13 +547,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <p className="text-sm font-medium text-gray-900 dark:text-white">{username}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">{t('platform_admin_label', 'Platform Admin')}</p>
             </div>
-            <button
+            <Button
               onClick={handleLogout}
-              className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-red-600 dark:text-red-400 transition-colors"
+              className="text-red-600 dark:text-red-400"
               title={t('logout_tooltip', 'Logout')}
+              variant="ghost"
+              size="xs"
             >
               <LogOut className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -607,13 +612,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
-            <button
+            <Button
               onClick={() => setShowAddTenantModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2"
+              variant="primary"
+              size="md"
             >
               <Plus className="w-4 h-4" />
               {t('add_tenant_button', 'Add Tenant')}
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-4">
@@ -670,26 +677,30 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         >
                           {tenant.is_active ? t('active_status_badge', 'Active') : t('inactive_status_badge', 'Inactive')}
                         </span>
-                        <button
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             window.open(`/artists_farm/${tenant.slug}/`, '_blank');
                           }}
-                          className="p-2 hover:bg-emerald-100 dark:hover:bg-emerald-950/30 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors"
+                          className="text-emerald-600 dark:text-emerald-400"
                           title={t('visit_tenant_dashboard_tooltip', 'Visit Tenant Dashboard')}
+                          variant="ghost"
+                          size="xs"
                         >
                           <ExternalLink className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleManageTenant(tenant);
                           }}
-                          className="p-2 hover:bg-blue-100 dark:hover:bg-blue-950/30 rounded-lg text-blue-600 dark:text-blue-400 transition-colors"
+                          className="text-blue-600 dark:text-blue-400"
                           title={t('edit_tenant_tooltip', 'Edit Tenant')}
+                          variant="ghost"
+                          size="xs"
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -757,19 +768,22 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       <p className="font-mono font-bold text-gray-900 dark:text-white tracking-widest">
                                         {isRevealed ? creds.passcode : '•'.repeat(creds.passcode.length || 6)}
                                       </p>
-                                      <button
+                                      <Button
                                         onClick={() => setRevealedPasscodeId(isRevealed ? null : tenant.id)}
-                                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                        className="text-indigo-600 dark:text-indigo-400 font-semibold"
+                                        variant="link"
                                       >
                                         {isRevealed ? t('hide_button', 'Hide') : t('show_button', 'Show')}
-                                      </button>
-                                      <button
+                                      </Button>
+                                      <Button
                                         onClick={() => navigator.clipboard?.writeText(creds.passcode)}
-                                        className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
+                                        className="text-indigo-600 dark:text-indigo-400"
                                         title={t('copy_passcode_tooltip', 'Copy passcode')}
+                                        variant="ghost"
+                                        size="xs"
                                       >
                                         <Copy className="w-3.5 h-3.5" />
-                                      </button>
+                                      </Button>
                                     </div>
                                   </div>
                                   {creds.mustChangePasscode ? (
@@ -794,17 +808,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                             Properties ({tenantProperties.length})
                           </h4>
-                          <button
+                          <Button
                             onClick={() => {
                               setSelectedTenantForProperty(tenant.id);
                               setEditingProperty({ id: 0, name: '', slug: '', tenant_id: tenant.id, status: 'active', tailwind_color_scheme: 'blue', include_kitchen: true, property_type: 'SINGLE', currency: 'INR', timezone: 'Asia/Kolkata' });
                               setShowPropertyModal('add');
                             }}
-                            className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                            className="flex items-center gap-1"
+                            variant="primary"
+                            size="sm"
                           >
                             <Plus className="w-3 h-3" />
                             {t('add_button', 'Add')}
-                          </button>
+                          </Button>
                         </div>
                         {tenantProperties.length === 0 ? (
                           <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -869,30 +885,36 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                           </div>
                                         )}
                                       </div>
-                                      <button
+                                      <Button
                                         onClick={() => openPropertyWithAutoLogin(prop, tenant.slug)}
-                                        className="p-1.5 hover:bg-green-100 dark:hover:bg-green-950/30 rounded text-green-600 dark:text-green-400 transition-colors text-xs"
+                                        className="text-green-600 dark:text-green-400"
                                         title={t('open_property_tab_tooltip', 'Open Property in New Tab')}
+                                        variant="ghost"
+                                        size="xs"
                                       >
                                         <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
+                                      </Button>
+                                      <Button
                                         onClick={() => {
                                           setEditingProperty(prop);
                                           setShowPropertyModal('edit');
                                         }}
-                                        className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-950/30 rounded text-blue-600 dark:text-blue-400 transition-colors text-xs"
+                                        className="text-blue-600 dark:text-blue-400"
                                         title={t('edit_property_tooltip', 'Edit Property')}
+                                        variant="ghost"
+                                        size="xs"
                                       >
                                         <Edit2 className="w-4 h-4" />
-                                      </button>
-                                      <button
+                                      </Button>
+                                      <Button
                                         onClick={() => setShowDeletePropertyModal(prop.id)}
-                                        className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors text-xs font-bold"
+                                        className="text-red-600 dark:text-red-400 font-bold"
                                         title={t('delete_property_tooltip', 'Delete Property')}
+                                        variant="ghost"
+                                        size="xs"
                                       >
                                         ✕
-                                      </button>
+                                      </Button>
                                     </div>
                                   </div>
 
@@ -924,30 +946,36 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                                 disabled={propertyToggleLoading === room.id}
                                               />
                                             </div>
-                                            <button
+                                            <Button
                                               onClick={() => openPropertyWithAutoLogin(room, tenant.slug)}
-                                              className="p-1 hover:bg-green-100 dark:hover:bg-green-950/30 rounded text-green-600 dark:text-green-400 transition-colors text-xs"
+                                              className="text-green-600 dark:text-green-400"
                                               title={t('open_room_tab_tooltip', 'Open Room in New Tab')}
+                                              variant="ghost"
+                                              size="xs"
                                             >
                                               <Eye className="w-3 h-3" />
-                                            </button>
-                                            <button
+                                            </Button>
+                                            <Button
                                               onClick={() => {
                                                 setEditingProperty(room);
                                                 setShowPropertyModal('edit');
                                               }}
-                                              className="p-1 hover:bg-blue-100 dark:hover:bg-blue-950/30 rounded text-blue-600 dark:text-blue-400 transition-colors text-xs"
+                                              className="text-blue-600 dark:text-blue-400"
                                               title={t('edit_room_tooltip', 'Edit Room')}
+                                              variant="ghost"
+                                              size="xs"
                                             >
                                               <Edit2 className="w-3 h-3" />
-                                            </button>
-                                            <button
+                                            </Button>
+                                            <Button
                                               onClick={() => setShowDeletePropertyModal(room.id)}
-                                              className="p-1 hover:bg-red-100 dark:hover:bg-red-950/30 rounded text-red-600 dark:text-red-400 transition-colors text-xs font-bold"
+                                              className="text-red-600 dark:text-red-400 font-bold"
                                               title={t('delete_room_tooltip', 'Delete Room')}
+                                              variant="ghost"
+                                              size="xs"
                                             >
                                               ✕
-                                            </button>
+                                            </Button>
                                           </div>
                                         </div>
                                       ))}
@@ -981,7 +1009,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('tenant_name_label', 'Tenant Name')}
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editingTenant.name}
                   onChange={(e) => {
@@ -992,20 +1020,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       slug: editSlugManuallyEdited ? prev.slug : slugify(name),
                     }));
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('email_label', 'Email')}
                 </label>
-                <input
+                <Input
                   type="email"
                   value={editingTenant.email || ''}
                   onChange={(e) =>
                     setEditingTenant({ ...editingTenant, email: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -1013,13 +1039,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('phone_label', 'Phone')}
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editingTenant.phone || ''}
                   onChange={(e) =>
                     setEditingTenant({ ...editingTenant, phone: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -1029,14 +1054,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('slug_label', 'Slug')}
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editingTenant.slug}
                   onChange={(e) => {
                     setEditSlugManuallyEdited(true);
                     setEditingTenant({ ...editingTenant, slug: slugify(e.target.value) });
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                  className="font-mono"
                 />
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                   {t('tenant_slug_change_warning', "Changes this tenant's URL for every property under it - any bookmarked or previously-shared links will stop working.")}
@@ -1084,18 +1109,22 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => setShowEditTenantModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1"
+                variant="secondary"
+                size="md"
               >
                 {t('cancel_button', 'Cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSaveTenant}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="flex-1"
+                variant="primary"
+                size="md"
               >
                 {t('save_button', 'Save')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1120,7 +1149,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     {t('help_label', 'Help?')}
                   </span>
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editingProperty.name}
                   onChange={(e) => {
@@ -1131,7 +1160,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       : editingProperty.slug;
                     setEditingProperty({ ...editingProperty, name, slug });
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -1139,13 +1167,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {t('slug_label', 'Slug')}
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editingProperty.slug}
                   onChange={(e) =>
                     setEditingProperty({ ...editingProperty, slug: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -1236,28 +1263,26 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {t('currency_label', 'Currency')}
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={editingProperty.currency || 'INR'}
                         onChange={(e) =>
                           setEditingProperty({ ...editingProperty, currency: e.target.value })
                         }
                         placeholder={t('currency_placeholder', 'INR')}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {t('timezone_label', 'Timezone')}
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={editingProperty.timezone || 'Asia/Kolkata'}
                         onChange={(e) =>
                           setEditingProperty({ ...editingProperty, timezone: e.target.value })
                         }
                         placeholder={t('timezone_placeholder', 'Asia/Kolkata')}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -1282,19 +1307,23 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => {
                   setShowPropertyModal(null);
                   setEditingProperty(null);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1"
+                variant="secondary"
+                size="md"
               >
                 {t('cancel_button', 'Cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={showPropertyModal === 'add' ? handleAddProperty : handleEditProperty}
                 disabled={operationLoading}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 flex items-center justify-center gap-2"
+                variant="primary"
+                size="md"
               >
                 {operationLoading ? (
                   <>
@@ -1304,7 +1333,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 ) : (
                   showPropertyModal === 'add' ? t('add_button', 'Add') : t('update_button', 'Update')
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1328,32 +1357,36 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
               Type <span className="font-bold font-mono text-gray-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:
             </p>
-            <input
+            <Input
               type="text"
               autoFocus
               placeholder={t('type_here_placeholder', 'Type here...')}
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white mb-6 font-mono"
+              className="mb-6 font-mono"
             />
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => {
                   setShowDeletePropertyModal(null);
                   setDeleteConfirmText('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1"
+                variant="secondary"
+                size="md"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   handleDeleteProperty(showDeletePropertyModal);
                   setDeleteConfirmText('');
                 }}
                 disabled={operationLoading || deleteConfirmText !== (properties.find(p => p.id === showDeletePropertyModal)?.name || '')}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 flex items-center justify-center gap-2"
+                variant="danger"
+                size="md"
               >
                 {operationLoading ? (
                   <>
@@ -1363,7 +1396,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 ) : (
                   t('delete_property_button', 'Delete Property')
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1416,26 +1449,30 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       >
                         <Share2 className="w-4 h-4" /> {t('share_whatsapp_button', 'Share via WhatsApp')}
                       </a>
-                      <button
+                      <Button
                         onClick={() => navigator.clipboard?.writeText(newTenantCredentials.renderedMessage)}
                         title={t('copy_message_tooltip', 'Copy message')}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                        variant="secondary"
+                        size="sm"
                       >
                         <Copy className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}
 
-                <button
+                <Button
                   onClick={() => {
                     setShowAddTenantModal(false);
                     setNewTenantCredentials(null);
                   }}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors mt-2"
+                  className="mt-2"
+                  variant="primary"
+                  size="md"
+                  block
                 >
                   {t('done_button', 'Done')}
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -1448,7 +1485,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('tenant_name_label', 'Tenant Name')}
                     </label>
-                    <input
+                    <Input
                       type="text"
                       value={newTenant.name}
                       onChange={(e) => {
@@ -1459,7 +1496,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           slug: slugManuallyEdited ? prev.slug : slugify(name),
                         }));
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                       placeholder={t('tenant_name_placeholder', 'e.g., Vrikshawan')}
                     />
                   </div>
@@ -1468,14 +1504,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('url_slug_label', 'URL Slug')}
                     </label>
-                    <input
+                    <Input
                       type="text"
                       value={newTenant.slug}
                       onChange={(e) => {
                         setSlugManuallyEdited(true);
                         setNewTenant({ ...newTenant, slug: slugify(e.target.value) });
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                      className="font-mono"
                       placeholder={t('tenant_slug_placeholder', 'e.g., vrikshawan')}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1487,13 +1523,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('email_label', 'Email')}
                     </label>
-                    <input
+                    <Input
                       type="email"
                       value={newTenant.email}
                       onChange={(e) =>
                         setNewTenant({ ...newTenant, email: e.target.value })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                       placeholder={t('email_placeholder', 'tenant@example.com')}
                     />
                   </div>
@@ -1502,34 +1537,38 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
                     </label>
-                    <input
+                    <Input
                       type="text"
                       value={newTenant.phone}
                       onChange={(e) =>
                         setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
                       }
                       maxLength={10}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                      className="font-mono"
                       placeholder={t('phone_placeholder', '10-digit mobile number')}
                     />
                   </div>
                 </div>
 
                 <div className="flex gap-3">
-                  <button
+                  <Button
                     onClick={() => {
                       setShowAddTenantModal(false);
                       setNewTenant({ name: '', slug: '', email: '', phone: '' });
                       setSlugManuallyEdited(false);
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    className="flex-1"
+                    variant="secondary"
+                    size="md"
                   >
                     {t('cancel_button', 'Cancel')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleAddTenant}
                     disabled={operationLoading}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 flex items-center justify-center gap-2"
+                    variant="primary"
+                    size="md"
                   >
                     {operationLoading ? (
                       <>
@@ -1539,13 +1578,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     ) : (
                       t('create_button', 'Create')
                     )}
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
           </div>
         </div>
       )}
+
+      <ScrollToTopButton />
     </div>
   );
 };

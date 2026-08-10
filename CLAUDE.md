@@ -96,6 +96,17 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Use checkmark icon ✓ or different background color to show status
 - Example: "Test ✓" when enabled, "Test" when disabled
 
+### Telegram Group Selection (Local vs Production) — IMPORTANT
+- **Which Telegram groups receive messages depends on where the site is hosted** — there is NO automatic local/prod group swap in code; the selection is implicit:
+  1. **Primary: per-property DB config** (`property_modules.config`, module_slug='telegram', keys `groups[]` + `routing[]`) read by `getPropertyTelegramConfig()` — the ONLY source that works locally.
+  2. **Legacy fallback: env constants** (`TELEGRAM_KITCHEN_CHAT_ID` / `TELEGRAM_ADMIN_CHAT_ID` / `TELEGRAM_FINANCE_CHAT_ID` from `php/telegram/config.php`) used by `legacyCategoryChatId()` in `sender.php` only when the DB has no routing entry.
+- **DB differs by environment** (`php/config/database.php`): localhost/127.0.0.1/192.168.* → `artists_farm_resort`; anything else (cPanel) → `apartment_site`. So local and prod each have their OWN `property_modules.config` and can (should) target different groups.
+- **`.env.example` documents the intended group sets**:
+  - Local dev (active lines): kitchen=-5511705268, admin=-5362212071, finance=-5511705268 (demo groups)
+  - Production (commented, uncomment on cPanel): kitchen=-5456387701, admin=-5415746187, finance=-5303969309
+- **Gotcha**: local XAMPP loads NO `.env` (no dotenv loader) → `getenv()` returns null → env fallback is dead locally, so DB config is authoritative. On cPanel the `.env` values ARE set and the fallback also works.
+- Always verify a property's actual target groups in its DB config before assuming a notification goes where you expect (see `findPropertyForTelegramChat` / `sendPropertyTelegramMessage` routing).
+
 ### Console & Debugging
 - Chrome remote debugging: `--remote-debugging-port=9222`
 - Use `console.log()` for debugging (will be seen in browser DevTools)

@@ -5,6 +5,7 @@
  */
 
 function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
+    require_once __DIR__ . '/../config/schema_cache.php';
     switch ($action) {
         case 'get_inventory':
             try {
@@ -19,9 +20,11 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
-                    // Fallback to inventory_items table
-                    $sql = "SELECT id, name, category, quantity, unit FROM inventory_items ORDER BY name ASC";
-                    $stmt = $pdo->query($sql);
+                    // Fallback to inventory_items table (scoped - the table holds every
+                    // property's stock, so an unscoped SELECT here would dump all of them)
+                    $sql = "SELECT id, name, category, quantity, unit FROM inventory_items WHERE property_id = ? ORDER BY name ASC";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
                     // Auto-create req_catalog table if both are missing
@@ -262,13 +265,24 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_material_categories':
             try {
 
-                // Ensure UNIQUE constraint exists (add if missing from old schema)
-                try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
-                // Add is_ingredient column if missing (upgrade old schema)
-                try { $pdo->exec("ALTER TABLE `material_categories` ADD COLUMN `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0"); } catch (PDOException $e) {}
+                // Ensure UNIQUE constraint exists (add if missing from old schema). The
+                // constraint must be per-property (name, property_id): the old global
+                // `name`-only index forced category names unique across the whole
+                // multi-tenant database, and the old cross-property dedupe below then
+                // deleted property B's "Dairy" row whenever property A's lower-id
+                // "Dairy" existed - a cross-property data-loss bug.
+                if (!isSchemaVerified('schema_inventory_categories')) {
+                    // Clean duplicates within each property first so the new index can install
+                    try { $pdo->exec("DELETE t1 FROM material_categories t1 INNER JOIN material_categories t2 WHERE t1.property_id = t2.property_id AND t1.name = t2.name AND t1.id > t2.id"); } catch (PDOException $e) {}
+                    try { $pdo->exec("ALTER TABLE `material_categories` DROP INDEX IF EXISTS `uniq_cat_name`"); } catch (PDOException $e) {}
+                    try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name_prop` (`name`, `property_id`)"); } catch (PDOException $e) {}
+                    // Add is_ingredient column if missing (upgrade old schema)
+                    try { $pdo->exec("ALTER TABLE `material_categories` ADD COLUMN `is_ingredient` TINYINT(1) NOT NULL DEFAULT 0"); } catch (PDOException $e) {}
+                    markSchemaVerified('schema_inventory_categories');
+                }
 
-                // Clean up any existing duplicates (keep lowest ID)
-                $pdo->exec("DELETE t1 FROM material_categories t1 INNER JOIN material_categories t2 WHERE t1.name = t2.name AND t1.id > t2.id");
+                // Clean up any duplicates within THIS property only (keep lowest ID)
+                $pdo->prepare("DELETE t1 FROM material_categories t1 INNER JOIN material_categories t2 WHERE t1.property_id = ? AND t1.property_id = t2.property_id AND t1.name = t2.name AND t1.id > t2.id")->execute([$propertyId]);
 
                 // Seed only if table is empty
                 $count = $pdo->prepare("SELECT COUNT(*) FROM material_categories WHERE property_id = ?");
@@ -387,7 +401,10 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                 try {
 
                     // Add image_path column if missing
-                    try { $pdo->exec("ALTER TABLE `req_catalog` ADD COLUMN `image_path` TEXT DEFAULT NULL"); } catch (Exception $e) { /* already exists */ }
+                    if (!isSchemaVerified('schema_inventory_catalog_image')) {
+                        try { $pdo->exec("ALTER TABLE `req_catalog` ADD COLUMN `image_path` TEXT DEFAULT NULL"); } catch (Exception $e) { /* already exists */ }
+                        markSchemaVerified('schema_inventory_catalog_image');
+                    }
 
                     // Resolve category_id from material_categories
                     $catId = 1;
@@ -503,7 +520,10 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'seed_catalog':
             try {
-                try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
+                if (!isSchemaVerified('schema_inventory_categories')) {
+                    try { $pdo->exec("ALTER TABLE `material_categories` ADD UNIQUE INDEX IF NOT EXISTS `uniq_cat_name` (`name`)"); } catch (PDOException $e) {}
+                    markSchemaVerified('schema_inventory_categories');
+                }
 
                 $desiredCategories = [
                     1  => 'Spices & Seasonings',

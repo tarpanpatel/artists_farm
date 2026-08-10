@@ -67,18 +67,11 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshStaff();
-    }
-  }, [refreshStaff, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchAttendanceFromDB().then((data) => {
-        if (data && data.length > 0) setAttendance(data);
-      });
-    }
-  }, [isAuthenticated]);
+    refreshStaff();
+    fetchAttendanceFromDB().then((data) => {
+      if (data && data.length > 0) setAttendance(data);
+    });
+  }, []);
 
   const refreshAttendance = useCallback(() => {
     fetchAttendanceFromDB().then((data) => {

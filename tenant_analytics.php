@@ -32,7 +32,7 @@ $properties = $pdo->query("SELECT * FROM properties WHERE id IN ($propertyPlaceh
 // Calculate aggregated stats
 $stats = [
     'total_guests' => 0,
-    'active_guests' => 0,
+    'checked_in_guests' => 0,
     'total_revenue' => 0,
     'total_transactions' => 0,
     'checked_out_revenue' => 0,
@@ -44,13 +44,13 @@ $stats = [
 // Guests stats
 $stmt = $pdo->prepare("SELECT
     COUNT(*) as total,
-    SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active,
+    SUM(CASE WHEN status = 'Checked In' THEN 1 ELSE 0 END) as Checked In,
     SUM(CASE WHEN status = 'CheckedOut' THEN total_charge ELSE 0 END) as revenue
     FROM guests WHERE property_id IN ($propertyPlaceholders)");
 $stmt->execute();
 $guestStats = $stmt->fetch();
 $stats['total_guests'] = (int)$guestStats['total'];
-$stats['active_guests'] = (int)$guestStats['active'];
+$stats['checked_in_guests'] = (int)$guestStats['Checked In'];
 $stats['checked_out_revenue'] = (float)($guestStats['revenue'] ?? 0);
 
 // Financial stats
@@ -64,13 +64,13 @@ $stats['total_revenue'] = max($stats['checked_out_revenue'], (float)($finStats['
 $stats['total_transactions'] = (int)$finStats['count'];
 
 // Staff stats
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM staff_users WHERE property_id IN ($propertyPlaceholders) AND status = 'Active'");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM staff_users WHERE property_id IN ($propertyPlaceholders) AND status = 'Checked In'");
 $stmt->execute();
 $stats['total_staff'] = (int)$stmt->fetchColumn();
 
-// Occupancy (simplified: active guests / total capacity)
+// Occupancy (simplified: Checked In guests / total capacity)
 $totalCapacity = array_sum(array_map(function($p) { return (int)$p['max_capacity']; }, $properties));
-$stats['occupancy_rate'] = $totalCapacity > 0 ? round(($stats['active_guests'] / $totalCapacity) * 100, 1) : 0;
+$stats['occupancy_rate'] = $totalCapacity > 0 ? round(($stats['checked_in_guests'] / $totalCapacity) * 100, 1) : 0;
 
 // Average daily revenue (last 30 days)
 $stmt = $pdo->prepare("SELECT
@@ -92,17 +92,17 @@ foreach ($properties as $p) {
     $propertyStats[$pid] = [
         'name' => $p['name'],
         'guests' => 0,
-        'active_guests' => 0,
+        'checked_in_guests' => 0,
         'revenue' => 0,
         'occupancy' => 0,
     ];
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active FROM guests WHERE property_id = ?");
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Checked In' THEN 1 ELSE 0 END) as Checked In FROM guests WHERE property_id = ?");
     $stmt->execute([$pid]);
     $pg = $stmt->fetch();
     $propertyStats[$pid]['guests'] = (int)$pg['total'];
-    $propertyStats[$pid]['active_guests'] = (int)$pg['active'];
-    $propertyStats[$pid]['occupancy'] = $p['max_capacity'] > 0 ? round(($propertyStats[$pid]['active_guests'] / $p['max_capacity']) * 100, 1) : 0;
+    $propertyStats[$pid]['checked_in_guests'] = (int)$pg['Checked In'];
+    $propertyStats[$pid]['occupancy'] = $p['max_capacity'] > 0 ? round(($propertyStats[$pid]['checked_in_guests'] / $p['max_capacity']) * 100, 1) : 0;
 
     $stmt = $pdo->prepare("SELECT SUM(amount) FROM financial_ledger WHERE property_id = ? AND direction = 'credit' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
     $stmt->execute([$pid]);
@@ -179,16 +179,16 @@ foreach ($properties as $p) {
             <div class="stat-card">
                 <div class="stat-value"><?php echo $stats['total_guests']; ?></div>
                 <div class="stat-label">Total Guests</div>
-                <div class="stat-unit"><?php echo $stats['active_guests']; ?> Active</div>
+                <div class="stat-unit"><?php echo $stats['checked_in_guests']; ?> Checked In</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?php echo $stats['occupancy_rate']; ?>%</div>
                 <div class="stat-label">Occupancy Rate</div>
-                <div class="stat-unit"><?php echo $stats['active_guests']; ?>/<?php echo $totalCapacity; ?> rooms</div>
+                <div class="stat-unit"><?php echo $stats['checked_in_guests']; ?>/<?php echo $totalCapacity; ?> rooms</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?php echo $stats['total_staff']; ?></div>
-                <div class="stat-label">Active Staff</div>
+                <div class="stat-label">Checked In Staff</div>
                 <div class="stat-unit">Across all properties</div>
             </div>
             <div class="stat-card">
@@ -219,7 +219,7 @@ foreach ($properties as $p) {
                 ?>
                 <div class="table-row">
                     <div class="property-name"><?php echo htmlspecialchars($ps['name']); ?></div>
-                    <div><?php echo $ps['guests']; ?> (<?php echo $ps['active_guests']; ?> active)</div>
+                    <div><?php echo $ps['guests']; ?> (<?php echo $ps['checked_in_guests']; ?> Checked In)</div>
                     <div>₹ <?php echo number_format($ps['revenue'], 0); ?></div>
                     <div>
                         <div style="margin-bottom: 0.25rem; font-weight: 600;"><?php echo $ps['occupancy']; ?>%</div>
@@ -237,3 +237,4 @@ foreach ($properties as $p) {
     </div>
 </body>
 </html>
+

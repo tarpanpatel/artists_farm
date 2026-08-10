@@ -8,6 +8,14 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../modules/module_manager.php';
 
+// The router starts the session when this file is require_once'd; a direct hit
+// needs its own boot so the auth gate below can see $_SESSION['username'].
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    session_name('artists_farm_session');
+    session_start();
+}
+
 function generateDemoData($pdo, $propertyId) {
     // Always start from a clean slate. Previously relied on INSERT IGNORE
     // to avoid duplicates, but there's no unique key backing that, so every
@@ -93,29 +101,29 @@ function generateDemoData($pdo, $propertyId) {
         // Create demo guests with back-to-back bookings across all 5 rooms
         $demoGuests = [
             // Room 101: Back-to-back bookings
-            ['name' => 'John Smith', 'phone' => '9988776655', 'checkin' => date('Y-m-d'), 'checkout' => date('Y-m-d', strtotime('+3 days')), 'status' => 'Active', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
-            ['name' => 'Mike Wilson', 'phone' => '9988776657', 'checkin' => date('Y-m-d', strtotime('+3 days')), 'checkout' => date('Y-m-d', strtotime('+6 days')), 'status' => 'Active', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
+            ['name' => 'John Smith', 'phone' => '9988776655', 'checkin' => date('Y-m-d'), 'checkout' => date('Y-m-d', strtotime('+3 days')), 'status' => 'Checked In', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
+            ['name' => 'Mike Wilson', 'phone' => '9988776657', 'checkin' => date('Y-m-d', strtotime('+3 days')), 'checkout' => date('Y-m-d', strtotime('+6 days')), 'status' => 'Checked In', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
 
             // Room 102: Back-to-back bookings
-            ['name' => 'Sarah Johnson', 'phone' => '9988776656', 'checkin' => date('Y-m-d', strtotime('-1 day')), 'checkout' => date('Y-m-d', strtotime('+2 days')), 'status' => 'Active', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
-            ['name' => 'Emma Davis', 'phone' => '9988776658', 'checkin' => date('Y-m-d', strtotime('+2 days')), 'checkout' => date('Y-m-d', strtotime('+5 days')), 'status' => 'Active', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
-            ['name' => 'Oliver Brown', 'phone' => '9988776662', 'checkin' => date('Y-m-d', strtotime('+5 days')), 'checkout' => date('Y-m-d', strtotime('+8 days')), 'status' => 'Active', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
+            ['name' => 'Sarah Johnson', 'phone' => '9988776656', 'checkin' => date('Y-m-d', strtotime('-1 day')), 'checkout' => date('Y-m-d', strtotime('+2 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
+            ['name' => 'Emma Davis', 'phone' => '9988776658', 'checkin' => date('Y-m-d', strtotime('+2 days')), 'checkout' => date('Y-m-d', strtotime('+5 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
+            ['name' => 'Oliver Brown', 'phone' => '9988776662', 'checkin' => date('Y-m-d', strtotime('+5 days')), 'checkout' => date('Y-m-d', strtotime('+8 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
         ];
 
         // Add bookings for rooms 103, 104, 105 if they exist (3+ rooms)
         if (count($roomIds) > 2) {
             // Room 103: Booking checking out TODAY + future booking
-            $demoGuests[] = ['name' => 'Robert Taylor', 'phone' => '9988776670', 'checkin' => date('Y-m-d', strtotime('-2 days')), 'checkout' => date('Y-m-d'), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 7000, 'advance' => 3500];
-            $demoGuests[] = ['name' => 'Alice Brown', 'phone' => '9988776659', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
-            $demoGuests[] = ['name' => 'Bob Green', 'phone' => '9988776660', 'checkin' => date('Y-m-d', strtotime('+10 days')), 'checkout' => date('Y-m-d', strtotime('+13 days')), 'status' => 'Active', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
+            $demoGuests[] = ['name' => 'Robert Taylor', 'phone' => '9988776670', 'checkin' => date('Y-m-d', strtotime('-2 days')), 'checkout' => date('Y-m-d'), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 7000, 'advance' => 3500];
+            $demoGuests[] = ['name' => 'Alice Brown', 'phone' => '9988776659', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
+            $demoGuests[] = ['name' => 'Bob Green', 'phone' => '9988776660', 'checkin' => date('Y-m-d', strtotime('+10 days')), 'checkout' => date('Y-m-d', strtotime('+13 days')), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
 
             // Room 104: Back-to-back bookings
-            $demoGuests[] = ['name' => 'Carol White', 'phone' => '9988776661', 'checkin' => date('Y-m-d', strtotime('+4 days')), 'checkout' => date('Y-m-d', strtotime('+7 days')), 'status' => 'Active', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
-            $demoGuests[] = ['name' => 'David Lee', 'phone' => '9988776663', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Active', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
+            $demoGuests[] = ['name' => 'Carol White', 'phone' => '9988776661', 'checkin' => date('Y-m-d', strtotime('+4 days')), 'checkout' => date('Y-m-d', strtotime('+7 days')), 'status' => 'Checked In', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
+            $demoGuests[] = ['name' => 'David Lee', 'phone' => '9988776663', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Checked In', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
 
             // Room 105: Back-to-back bookings
-            $demoGuests[] = ['name' => 'Fiona Taylor', 'phone' => '9988776664', 'checkin' => date('Y-m-d', strtotime('+9 days')), 'checkout' => date('Y-m-d', strtotime('+12 days')), 'status' => 'Active', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
-            $demoGuests[] = ['name' => 'George Harris', 'phone' => '9988776665', 'checkin' => date('Y-m-d', strtotime('+12 days')), 'checkout' => date('Y-m-d', strtotime('+15 days')), 'status' => 'Active', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
+            $demoGuests[] = ['name' => 'Fiona Taylor', 'phone' => '9988776664', 'checkin' => date('Y-m-d', strtotime('+9 days')), 'checkout' => date('Y-m-d', strtotime('+12 days')), 'status' => 'Checked In', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
+            $demoGuests[] = ['name' => 'George Harris', 'phone' => '9988776665', 'checkin' => date('Y-m-d', strtotime('+12 days')), 'checkout' => date('Y-m-d', strtotime('+15 days')), 'status' => 'Checked In', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
         }
 
         foreach ($demoGuests as $guest) {
@@ -278,26 +286,56 @@ function clearDemoData($pdo, $propertyId) {
     }
 }
 
-// Handle API calls
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $action = $input['action'] ?? '';
-    $propertyId = $input['property_id'] ?? null;
+// Handle API calls. The standalone entry point only runs when this file is hit
+// directly - when router.php require_once's it, the router dispatches
+// generate_demo_data/clear_demo_data itself (with the session/API-key gate and
+// resolved-property scoping applied). Leaving this block unguarded made it run
+// for BOTH entry points and let anyone wipe/poison any property's data.
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Guard the direct endpoint too: require a valid session or API key.
+        $api_key = getenv('API_KEY');
+        $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
+        $is_authenticated_user = isset($_SESSION['username']);
+        $authorized = $is_authenticated_user || (!empty($api_key) && $provided_key === $api_key);
+        if (!$authorized) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Valid API key or login session required.']);
+            exit;
+        }
 
-    if (!$propertyId) {
-        http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'property_id required']);
-        exit;
+        $input = json_decode(file_get_contents('php://input'), true);
+        $action = $input['action'] ?? '';
+        $propertyId = $input['property_id'] ?? null;
+
+        if (!$propertyId) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'property_id required']);
+            exit;
+        }
+
+        // Pin the target to the property resolved from the request context unless
+        // the caller is a platform admin (mirrors the router.php behavior).
+        $resolvedPropertyId = getCurrentPropertyId($pdo);
+        $targetPropertyId = $resolvedPropertyId;
+        if ($propertyId && ($_SESSION['is_platform_admin'] ?? false)) {
+            $targetPropertyId = $propertyId;
+        }
+        if (!$targetPropertyId) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No property context for demo data']);
+            exit;
+        }
+
+        if ($action === 'generate') {
+            $result = generateDemoData($pdo, $targetPropertyId);
+        } elseif ($action === 'clear') {
+            $result = clearDemoData($pdo, $targetPropertyId);
+        } else {
+            http_response_code(400);
+            $result = ['status' => 'error', 'message' => 'Invalid action'];
+        }
+
+        echo json_encode($result);
     }
-
-    if ($action === 'generate') {
-        $result = generateDemoData($pdo, $propertyId);
-    } elseif ($action === 'clear') {
-        $result = clearDemoData($pdo, $propertyId);
-    } else {
-        http_response_code(400);
-        $result = ['status' => 'error', 'message' => 'Invalid action'];
-    }
-
-    echo json_encode($result);
 }

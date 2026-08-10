@@ -8,6 +8,7 @@ import {
 } from '../services/api';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface PropertyOption {
@@ -180,14 +181,15 @@ export const ServiceRequestTypesManager: React.FC = () => {
               ))}
             </datalist>
           </div>
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="md"
             disabled={savingType || !selectedPropertyId}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            leftIcon={<Plus className="w-4 h-4" />}
           >
-            <Plus className="w-4 h-4" />
             {savingType ? t('adding_button', 'Adding...') : t('add_type_button', 'Add Request Type')}
-          </button>
+          </Button>
         </form>
 
         {notice && (
@@ -222,13 +224,15 @@ export const ServiceRequestTypesManager: React.FC = () => {
                       {rt.isSystemDefault ? (
                         <span className="text-[10px] uppercase tracking-wide font-bold text-slate-400 dark:text-slate-500 shrink-0">{t('system_default_badge', 'Default')}</span>
                       ) : (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => handleDeleteType(rt.id)}
                           disabled={deletingTypeId === rt.id}
-                          className="text-red-500 hover:text-red-700 dark:hover:text-red-400 cursor-pointer disabled:opacity-50 shrink-0"
+                          className="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1 h-auto"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ))}

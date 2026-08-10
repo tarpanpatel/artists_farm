@@ -3,6 +3,8 @@
  * Fetches and applies dynamic platform theme settings
  */
 
+import { API_ROOT_BASE } from './api';
+
 export interface ThemeSettings {
   colors: {
     primary: string;
@@ -37,11 +39,12 @@ export interface ThemeSettings {
     medium: string;
     large: string;
   };
+  enableDarkModeToggle?: boolean;
 }
 
 export async function fetchThemeSettings(): Promise<ThemeSettings> {
   try {
-    const response = await fetch('/php/api/router.php?action=get_theme_settings');
+    const response = await fetch(`${API_ROOT_BASE}/php/api/router.php?action=get_theme_settings`);
     const data = await response.json();
 
     if (data.status === 'success' && data.data) {
@@ -57,7 +60,7 @@ export async function fetchThemeSettings(): Promise<ThemeSettings> {
 
 export async function saveThemeSettings(settings: ThemeSettings, apiKey: string): Promise<boolean> {
   try {
-    const response = await fetch('/php/api/router.php?action=save_theme_settings', {
+    const response = await fetch(`${API_ROOT_BASE}/php/api/router.php?action=save_theme_settings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -147,5 +150,6 @@ export function getDefaultTheme(): ThemeSettings {
       medium: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
       large: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
     },
+    enableDarkModeToggle: false,
   };
 }

@@ -4,6 +4,10 @@
  * Supports Platform Admins, Tenant Owners, and Property Staff
  */
 
+ini_set('session.gc_maxlifetime', 86400 * 7);
+ini_set('session.cookie_lifetime', 86400 * 7);
+ini_set('session.cookie_httponly', 1);
+session_name('artists_farm_session');
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 require_once __DIR__ . '/../config/database.php';

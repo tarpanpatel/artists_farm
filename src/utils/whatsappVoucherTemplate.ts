@@ -7,38 +7,19 @@
  * sensible default if they don't" shape as Telegram templates.
  */
 
-export interface WhatsappVoucherVariable {
-  token: string; // e.g. '{guest_name}'
-  label: string;
-  optional?: boolean; // true = line gets dropped entirely when the value is empty
-}
-
-export const WHATSAPP_VOUCHER_VARIABLES: WhatsappVoucherVariable[] = [
-  { token: '{guest_name}', label: 'Guest Name' },
-  { token: '{room_name}', label: 'Room / Unit' },
-  { token: '{property_name}', label: 'Property Name' },
-  { token: '{checkin_date}', label: 'Check-In Date' },
-  { token: '{checkout_date}', label: 'Check-Out Date' },
-  { token: '{guest_count}', label: 'Number of Guests' },
-  { token: '{room_tariff}', label: 'Room Tariff (₹)' },
-  { token: '{advance_paid}', label: 'Advance Paid (₹)' },
-  { token: '{maps_link}', label: 'Google Maps Link', optional: true },
-  { token: '{contact_phone}', label: 'Contact Phone', optional: true },
-];
-
 export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
   `🏨 *BOOKING CONFIRMATION VOUCHER*
-━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━
 👤 *Guest:* {guest_name}
 🏠 *Assigned Room:* {room_name}
-📅 *Check-In:* {checkin_date}
-📅 *Check-Out:* {checkout_date}
+📅 *Check-In:* {checkin_date} from {checkin_time}
+📅 *Check-Out:* {checkout_date} until {checkout_time}
 👥 *Number of Guests:* {guest_count}
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
 📍 *Location:* {maps_link}
 📞 *Contact:* {contact_phone}
-━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
 
 /**
@@ -50,7 +31,7 @@ We look forward to welcoming you to {property_name}!`;
 export function renderWhatsappVoucherTemplate(
   template: string,
   values: Record<string, string>,
-  optionalTokens: string[] = ['{maps_link}', '{contact_phone}']
+  optionalTokens: string[] = ['{maps_link}', '{contact_phone}', '{checkin_time}', '{checkout_time}']
 ): string {
   const lines = template.split('\n');
   const keptLines = lines.filter((line) => {

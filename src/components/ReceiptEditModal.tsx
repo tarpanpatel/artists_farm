@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, User, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, ShieldAlert, Share2, Printer, QrCode } from 'lucide-react';
+import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
+import { Button } from './Button';
+import { Input } from './Input';
 import { fetchMenuFromDB, fetchPayeesFromDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import * as htmlToImage from 'html-to-image';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -538,12 +541,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               Room: {guest.roomNumber} • Guest: {editGuestName || guest.guestName} ({editPhoneNumber || guest.phoneNumber})
             </p>
           </div>
-          <button
+          <Button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
+            size="xs"
+            variant="ghost"
+            className="text-slate-400 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Content Body Grid */}
@@ -563,20 +568,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('guest_name_only_label', 'Guest Name')}</label>
-                    <input
+                    <Input
                       type="text"
                       value={editGuestName}
                       onChange={(e) => setEditGuestName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white"
+                      className="text-xs font-bold text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('phone_number_label', 'Phone Number')}</label>
-                    <input
+                    <Input
                       type="tel"
                       value={editPhoneNumber}
                       onChange={(e) => setEditPhoneNumber(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white"
+                      className="text-xs font-bold text-slate-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -584,35 +589,41 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkin_date_only_label', 'Check-In Date')}</label>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setIsDatePickerOpen(true)}
-                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 cursor-pointer shadow-2xs"
+                      block
+                      size="sm"
+                      variant="secondary"
+                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-bold"
                     >
                       <span>{checkinDate ? formatDisplayDate(checkinDate) : 'Select Date'}</span>
                       <Calendar className="w-4 h-4 text-blue-600" />
-                    </button>
+                    </Button>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkout_date_only_label', 'Check-Out Date')}</label>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setIsDatePickerOpen(true)}
-                      className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 cursor-pointer shadow-2xs"
+                      block
+                      size="sm"
+                      variant="secondary"
+                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-bold"
                     >
                       <span>{checkoutDate ? formatDisplayDate(checkoutDate) : 'Select Date'}</span>
                       <Calendar className="w-4 h-4 text-blue-600" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}</label>
-                  <input
+                  <Input
                     type="number"
                     value={roomCharges}
                     onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white"
+                    className="text-xs font-bold text-slate-900 dark:text-white"
                   />
                 </div>
 
@@ -666,12 +677,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
-                      <input
+                      <Input
                         type="number"
                         min="1"
                         value={itemQty}
                         onChange={(e) => setItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-2 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-center"
+                        className="text-xs font-bold text-center"
                       />
                     </div>
                     <div className="sm:col-span-3 flex items-end">
@@ -1226,7 +1237,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </button>
               <a
                 href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                  `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${checkinDate}\n📅 *Check-Out:* ${checkoutDate}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                  `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

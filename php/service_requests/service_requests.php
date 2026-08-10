@@ -53,7 +53,10 @@ $SERVICE_REQUEST_TYPES = [
     ['id' => 'other_special_request', 'category' => 'General', 'label' => 'Other / Custom Request'],
 ];
 
+require_once __DIR__ . '/../config/schema_cache.php';
+
 function ensureServiceRequestsSchema($pdo) {
+    if (isSchemaVerified('schema_service_requests')) return;
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `service_request_types` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -68,6 +71,14 @@ function ensureServiceRequestsSchema($pdo) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     } catch (PDOException $e) {}
 
+    // Add scheduled_at column to service_requests if it doesn't exist
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'scheduled_at'");
+        if ($stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `scheduled_at` DATETIME NULL DEFAULT NULL AFTER `description`");
+        }
+    } catch (PDOException $e) {}
+
     // Nav items are DB-driven and shared across every property (see get_nav_menu
     // in php/kitchen/menu.php) - insert this feature's entry once, the same way
     // Telegram templates get backfilled, rather than requiring an admin to add
@@ -77,6 +88,8 @@ function ensureServiceRequestsSchema($pdo) {
             (id, property_id, title, tab_key, unique_key, category, icon_name, display_order)
             VALUES ('nav-svcreq', 1, 'Service Requests', 'service_requests', 'service_requests', 'Residents & Billing', 'Bell', 4)");
     } catch (PDOException $e) {}
+
+    markSchemaVerified('schema_service_requests');
 }
 
 /**
@@ -145,8 +158,14 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
     switch ($action) {
         case 'get_service_request_types':
             seedServiceRequestTypes($pdo, $propertyId);
-            $stmt = $pdo->prepare("SELECT * FROM service_request_types WHERE property_id = ? ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
-            $stmt->execute([$propertyId]);
+            if (!$propertyId) {
+                // Return all types across all properties for global/shared mode
+                $stmt = $pdo->prepare("SELECT * FROM service_request_types ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
+                $stmt->execute();
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM service_request_types WHERE property_id = ? ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
+                $stmt->execute([$propertyId]);
+            }
             echo json_encode(['status' => 'success', 'data' => array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC))]);
             break;
 
@@ -161,12 +180,13 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                     echo json_encode(['status' => 'error', 'message' => 'type_id, category and label are required']);
                     break;
                 }
+                $targetPropertyId = $propertyId ?: 1;
                 $stmt = $pdo->prepare("
                     INSERT INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order)
                     VALUES (?, ?, ?, ?, FALSE, 999)
                     ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label)
                 ");
-                $stmt->execute([$propertyId, $typeId, $category, $label]);
+                $stmt->execute([$targetPropertyId, $typeId, $category, $label]);
                 echo json_encode(['status' => 'success', 'message' => 'Service request type saved']);
             }
             break;
@@ -229,12 +249,13 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 }
                 $roomId = !empty($input['room_id']) ? intval($input['room_id']) : null;
                 $description = trim($input['description'] ?? '');
+                $scheduledAt = !empty($input['scheduled_at']) ? date('Y-m-d H:i:s', strtotime($input['scheduled_at'])) : null;
 
                 $stmt = $pdo->prepare("
-                    INSERT INTO service_requests (property_id, room_id, request_type, description, requested_by)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO service_requests (property_id, room_id, request_type, description, requested_by, scheduled_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$propertyId, $roomId, $requestType, $description, $requestedBy]);
+                $stmt->execute([$propertyId, $roomId, $requestType, $description, $requestedBy, $scheduledAt]);
                 $requestId = $pdo->lastInsertId();
 
                 $roomName = 'N/A';
@@ -254,6 +275,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                         'room_name' => $roomName,
                         'description' => $description ?: '(none)',
                         'requested_by' => $requestedBy,
+                        'scheduled_at' => $scheduledAt ? date('d M Y, h:i A', strtotime($scheduledAt)) : 'Immediate',
                     ]);
 
                     $replyMarkup = ['inline_keyboard' => [[
@@ -310,7 +332,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
         case 'check_stale_service_requests':
             $thresholdMinutes = max(1, (int)($_GET['threshold_minutes'] ?? 15));
             $stmt = $pdo->prepare("
-                SELECT sr.id, sr.request_type, sr.description, sr.requested_by, sr.created_at,
+                SELECT sr.id, sr.request_type, sr.description, sr.requested_by, sr.created_at, sr.scheduled_at,
                        COALESCE(r.name, 'N/A') as room_name,
                        TIMESTAMPDIFF(MINUTE, COALESCE(sr.last_reminder_at, sr.created_at), NOW()) as elapsed_minutes
                 FROM service_requests sr

@@ -14,11 +14,11 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   label,
 }) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="app-toggle-wrapper flex items-center gap-2">
       <button
         onClick={() => !disabled && onChange(!enabled)}
         disabled={disabled}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors overflow-visible ${
+        className={`app-toggle-switch relative inline-flex h-6 w-11 items-center rounded-full transition-colors overflow-visible ${
           enabled
             ? 'bg-blue-600 dark:bg-blue-500'
             : 'bg-gray-300 dark:bg-gray-600'
@@ -27,7 +27,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         aria-checked={enabled}
       >
         <span
-          className={`absolute h-4 w-4 rounded-full bg-white shadow-md transition-all ${
+          className={`app-toggle-thumb absolute h-4 w-4 rounded-full bg-white shadow-md transition-all ${
             enabled ? 'translate-x-5 left-1' : 'translate-x-0.5 left-0'
           }`}
         />

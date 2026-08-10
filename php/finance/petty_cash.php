@@ -11,6 +11,7 @@ if (file_exists($seedFile)) {
 }
 
 function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
+    require_once __DIR__ . '/../config/schema_cache.php';
     switch ($action) {
         case 'get_petty_cash':
             try {
@@ -80,6 +81,51 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     'source_id' => $id,
                     'description' => $input['description'] ?? '',
                 ]);
+
+                // Attach invoice / payment-screenshot proof straight to the
+                // finance Telegram chat on submit. Images arrive as base64
+                // data-URIs in the POST body, are decoded to temp files, sent
+                // with the full expense caption, then discarded - nothing is
+                // persisted (farm_utility_expenses / petty_cash have no image
+                // columns, by design).
+                $proofImages = [];
+                foreach (['invoice_bill_url', 'invoiceBillUrl'] as $key) {
+                    if (!empty($input[$key])) { $proofImages[] = $input[$key]; break; }
+                }
+                foreach (['payment_screenshot_url', 'paymentScreenshotUrl'] as $key) {
+                    if (!empty($input[$key])) { $proofImages[] = $input[$key]; break; }
+                }
+                if (!empty($proofImages)) {
+                    try {
+                        require_once __DIR__ . '/../telegram/sender.php';
+                        require_once __DIR__ . '/../telegram/templates.php';
+                        $tmpFiles = [];
+                        foreach ($proofImages as $dataUri) {
+                            $comma = strpos($dataUri, ',');
+                            $decoded = base64_decode($comma === false ? $dataUri : substr($dataUri, $comma + 1));
+                            if ($decoded === false || $decoded === '') continue;
+                            $tmp = sys_get_temp_dir() . '/expense_' . bin2hex(random_bytes(8)) . '.jpg';
+                            file_put_contents($tmp, $decoded);
+                            $tmpFiles[] = $tmp;
+                        }
+                        if (!empty($tmpFiles)) {
+                            $caption = TelegramTemplates::render($pdo, 'finance_operational_expense', [
+                                'expense_date' => $input['date'] ?? date('Y-m-d'),
+                                'category' => $input['category'] ?? 'Other',
+                                'paid_by' => $input['paidBy'] ?? $input['vendor'] ?? $input['vendor_name'] ?? 'Manager',
+                                'description' => $input['description'] ?? '',
+                                'payment_mode' => $input['payment_mode'] ?? $input['paymentMode'] ?? 'Cash',
+                                'amount' => number_format((float)($input['amount'] ?? 0), 2),
+                            ]);
+                            sendPropertyTelegramPhoto($pdo, $propertyId, 'finance', $tmpFiles, $caption, 'finance_operational_expense');
+                        }
+                        foreach ($tmpFiles as $tmp) {
+                            @unlink($tmp);
+                        }
+                    } catch (Exception $e) {
+                        error_log("Failed to send expense proof to Telegram: " . $e->getMessage());
+                    }
+                }
 
                 echo json_encode(['status' => 'success', 'id' => $id, 'message' => 'Expense outflow recorded']);
             }
@@ -273,10 +319,13 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 // Ensure table has is_system_default column
 
                 // Add is_system_default column if it doesn't exist
-                try {
-                    $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
-                } catch (PDOException $e) {
-                    // Column already exists
+                if (!isSchemaVerified('schema_misc_catalog_system_default')) {
+                    try {
+                        $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
+                    } catch (PDOException $e) {
+                        // Column already exists
+                    }
+                    markSchemaVerified('schema_misc_catalog_system_default');
                 }
 
                 // All properties share ONE centralized expense catalog (system_expenses)
@@ -311,10 +360,13 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     // Ensure table has is_system_default column
 
                     // Add is_system_default column if it doesn't exist
-                    try {
-                        $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
-                    } catch (PDOException $e) {
-                        // Column already exists
+                    if (!isSchemaVerified('schema_misc_catalog_system_default')) {
+                        try {
+                            $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
+                        } catch (PDOException $e) {
+                            // Column already exists
+                        }
+                        markSchemaVerified('schema_misc_catalog_system_default');
                     }
 
                     // Custom items (not system defaults) are always editable and can be added
@@ -344,23 +396,9 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    // Check if item is a system default (cannot delete)
-                    $checkStmt = $pdo->prepare("
-                        SELECT is_system_default FROM miscellaneous_catalog
-                        WHERE (id = ? OR label = ?) AND property_id = ?
-                    ");
-                    $checkStmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
-                    $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($result && $result['is_system_default']) {
-                        echo json_encode(['status' => 'error', 'message' => 'Cannot delete system default expense items']);
-                        break;
-                    }
-
-                    // Delete only if not a system default
                     $stmt = $pdo->prepare("
                         DELETE FROM miscellaneous_catalog
-                        WHERE (id = ? OR label = ?) AND property_id = ? AND is_system_default = FALSE
+                        WHERE (id = ? OR label = ?) AND property_id = ?
                     ");
                     $stmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully']);
@@ -509,10 +547,13 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 ensureFinancialLedger($pdo);
                 $month = $_GET['month'] ?? '';
                 if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
-                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE DATE_FORMAT(occurred_at, '%Y-%m') = ? ORDER BY occurred_at DESC, id DESC");
-                    $stmt->execute([$month]);
+                    // financial_ledger is multi-tenant (every property's cash drawer, salary and
+                    // expense entries share the table), so ALWAYS scope by the resolved property.
+                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE property_id = ? AND DATE_FORMAT(occurred_at, '%Y-%m') = ? ORDER BY occurred_at DESC, id DESC");
+                    $stmt->execute([$propertyId, $month]);
                 } else {
-                    $stmt = $pdo->query("SELECT * FROM financial_ledger ORDER BY occurred_at DESC, id DESC LIMIT 1000");
+                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE property_id = ? ORDER BY occurred_at DESC, id DESC LIMIT 1000");
+                    $stmt->execute([$propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
             } catch (PDOException $e) {

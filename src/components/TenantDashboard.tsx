@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Building2, LogOut, Plus, BarChart3, AlertCircle, Loader,
-  Edit2, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
-  Home, TrendingUp, ChevronRight, Lock, Zap, X,
+  Building2, LogOut, Plus, AlertCircle, Loader,
+  Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
+  Home, TrendingUp, ChevronRight, Lock, Zap, X, User, MessageSquare,
+  Settings, Calendar, Users,
 } from 'lucide-react';
+import { Button } from './Button';
+import { Input } from './Input';
+import { StyledSelect } from './StyledSelect';
+import { ScrollToTopButton } from './ScrollToTopButton';
 import { t } from '../i18n/en';
 
 interface SlotBreakdownItem {
@@ -52,6 +57,7 @@ interface TenantDashboardProps {
   tenantId: number;
   tenantInfo?: TenantInfo;
   onLogout: () => void;
+  isPlatformAdmin?: boolean;
 }
 
 type ModalState = 
@@ -67,6 +73,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   tenantId,
   tenantInfo: propTenantInfo,
   onLogout,
+  isPlatformAdmin = false,
 }) => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [slotUsage, setSlotUsage] = useState<SlotUsage | null>(null);
@@ -75,6 +82,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
 
   // Add property form state
   const [newPropName, setNewPropName] = useState('');
@@ -101,9 +109,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     setLoading(true);
     setError(null);
     try {
+      const adminHeaders: Record<string, string> = {};
+      if (isPlatformAdmin && username) {
+        adminHeaders['X-Admin-Username'] = username;
+      }
       const [propsRes, slotsRes] = await Promise.all([
-        fetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { credentials: 'include' }),
-        fetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`, { credentials: 'include' }),
+        fetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`, { credentials: 'include', headers: adminHeaders }),
+        fetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`, { credentials: 'include', headers: adminHeaders }),
       ]);
       const [propsData, slotsData] = await Promise.all([propsRes.json(), slotsRes.json()]);
 
@@ -116,7 +128,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, isPlatformAdmin, username]);
 
   useEffect(() => {
     loadData();
@@ -291,7 +303,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{username}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('tenant_manager_label', 'Tenant Manager')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Tenant Manager')}
+              </p>
             </div>
             <button
               onClick={handleLogout}
@@ -347,38 +361,32 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
         </section>
 
-        {/* ── Properties Section ── */}
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('your_properties_heading', 'Your Properties')}</h2>
-            {remaining > 0 ? (
-              <button
-                id="tenant-add-property-btn"
-                onClick={() => { setAddError(null); setNewPropName(''); setNewPropType('SINGLE'); setNewPropRooms(1); setModal({ type: 'add' }); }}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all hover:shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                {t('add_property_button', 'Add Property')}
-              </button>
-            ) : (
-              <div className="flex flex-col items-end gap-1">
-                <button
-                  disabled
-                  className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 px-4 py-2 rounded-xl text-sm font-semibold cursor-not-allowed"
+          {/* ── Properties Section ── */}
+          <section>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('your_properties_heading', 'Your Properties')}</h2>
+              {remaining > 0 ? (
+                <Button
+                  id="tenant-add-property-btn"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  variant="primary"
+                  size="sm"
+                  onClick={() => { setAddError(null); setNewPropName(''); setNewPropType('SINGLE'); setNewPropRooms(1); setModal({ type: 'add' }); }}
                 >
-                  <Lock className="w-4 h-4" />
                   {t('add_property_button', 'Add Property')}
-                </button>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t('no_more_slots_available_message', 'No more slots available')}</p>
-                <button
-                  onClick={() => setModal({ type: 'upgrade' })}
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  <Zap className="w-3.5 h-3.5" /> {t('upgrade_package_button', 'Upgrade Package')}
-                </button>
-              </div>
-            )}
-          </div>
+                </Button>
+              ) : (
+                <div className="flex flex-col items-end gap-1">
+                  <Button variant="dark" size="sm" disabled leftIcon={<Lock className="w-4 h-4" />}>
+                    {t('add_property_button', 'Add Property')}
+                  </Button>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('no_more_slots_available_message', 'No more slots available')}</p>
+                  <Button variant="secondary" size="xs" leftIcon={<Zap className="w-3.5 h-3.5" />} onClick={() => setModal({ type: 'upgrade' })}>
+                    {t('upgrade_package_button', 'Upgrade Package')}
+                  </Button>
+                </div>
+              )}
+            </div>
 
           {properties.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
@@ -430,39 +438,100 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     )}
 
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <button
-                        onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')}
-                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        {t('open_dashboard_link', 'Open Property')} <ExternalLink className="w-3 h-3" />
-                      </button>
+                      <Button variant="ghost" size="sm" onClick={() => window.open(dashboardUrl, '_blank', 'noopener,noreferrer')} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                        <ExternalLink className="w-3 h-3" /> {t('open_dashboard_link', 'Open Property')}
+                      </Button>
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-                          title={t('edit_tooltip', 'Edit')}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(property)}
-                          className={`p-1.5 rounded-lg transition-colors ${property.is_active ? 'hover:bg-amber-50 dark:hover:bg-amber-950/30 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
-                          title={property.is_active ? t('deactivate_tooltip', 'Deactivate') : t('activate_tooltip', 'Activate')}
-                        >
+                        <Button variant="ghost" size="xs" onClick={() => { setEditName(property.name); setEditGstin(property.gstin || ''); setEditTelegramTemplateCustomization(!!property.telegram_template_customization_enabled); setEditPhone(property.phone || ''); setEditMapsLink(property.google_maps_link || ''); setEditInstructions(property.instructions || ''); setModal({ type: 'edit', property }); }} title={t('edit_tooltip', 'Edit')}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="xs" onClick={() => handleToggleActive(property)} title={property.is_active ? t('deactivate_tooltip', 'Deactivate') : t('activate_tooltip', 'Activate')} className={property.is_active ? 'text-slate-400 hover:text-amber-600' : 'text-slate-400 hover:text-emerald-600'}>
                           {property.is_active ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => setModal({ type: 'delete', property })}
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                          title={t('delete_tooltip', 'Delete')}
-                        >
+                        </Button>
+                        <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'delete', property })} title={t('delete_tooltip', 'Delete')} className="text-slate-400 hover:text-red-600">
                           <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        {/* ── Quick Actions ── */}
+        <section>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('quick_actions_heading', 'Quick Actions')}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: t('guest_check_in_action', 'Guest Check-In'), icon: User, href: '#checkin', color: 'teal' },
+              { label: t('guest_check_out_action', 'Guest Check-Out'), icon: User, href: '#checkout', color: 'orange' },
+              { label: t('pending_actions_label', 'Pending Actions'), icon: AlertCircle, href: '#pending', color: 'amber' },
+              { label: t('new_booking_action', 'New Booking'), icon: Calendar, href: '#new-booking', color: 'indigo' },
+              { label: t('staff_management_action', 'Staff'), icon: Users, href: '#staff', color: 'purple' },
+              { label: t('telegram_setup_action', 'Telegram'), icon: MessageSquare, href: '#telegram', color: 'blue' },
+              { label: t('gst_settings_action', 'GST'), icon: Settings, href: '#gst', color: 'emerald' },
+            ].map((action) => {
+              const Icon = action.icon;
+              const colorMap: Record<string, string> = {
+                teal: 'bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800',
+                orange: 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+                amber: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+                indigo: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+                purple: 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+                blue: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                emerald: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+                slate: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+              };
+              return (
+                <button
+                  key={action.label}
+                  onClick={() => {
+                    if (properties.length === 1) {
+                      const p = properties[0];
+                      const tenantSlug = tenantInfo?.slug ?? '';
+                      const url = tenantSlug
+                        ? `/artists_farm/${tenantSlug}/${p.slug}/${action.href}`
+                        : `/artists_farm/${p.slug}/${action.href}`;
+                      window.location.href = url;
+                    } else if (properties.length > 1) {
+                      setSelectedPropertyId(prev => {
+                        const target = prev ?? properties[0].id;
+                        const p = properties.find(x => x.id === target) ?? properties[0];
+                        const tenantSlug = tenantInfo?.slug ?? '';
+                        const url = tenantSlug
+                          ? `/artists_farm/${tenantSlug}/${p.slug}/${action.href}`
+                          : `/artists_farm/${p.slug}/${action.href}`;
+                        window.location.href = url;
+                        return target;
+                      });
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all active:scale-95 ${colorMap[action.color] ?? colorMap.slate}`}
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-xs font-bold text-center leading-tight">{action.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Property selector for multi-property tenants */}
+          {properties.length > 1 && (
+            <div className="mt-4 flex items-center gap-3">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('select_property_label', 'Select Property')}</label>
+              <div className="flex-1 max-w-xs">
+                <StyledSelect
+                  value={String(selectedPropertyId ?? properties[0]?.id ?? '')}
+                  onChange={(val) => setSelectedPropertyId(Number(val))}
+                  options={properties.map(p => ({
+                    value: String(p.id),
+                    label: p.name,
+                  }))}
+                  placeholder={t('select_property_label', 'Select Property')}
+                />
+              </div>
             </div>
           )}
         </section>
@@ -475,12 +544,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('across_all_properties_subtext', 'Across all your properties')}</p>
             </div>
             <div className="flex items-center gap-2">
-              <select className="text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
-                <option>{t('all_properties_option', 'All Properties')}</option>
-                {properties.map(p => (
-                  <option key={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <StyledSelect
+                value=""
+                onChange={() => {}}
+                options={[
+                  { value: 'all', label: t('all_properties_option', 'All Properties') },
+                  ...properties.map(p => ({ value: String(p.id), label: p.name })),
+                ]}
+                placeholder={t('all_properties_option', 'All Properties')}
+                className="w-48"
+              />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -501,9 +574,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('add_new_property_heading', 'Add New Property')}</h3>
-              <button onClick={() => setModal({ type: 'none' })} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+              <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'none' })}>
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             <div className="px-6 py-5 space-y-5">
               {addError && (
@@ -513,14 +586,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
               )}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('tenant_property_name_label', 'Property Name')}</label>
-                <input
+                <Input
                   id="new-property-name"
-                  type="text"
+                  label={t('tenant_property_name_label', 'Property Name')}
                   value={newPropName}
                   onChange={e => setNewPropName(e.target.value)}
                   placeholder={t('property_name_placeholder', 'e.g. Sea View Villa')}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {newPropName && (
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('tenant_slug_label', 'Slug:')} <span className="font-mono text-indigo-500">/{autoSlug(newPropName)}</span></p>
@@ -553,36 +624,33 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     {t('number_of_rooms_label', 'Number of Rooms')}
                     <span className="text-slate-400 font-normal ml-1">(max {remaining} slot{remaining !== 1 ? 's' : ''} available)</span>
                   </label>
-                  <input
+                  <Input
                     id="new-property-rooms"
                     type="number"
                     min={1}
                     max={remaining}
                     value={newPropRooms}
                     onChange={e => setNewPropRooms(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    helperText={newPropRooms > remaining ? `Not enough slots — you have ${remaining} remaining` : undefined}
+                    error={newPropRooms > remaining}
                   />
-                  {newPropRooms > remaining && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      Not enough slots — you have {remaining} remaining
-                    </p>
-                  )}
                 </div>
               )}
             </div>
             <div className="px-6 pb-5 flex items-center justify-end gap-3">
-              <button onClick={() => setModal({ type: 'none' })} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'none' })}>
                 {t('cancel_button', 'Cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                 id="confirm-add-property-btn"
+                variant="primary"
+                size="sm"
+                leftIcon={addLoading ? <Loader className="w-4 h-4 animate-spin" /> : undefined}
                 onClick={handleAddProperty}
                 disabled={addLoading || newPropRooms > remaining}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white disabled:text-slate-500 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
               >
-                {addLoading && <Loader className="w-4 h-4 animate-spin" />}
                 {t('create_property_button', 'Create Property')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -594,30 +662,26 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('tenant_edit_property_heading', 'Edit Property')}</h3>
-              <button onClick={() => setModal({ type: 'none' })} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+              <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'none' })}>
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('tenant_property_name_label', 'Property Name')}</label>
-                <input
-                  type="text"
+                <Input
+                  label={t('tenant_property_name_label', 'Property Name')}
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('gstin_optional_label', 'GSTIN (optional)')}</label>
-                <input
-                  type="text"
+                <Input
+                  label={t('gstin_optional_label', 'GSTIN (optional)')}
                   value={editGstin}
                   onChange={e => setEditGstin(e.target.value.toUpperCase())}
                   placeholder={t('gstin_placeholder', 'e.g. 27ABCDE1234F1Z5')}
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
                 />
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}</p>
               </div>
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
@@ -633,23 +697,21 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('tenant_contact_phone_label', 'Contact Phone')}</label>
-                    <input
-                      type="text"
+                    <Input
+                      label={t('tenant_contact_phone_label', 'Contact Phone')}
+                      labelClassName="text-xs"
                       value={editPhone}
                       onChange={e => setEditPhone(e.target.value)}
                       placeholder={t('contact_phone_placeholder', '99999 99999')}
-                      className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('google_maps_link_label', 'Google Maps Link')}</label>
-                    <input
-                      type="text"
+                    <Input
+                      label={t('google_maps_link_label', 'Google Maps Link')}
+                      labelClassName="text-xs"
                       value={editMapsLink}
                       onChange={e => setEditMapsLink(e.target.value)}
                       placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                      className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
@@ -669,15 +731,18 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
-              <button onClick={() => setModal({ type: 'none' })} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-colors">{t('cancel_button', 'Cancel')}</button>
-              <button
+              <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'none' })}>
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={editLoading ? <Loader className="w-4 h-4 animate-spin" /> : undefined}
                 onClick={handleEditProperty}
                 disabled={editLoading || !editName.trim()}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
               >
-                {editLoading && <Loader className="w-4 h-4 animate-spin" />}
                 {t('save_changes_button', 'Save Changes')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -717,14 +782,17 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </p>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
-              <button onClick={() => setModal({ type: 'none' })} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-colors">{t('cancel_button', 'Cancel')}</button>
-              <button
+              <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'none' })}>
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
                 id="confirm-delete-property-btn"
+                variant="danger"
+                size="sm"
                 onClick={() => handleDeleteProperty(modal.property)}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all"
               >
                 {t('delete_permanently_button', 'Delete Permanently')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -748,10 +816,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </p>
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
-              <button onClick={() => setModal({ type: 'add' })} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-colors">{t('back_button', 'Back')}</button>
-              <button onClick={() => setModal({ type: 'upgrade' })} className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition-all flex items-center gap-2">
-                <Zap className="w-4 h-4" /> {t('upgrade_package_button', 'Upgrade Package')}
-              </button>
+              <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'add' })}>
+                {t('back_button', 'Back')}
+              </Button>
+              <Button variant="warning" size="sm" leftIcon={<Zap className="w-4 h-4" />} onClick={() => setModal({ type: 'upgrade' })}>
+                {t('upgrade_package_button', 'Upgrade Package')}
+              </Button>
             </div>
           </div>
         </div>
@@ -775,16 +845,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
             </div>
             <div className="px-6 pb-6">
-              <button
+              <Button
+                variant="tertiary"
+                size="md"
+                block
                 onClick={() => setModal({ type: 'none' })}
-                className="w-full px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-all"
               >
                 {t('got_it_button', 'Got it')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      <ScrollToTopButton />
     </div>
   );
 };

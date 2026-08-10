@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader } from 'lucide-react';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface PropertySetupWizardProps {
   address: string;
   googleMapsLink: string;
   staffCount: number; // total staff rows for this property, including the tenant's own auto-seeded row
+  isStaffLoading?: boolean;
   // Step 3 (Rooms/Units) only applies to Multi-Key properties - a Single
   // property IS the one bookable unit, there's nothing separate to add.
   // Omit showRoomsStep (or pass false) for Single properties: the wizard
@@ -29,6 +31,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   address,
   googleMapsLink,
   staffCount,
+  isStaffLoading = false,
   showRoomsStep = true,
   roomCount,
   onSaveLocation,
@@ -38,6 +41,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editAddress, setEditAddress] = useState(address);
   const [editMapsLink, setEditMapsLink] = useState(googleMapsLink);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  // If staff list is still loading from backend, hold off rendering wizard to prevent initial layout flash
+  if (isStaffLoading) return null;
 
   const step1Done = !!address.trim();
   // "minimum 1 user excluding the tenant" - the tenant's own auto-seeded row
@@ -124,14 +130,15 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleSaveLocation}
                   disabled={isSavingLocation || !editAddress.trim()}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  leftIcon={isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 >
-                  {isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                   {t('save_address_button', 'Save Address')}
-                </button>
+                </Button>
                 {!isSavingLocation && <ArrowRight className="w-4 h-4 text-amber-500 animate-bounce shrink-0" />}
               </div>
             </div>
@@ -159,12 +166,14 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('add_team_member_description', "You're already registered as Super Admin. Add whoever else will run the front desk, kitchen, or bookings.")}
               </p>
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={onGoToStaff}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                rightIcon={<ArrowRight className="w-3.5 h-3.5 animate-bounce" />}
               >
-                {t('add_staff_button', 'Add Staff')} <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
-              </button>
+                {t('add_staff_button', 'Add Staff')}
+              </Button>
             </div>
           )}
 
@@ -190,12 +199,14 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('create_first_unit_description', 'Rooms, cottages, or suites - whatever you rent out - each become a unit you can take bookings against.')}
               </p>
-              <button
+              <Button
+                variant="primary"
+                size="md"
                 onClick={onAddUnit}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                rightIcon={<ArrowRight className="w-4 h-4 animate-bounce" />}
               >
-                {t('add_new_unit_button', 'Add New Unit')} <ArrowRight className="w-3.5 h-3.5 animate-bounce" />
-              </button>
+                {t('add_new_unit_button', 'Add New Unit')}
+              </Button>
             </div>
           ))}
         </div>

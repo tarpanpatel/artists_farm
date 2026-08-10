@@ -3,29 +3,44 @@ import DataTable from 'react-data-table-component';
 import {
   History,
   Search,
-  Filter,
-  Download,
-  Calendar,
   CheckCircle2,
   AlertTriangle,
-  User,
   Phone,
   Home,
-  IndianRupee,
-  FileSpreadsheet,
-  BookOpen
+  Loader2,
 } from 'lucide-react';
 import { Guest } from '../types';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { markCFormFiled } from '../services/api';
+import { useToast } from './ToastContext';
 
 interface GuestHistoryProps {
   guests: Guest[];
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
 }
 
-export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
+export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCFormFiledUpdated }) => {
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'CheckedOut' | 'Booked'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'CheckedOut' | 'Booked'>('CheckedOut');
   const [foreignFilter, setForeignFilter] = useState<'All' | 'Foreigner' | 'Indian'>('All');
+  const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
+
+  const handleToggleCForm = async (guest: Guest, newFiledState: boolean) => {
+    setSavingCFormId(guest.id);
+    const ok = await markCFormFiled(guest.id, newFiledState);
+    if (ok) {
+      const filedAt = newFiledState ? new Date().toISOString() : null;
+      // Instantly mutate local object property for immediate UI feedback
+      guest.cFormFiledAt = filedAt;
+      onCFormFiledUpdated?.(guest.id, filedAt);
+      showToast(newFiledState ? `✔ C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
+    } else {
+      showToast('Failed to update C-Form status', { type: 'error' });
+    }
+    setSavingCFormId(null);
+  };
 
   // Filter logic
   const filteredGuests = useMemo(() => {
@@ -92,11 +107,11 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
         <div className="flex flex-col py-2">
           <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <span className="text-[10px] uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1 py-0.5 rounded-sm">{t('checkin_badge', 'IN')}</span>
-            <span>{row.checkinDate}</span>
+            <span>{formatDateDDMMYYYY(row.checkinDate)}</span>
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
             <span className="text-[10px] uppercase text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1 py-0.5 rounded-sm">{t('checkout_badge', 'OUT')}</span>
-            <span>{row.checkoutDate || row.expectedCheckout || '—'}</span>
+            <span>{formatDateDDMMYYYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
           </div>
         </div>
       ),
@@ -123,7 +138,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
         let label: string = row.status;
         if (row.status === 'Active') {
           bg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
-          label = t('active_stay_badge', 'Active Stay');
+          label = t('checked_in_badge', 'Active Stay');
         } else if (row.status === 'CheckedOut') {
           bg = 'bg-slate-100 text-slate-800 dark:bg-slate-800/80 dark:text-slate-300';
           label = t('checked_out_badge', 'Checked Out');
@@ -169,23 +184,30 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
           return <span className="text-slate-400 dark:text-slate-600 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
         }
 
-        if (row.cFormFiledAt) {
-          return (
-            <div className="flex flex-col py-1">
-              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{t('filed_badge', 'Filed')}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-0.5">{row.cFormFiledAt}</span>
-            </div>
-          );
-        }
+        const isFiled = !!row.cFormFiledAt;
+        const isSaving = savingCFormId === row.id;
 
         return (
-          <div className="flex items-center gap-1 text-rose-500 dark:text-rose-400 font-semibold text-xs">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>{t('pending_filing_badge', 'Pending Filing')}</span>
-          </div>
+          <label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
+            <input
+              type="checkbox"
+              checked={isFiled}
+              disabled={isSaving}
+              onChange={(e) => handleToggleCForm(row, e.target.checked)}
+              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+            />
+            <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              {isFiled ? (
+                <span className="flex items-center gap-1">
+                  <span>{t('filed_badge', 'Filed')}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
+                </span>
+              ) : (
+                <span>{t('pending_filing_badge', 'Pending Filing')}</span>
+              )}
+            </span>
+            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+          </label>
         );
       },
     },
@@ -201,7 +223,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
             <span>{t('guest_registration_archive_heading', 'Guest Registration Archive')}</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            {t('guest_history_description', 'Browse complete history of current, upcoming, and past guest bookings, stays, and ledger records.')}
+            {t('guest_history_description', 'Browse completed guest stays, registration history, C-Form compliance, and past billing ledgers.')}
           </p>
         </div>
       </div>
@@ -272,3 +294,4 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [] }) => {
     </div>
   );
 };
+

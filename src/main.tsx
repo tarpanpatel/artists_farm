@@ -80,11 +80,20 @@ window.addEventListener('click', (e) => {
 // /artists_farm/vrikshawan/goa-homes/sw.js) doesn't correspond to a real
 // file and 404s through the SPA fallback instead.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.error('Service worker registration failed:', err);
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.error('Service worker registration failed:', err);
+      });
     });
-  });
+  } else {
+    // Unregister any active service worker during local development to avoid DevTools request loops
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

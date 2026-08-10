@@ -9,8 +9,11 @@
 // migration step required. ready_at/last_reminder_at back the Reminder/Nudge Engine:
 // item_status already supports arbitrary VARCHAR values so 'Ready' needs no schema
 // change, but WHEN it became ready and WHEN it was last nudged both need a home.
+require_once __DIR__ . '/../config/schema_cache.php';
+
 if (!function_exists('ensureOrderItemReminderColumns')) {
     function ensureOrderItemReminderColumns($pdo) {
+        if (isSchemaVerified('schema_order_item_reminders')) return;
         try {
             $cols = $pdo->query("SHOW COLUMNS FROM order_items")->fetchAll(PDO::FETCH_COLUMN);
             if (!in_array('ready_at', $cols)) {
@@ -19,6 +22,7 @@ if (!function_exists('ensureOrderItemReminderColumns')) {
             if (!in_array('last_reminder_at', $cols)) {
                 $pdo->exec("ALTER TABLE order_items ADD COLUMN last_reminder_at DATETIME NULL DEFAULT NULL");
             }
+            markSchemaVerified('schema_order_item_reminders');
         } catch (Exception $e) {
             error_log("order_items reminder column migration error: " . $e->getMessage());
         }
@@ -85,13 +89,40 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                     $stmt->execute([$propertyId, $guest_id]);
                     $order_id = $pdo->lastInsertId();
 
+                    $itemsPayload = [];
                     if (!empty($input['items']) && is_array($input['items'])) {
                         $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, 'Pending')");
                         foreach ($input['items'] as $item) {
-                            $itemStmt->execute([$order_id, $item['menu_item_id'] ?? $item['id'], $item['quantity'] ?? 1]);
+                            $menuItemId = $item['menu_item_id'] ?? $item['id'] ?? null;
+                            $qty = (int)($item['quantity'] ?? 1);
+                            $itemStmt->execute([$order_id, $menuItemId, $qty]);
+                            $nameStmt = $pdo->prepare("SELECT name FROM menu_items WHERE id = ?");
+                            $nameStmt->execute([$menuItemId]);
+                            $itemsPayload[] = ['name' => $nameStmt->fetchColumn() ?: 'Dish', 'qty' => $qty];
                         }
                     }
                     echo json_encode(['status' => 'success', 'id' => 'KOT-' . $order_id, 'message' => 'Kitchen ticket created successfully']);
+
+                    // Notify the kitchen group about the new ticket (best-effort;
+                    // never let a Telegram hiccup fail the order itself).
+                    try {
+                        if (!function_exists('sendPropertyTelegramMessage')) {
+                            require_once __DIR__ . '/../telegram/sender.php';
+                        }
+                        if (!class_exists('TelegramTemplates')) {
+                            require_once __DIR__ . '/../telegram/templates.php';
+                        }
+                        $guestName = 'Walk-in';
+                        if (!empty($guest_id)) {
+                            $gStmt = $pdo->prepare("SELECT guest_name FROM guests WHERE id = ?");
+                            $gStmt->execute([$guest_id]);
+                            $guestName = $gStmt->fetchColumn() ?: 'Walk-in';
+                        }
+                        $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload);
+                        sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $msg, null, 'kitchen_new_order');
+                    } catch (Exception $e) {
+                        error_log("kitchen_new_order telegram dispatch failed: " . $e->getMessage());
+                    }
                 } catch (PDOException $e) {
                     $order_id = 'KOT-' . time();
                     echo json_encode(['status' => 'success', 'id' => $order_id, 'message' => 'Kitchen ticket created']);
@@ -171,6 +202,29 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                         $stmt = $pdo->prepare("UPDATE order_items SET item_status = ? WHERE id = ?");
                     }
                     $stmt->execute([$status, $itemId]);
+
+                    // When the last unserved item on an order is marked Served, auto-complete
+                    // the order so the KDS card heading matches reality (mirrors the Telegram
+                    // webhook behaviour in webhook_handler.php).
+                    if ($status === 'Served') {
+                        $orderIdStmt = $pdo->prepare("SELECT order_id FROM order_items WHERE id = ?");
+                        $orderIdStmt->execute([$itemId]);
+                        $orderId = $orderIdStmt->fetchColumn();
+                        if ($orderId) {
+                            $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')");
+                            $pendingStmt->execute([$orderId]);
+                            if ((int)$pendingStmt->fetchColumn() === 0) {
+                                try {
+                                    $pdo->prepare("UPDATE orders SET status = 'Completed', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND property_id = ?")->execute([$orderId, $propertyId]);
+                                } catch (PDOException $eOrder) {
+                                    try {
+                                        $pdo->prepare("UPDATE kitchen_orders SET status = 'Completed' WHERE id = ? AND property_id = ?")->execute([$orderId, $propertyId]);
+                                    } catch (PDOException $eKot) {}
+                                }
+                            }
+                        }
+                    }
+
                     echo json_encode(['status' => 'success']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

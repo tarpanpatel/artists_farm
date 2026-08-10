@@ -6,41 +6,46 @@
  */
 
 function handleLicenseRequests($pdo, $request_method, $action, $propertyId) {
+    require_once __DIR__ . '/../config/schema_cache.php';
+
     // Create tables if they don't exist
     try {
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `property_licenses` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `property_id` INT NOT NULL,
-                `license_type` VARCHAR(100) NOT NULL,
-                `license_name` VARCHAR(255),
-                `license_number` VARCHAR(100) NOT NULL UNIQUE,
-                `issuing_authority` VARCHAR(255),
-                `start_date` DATE NOT NULL,
-                `end_date` DATE NOT NULL,
-                `document_url` TEXT,
-                `status` ENUM('active', 'expired', 'expiring_soon', 'renewal_pending') DEFAULT 'active',
-                `notes` TEXT,
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE,
-                INDEX `idx_property_expiry` (`property_id`, `end_date`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
+        if (!isSchemaVerified('schema_licenses')) {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `property_licenses` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL,
+                    `license_type` VARCHAR(100) NOT NULL,
+                    `license_name` VARCHAR(255),
+                    `license_number` VARCHAR(100) NOT NULL UNIQUE,
+                    `issuing_authority` VARCHAR(255),
+                    `start_date` DATE NOT NULL,
+                    `end_date` DATE NOT NULL,
+                    `document_url` TEXT,
+                    `status` ENUM('active', 'expired', 'expiring_soon', 'renewal_pending') DEFAULT 'active',
+                    `notes` TEXT,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE,
+                    INDEX `idx_property_expiry` (`property_id`, `end_date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
 
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS `license_expiry_notifications` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `license_id` INT NOT NULL,
-                `property_id` INT NOT NULL,
-                `days_before` INT NOT NULL,
-                `notification_sent_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                `telegram_message_id` VARCHAR(100),
-                FOREIGN KEY (`license_id`) REFERENCES `property_licenses`(`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE,
-                UNIQUE KEY `unique_notification` (`license_id`, `days_before`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `license_expiry_notifications` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `license_id` INT NOT NULL,
+                    `property_id` INT NOT NULL,
+                    `days_before` INT NOT NULL,
+                    `notification_sent_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `telegram_message_id` VARCHAR(100),
+                    FOREIGN KEY (`license_id`) REFERENCES `property_licenses`(`id`) ON DELETE CASCADE,
+                    FOREIGN KEY (`property_id`) REFERENCES `properties`(`id`) ON DELETE CASCADE,
+                    UNIQUE KEY `unique_notification` (`license_id`, `days_before`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+            markSchemaVerified('schema_licenses');
+        }
     } catch (PDOException $e) {}
 
     switch ($action) {

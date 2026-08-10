@@ -756,6 +756,7 @@ export const strings: Record<string, string> = {
   tenant_dashboard_heading: "Tenant Dashboard",
   property_control_panel_label: "Property Control Panel",
   tenant_manager_label: "Tenant Manager",
+  root_admin_label: "Root Admin",
   slot_usage_heading: "Slot Usage",
   slot_usage_subtext: "Each room in a multi-key property counts as one slot",
   slots_used_label: "slots used",
@@ -796,6 +797,8 @@ export const strings: Record<string, string> = {
   gstin_help_text: "Printed on GST tax invoices at checkout.",
   allow_telegram_template_customization_label: "Enable Telegram Template Customization",
   whatsapp_booking_confirmation_heading: "WhatsApp Booking Confirmation",
+  whatsapp_voucher_template_label: "WhatsApp Voucher Template",
+  whatsapp_voucher_template_placeholder: "e.g. Welcome to {property_name}! Your booking is confirmed…",
   tenant_contact_phone_label: "Contact Phone",
   contact_phone_placeholder: "99999 99999",
   google_maps_link_label: "Google Maps Link",
@@ -816,7 +819,7 @@ export const strings: Record<string, string> = {
   // Petty Cash Management
   petty_cash_ledger_heading: "Operational Expenses Ledger",
   petty_cash_ledger_subtitle: "Track outgoing utility expenditures, daily kitchen purchases, salaries, and floats.",
-  add_expenses_heading: "📝 ADD EXPENSES",
+  add_expenses_heading: "ADD EXPENSES",
   expense_date_label: "Expense Date",
   cost_category_group_label: "Cost Category Group",
   category_other_label: "Other",
@@ -967,6 +970,7 @@ export const strings: Record<string, string> = {
   end_date_label: "End Date",
   bookings_export_title: "Accommodations Booking Spreadsheet",
   bookings_export_description: "Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.",
+  view_all_bookings_button: "View all bookings",
   kitchen_purchases_export_title: "Kitchen Purchases Workbook",
   kitchen_purchases_export_description: "Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.",
   maintenance_utilities_export_title: "Property Maintenance & Utilities Logs",
@@ -1197,7 +1201,7 @@ export const strings: Record<string, string> = {
   inventory_catalog_subtitle: "Monitor stock metrics, receive boundary threshold alerts, and adjust store inventory levels",
   edit_catalog_item_heading: "Edit Catalog Item",
   register_new_material_heading: "Register New Material",
-  kitchen_ticketing_header: "Kitchen Ticketing & Requisition POS",
+  kitchen_ticketing_header: "Kitchen Orders & Menu Management",
   kitchen_subtitle: "Manage live kitchen display system (KDS), create room orders, manage menu items & raw material requisitions",
   create_resident_order_button: "Create Resident Order",
   filter_orders_label: "Filter Orders:",
@@ -1337,7 +1341,7 @@ export const strings: Record<string, string> = {
   sync_default_expenses_message: "This will populate all 20 default expense categories across all MultiKey properties. Continue?",
   sync_defaults_confirm_button: "Sync Defaults",
   delete_expense_category_title: "Delete Expense Category",
-  delete_category_button: "Delete Category",
+  delete_category_button: "Delete Item",
 
   // Header
   expand_sidebar_tooltip: "Expand Sidebar Menu",
@@ -1444,7 +1448,7 @@ export const strings: Record<string, string> = {
 
   // Guest History
   guest_registration_archive_heading: "Guest Registration Archive",
-  guest_history_description: "Browse complete history of current, upcoming, and past guest bookings, stays, and ledger records.",
+  guest_history_description: "Browse completed guest stays, registration history, C-Form compliance, and past billing ledgers.",
   export_filtered_csv_button: "Export filtered list (CSV)",
   search_guest_history_placeholder: "Search by guest name, phone, room...",
   status_filter_label: "Status:",
@@ -1688,8 +1692,22 @@ export const strings: Record<string, string> = {
   address_setup_complete_text: "Address saved",
   staff_setup_complete_text: "Staff added",
   rooms_setup_complete_text: "Rooms added",
+
+  // Tenant Dashboard Quick Actions
+  quick_actions_heading: "Quick Actions",
+  guest_check_in_action: "Guest Check-In",
+  guest_check_out_action: "Guest Check-Out",
+  pending_actions_label: "Pending Actions",
+  new_booking_action: "New Booking",
+  staff_management_action: "Staff",
+  telegram_setup_action: "Telegram",
+  gst_settings_action: "GST",
+  room_setup_action: "Rooms",
+  select_property_label: "Select Property",
 };
 
 export function t(key: string, fallback?: string): string {
   return strings[key] || fallback || key;
 }
+
+

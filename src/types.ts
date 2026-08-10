@@ -6,7 +6,7 @@ export interface Guest {
   expectedCheckout: string;
   checkoutDate?: string;
   roomNumber: string;
-  status: 'Active' | 'CheckedOut' | 'Booked';
+  status: 'Active' | 'CheckedOut' | 'Booked' | 'Checked In' | 'CheckedIn' | 'checked-in';
   notes?: string;
   bookingSource?: string;
   numberOfGuests?: number;

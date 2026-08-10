@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Home, Layers } from 'lucide-react';
-import { navigateToRoomHash } from '../services/api';
 import { t } from '../i18n/en';
 
 interface Room {

@@ -31,6 +31,15 @@ logLine($logFile, "$timestamp - Check-in verification reminder worker started");
 try {
     ensureIdVerificationSchema($pdo);
 
+    // Temp-storage TTL: sweep ID-document files (and their DB rows) past the
+    // 24h window so completed/stale uploads never linger on disk. The upload
+    // endpoint also sweeps opportunistically; this guarantees it even when no
+    // new upload happens after a booking that never got completed.
+    $swept = cleanupExpiredIdDocuments($pdo);
+    if ($swept > 0) {
+        logLine($logFile, "$timestamp - Swept {$swept} expired ID-document file(s)/row(s) older than 24h");
+    }
+
     $stmt = $pdo->prepare("
         SELECT g.id, g.property_id, g.guest_name, g.no_of_guests, g.checkin_date,
                COALESCE(r.name, 'Unassigned') as room_name

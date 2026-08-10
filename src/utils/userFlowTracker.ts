@@ -53,63 +53,6 @@ export function trackDeadEnd(page: string, reason: string, context?: any) {
 }
 
 /**
- * Track authentication failures
- */
-export function trackAuthFailure(reason: string, context?: any) {
-  recordTelescopeLog({
-    portal: 'security',
-    severity: 'CRITICAL',
-    msg: `🔒 AUTH FAILURE: ${reason}`,
-    origin: 'Authentication Flow',
-    details: {
-      issueType: 'auth_failure',
-      reason,
-      url: window.location.href,
-      timestamp: new Date().toISOString(),
-      ...context,
-    },
-  });
-}
-
-/**
- * Track permission denied errors
- */
-export function trackPermissionDenied(page: string, action: string, reason: string, context?: any) {
-  recordTelescopeLog({
-    portal: 'security',
-    severity: 'WARNING',
-    msg: `🔐 PERMISSION DENIED: ${action} on ${page} - ${reason}`,
-    origin: page,
-    details: {
-      issueType: 'permission_denied',
-      page,
-      action,
-      reason,
-      url: window.location.href,
-      ...context,
-    },
-  });
-}
-
-/**
- * Track 404 / not found errors
- */
-export function trackNotFound(resource: string, context?: any) {
-  recordTelescopeLog({
-    portal: '404',
-    severity: 'WARNING',
-    msg: `❌ NOT FOUND: ${resource}`,
-    origin: 'Resource Lookup',
-    details: {
-      issueType: 'not_found',
-      resource,
-      url: window.location.href,
-      ...context,
-    },
-  });
-}
-
-/**
  * Track API failures and network errors
  */
 export function trackAPIError(endpoint: string, status: number, message: string, context?: any) {
@@ -149,30 +92,6 @@ export function trackSessionLoss(reason: string, context?: any) {
 }
 
 /**
- * Track user confusion points (places where users get confused and might give up)
- * - Complex modals with unclear buttons
- * - Unclear error messages
- * - Missing navigation
- * - Unexpected behavior
- */
-export function trackConfusionPoint(page: string, issue: string, context?: any) {
-  recordTelescopeLog({
-    portal: 'js',
-    severity: 'WARNING',
-    msg: `🤔 CONFUSION POINT: ${issue} on ${page}`,
-    origin: page,
-    details: {
-      issueType: 'confusion_point',
-      page,
-      issue,
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-      ...context,
-    },
-  });
-}
-
-/**
  * Track property access issues
  */
 export function trackPropertyIssue(propertyId: string | number, issue: string, context?: any) {
@@ -191,40 +110,3 @@ export function trackPropertyIssue(propertyId: string | number, issue: string, c
   });
 }
 
-/**
- * Track module/feature access issues
- */
-export function trackModuleError(moduleName: string, action: string, error: string, context?: any) {
-  recordTelescopeLog({
-    portal: 'requests',
-    severity: 'ERROR',
-    msg: `🔌 MODULE ERROR: ${moduleName} - ${action} failed: ${error}`,
-    origin: `Module: ${moduleName}`,
-    details: {
-      issueType: 'module_error',
-      moduleName,
-      action,
-      error,
-      url: window.location.href,
-      ...context,
-    },
-  });
-}
-
-/**
- * Track user successful completions (to measure conversion)
- */
-export function trackSuccess(action: string, details?: any) {
-  recordTelescopeLog({
-    portal: 'requests',
-    severity: 'SUCCESS',
-    msg: `✅ SUCCESS: ${action}`,
-    origin: 'User Action',
-    details: {
-      action,
-      url: window.location.href,
-      timestamp: new Date().toISOString(),
-      ...details,
-    },
-  });
-}

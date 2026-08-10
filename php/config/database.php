@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . "/testing_sandbox.php";
 require_once __DIR__ . "/property_resolver.php";
+require_once __DIR__ . "/schema_cache.php";
 require_once __DIR__ . "/../database/migrations.php";
 
 $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -61,37 +62,29 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
-    // properties table is provisioned once via direct migration, not
-    // re-verified on every request (see ROADMAP.md history).
-    $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
-      ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
-      ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
 
-    // WhatsApp booking-confirmation voucher: per-property Maps link (captured
-    // at property creation, editable later in the tenant's own dashboard) and
-    // an optional custom message template - reuses the existing `phone`
-    // column for contact number(s), same one create_property_for_tenant
-    // already populates. NULL template = fall back to the generic default
-    // built into the voucher-sharing code, matching the same "tenant may
-    // customize, sensible default if they don't" shape as Telegram templates.
-    $propertyWhatsAppCols = [
-        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",
-        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `whatsapp_voucher_template` TEXT DEFAULT NULL",
-    ];
-    foreach ($propertyWhatsAppCols as $sql) {
-        try { $pdo->exec($sql); } catch (PDOException $e) {}
+    // Self-healing schema checks: cache check result so DDL ALTER TABLE and SHOW queries run once
+    // per server lifetime rather than firing 15 redundant queries on every API request.
+    if (!isSchemaVerified('db_connection_init_' . $db_name)) {
+        $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
+          ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
+          ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
+
+        $propertyWhatsAppCols = [
+            "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",
+            "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `whatsapp_voucher_template` TEXT DEFAULT NULL",
+            "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `instructions` TEXT DEFAULT NULL",
+        ];
+        foreach ($propertyWhatsAppCols as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+
+        if (function_exists('initializeDatabaseTables')) {
+            initializeDatabaseTables($pdo);
+        }
+
+        markSchemaVerified('db_connection_init_' . $db_name);
     }
-    // Check-in instructions: free-text notes shown on the property dashboard,
-    // edited alongside the address in the same Property Details modal.
-    $propertyDetailCols = [
-        "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `instructions` TEXT DEFAULT NULL",
-    ];
-    foreach ($propertyDetailCols as $sql) {
-        try { $pdo->exec($sql); } catch (PDOException $e) {}
-    }
-    // initializeDatabaseTables($pdo) runs once, below, after this try/catch -
-    // it used to also run here, meaning it fired twice per request on the
-    // normal (non-fallback) connection path for no reason.
 
 } catch (PDOException $e) {
     if ($is_testing_mode) {
@@ -126,8 +119,4 @@ try {
         error_log('Database connection error: ' . $e->getMessage());
         exit();
     }
-}
-
-if (isset($pdo) && function_exists('initializeDatabaseTables')) {
-    initializeDatabaseTables($pdo);
 }

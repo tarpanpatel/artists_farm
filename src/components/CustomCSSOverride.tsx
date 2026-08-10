@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, ArrowDown, X, Lock } from 'lucide-react';
+import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock } from 'lucide-react';
 import { t } from '../i18n/en';
 
 const STORAGE_KEY = 'artists_farm_custom_css';

@@ -49,14 +49,6 @@ $defaultTemplates = [
         'available_variables' => '{expense_date},{category},{paid_by},{description},{payment_mode},{amount}',
         'content' => "💸 <b>NEW FINANCIAL TRANSACTION (EXPENSE)</b>\n━━━━━━━━━━━━━━━━━━\n📅 <b>Date:</b> {expense_date}\n🗂️ <b>Category:</b> {category}\n👤 <b>Paid By:</b> {paid_by}\n📝 <b>Details:</b> {description}\n💳 <b>Method:</b> {payment_mode}\n━━━━━━━━━━━━━━━━━━\n🔴 <b>DEBIT AMOUNT: ₹{amount}</b>"
     ],
-    'billing_admin_checkout_report' => [
-        'template_key' => 'billing_admin_checkout_report',
-        'title' => 'Property Checkout Report',
-        'category' => 'Billing & Financial',
-        'description' => 'Comprehensive settlement report dispatched to Admin group upon guest checkout.',
-        'available_variables' => '{guest_name},{base_rent},{advance_paid},{advance_collector},{accommodation_pending},{pending_collector},{items_list},{food_subtotal},{split_phrases},{cashier_name},{grand_total_due}',
-        'content' => "🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n\n🏠 <b>ACCOMMODATION LOGISTICS:</b>\n• Contract Tariff: ₹{base_rent}\n• Advance Taken: ₹{advance_paid} (By: {advance_collector})\n• Pending Settled: ₹{accommodation_pending} (By: {pending_collector})\n\n🍽️ <b>FINAL ITEMIZED KOT & EXTRAS:</b>\n{items_list}\n• Incidentals Subtotal: <b>₹{food_subtotal}</b>\n\n💳 <b>FINAL PAYOUT SPLIT DISTRIBUTION:</b>\n{split_phrases}\n👤 <i>Desk Cashier Executing: {cashier_name}</i>\n━━━━━━━━━━━━━━━━━━\n<b>GRAND TOTAL PAYABLE SETTLED: ₹{grand_total_due}</b>"
-    ],
     'kitchen_new_order' => [
         'template_key' => 'kitchen_new_order',
         'title' => 'New Order Alert (Kitchen)',
@@ -216,6 +208,14 @@ $defaultTemplates = [
         'description' => 'Replaces the original service request message once it\'s marked fulfilled, whether by button tap or from the app.',
         'available_variables' => '{request_type},{room_name},{staff_name},{fulfill_time}',
         'content' => "✅ <b>SERVICE REQUEST FULFILLED</b>\n\n🧾 <b>Type:</b> {request_type}\n🚪 <b>Room:</b> {room_name}\n👤 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {fulfill_time}"
+    ],
+    'booking_updated' => [
+        'template_key' => 'booking_updated',
+        'title' => 'Booking Updated',
+        'category' => 'Guest Check-in',
+        'description' => 'Sent to the Admin group whenever a booking is edited. Shows only the fields that actually changed (old → new).',
+        'available_variables' => '{guest_name},{booking_id},{changes_list}',
+        'content' => "✏️ <b>BOOKING UPDATED</b>\n\n👤 <b>Guest:</b> {guest_name}\n🆔 <b>Booking ID:</b> {booking_id}\n\n{changes_list}"
     ]
 ];
 

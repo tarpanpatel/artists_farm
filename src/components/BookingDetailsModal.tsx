@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { X, Save, Share2, Printer, Trash2, IdCard, Loader2, Plus } from 'lucide-react';
+import { X, Save, Share2, Printer, Trash2, IdCard, Loader2, Pencil, CheckCircle2, AlertTriangle } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest } from '../types';
+import { markCFormFiled } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
+import { Button } from './Button';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface BookingDetailsModalProps {
   guest: Guest | null;
@@ -16,7 +19,7 @@ interface BookingDetailsModalProps {
   onSave: (updatedGuest: Guest) => Promise<void>;
   onDelete?: (guestId: string) => Promise<void>;
   rooms?: Array<{ id: number; name: string; slug: string }>;
-  activeGuests?: Guest[];
+  checkedInGuests?: Guest[];
   propertyName?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
@@ -47,7 +50,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   onSave,
   onDelete,
   rooms = [],
-  activeGuests = [],
+  checkedInGuests = [],
   propertyName = '',
   propertyMapsLink = '',
   propertyPhone = '',
@@ -109,7 +112,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const getBlockedDateStrings = () => {
     const guestRoomId = g.roomId ?? g.room_id;
     const blocked: string[] = [];
-    activeGuests
+    checkedInGuests
       .filter((other) => other.id !== guest.id)
       .filter((other) => {
         const otherRoomId = (other as any).roomId ?? (other as any).room_id;
@@ -236,22 +239,22 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
 
-  const fieldLabelClass = 'text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase';
-  const inputClass = 'mt-1 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white';
+  const fieldLabelClass = 'text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase';
+  const inputClass = 'mt-1 w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30';
 
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
         <div
           id="printableBookingDetailsContent"
-          className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
             </h2>
-            <button onClick={() => { onClose(); setIsEditing(false); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded cursor-pointer">
+            <button onClick={() => { onClose(); setIsEditing(false); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg cursor-pointer text-slate-400">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -259,17 +262,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {onOpenIdVerification && !isEditing && (
             <button
               onClick={onOpenIdVerification}
-              className={`w-full mb-4 px-4 py-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+              className={`w-full mb-4 px-4 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
                   : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
               }`}
             >
-              <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                <IdCard className="w-4 h-4" />
+              <span className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-100">
+                <IdCard className="w-4 h-4 text-slate-500" />
                 {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
                   : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
@@ -287,7 +290,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {isEditing ? (
                   <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} />
                 ) : (
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{guest.guestName}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {guest.guestName}
+                  </div>
                 )}
               </div>
               {rooms.length > 0 && (
@@ -298,10 +303,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       <StyledSelect
                         value={editRoomId}
                         onChange={setEditRoomId}
+                        buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
                         options={rooms.map((room) => {
                           const newCheckin = new Date(editCheckin || guest.checkinDate);
                           const newCheckout = new Date(editCheckout || guest.expectedCheckout);
-                          const occupiedByOther = activeGuests.some((other) => {
+                          const occupiedByOther = checkedInGuests.some((other) => {
                             if (other.id === guest.id) return false;
                             const otherRoomId = (other as any).roomId ?? (other as any).room_id;
                             if (Number(otherRoomId) !== Number(room.id)) return false;
@@ -314,7 +320,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       />
                     </div>
                   ) : (
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{guest.roomNumber}</p>
+                    <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                      {guest.roomNumber}
+                    </div>
                   )}
                 </div>
               )}
@@ -327,7 +335,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {isEditing ? (
                   <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} />
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{guest.phoneNumber}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {guest.phoneNumber || '—'}
+                  </div>
                 )}
               </div>
               <div>
@@ -335,7 +345,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {isEditing ? (
                   <input type="number" min={1} value={editGuests} onChange={(e) => setEditGuests(e.target.value)} className={inputClass} />
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{noOfGuests} guest{noOfGuests !== 1 ? 's' : ''}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {noOfGuests} guest{noOfGuests !== 1 ? 's' : ''}
+                  </div>
                 )}
               </div>
             </div>
@@ -349,7 +361,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     {editCheckin ? formatDate(editCheckin) : t('today_add_date_button', 'Add date')}
                   </button>
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{formatDate(guest.checkinDate?.split(' ')[0] || '')}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {formatDate(guest.checkinDate?.split(' ')[0] || '')}
+                  </div>
                 )}
               </div>
               <div>
@@ -359,7 +373,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     {editCheckout ? formatDate(editCheckout) : t('today_add_date_button', 'Add date')}
                   </button>
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{formatDate(guest.expectedCheckout?.split(' ')[0] || '')}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {formatDate(guest.expectedCheckout?.split(' ')[0] || '')}
+                  </div>
                 )}
               </div>
             </div>
@@ -370,7 +386,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               {isEditing ? (
                 <input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} className={inputClass} />
               ) : (
-                <p className="text-lg font-bold text-slate-900 dark:text-white">₹{roomRent}</p>
+                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                  ₹{roomRent}
+                </div>
               )}
             </div>
 
@@ -381,7 +399,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {isEditing ? (
                   <input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} className={inputClass} />
                 ) : (
-                  <p className="text-emerald-600 dark:text-emerald-400 font-bold">₹{advancePaid}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
+                    ₹{advancePaid}
+                  </div>
                 )}
               </div>
               <div>
@@ -389,13 +409,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 {isEditing ? (
                   (parseFloat(editAdvance) || 0) > 0 ? (
                     <div className="mt-1">
-                      <StyledSelect value={editAdvanceReceivedBy} onChange={setEditAdvanceReceivedBy} placeholder="-- Select Staff/User --" options={financialHandlers} />
+                      <StyledSelect value={editAdvanceReceivedBy} onChange={setEditAdvanceReceivedBy} placeholder="-- Select Staff/User --" buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={financialHandlers} />
                     </div>
                   ) : (
                     <p className="mt-1 text-xs text-slate-400 italic">—</p>
                   )
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{g.advance_received_by || guest.advanceReceivedBy || '—'}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {g.advance_received_by || guest.advanceReceivedBy || '—'}
+                  </div>
                 )}
               </div>
             </div>
@@ -404,20 +426,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={fieldLabelClass}>{t('today_pending_label', 'Pending')}</label>
-                <p className="text-amber-600 dark:text-amber-400 font-bold">₹{pendingDisplay}</p>
+                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-amber-600 dark:text-amber-400 text-sm font-semibold">
+                  ₹{pendingDisplay}
+                </div>
               </div>
               <div>
                 <label className={fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
                 {isEditing ? (
                   pendingDisplay > 0 ? (
                     <div className="mt-1">
-                      <StyledSelect value={editPendingReceivedBy} onChange={setEditPendingReceivedBy} placeholder="-- Select Staff/User --" options={financialHandlers} />
+                      <StyledSelect value={editPendingReceivedBy} onChange={setEditPendingReceivedBy} placeholder="-- Select Staff/User --" buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={financialHandlers} />
                     </div>
                   ) : (
                     <p className="mt-1 text-xs text-slate-400 italic">—</p>
                   )
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{g.pending_received_by || guest.pendingReceivedBy || '—'}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {g.pending_received_by || guest.pendingReceivedBy || '—'}
+                  </div>
                 )}
               </div>
             </div>
@@ -428,15 +454,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <label className={fieldLabelClass}>{t('booking_source_label', 'Booking Source')}</label>
                 {isEditing ? (
                   <div className="mt-1">
-                    <StyledSelect value={editBookingSource} onChange={setEditBookingSource} options={[{ value: 'Offline', label: 'Offline' }, { value: 'Online', label: 'Online' }]} />
+                    <StyledSelect value={editBookingSource} onChange={setEditBookingSource} buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={[{ value: 'Offline', label: 'Offline' }, { value: 'Online', label: 'Online' }]} />
                   </div>
                 ) : (
-                  <p className="text-slate-900 dark:text-white">{guest.bookingSource || '—'}</p>
+                  <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
+                    {guest.bookingSource || '—'}
+                  </div>
                 )}
               </div>
               <div>
                 <label className={fieldLabelClass}>{t('today_status_label', 'Status')}</label>
-                <p className="text-emerald-600 dark:text-emerald-400 font-semibold">{guest.status}</p>
+                <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
+                  {guest.status}
+                </div>
               </div>
             </div>
 
@@ -464,7 +494,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   {guest.isForeignGuest && (
                     <div>
                       <label className={fieldLabelClass}>{t('foreign_national_guest_label', 'Foreign National Guest')}</label>
-                      <p className="text-slate-900 dark:text-white text-sm">{t('yes_label', 'Yes')}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200 select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!guest.cFormFiledAt}
+                            onChange={async (e) => {
+                              const isChecked = e.target.checked;
+                              const ok = await markCFormFiled(guest.id, isChecked);
+                              if (ok) {
+                                const filedAt = isChecked ? new Date().toISOString() : null;
+                                guest.cFormFiledAt = filedAt;
+                                showToast(isChecked ? `✔ C-Form marked as filed` : `C-Form marked as pending`, { type: 'success' });
+                              } else {
+                                showToast('Failed to update C-Form status', { type: 'error' });
+                              }
+                            }}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span>C-Form Filed</span>
+                          {guest.cFormFiledAt && (
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                              ({formatDateDDMMYYYY(guest.cFormFiledAt)})
+                            </span>
+                          )}
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -481,53 +536,71 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             )}
           </div>
 
-          <div id="printableBookingDetailsActionsBar">
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              {isEditing ? (
-                <>
-                  <button onClick={() => setIsEditing(false)} disabled={isSaving} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer disabled:opacity-50">
-                    {t('cancel_button', 'Cancel')}
-                  </button>
-                  <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {t('save_button', 'Save')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer">
-                    {t('close_button', 'Close')}
-                  </button>
-                  <button onClick={startEditing} className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition flex items-center justify-center gap-2 cursor-pointer">
-                    <Save className="w-4 h-4" />
-                    {t('edit_button', 'Edit')}
-                  </button>
-                </>
-              )}
-            </div>
-
-            {!isEditing && (
+          <div id="printableBookingDetailsActionsBar" className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {!isEditing ? (
               <>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm">
-                    <Share2 className="w-4 h-4" />
-                    {t('today_share_via_whatsapp_button', 'Share via WhatsApp')}
-                  </a>
-                  <button onClick={handleShareVoucherPng} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer">
-                    <Printer className="w-4 h-4" />
-                    {t('share_png_button', 'Share PNG')}
-                  </button>
+                <div className="flex items-center gap-2">
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      leftIcon={<Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />}
+                      className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                    >
+                      {isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}
+                    </Button>
+                  )}
                 </div>
 
-                {onDelete && (
-                  <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <button onClick={handleDelete} disabled={isDeleting} className="w-full px-4 py-2 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50">
-                      <Trash2 className="w-4 h-4" />
-                      {isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {(guest.status === 'Booked' || (guest.status as string) === 'Reserved') && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updated = { ...guest, status: 'Active' as const };
+                        await onSave(updated);
+                        showToast(`✔ ${guest.guestName} marked as Checked In!`, { type: 'success' });
+                      }}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
                     </button>
-                  </div>
-                )}
+                  )}
+
+                  <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary" size="sm" leftIcon={<Share2 className="w-4 h-4 text-emerald-600" />}>
+                      {t('today_share_via_whatsapp_button', 'Share Voucher')}
+                    </Button>
+                  </a>
+                  <Button variant="secondary" size="sm" onClick={handleShareVoucherPng} leftIcon={<Printer className="w-4 h-4 text-cyan-600" />}>
+                    {t('share_png_button', 'Share PNG')}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={startEditing} leftIcon={<Pencil className="w-4 h-4" />}>
+                    {t('edit_button', 'Edit')}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={onClose}>
+                    {t('close_button', 'Close')}
+                  </Button>
+                </div>
               </>
+            ) : (
+              <div className="flex items-center gap-2 ml-auto">
+                <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                  {t('cancel_button', 'Cancel')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                >
+                  {t('save_button', 'Save')}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -546,3 +619,4 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     </>
   );
 };
+

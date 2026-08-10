@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User } from 'lucide-react';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { t } from '../i18n/en';
@@ -13,10 +13,15 @@ interface TodayOverviewProps {
   onAddBooking?: () => void;
   onUpdateGuest?: (guest: Guest) => void | Promise<void>;
   onDeleteGuest?: (guestId: string) => void | Promise<void>;
+  onCheckInGuest?: (guestId: string) => void;
+  onGuestVerificationUpdated?: (guestId: string) => void;
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
+  onCheckout?: (guestId: string) => void;
   propertyName?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  serviceRequests?: any[];
 }
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
@@ -32,13 +37,44 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  serviceRequests = [],
 }) => {
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
-  const activeGuests = useMemo(() => {
-    return guests.filter((g) => g.status === 'Active');
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const todaysArrivals = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr).length;
+  const todaysDepartures = guests.filter((g) => (g.expectedCheckout || '').split(' ')[0] === todayStr).length;
+  const pendingRequests = (serviceRequests || []).filter((r) => r.status === 'Pending').length;
+
+  const inHouseCount = useMemo(() => {
+    return guests.filter((g) => {
+      const status = String(g.status || '').trim().toLowerCase();
+      if (status !== 'active' && status !== 'checked in') return false;
+      const checkinDate = new Date(g.checkinDate);
+      const checkoutDate = new Date(g.expectedCheckout);
+      checkinDate.setHours(0, 0, 0, 0);
+      checkoutDate.setHours(0, 0, 0, 0);
+      return today >= checkinDate && today < checkoutDate;
+    }).length;
+  }, [guests, today]);
+
+  // The booking API uses `Booked` and `Checked In` as well as the legacy
+  // `Active` state. A calendar represents room occupancy/availability, not
+  // only the legacy active-resident state, so all non-final stays belong here.
+  const calendarGuests = useMemo(() => {
+    return guests.filter((g) => {
+      const status = String(g.status || '').trim().toLowerCase();
+      return !['checkedout', 'checked out', 'cancelled', 'canceled'].includes(status);
+    });
   }, [guests]);
 
   const year = currentYear;
@@ -50,7 +86,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // Note: In a multi-key property, we pass room objects with IDs
   // For single properties, we match by room name
   const getGuestsForRoom = (roomId: number, roomName?: string) => {
-    return activeGuests
+    return calendarGuests
       .filter((guest) => {
         // Match by room_id if available (most reliable)
         if (roomId) {
@@ -92,22 +128,103 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   };
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header with navigation - this is the top of the Multi-Key property's
-          overview dashboard (before any room is selected), so Add Booking
-          lives here rather than only on the per-room dashboard below. */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{monthName}</h2>
-        <div className="flex items-center gap-2">
-          {onAddBooking && (
-            <button
-              onClick={onAddBooking}
-              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-sm px-4 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('add_booking_button', 'Add Booking')}</span>
-            </button>
-          )}
+    <div className="space-y-6">
+      {/* Sleek Dashboard Header with Top Right Add Booking Button */}
+      <div className="flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+            {t('dashboard_heading', 'Dashboard')}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none">
+            {t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
+          </p>
+        </div>
+        {onAddBooking && (
+          <button
+            onClick={onAddBooking}
+            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-xl text-xs px-3.5 py-2 flex items-center gap-2 shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('add_booking_button', 'Add Booking')}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
+      <div className={`grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
+        {/* Arrivals Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Arrivals:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysArrivals}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Departures Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Departures:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysDepartures}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Guests in-house Block (Only for multi-key property) */}
+        {isMultiKeyProperty && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Guests In-House:</span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white">{inHouseCount}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Service Requests Block */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Service Requests:</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{pendingRequests}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Calendar View Section */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
+        {/* Header with navigation */}
+        <div className="flex justify-between items-center">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>
+          <div className="flex items-center gap-2">
           <button
             onClick={() => navigateMonth(-1)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
@@ -281,6 +398,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           )}
         </div>
       </div>
+      </div>
 
       {selectedGuest && onUpdateGuest && (
         <BookingDetailsModal
@@ -289,7 +407,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           onSave={async (updated) => { await onUpdateGuest(updated); setSelectedGuest(updated); }}
           onDelete={onDeleteGuest ? async (id) => { await onDeleteGuest(id); setSelectedGuest(null); } : undefined}
           rooms={rooms}
-          activeGuests={activeGuests}
+          checkedInGuests={calendarGuests}
           propertyName={propertyName}
           propertyMapsLink={propertyMapsLink}
           propertyPhone={propertyPhone}
@@ -299,3 +417,4 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     </div>
   );
 };
+

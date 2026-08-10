@@ -1,30 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import DataTable from 'react-data-table-component';
 import {
-  UserPlus,
-  Users,
   Receipt,
-  CheckCircle2,
-  Phone,
-  Calendar,
   Building,
-  CreditCard,
-  IndianRupee,
-  FileText,
-  Search,
   X,
-  AlertCircle,
-  Plus,
-  Minus,
   QrCode,
   Share2,
   Printer,
   Trash2,
-  Sparkles,
-  ExternalLink
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
-import { Guest, BillingReceipt, Order, StaffMember, MiscChargeTemplate, MenuItem } from '../types';
+import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -38,7 +23,9 @@ import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
 import { GuestHistory } from './GuestHistory';
+import { BookingDetailsModal } from './BookingDetailsModal';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface Room {
   id: number;
@@ -56,6 +43,9 @@ interface GuestManagementProps {
   onCheckoutGuest: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
   onDeleteGuest?: (guestId: string) => Promise<void>;
+  onCheckInGuest?: (guestId: string) => Promise<void>;
+  onGuestVerificationUpdated?: (guestId: string, verified: boolean) => void;
+  onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   isMultiKeyProperty?: boolean;
@@ -65,6 +55,8 @@ interface GuestManagementProps {
   selectedRoomSlug?: string | null;
   preSelectRoom?: string;
   onClose?: () => void;
+  focusGuestId?: string | null;
+  onClearFocusGuest?: () => void;
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
@@ -113,6 +105,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   selectedRoomSlug,
   preSelectRoom,
   onClose,
+  onCFormFiledUpdated,
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
@@ -127,12 +120,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const { miscCharges } = useConfigurationData();
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
 
 
   // Form Checkin State
   const [guestName, setGuestName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [roomNumber, setRoomNumber] = useState('Villa 101');
+  const [roomNumber, setRoomNumber] = useState('');
   const [bookingSourceLocal, setBookingSourceLocal] = useState('Offline');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
@@ -154,6 +148,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // right Today/Upcoming/Past tab with this exact booking already filtered
   // into view, instead of just dropping the admin on the page in general.
   const [focusBookingGuestId, setFocusBookingGuestId] = useState<string | null>(null);
+  const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
 
   // Set default room for MultiKey properties on component mount
   useEffect(() => {
@@ -176,7 +171,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         if (selectedRoom) {
           roomToSelect = selectedRoom.name;
         }
-      } else if (roomNumber === 'Villa 101') {
+      } else if (!roomNumber) {
         // Otherwise, pre-select the first room
         roomToSelect = rooms[0].name;
       }
@@ -332,7 +327,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Selected Active Guest for Billing
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const activeGuests = guests.filter((g) => {
+  const checkedInGuests = guests.filter((g) => {
     if (g.status !== 'Active') return false;
     // Also check if guest is currently staying (today is between checkin and checkout)
     const checkinDate = new Date(g.checkinDate);
@@ -341,12 +336,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     checkoutDate.setHours(0, 0, 0, 0);
     return today >= checkinDate && today < checkoutDate;
   });
-  const [selectedGuestId, setSelectedGuestId] = useState<string>(activeGuests[0]?.id || '');
+  const [selectedGuestId, setSelectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
 
   // BUG 2 FIX: Auto-select first Active guest when guests prop changes
   useEffect(() => {
-    if (activeGuests.length > 0 && !activeGuests.find((g) => g.id === selectedGuestId)) {
-      setSelectedGuestId(activeGuests[0].id);
+    if (checkedInGuests.length > 0 && !checkedInGuests.find((g) => g.id === selectedGuestId)) {
+      setSelectedGuestId(checkedInGuests[0].id);
     }
   }, [guests]);
 
@@ -425,7 +420,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Active Guest Object — BUG 3 FIX: fallback to first Active guest, not guests[0]
-  const currentGuest = guests.find((g) => g.id === selectedGuestId) || activeGuests[0];
+  const currentGuest = guests.find((g) => g.id === selectedGuestId) || checkedInGuests[0];
 
   // Whenever selected guest changes, auto-load their fulfilled orders into incidentals
   // BUG 6 FIX: Initialize lodging amounts from guest data
@@ -764,24 +759,26 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   });
 
   if (activeMenuItemKey === 'guest_history') {
-    return <GuestHistory guests={guests} />;
+    return <GuestHistory guests={guests} onCFormFiledUpdated={onCFormFiledUpdated} />;
   }
 
   if (activeMenuItemKey === 'guest_registration') {
-    const recentBookings = [...guests]
-      .sort((a, b) => (b.checkinDate || '').localeCompare(a.checkinDate || ''))
-      .slice(0, 10);
-
     return (
-      <div className="guest-management-container w-full flex flex-col lg:flex-row justify-center items-start gap-6">
-        {/* Left Column: Form */}
+      <div className="guest-management-container w-full flex justify-center items-start">
+        {/* Form Card */}
         <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
-            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide">
+            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
-              <span className="font-extrabold">
-                {isMultiKeyProperty && roomNumber ? `(${roomNumber})` : '(Backdating Allowed)'}
-              </span>
+              {isMultiKeyProperty && roomNumber ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 normal-case">
+                  {roomNumber}
+                </span>
+              ) : (
+                <span className="font-extrabold">
+                  (Backdating Allowed)
+                </span>
+              )}
             </h3>
             {onClose && (
               <button
@@ -808,6 +805,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             }
             if (!checkinDate || !expectedCheckout) {
               showToast('Booking Rejected: Check-in and check-out dates are required.', { type: 'error' });
+              return;
+            }
+
+            if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
+              showToast('Booking Rejected: An assigned room/villa selection is required.', { type: 'error' });
               return;
             }
 
@@ -905,6 +907,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     value={roomNumber}
                     onChange={setRoomNumber}
                     options={rooms.map((room) => ({ value: room.name, label: room.name }))}
+                    buttonClassName="!h-[38px] !rounded-xl !border-slate-200 !font-normal !text-xs focus:!ring-blue-500 focus:!border-blue-500 !ring-blue-500/20"
                   />
                 </div>
               )}
@@ -921,6 +924,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     { value: 'Offline', label: 'Offline' },
                     { value: 'Online', label: 'Online' },
                   ]}
+                  buttonClassName="!h-[38px] !rounded-xl !border-slate-200 !font-normal !text-xs focus:!ring-blue-500 focus:!border-blue-500 !ring-blue-500/20"
                 />
               </div>
               <div>
@@ -1172,62 +1176,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </form>
         </div>
 
-        {/* Right Column: Recent Bookings (guest_registration mode only) */}
-        {activeMenuItemKey === 'guest_registration' && (
-          <div className="recent-bookings-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 max-w-[520px] w-full">
-            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide font-bold mb-3">
-              {t('recent_bookings_heading', 'Recent Bookings')}
-            </h3>
-            <DataTable
-              columns={[
-                {
-                  name: t('guest_name_column', 'Guest'),
-                  selector: (row: Guest) => row.guestName,
-                  cell: (row: Guest) => (
-                    <div className="py-1.5">
-                      <div className="font-bold text-slate-800 dark:text-slate-200">{row.guestName}</div>
-                      <div className="text-[11px] text-slate-400">{row.roomNumber}</div>
-                    </div>
-                  ),
-                  grow: 2,
-                },
-                {
-                  name: t('checkin_column', 'Check-in'),
-                  selector: (row: Guest) => row.checkinDate,
-                  cell: (row: Guest) => (
-                    <span className="text-xs text-slate-600 dark:text-slate-300">
-                      {row.checkinDate ? row.checkinDate.split(' ')[0].split('-').reverse().join('/') : ''}
-                    </span>
-                  ),
-                },
-                {
-                  name: '',
-                  cell: (row: Guest) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFocusBookingGuestId(row.id);
-                        onSetActiveMenuItemKey?.('all_bookings');
-                      }}
-                      className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 text-[11px] font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
-                    >
-                      {t('manage_booking_button', 'Manage')}
-                    </button>
-                  ),
-                  right: true,
-                },
-              ]}
-              data={recentBookings}
-              dense
-              noDataComponent={
-                <div className="py-8 text-xs text-slate-400 dark:text-slate-500">
-                  {t('no_bookings_yet_text', 'No bookings yet.')}
-                </div>
-              }
-            />
-          </div>
-        )}
-
         {/* Right Column: Booking Calendar (hidden in guest_registration mode) */}
         {activeMenuItemKey !== 'guest_registration' && (
           <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden flex flex-col">
@@ -1237,6 +1185,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 rooms={rooms}
                 isMultiKeyProperty={isMultiKeyProperty}
                 kitchenModuleEnabled={true}
+                onAddBooking={() => setIsAddBookingModalOpen(true)}
                 onUpdateGuest={onUpdateGuest}
                 onDeleteGuest={onDeleteGuest}
                 propertyName={propertyName}
@@ -1247,22 +1196,67 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
           </div>
         )}
+
+        {/* Add Booking Modal Overlay inside GuestManagement */}
+        {isAddBookingModalOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setIsAddBookingModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GuestManagement
+                guests={guests}
+                receipts={receipts}
+                menu={menu}
+                rooms={rooms}
+                onAddGuest={async (guest) => {
+                  await onAddGuest?.(guest);
+                  setIsAddBookingModalOpen(false);
+                }}
+                onCheckoutGuest={onCheckoutGuest}
+                onDispatchTelegram={onDispatchTelegram}
+                activeMenuItemKey="guest_registration"
+                isMultiKeyProperty={isMultiKeyProperty}
+                selectedRoomSlug={selectedRoomSlug}
+                onClose={() => setIsAddBookingModalOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+        {/* Booking details editor overlay */}
+        {selectedGuestForDetails && (
+          <BookingDetailsModal
+            guest={selectedGuestForDetails}
+            onClose={() => setSelectedGuestForDetails(null)}
+            onSave={async (updatedGuest) => {
+              onUpdateGuest?.(updatedGuest);
+              setSelectedGuestForDetails(null);
+              showToast('Booking details updated successfully!', { type: 'success' });
+            }}
+            rooms={rooms}
+            checkedInGuests={guests}
+            propertyName={propertyName}
+          />
+        )}
       </div>
     );
   }
 
-  // For ALL properties, show the unified BillingCheckout view
-  if (activeMenuItemKey === 'all_bookings') {
+  // For ALL properties, show the unified Bookings view
+  if (activeMenuItemKey === 'all_bookings' || activeMenuItemKey === 'guest_registration') {
     return (
       <BillingCheckout
         guests={guests}
         receipts={receipts}
         onCheckoutGuest={onCheckoutGuest}
         onUpdateGuest={onUpdateGuest}
+        onAddGuest={onAddGuest}
         isMultiKeyProperty={isMultiKeyProperty}
         rooms={rooms}
         onCheckoutClick={onNavigateToBilling}
-        onNavigateToGuestRegistration={() => onSetActiveMenuItemKey?.('guest_registration')}
         kitchenModuleEnabled={kitchenModuleEnabled}
         propertyGstin={propertyGstin}
         propertyName={propertyName}
@@ -1292,7 +1286,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {activeMenuItemKey === 'all_bookings' && (
         <div className="space-y-6">
           {/* BUG 5 FIX: Guard for empty Active guest list */}
-          {activeGuests.length === 0 ? (
+          {checkedInGuests.length === 0 ? (
             <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center">
               <Building className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-bold text-gray-700 mb-1">No Active Residents</h3>
@@ -1325,11 +1319,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     ? 'bg-amber-100 text-amber-800 border-amber-300'
                     : 'bg-slate-100 text-slate-800 border-slate-300'
                 }`}>
-                  ● {currentGuest.status === 'Active' ? 'Resident Currently In Stay' : currentGuest.status === 'Booked' ? 'Reservation Booked' : currentGuest.status}
+                  ● {currentGuest.status === 'Active' ? 'Checked In' : currentGuest.status === 'Booked' ? 'Reservation Booked' : currentGuest.status}
                 </span>
               ) : (
                 <span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
-                  No Active Resident Selected
+                  No Checked-In Resident Selected
                 </span>
               )}
             </div>
@@ -1925,7 +1919,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {currentGuest && (
                 <a
                   href={`https://api.whatsapp.com/send?phone=${currentGuest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + currentGuest.phoneNumber.replace(/\D/g, '') : currentGuest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                    `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${currentGuest.checkinDate}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                    `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2080,8 +2074,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     guest_name: createdBooking.guestName,
                     room_name: createdBooking.roomNumber,
                     property_name: propertyName || 'us',
-                    checkin_date: createdBooking.checkinDate,
-                    checkout_date: createdBooking.expectedCheckout,
+                    checkin_date: formatDateDDMMYYYY(createdBooking.checkinDate),
+                    checkout_date: formatDateDDMMYYYY(createdBooking.expectedCheckout),
                     guest_count: String(createdBooking.numberOfGuests ?? 1),
                     room_tariff: (createdBooking.roomRate || 0).toFixed(2),
                     advance_paid: (createdBooking.advanceAmount || 0).toFixed(2),
@@ -2136,11 +2130,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
                 <div className="flex justify-between text-black">
                   <span>Check-In Date/Time:</span>
-                  <span>{createdBooking.checkinDate}</span>
+                  <span>{formatDateDDMMYYYY(createdBooking.checkinDate)}</span>
                 </div>
                 <div className="flex justify-between text-black">
                   <span>Check-Out Date/Time:</span>
-                  <span>{createdBooking.expectedCheckout}</span>
+                  <span>{formatDateDDMMYYYY(createdBooking.expectedCheckout)}</span>
                 </div>
                 <div className="flex justify-between text-black">
                   <span>No. of Guests:</span>
@@ -2190,6 +2184,23 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </div>
         </div>
       )}
+      {/* Booking details editor overlay */}
+      {selectedGuestForDetails && (
+        <BookingDetailsModal
+          guest={selectedGuestForDetails}
+          onClose={() => setSelectedGuestForDetails(null)}
+          onSave={async (updatedGuest) => {
+            onUpdateGuest?.(updatedGuest);
+            setSelectedGuestForDetails(null);
+            showToast('Booking details updated successfully!', { type: 'success' });
+          }}
+          rooms={rooms}
+          checkedInGuests={guests}
+          propertyName={propertyName}
+        />
+      )}
     </div>
   );
 };
+
+

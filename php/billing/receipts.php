@@ -5,25 +5,31 @@
  */
 
 function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
+    require_once __DIR__ . '/../config/schema_cache.php';
+    
     // Auto-create billing_receipts table
     try {
-        // Auto-add GST columns on older schemas
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_enabled` TINYINT(1) DEFAULT 0 AFTER `paid_at`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_enabled`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_rate`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_cgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_amount`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_sgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_cgst`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_sgst`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_accommodation_rate`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_food_rate`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_accommodation_amount`"); } catch (PDOException $e) {}
-        // Inter-state (IGST) vs intra-state (CGST+SGST) support, plus the
-        // guest/company's own GSTIN and billing name for tax invoices where the
-        // guest wants it addressed to their company rather than themselves.
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_tax_type` VARCHAR(15) DEFAULT 'cgst_sgst' AFTER `gst_food_amount`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_igst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_tax_type`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_gstin` VARCHAR(20) DEFAULT NULL AFTER `gst_igst`"); } catch (PDOException $e) {}
-        try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_billing_name` VARCHAR(255) DEFAULT NULL AFTER `guest_gstin`"); } catch (PDOException $e) {}
+        if (!isSchemaVerified('schema_billing_receipts')) {
+            // Auto-add GST columns on older schemas
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_enabled` TINYINT(1) DEFAULT 0 AFTER `paid_at`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_enabled`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_rate`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_cgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_amount`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_sgst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_cgst`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_sgst`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_rate` DECIMAL(5,2) DEFAULT 0 AFTER `gst_accommodation_rate`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_accommodation_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_food_rate`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_food_amount` DECIMAL(10,2) DEFAULT 0 AFTER `gst_accommodation_amount`"); } catch (PDOException $e) {}
+            // Inter-state (IGST) vs intra-state (CGST+SGST) support, plus the
+            // guest/company's own GSTIN and billing name for tax invoices where the
+            // guest wants it addressed to their company rather than themselves.
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_tax_type` VARCHAR(15) DEFAULT 'cgst_sgst' AFTER `gst_food_amount`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_igst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_tax_type`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_gstin` VARCHAR(20) DEFAULT NULL AFTER `gst_igst`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_billing_name` VARCHAR(255) DEFAULT NULL AFTER `guest_gstin`"); } catch (PDOException $e) {}
+            
+            markSchemaVerified('schema_billing_receipts');
+        }
     } catch (PDOException $e) {}
 
     switch ($action) {

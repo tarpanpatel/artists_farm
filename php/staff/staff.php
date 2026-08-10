@@ -8,6 +8,9 @@
 function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
     // Auto-create staff_users and payees tables
     try {
+        require_once __DIR__ . '/../config/schema_cache.php';
+        
+        if (!isSchemaVerified('schema_staff_tables')) {
 
         // Add new columns if upgrading from old schema (safe to run multiple times)
         $alterCols = [
@@ -36,6 +39,9 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         ];
         foreach ($advanceAlterCols as $sql) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+        
+        markSchemaVerified('schema_staff_tables');
         }
 
         // Seed staff only if testing mode is enabled - production databases should start clean

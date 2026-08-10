@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Home, ArrowRight } from 'lucide-react';
-import { fetchPropertyModulesFromDB } from '../services/api';
+import { AlertCircle, Home } from 'lucide-react';
 import { t } from '../i18n/en';
 
 interface Property {

@@ -13,12 +13,16 @@ export default defineConfig({
       '/php': {
         target: 'http://localhost',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/php/, '/artists_farm-ai2/php'),
+        secure: false,
+        cookieDomainRewrite: 'localhost',
+        rewrite: (path) => path.replace(/^\/php/, '/artists_farm/php'),
       },
       '/artists_farm/php': {
         target: 'http://localhost',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/artists_farm\/php/, '/artists_farm-ai2/php'),
+        secure: false,
+        cookieDomainRewrite: 'localhost',
+        rewrite: (path) => path.replace(/^\/artists_farm\/php/, '/artists_farm/php'),
       }
     }
   },

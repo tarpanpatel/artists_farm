@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import * as LucideIcons from 'lucide-react';
 import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
+import { Input } from './Input';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
 
 interface ExpenseItem {
@@ -115,7 +116,7 @@ export const DefaultExpensesManager: React.FC = () => {
       const data = await response.json();
       if (data.success || data.status === 'success') {
         setSuccess('Expense item added successfully!');
-        setNewItem({ label: '', category: '', default_amount: '' });
+        setNewItem({ label: '', category: '', default_amount: '', selected_icon: '' });
         setIsAddingNew(false);
         loadExpenses();
       } else {
@@ -247,12 +248,12 @@ export const DefaultExpensesManager: React.FC = () => {
         </div>
         <div className="relative mt-3">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search_expense_items_placeholder', 'Search expense items...')}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            leftIcon={<Search className="w-4 h-4 text-slate-400" />}
           />
         </div>
       </div>
@@ -281,12 +282,10 @@ export const DefaultExpensesManager: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('item_name_required_label', 'Item Name *')}
                 </label>
-                <input
-                  type="text"
+                <Input
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                   placeholder={t('item_name_placeholder', 'e.g., Floor Cleaner')}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 />
               </div>
               <div>
@@ -303,20 +302,22 @@ export const DefaultExpensesManager: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
                 type="submit"
+                variant="success"
+                size="md"
                 disabled={saving}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
               >
                 {saving ? t('saving_button', 'Saving...') : t('add_item_button', 'Add Item')}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
                 onClick={() => setIsAddingNew(false)}
-                className="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2 rounded-lg"
               >
                 {t('cancel_button', 'Cancel')}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -366,7 +367,7 @@ export const DefaultExpensesManager: React.FC = () => {
                         <button
                           onClick={() => {
                             setEditingItem(item);
-                            setEditForm({ label: item.label, default_amount: item.default_amount.toString() });
+                            setEditForm({ label: item.label, default_amount: item.default_amount.toString(), selected_icon: item.selected_icon || '' });
                           }}
                           className="flex-1 p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
                           title={t('edit_button', 'Edit')}
@@ -405,11 +406,10 @@ export const DefaultExpensesManager: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('item_name_label', 'Item Name')}
                 </label>
-                <input
-                  type="text"
+                <Input
+                  label={t('item_name_label', 'Item Name')}
                   value={editForm.label}
                   onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 />
               </div>
               <div className="flex gap-2">

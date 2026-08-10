@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Send, Loader, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
+import { Input } from './Input';
 import { TENANT_WELCOME_VARIABLES, DEFAULT_TENANT_WELCOME_TEMPLATE, renderTenantWelcomeTemplate } from '../utils/tenantWelcomeTemplate';
 import { t } from '../i18n/en';
 
@@ -136,23 +138,21 @@ export const EmailSettingsPanel: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_host_label', 'SMTP Host')}</label>
-            <input
+            <Input
               type="text"
               value={host}
               onChange={(e) => setHost(e.target.value)}
               placeholder={t('smtp_host_placeholder', 'smtp.example.com')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('port_label', 'Port')}</label>
-            <input
+            <Input
               type="text"
               inputMode="numeric"
               value={port}
               onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))}
               placeholder={t('port_placeholder')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -160,22 +160,20 @@ export const EmailSettingsPanel: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_username_label', 'SMTP Username')}</label>
-            <input
+            <Input
               type="text"
               value={smtpUsername}
               onChange={(e) => setSmtpUsername(e.target.value)}
               placeholder={t('smtp_username_placeholder', 'you@example.com')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_password_label', 'SMTP Password')}</label>
-            <input
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('password_dots_placeholder')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -183,21 +181,19 @@ export const EmailSettingsPanel: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_name_label', 'From Name')}</label>
-            <input
+            <Input
               type="text"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_email_label', 'From Email')}</label>
-            <input
+            <Input
               type="email"
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
               placeholder={t('from_email_placeholder', 'noreply@example.com')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
@@ -215,13 +211,14 @@ export const EmailSettingsPanel: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
-          </button>
+          </Button>
           {saveStatus === 'success' && (
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
@@ -234,21 +231,23 @@ export const EmailSettingsPanel: React.FC = () => {
           )}
 
           <div className="flex items-center gap-2 ml-auto">
-            <input
-              type="email"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-              placeholder={t('test_email_placeholder', 'test@example.com')}
-              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
+            <div className="w-56">
+              <Input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder={t('test_email_placeholder', 'test@example.com')}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              size="md"
               onClick={handleSendTest}
               disabled={isTesting || !testEmail}
-              className="px-3 py-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              leftIcon={isTesting ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             >
-              {isTesting ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               {t('send_test_email_button', 'Send Test Email')}
-            </button>
+            </Button>
           </div>
         </div>
         {testResult && (

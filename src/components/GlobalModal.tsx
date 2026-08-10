@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { t } from '../i18n/en';
+
 
 type ModalType = 'alert' | 'confirm' | 'success' | 'error';
 

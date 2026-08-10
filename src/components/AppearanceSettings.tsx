@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Palette } from 'lucide-react';
 import { ThemeManagement } from './ThemeManagement';
 import { CustomCSSOverride } from './CustomCSSOverride';
 import { t } from '../i18n/en';
+
+import { Button } from './Button';
 
 interface AppearanceSettingsProps {
   activeRole?: string;
@@ -14,27 +15,21 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
-        <button
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+        <Button
+          variant={activeTab === 'theme' ? 'primary' : 'ghost'}
+          size="md"
           onClick={() => setActiveTab('theme')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'theme'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-          }`}
         >
           {t('appearance_settings_theme_tab')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant={activeTab === 'css' ? 'primary' : 'ghost'}
+          size="md"
           onClick={() => setActiveTab('css')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'css'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-          }`}
         >
           {t('appearance_settings_css_tab')}
-        </button>
+        </Button>
       </div>
 
       {/* Tab Content */}

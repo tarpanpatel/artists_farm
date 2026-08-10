@@ -4,13 +4,15 @@ import * as LucideIcons from 'lucide-react';
 import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
   Check, X, Search, LayoutDashboard, Navigation as NavIcon,
-  ChevronUp, Layers, PanelLeftClose, PanelRightOpen,
+  Layers, PanelLeftClose, PanelRightOpen,
   ExternalLink
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
 import { isKitchenModuleNavItem } from '../data/appConfig';
 import { StyledSelect } from './StyledSelect';
+import { Button } from './Button';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface NavMenuEditorProps {
@@ -37,8 +39,7 @@ function getDefaultPageOptions(): PageOption[] {
   return [
     { label: 'Overview', tabKey: 'dashboard', uniqueKey: 'overview' },
     { label: 'Dashboard', tabKey: 'dashboard', uniqueKey: 'dashboard' },
-    { label: 'Guest Registration', tabKey: 'guests', uniqueKey: 'guest_registration' },
-    { label: 'All Bookings', tabKey: 'guests', uniqueKey: 'all_bookings' },
+    { label: 'Bookings', tabKey: 'guests', uniqueKey: 'all_bookings' },
     { label: 'Take Food Order', tabKey: 'kitchen', uniqueKey: 'take_food_order' },
     { label: 'Kitchen Orders', tabKey: 'kitchen', uniqueKey: 'kitchen_orders' },
     { label: 'Staff Meals', tabKey: 'kitchen', uniqueKey: 'staff_meals' },
@@ -501,36 +502,41 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           />
 
           {/* Expand/Collapse */}
-          <button
+          <Button
             onClick={() => toggleExpand(item.id)}
-            className={`p-0.5 rounded transition-colors shrink-0 cursor-pointer ${hasChildren ? 'text-slate-500 hover:bg-slate-100' : 'text-transparent pointer-events-none'}`}
+            size="xs"
+            variant="ghost"
+            className={`transition-colors shrink-0 ${hasChildren ? 'text-slate-500 hover:bg-slate-100' : 'text-transparent pointer-events-none'}`}
           >
             {hasChildren ? (isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />) : <span className="w-3.5 h-3.5 block" />}
-          </button>
+          </Button>
 
           {/* Icon - clickable to change */}
-          <button
+          <Button
             onClick={() => setShowIconPickerFor(showIconPickerFor === item.id ? null : item.id)}
-            className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+            size="xs"
+            variant="ghost"
+            className={`shrink-0 transition-colors ${
               item.isVisible ? 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600' : 'bg-slate-100 text-slate-400'
             }`}
             title={t('nav_click_to_change_icon_tooltip', 'Click to change icon')}
           >
             <IconComp className="w-3.5 h-3.5" />
-          </button>
+          </Button>
 
           {/* Title - clickable to rename */}
           <div className="flex-1 min-w-0">
             {isEditingTitle ? (
               <div className="flex items-center gap-1">
-                <input
+                <Input
                   type="text" autoFocus value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveRename(item.id); if (e.key === 'Escape') setEditingTitleId(null); }}
-                  className="flex-1 px-2 py-0.5 text-xs font-bold border border-blue-400 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  fullWidth={false}
+                  className="flex-1 text-xs font-bold"
                 />
-                <button onClick={() => handleSaveRename(item.id)} className="p-0.5 text-emerald-600 hover:bg-emerald-50 rounded cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setEditingTitleId(null)} className="p-0.5 text-slate-400 hover:bg-slate-100 rounded cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                <Button onClick={() => handleSaveRename(item.id)} size="xs" variant="ghost" className="text-emerald-600 hover:bg-emerald-50"><Check className="w-3.5 h-3.5" /></Button>
+                <Button onClick={() => setEditingTitleId(null)} size="xs" variant="ghost" className="text-slate-400 hover:bg-slate-100"><X className="w-3.5 h-3.5" /></Button>
               </div>
             ) : (
               <span className={`font-bold text-slate-800 truncate cursor-text hover:text-blue-600 ${!item.isVisible ? 'line-through text-slate-400' : ''}`} onClick={() => handleStartRename(item)} title={t('nav_click_to_rename_tooltip', 'Click to rename')}>
@@ -540,47 +546,55 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
 
           {/* Tab/Page badge - clickable to change */}
-          <button
+          <Button
             onClick={() => setShowTabPickerFor(showTabPickerFor === item.id ? null : item.id)}
-            className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-colors shrink-0 cursor-pointer max-w-[100px] truncate"
+            size="xs"
+            variant="ghost"
+            className="text-[9px] font-bold text-slate-600 hover:text-blue-700 transition-colors shrink-0 max-w-[100px] truncate"
             title={t('nav_click_to_change_page_tooltip', 'Click to change page target')}
           >
             {item.customUrl ? <span className="flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> {t('nav_url_badge', 'URL')}</span> : (currentPage?.label || item.tabKey)}
-          </button>
+          </Button>
 
           {/* Visibility */}
-          <button onClick={() => handleToggleVisibility(item.id)} className={`p-1 rounded-md transition-colors shrink-0 cursor-pointer ${item.isVisible ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <Button onClick={() => handleToggleVisibility(item.id)} size="xs" variant="ghost" className={`transition-colors shrink-0 ${item.isVisible ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
             {item.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          </button>
+          </Button>
 
           {/* Roles badge */}
-          <button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shrink-0 cursor-pointer" title={t('nav_click_to_edit_roles_tooltip', 'Click to edit roles')}>
+          <Button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} size="xs" variant="ghost" className="text-[9px] font-bold text-blue-700 transition-colors shrink-0" title={t('nav_click_to_edit_roles_tooltip', 'Click to edit roles')}>
             {item.roles.length}r
-          </button>
+          </Button>
 
           {/* Parent Picker + Indent/Outdent */}
           <div className="flex items-center gap-0.5 shrink-0">
-            <button onClick={() => setShowParentPickerFor(showParentPickerFor === item.id ? null : item.id)}
-              className={`p-0.5 rounded transition-colors cursor-pointer ${item.parentId ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
+            <Button onClick={() => setShowParentPickerFor(showParentPickerFor === item.id ? null : item.id)}
+              size="xs"
+              variant="ghost"
+              className={`transition-colors ${item.parentId ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
               title={item.parentId ? `Parent: ${items.find(i => i.id === item.parentId)?.title || 'Unknown'}` : t('nav_set_parent_tooltip', 'Set parent (root level)')}>
               <Layers className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={() => handleOutdent(item.id)} disabled={!item.parentId}
-              className="p-0.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            </Button>
+            <Button onClick={() => handleOutdent(item.id)} disabled={!item.parentId}
+              size="xs"
+              variant="ghost"
+              className="text-slate-400 hover:text-amber-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
               title={t('nav_outdent_tooltip', 'Outdent (move left)')}>
               <PanelLeftClose className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={() => handleIndent(item.id)} disabled={depth >= 2}
-              className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            </Button>
+            <Button onClick={() => handleIndent(item.id)} disabled={depth >= 2}
+              size="xs"
+              variant="ghost"
+              className="text-slate-400 hover:text-emerald-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
               title={t('nav_indent_tooltip', 'Indent (move right)')}>
               <PanelRightOpen className="w-3.5 h-3.5" />
-            </button>
+            </Button>
           </div>
 
           {/* Delete */}
-          <button onClick={() => handleDelete(item.id)} className="p-1 rounded-md text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer">
+          <Button onClick={() => handleDelete(item.id)} size="xs" variant="ghost" className="text-slate-300 hover:text-red-600 transition-colors shrink-0">
             <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
 
         {/* Icon Picker Dropdown */}
@@ -719,13 +733,23 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer">
-              <Plus className="w-3.5 h-3.5" /> {t('nav_add_item_button', 'Add Item')}
-            </button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowAddForm(!showAddForm)}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              {t('nav_add_item_button', 'Add Item')}
+            </Button>
             {hasUnsaved && (
-              <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50">
+              <Button
+                variant="success"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
                 {isSaving ? t('saving_button', 'Saving...') : t('nav_save_menu_button', 'Save Menu')}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -778,8 +802,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             />
             {/* Custom URL (if custom selected) */}
             {newItem.tabKey === 'custom' && (
-              <input type="url" value={newItem.customUrl} onChange={(e) => setNewItem(p => ({ ...p, customUrl: e.target.value }))}
-                placeholder={t('url_placeholder', 'https://...')} className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              <Input
+                type="url"
+                value={newItem.customUrl}
+                onChange={(e) => setNewItem(p => ({ ...p, customUrl: e.target.value }))}
+                placeholder={t('url_placeholder', 'https://...')}
+              />
             )}
             {/* Roles */}
             <div className="flex flex-wrap gap-1">
@@ -793,12 +821,21 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <button onClick={handleAddItem} disabled={!newItem.title.trim()} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleAddItem}
+              disabled={!newItem.title.trim()}
+            >
               {t('nav_add_to_menu_button', 'Add to Menu')}
-            </button>
-            <button onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-slate-500 text-[11px] font-bold hover:text-slate-700 cursor-pointer">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddForm(false)}
+            >
               {t('cancel_button', 'Cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

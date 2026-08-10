@@ -80,16 +80,6 @@ const iconMap: Record<string, React.ElementType> = {
   NavIcon,
 };
 
-interface DynamicIconProps {
-  name: string;
-  className?: string;
-}
-
-export const DynamicIcon: React.FC<DynamicIconProps> = ({ name, className = 'w-4 h-4' }) => {
-  const IconComponent = iconMap[name] || (LucideIcons as any)[name] || HelpCircle;
-  return <IconComponent className={className} />;
-};
-
 export const getIconComponent = (name: string): React.ElementType => {
   return iconMap[name] || (LucideIcons as any)[name] || HelpCircle;
 };

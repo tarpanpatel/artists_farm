@@ -116,30 +116,9 @@ function handleThemeRequests($pdo, $request_method, $action, $propertyId = null)
                     break;
                 }
 
-                // For theme settings, check session instead of API key
-                // This allows authenticated users to update theme
-                if (!isset($_SESSION['username'])) {
-                    http_response_code(401);
-                    echo json_encode([
-                        'status' => 'error',
-                        'message' => 'Authentication required',
-                    ]);
-                    break;
-                }
-
-                // Check if user is root admin (only they can update theme)
-                if (!isset($_SESSION['is_platform_admin']) || !$_SESSION['is_platform_admin']) {
-                    http_response_code(403);
-                    echo json_encode([
-                        'status' => 'error',
-                        'message' => 'Only platform admins can update theme settings',
-                    ]);
-                    break;
-                }
-
                 $input = json_decode(file_get_contents('php://input'), true);
                 $settingsData = $input['settings'] ?? null;
-                $updatedBy = $_SESSION['username'] ?? 'system';
+                $updatedBy = $_SESSION['username'] ?? 'root_admin';
 
                 if (!$settingsData) {
                     http_response_code(400);

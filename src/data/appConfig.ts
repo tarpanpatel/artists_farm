@@ -21,6 +21,11 @@ export const NAV_CATEGORIES = [
 // hideKitchenItems display filter (hides them from the menu editor's list
 // without touching the underlying saved config) so the two never drift apart.
 export const KITCHEN_MODULE_NAV_KEYS = new Set([
+  'kitchen_overview',
+  'kitchen',
+  'take_food_order',
+  'kitchen_orders',
+  'staff_meals',
   'stock_requests',
   'fulfill_stock_req',
   'deficit_shortfalls_log',

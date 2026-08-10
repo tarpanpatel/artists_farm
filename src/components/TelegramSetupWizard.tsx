@@ -12,12 +12,10 @@ import {
   ArrowRight,
   ArrowLeft,
   RefreshCw,
-  Search,
   Bot,
-  Key,
-  ShieldOff,
   Save,
 } from 'lucide-react';
+import { Input } from './Input';
 import {
   fetchTelegramBotIdentity,
   generateTelegramPairingCode,
@@ -27,7 +25,7 @@ import {
   fetchTelegramConfigDB,
   saveTelegramConfigDB,
 } from '../services/api';
-import { PropertyTelegramConfig, TelegramGroup } from '../types';
+import { PropertyTelegramConfig } from '../types';
 import { t } from '../i18n/en';
 
 interface WizardStep {
@@ -423,12 +421,13 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{t('bot_api_token_label', 'Bot API Token')}</label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value)}
                     placeholder={t('bot_token_placeholder', 'Enter Bot Token (Leave empty to use platform default)')}
-                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                    className="flex-1 font-mono"
+                    fullWidth={false}
                   />
                   <button
                     type="button"
@@ -498,12 +497,13 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                   {t('auto_reminder_interval_label', 'Auto-Reminder Interval (Minutes)')}
                 </label>
-                <input
+                <Input
                   type="number"
                   min={1}
                   value={wizardConfig?.reminderThresholdMinutes ?? 5}
                   onChange={(e) => handleUpdateConfigField('reminderThresholdMinutes', Math.max(1, Number(e.target.value) || 5))}
-                  className="w-24 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="w-24"
+                  fullWidth={false}
                 />
                 <p className="text-[10px] text-slate-400">
                   {t('auto_reminder_interval_description', 'Minutes to wait before an unaddressed order/dish gets nudged again.')}

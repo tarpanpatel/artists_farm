@@ -15,7 +15,7 @@ require_once __DIR__ . '/sender.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
 
 if (!function_exists('handleTelegramCallbackQuery')) {
-    function handleTelegramCallbackQuery($pdo, array $cq) {
+    function handleTelegramCallbackQuery($pdo, array $cq, $token = null) {
         $cq_id = $cq['id'];
         $chat_id = $cq['message']['chat']['id'] ?? null;
         $message_id = $cq['message']['message_id'] ?? null;
@@ -23,6 +23,15 @@ if (!function_exists('handleTelegramCallbackQuery')) {
         $tg_first_name = $cq['from']['first_name'] ?? 'Staff Member';
         $callback_data = $cq['data'] ?? '';
         $original_text = $cq['message']['text'] ?? '';
+
+        // Resolve which property this group chat belongs to (via its telegram
+        // config) so replies/edits use that property's own bot token and the
+        // "served" notification follows its routing map instead of the legacy
+        // env-constant path.
+        $token = $token ?: (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        $property = $chat_id ? findPropertyForTelegramChat($pdo, $chat_id, $token) : null;
+        $propertyId = $property['propertyId'] ?? null;
+        $propertyToken = $propertyId ? (!empty($property['config']['botToken']) ? $property['config']['botToken'] : $token) : $token;
 
         $staff_name = $tg_first_name;
         $stmt = $pdo->prepare("SELECT username FROM users WHERE telegram_user_id = ? LIMIT 1");
@@ -67,6 +76,23 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                     ]);
                 } catch (PDOException $ea) {}
 
+                // Record in Current Guest Served Dishes (served_logs) so serves
+                // done via the Telegram button also appear in the KDS table
+                try {
+                    if ($propertyId) {
+                        $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())")
+                            ->execute([
+                                $propertyId,
+                                $itemRow['order_id'],
+                                $itemRow['dish_name'],
+                                $itemRow['quantity'],
+                                $staff_name,
+                                $itemRow['guest_name'] ?: 'Walk-in',
+                                $itemRow['table_no']
+                            ]);
+                    }
+                } catch (PDOException $es) {}
+
                 // Calculate actual remaining unserved items for this order ticket
                 $remStmt = $pdo->prepare("
                     SELECT COUNT(*)
@@ -98,7 +124,7 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                     $edited_text = "✅ <b>DISH SERVED</b>\n\n" . $original_text . "\n\n👨‍🍳 <b>Served By:</b> {$staff_name}\n🕒 <b>At:</b> " . date('h:i A');
                 }
                 if ($chat_id && $message_id) {
-                    editTelegramMessageText($chat_id, $message_id, $edited_text, null);
+                    editTelegramMessageText($chat_id, $message_id, $edited_text, null, $propertyToken);
                 }
 
                 $tplStmt = $pdo->prepare("SELECT content FROM system_telegram_templates WHERE template_key = 'item_served' LIMIT 1");
@@ -127,14 +153,47 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                              . "<i>Item delivery confirmed.</i>";
                 }
 
-                sendAdminTelegramMessage($new_msg);
-                answerTelegramCallbackQuery($cq_id, "{$itemRow['quantity']}x {$itemRow['dish_name']} marked as Served!");
+                if ($propertyId) {
+                    // Follow the property's routing map (item_served -> kitchen group)
+                    sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $new_msg, null, 'item_served');
+                } else {
+                    sendAdminTelegramMessage($new_msg);
+                }
+                answerTelegramCallbackQuery($cq_id, "{$itemRow['quantity']}x {$itemRow['dish_name']} marked as Served!", false, $propertyToken);
 
             } else {
-                answerTelegramCallbackQuery($cq_id, "This dish is already marked as served.", true);
+                answerTelegramCallbackQuery($cq_id, "This dish is already marked as served.", true, $propertyToken);
             }
         } elseif (preg_match('/^serve_order_(\d+)$/', $callback_data, $matches)) {
             $order_id = $matches[1];
+
+            // Record in Current Guest Served Dishes (served_logs) for every item
+            // about to be marked served (query before the status flip below)
+            try {
+                if ($propertyId) {
+                    $servedStmt = $pdo->prepare("
+                        SELECT oi.quantity, mi.name as dish_name, g.guest_name, g.room_number as table_no
+                        FROM order_items oi
+                        JOIN orders o ON oi.order_id = o.id
+                        JOIN menu_items mi ON oi.menu_item_id = mi.id
+                        LEFT JOIN guests g ON o.guest_id = g.id
+                        WHERE oi.order_id = ? AND (oi.item_status IS NULL OR LOWER(oi.item_status) != 'served')
+                    ");
+                    $servedStmt->execute([$order_id]);
+                    $insServed = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                    foreach ($servedStmt->fetchAll(PDO::FETCH_ASSOC) as $si) {
+                        $insServed->execute([
+                            $propertyId,
+                            $order_id,
+                            $si['dish_name'],
+                            $si['quantity'],
+                            $staff_name,
+                            $si['guest_name'] ?: 'Walk-in',
+                            $si['table_no']
+                        ]);
+                    }
+                }
+            } catch (PDOException $es) {}
 
             // Mark all unserved items in this order as served
             $pdo->prepare("UPDATE order_items SET item_status = 'Served' WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')")
@@ -167,18 +226,18 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                 $edited_text = "✅ <b>ORDER COMPLETED</b>\n\n" . $original_text . "\n\n👨‍🍳 <b>Fulfilled By:</b> {$staff_name}\n🕒 <b>At:</b> " . date('h:i A');
             }
             if ($chat_id && $message_id) {
-                editTelegramMessageText($chat_id, $message_id, $edited_text, null);
+                editTelegramMessageText($chat_id, $message_id, $edited_text, null, $propertyToken);
             }
 
-            answerTelegramCallbackQuery($cq_id, "Order #{$order_id} marked as completed!");
+            answerTelegramCallbackQuery($cq_id, "Order #{$order_id} marked as completed!", false, $propertyToken);
         } elseif (preg_match('/^fulfill_request_(\d+)$/', $callback_data, $matches)) {
             $result = fulfillServiceRequest($pdo, intval($matches[1]), $staff_name);
             if (($result['status'] ?? '') === 'success' && empty($result['already'])) {
-                answerTelegramCallbackQuery($cq_id, "Service request marked fulfilled!");
+                answerTelegramCallbackQuery($cq_id, "Service request marked fulfilled!", false, $propertyToken);
             } elseif (!empty($result['already'])) {
-                answerTelegramCallbackQuery($cq_id, "Already marked fulfilled.", true);
+                answerTelegramCallbackQuery($cq_id, "Already marked fulfilled.", true, $propertyToken);
             } else {
-                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to update request.', true);
+                answerTelegramCallbackQuery($cq_id, $result['message'] ?? 'Failed to update request.', true, $propertyToken);
             }
         }
     }

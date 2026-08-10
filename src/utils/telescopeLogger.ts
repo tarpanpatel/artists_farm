@@ -113,15 +113,6 @@ export function recordTelescopeLog(
   }
 }
 
-export function clearTelescopeLogs(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('telescope_log_added'));
-    }
-  } catch (e) {}
-}
-
 function getInitialSeedLogs(): TelescopeLogEntry[] {
   const now = new Date();
   const timeStr = (offsetMs: number) => {

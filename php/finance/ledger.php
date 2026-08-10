@@ -5,7 +5,11 @@
  * this table provides the accounting timeline and prevents duplicate postings.
  */
 
+require_once __DIR__ . '/../config/schema_cache.php';
+
 function ensureFinancialLedger($pdo) {
+    if (isSchemaVerified('schema_financial_ledger')) return;
+    markSchemaVerified('schema_financial_ledger');
 }
 
 function postFinancialLedger($pdo, array $entry, int $propertyId = 1) {

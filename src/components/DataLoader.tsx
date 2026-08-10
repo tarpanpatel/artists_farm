@@ -3,9 +3,13 @@ import { LoadingScreen } from './LoadingScreen';
 import { InvalidPropertyPage } from './InvalidPropertyPage';
 import {
   fetchCurrentProperty,
+  apiFetch,
   fetchPropertyModulesFromDB,
   fetchNavMenuFromDB,
   fetchTelegramConfigDB,
+  fetchGuestsFromDB,
+  fetchReceiptsFromDB,
+  fetchMenuFromDB,
   getPropertySlug,
   getPropertyAndRoomSlugs,
   getRoomSlugFromHash,
@@ -20,6 +24,9 @@ export interface PreloadedData {
   isMultiKeyProperty?: boolean;
   currentRoomSlug?: string | null;
   parentPropertyId?: number;
+  initialGuests?: any[];
+  initialReceipts?: any[];
+  initialMenu?: any[];
 }
 
 interface DataLoaderProps {
@@ -64,9 +71,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // If it's a MultiKey property, fetch full data with rooms
         if (property && property.property_type === 'MULTI_KEY') {
           try {
-            const response = await fetch(`/php/api/router.php?action=get_multikey_property&property_id=${property.id}`, {
-              credentials: 'include',
-            });
+            const response = await apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${property.id}`);
             const data = await response.json();
             if (data.success) {
               property = data.data;
@@ -76,13 +81,20 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           }
         }
 
+        // Fetch property modules first to check feature toggles (kitchen, etc.)
+        const modules = await fetchPropertyModulesFromDB().catch(err => {
+          console.error('Failed to fetch modules:', err);
+          return [];
+        });
+
+        const isKitchenEnabled = modules.length === 0 || modules.some((m: any) =>
+          (m.module_slug === 'kitchen' || m.slug === 'kitchen') &&
+          (m.is_enabled === 1 || m.is_enabled === true || m.is_enabled === '1')
+        );
+
         // Fetch all other data in parallel with timeout fallback
         const results = await Promise.race([
           Promise.all([
-            fetchPropertyModulesFromDB().catch(err => {
-              console.error('Failed to fetch modules:', err);
-              return [];
-            }),
             fetchNavMenuFromDB().catch(err => {
               console.error('Failed to fetch nav items:', err);
               return [];
@@ -91,26 +103,33 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               console.error('Failed to fetch telegram config:', err);
               return null;
             }),
+            fetchGuestsFromDB().catch(err => {
+              console.error('Failed to fetch preloaded guests:', err);
+              return [];
+            }),
+            fetchReceiptsFromDB().catch(err => {
+              console.error('Failed to fetch preloaded receipts:', err);
+              return [];
+            }),
+            isKitchenEnabled
+              ? fetchMenuFromDB().catch(err => {
+                  console.error('Failed to fetch preloaded menu:', err);
+                  return [];
+                })
+              : Promise.resolve([]),
           ]),
-          timeoutPromise.then(() => [[], [], null]), // Default values on timeout
+          timeoutPromise.then(() => [[], null, [], [], []]), // Default values on timeout
         ]);
 
-        const [modules, navItems, telegramConfig] = results as any[];
+        const [navItems, telegramConfig, initialGuests, initialReceipts, initialMenu] = results as any[];
 
-        // If property doesn't exist (was deleted, or the slug didn't resolve), show invalid
-        // property page rather than silently loading an unrelated property's data - this is a
-        // multi-tenant app, so falling back to "whatever property is first in the database"
-        // would leak a different tenant's data for a mistyped or stale URL.
         if (!property || (typeof property === 'object' && Object.keys(property).length === 0)) {
           setInvalidProperty(propertySlug);
           setIsLoading(false);
           return;
         }
 
-        // Detect if this is a MultiKey property
         const isMultiKeyProperty = property.property_type === 'MULTI_KEY';
-
-        // For MultiKey properties, use hash-based room selection (#room-101)
         const validRoomSlugs = isMultiKeyProperty ? (property.rooms || []).map((r: any) => r.slug) : [];
         const selectedRoomSlug = isMultiKeyProperty ? getRoomSlugFromHash(validRoomSlugs) : null;
 
@@ -124,15 +143,20 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           isMultiKeyProperty,
           currentRoomSlug: selectedRoomSlug,
           parentPropertyId: undefined,
+          initialGuests: Array.isArray(initialGuests) ? initialGuests : [],
+          initialReceipts: Array.isArray(initialReceipts) ? initialReceipts : [],
+          initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
         });
       } catch (err) {
         console.error('Critical error loading app data:', err);
-        // Still render app with empty data instead of showing error
         setData({
           currentProperty: null,
           modules: [],
           navItems: [],
           telegramConfig: null,
+          initialGuests: [],
+          initialReceipts: [],
+          initialMenu: [],
         });
       } finally {
         setIsLoading(false);
@@ -141,9 +165,6 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
     loadAllData();
   }, []);
-
-  // Don't listen for hash changes - they interfere with menu navigation
-  // Room navigation uses state (selectedRoomSlugOverride) instead of hash
 
   if (invalidProperty !== null) {
     return <InvalidPropertyPage propertySlug={invalidProperty} />;
