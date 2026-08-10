@@ -6,6 +6,8 @@
 
 **Goal:** the site should look like one product, not like different pages were built in different sessions with different opinions (which is literally what happened). No new visual design — apply the conventions below consistently.
 
+**Stay inside Tailwind utility classes + the existing CSS-variable tokens — nothing else.** No inline `style={{...}}`, no CSS-in-JS, no new stylesheet/styling library, no raw hex values dropped into a `className` when a Tailwind class or token already covers it. Every fix below is a `className` string edit, full stop. This isn't a style preference - it's what makes the whole system upgradeable later: change a token once in `index.css`/the Appearance page, or a Tailwind config value once, and it propagates everywhere. An inline style or a one-off hardcoded value can't be swept up that way and quietly becomes the next inconsistency this exact doc was written to clean up.
+
 ---
 
 ## Conventions (already decided — apply these, don't re-litigate)
@@ -20,6 +22,9 @@
 3. **Button shape** — match `Button.tsx` (the reference component): `rounded-lg`/`rounded-xl`, not `rounded-full`. Pill shape (`rounded-full`) is reserved for `Badge` and tab/pill-switcher UI, not regular action buttons.
 4. **Font family** — **no `font-mono` for prose, labels, or general UI text.** For numeric emphasis (currency totals, counts), use font *weight* (`font-bold`/`font-extrabold`) instead, matching `BillingCheckout.tsx`'s existing pattern (`font-extrabold`, no mono) — that's the correct example to copy, not `GuestHistory.tsx`'s `font-mono` (the inconsistent one). This is a real, live inconsistency: the exact same kind of element — a currency total — renders in a different font depending which page you're on.
 5. **Icons** — Lucide only, per `CLAUDE.md`. No emoji standing in for icons.
+6. **Neutral color family** — **`slate`, not `gray`.** The token system, `Input.tsx`/`StyledSelect.tsx`/`Badge.tsx`, and the majority of the app already use `slate` for neutral text/borders/backgrounds. `gray` is a *different* color family (different hue, not just a naming alias) and is still used in real numbers (548 `text-gray-*`, 102 `border-gray-*` vs. 1676/1019 for `slate`) — every `gray` instance found should become the matching `slate` shade unless there's a specific reason not to (there shouldn't be).
+7. **Card-wrapper radius + shadow** — standardize on **`rounded-2xl` + `shadow-xs`** for the standard white/dark-slate-800 bordered card pattern (`bg-white dark:bg-slate-800 rounded-2xl border ... shadow-xs`) — already the single most common combination, so this converges toward existing majority usage rather than picking a fresh style. Modals/dialogs needing more visual weight can stay on a heavier shadow (`shadow-lg`/`shadow-xl`) — that's a legitimate elevation difference, not drift. What's *not* legitimate: the same flat "info card on a page" pattern using `rounded-lg`, `rounded-xl`, *and* `rounded-2xl` interchangeably, or shadow depth swinging from `shadow-2xs` to `shadow-2xl` for the same role.
+8. **Section-label font-weight** — `font-extrabold`, not `font-bold`, for the card section-label heading pattern (the same `border-l-3` headings from point 2 above) — split roughly 60/40 between the two right now for the identical visual role.
 
 ## How to find every violation (mechanical — don't rely on clicking through pages)
 
@@ -53,7 +58,23 @@ grep -rhoE 'rounded-(xl|2xl)[^"]*\bp-[0-9]+\b' src/components --include="*.tsx" 
 # Micro-label font sizes (uppercase field labels like "DATE & TIME OF RECORD") -
 # should converge on one or two sizes, not seven
 grep -rhoE 'text-\[1?[0-9]px\]|text-(xs|sm|base)' src/components --include="*.tsx" | sort | uniq -c | sort -rn | head -10
+
+# gray vs slate - every gray-family hit should become the matching slate shade
+grep -rn "text-gray-[0-9]\+\|border-gray-[0-9]\+\|bg-gray-[0-9]\+" src/components --include="*.tsx"
+
+# Card-wrapper radius+shadow combos actually in use for the same visual role
+grep -rhoE 'bg-white dark:bg-slate-800 rounded-[a-z0-9]+ border[^"]*shadow-[a-z0-9]+' src/components --include="*.tsx" | grep -oE 'rounded-[a-z0-9]+|shadow-[a-z0-9]+' | paste -d' ' - -
+
+# Section-label font-weight (should all be font-extrabold)
+grep -rn "border-l-3 border-" src/components --include="*.tsx"
 ```
+
+**Verified findings for the 3 new categories above** (11 Aug 2026, systematic pass across the whole `src/components` tree, not screenshot-driven):
+- `gray` vs `slate`: 548 `text-gray-*` + 102 `border-gray-*` hits vs. 1676/1019 for the `slate` equivalents. `slate` is the established convention (tokens, shared components); every `gray` hit is drift.
+- Card-wrapper radius+shadow: the identical `bg-white dark:bg-slate-800 rounded-X border ... shadow-Y` pattern appears with **8 different `rounded`+`shadow` combinations** in real usage (`rounded-2xl shadow-xs` most common at 12, down to one-off `rounded-2xl shadow-2xl` and `rounded-lg shadow-2xs`).
+- Section-label font-weight: `font-extrabold` (9) vs. `font-bold` (6) on the exact same `border-l-3` card-label heading pattern.
+
+**Checked, not confirmed as a problem** — icon sizing (`w-4 h-4` through `w-12 h-12`) has a very wide spread, but a blanket count can't distinguish "the same icon role sized differently" (a real problem) from "different roles legitimately need different sizes" (correct - an empty-state icon should be bigger than an inline-button icon). Worth a closer, per-role look while doing this sweep, not a blanket rule the way the other findings above are.
 
 **Non-Lucide icons — checked separately, already fully covered, no further action needed**: searched `package.json` and every import statement for `react-icons`/`@heroicons`/`@mui/icons-material`/`flowbite-react`/etc. — none exist anywhere in the codebase (`flowbite-react` was a dependency once, fully removed in an earlier commit). The *only* non-Lucide-icon violation is emoji standing in for icons, already covered above.
 
@@ -87,3 +108,4 @@ Also spot-check a couple of the changed pages in a browser — color/font change
 - Don't invent new colors or patterns not in the conventions above. If something doesn't fit, flag it rather than improvising a new one-off choice — that's exactly how this problem happened the first time.
 - Don't do a blanket find-and-replace on `font-mono` — audit each instance, some tabular-numeric uses may be worth keeping if applied consistently within that one table. The goal is *no inconsistency between pages*, not *zero monospace anywhere*.
 - Don't start any layout/structural redesign — this is strictly color/shape/font consistency, not new UI.
+- Don't reach for inline `style={{...}}`, a CSS-in-JS approach, or a raw hex/px value in a `className` to fix something faster — see the "stay inside Tailwind + tokens" note at the top. Every fix is a Tailwind utility class or a `var(--token)` reference, nothing else, so the whole system stays upgradeable from one place later.
