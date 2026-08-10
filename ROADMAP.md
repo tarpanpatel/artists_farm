@@ -60,8 +60,27 @@ actual digit string to match against, falling back to exact `username =`
 only. Curl-verified: a nonexistent non-numeric identifier tried against
 two different real accounts' real passcodes now correctly fails on both;
 real username login, real phone-number login, and the default-admin
-bootstrap fallback all still work unchanged). What's left, none of it
-fixed yet:
+bootstrap fallback all still work unchanged. Also fixed: CSRF protection,
+via an Origin/Referer allow-list check in `php/config/database.php`
+(reuses the same `$allowed_origins` the existing CORS header already
+used, rather than a second independently-maintained list - also fixed a
+latent CORS gap while in there: only port 5173 was allowed for local dev,
+missing 3000/5174/8080 that `src/services/api.ts`'s own dev-port list
+already recognizes). Since `database.php` is `require_once`'d by nearly
+every write-capable endpoint (`router.php`, `ical_sync.php`,
+`demo_data.php`, ...), one check covers all of them - sidesteps the
+61-raw-`fetch()`-call-sites fragmentation problem entirely, since there's
+no frontend token to attach and every one of those call sites already
+gets an `Origin` header from the browser automatically. Rejects
+POST/PUT/DELETE/PATCH requests whose `Origin` (or `Referer` fallback) is
+present but not in the allow-list; requests with no `Origin`/`Referer` at
+all (curl, server-to-server tooling) are let through rather than
+rejected, since that's not the shape of a real cross-site CSRF attack.
+Curl-verified: malicious `Origin` → 403 on both `router.php` and
+`ical_sync.php`; no `Origin` → still works; correct dev `Origin` → still
+works; GET requests unaffected (this only ever gates write methods); the
+property-access gate still layers correctly on top). What's left, none of
+it fixed yet:
 
 - **`resolveCallerTenantIds()` id-collision risk.** This existing helper
   (used by `isTenantAccessAllowed()`, unrelated to the new property gate
@@ -84,12 +103,6 @@ fixed yet:
   `LoginModal.tsx` (a secondary/session-timeout login modal, not the main
   `LoginPage.tsx` flow). Not covered by any of the above since it's a
   different file entirely from `router.php`'s action dispatch — not audited.
-- **CSRF still unwired**, and it's a bigger lift than it looked: 61 raw
-  `fetch()` calls across ~22 files (including the login screens themselves)
-  bypass `src/services/api.ts`'s single `apiFetch()` chokepoint, so a
-  token-header scheme needs either that refactor or a different mechanism
-  (Origin/Referer allow-list check server-side, zero frontend changes).
-  Recommended: the Origin/Referer approach, given the call-site fragmentation.
 - **General input-format validation** (`php/security/input_validator.php` -
   validateEmail/String/Float/Date/URL/Boolean/Slug/JSON) still unwired
   across ~166 router actions. Lower urgency than the above — prepared
