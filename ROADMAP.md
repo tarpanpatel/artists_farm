@@ -110,6 +110,27 @@ Curl-verified: a real tenant admin can list their own tenant's properties
 and check their own slot usage again (both were silently broken since
 this morning's fix), still correctly denied for a different tenant, root
 admin unaffected throughout.
+
+Also audited and fixed: **`php/api/authenticate.php`** - a separate legacy
+endpoint (still called by `LoginModal.tsx`'s session-timeout re-auth
+modal, not the main `LoginPage.tsx` flow) that turned out to be an
+unpatched near-duplicate of `router.php`'s `login_user` - it had the
+`123456` universal bypass still live, the same identifier-wildcard `LIKE`
+bug, and *zero* rate limiting at all, bypassing everything fixed on
+`router.php` earlier today. Applied the identical three fixes (removed
+the `123456` clause from both the `users` and `staff_users` branches;
+fixed the wildcard by only including the phone-matching clause when
+there's an actual digit string; wired in the same `RateLimiter`, using
+the *same* `'login_user'` endpoint identifier so attempts against this
+endpoint and `router.php`'s share one rate-limit counter per client -
+otherwise an attacker could dodge one endpoint's limit by hitting the
+other). Curl-verified all three independently, plus confirmed the shared
+bucket actually closes the evasion path: exhausting the limit via
+`authenticate.php` also blocks a subsequent *correct-passcode* attempt
+against `router.php`'s `login_user`. True de-duplication (one shared
+login function both endpoints call, instead of two copies that can drift
+apart again) would be the real fix and is worth doing, just bigger scope
+than this pass.
 - **Staff with multiple property assignments.** Some staff accounts have
   multiple `staff_users` rows (same person, one row per assigned property).
   Login only reads one row (`LIMIT 1`, no explicit order), so a multi-property
@@ -119,10 +140,6 @@ admin unaffected throughout.
   *enforced* (and therefore visible) now that property access is actually
   checked. Needs a real fix to the staff-property data model, not a config
   tweak.
-- **`php/api/authenticate.php`** — a separate legacy endpoint still called by
-  `LoginModal.tsx` (a secondary/session-timeout login modal, not the main
-  `LoginPage.tsx` flow). Not covered by any of the above since it's a
-  different file entirely from `router.php`'s action dispatch — not audited.
 - **General input-format validation** (`php/security/input_validator.php` -
   validateEmail/String/Float/Date/URL/Boolean/Slug/JSON) still unwired
   across ~166 router actions. Lower urgency than the above — prepared
