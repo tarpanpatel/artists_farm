@@ -197,7 +197,13 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 // $is_authenticated_user is captured so every gate below sees a real,
 // already-authenticated session. Skipped for login_user itself so a real
 // login is never silently overridden.
-if (!isset($_SESSION['username']) && $action !== 'login_user') {
+// Also re-resolves on every request for a session THIS block already
+// created (is_public_demo_session), not only when no username is set at
+// all - otherwise a visitor's existing session cookie pins them to
+// whichever staff row was "best" at the time they first landed (e.g.
+// Manager, before the Super Admin persona existed), and no server-side
+// code change can ever reach an already-open session.
+if ((!isset($_SESSION['username']) || !empty($_SESSION['is_public_demo_session'])) && $action !== 'login_user') {
     $demoPropertySlug = $_GET['property_slug'] ?? '';
     if ($demoPropertySlug) {
         try {
