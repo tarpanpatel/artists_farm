@@ -1145,8 +1145,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   </div>
                                   <div className="flex items-start justify-between gap-1">
                                     <div className="min-w-0 flex-1">
-                                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">{item.name}</h4>
-                                      <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                                      <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
+                                      <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
                                     </div>
                                     <button
                                       onClick={() => handleAddToCartWithFeedback(item)}
@@ -1189,8 +1189,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             </div>
                             <div className="flex items-start justify-between gap-1">
                               <div className="min-w-0 flex-1">
-                                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] leading-tight truncate">{item.name}</h4>
-                                <p className="text-slate-500 dark:text-slate-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                                <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
+                                <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
                               </div>
                               <button
                                 onClick={() => handleAddToCartWithFeedback(item)}
