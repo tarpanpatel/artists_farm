@@ -8,13 +8,20 @@
 // _isDev port list (3000/5173/5174/8080) - the CORS list only had 5173 before, a latent gap
 // (any of the other three ports would've been silently rejected by CORS if ever hit
 // cross-origin rather than through Vite's same-origin proxy).
+// SECURITY (12 Aug 2026): was 'artistsfarmjaipur.com' - a stale/unused domain
+// from an earlier project name, not the real production domain. Since the
+// Origin/Referer check below runs server-side on every write regardless of
+// same-origin/cross-origin, this wasn't a cosmetic mismatch - it would have
+// 403'd every single write (including login) the moment multi-tenant went
+// live on the real domain, since the browser's Origin header never matches
+// anything in this list.
 $allowed_origins = [
     'http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080',
     'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:8080',
-    'https://artistsfarmjaipur.com', 'https://www.artistsfarmjaipur.com',
+    'https://artistic-sthan.com', 'https://www.artistic-sthan.com',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistsfarmjaipur.com'));
+header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistic-sthan.com'));
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Testing-Mode');
 header('Content-Type: application/json; charset=UTF-8');
