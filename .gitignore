@@ -63,3 +63,5 @@ AI_MARKET_RESEARCH_PROMPT.md
 # Uploaded guest ID documents - real PII, never version-controlled
 # (menu/catalog images stay tracked - those are demo content, not guest data)
 php/uploads/images/id_documents/
+
+php/database/log.txt
