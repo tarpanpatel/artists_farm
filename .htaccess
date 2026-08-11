@@ -11,6 +11,10 @@ DirectoryIndex index.php index.html
     # deployed under (served from the domain root on artistic-sthan.com).
     RewriteBase /
 
+    # Short, shareable URL for the public sales demo - plain redirect (URL bar
+    # updates to the real property URL), not a rewrite/cloak.
+    RewriteRule ^demo/?$ /rivera-resorts/luxe-stays/ [R=302,L]
+
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
     # Only rewrites when the full path isn't a real file/directory, so
