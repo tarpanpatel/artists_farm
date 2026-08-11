@@ -40,6 +40,7 @@ interface Room {
   slug: string;
   room_order?: number;
   is_active?: number;
+  default_tariff?: number | null;
 }
 
 interface GuestManagementProps {
@@ -199,6 +200,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     event_title: string;
     reservation_url?: string;
     source?: string;
+    source_label?: string;
+    room_id?: number;
   }>>([]);
 
   useEffect(() => {
@@ -229,23 +232,35 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const getBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
 
-    // 1. iCal blocked dates
-    blockedDates.forEach((bd) => {
-      const start = new Date(bd.event_start.split(' ')[0]);
-      const end = new Date(bd.event_end.split(' ')[0]);
-      let current = new Date(start);
-      while (current < end) {
-        const year = current.getFullYear();
-        const month = String(current.getMonth() + 1).padStart(2, '0');
-        const day = String(current.getDate()).padStart(2, '0');
-        blocked.push(`${year}-${month}-${day}`);
-        current = new Date(current.getTime() + 86400000);
-      }
-    });
-
-    // 2. Existing guest bookings for the currently selected room
+    // Resolved once, used by both sections below - iCal blocks need this too
+    // (see 1.), not just existing guest bookings (2.).
     const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
     const selectedRoomId = selectedRoomObj?.id;
+
+    // 1. iCal blocked dates - only the currently selected room's own blocks.
+    // For a multi-key property, ical_sync.php's get_blocked_dates returns every
+    // room's synced events in one call (room_id per row) so the calendar view
+    // can show all of them - but here, picking a date for Room 101 must not
+    // also disable dates that are only actually blocked on Room 102's feed.
+    // isMultiKeyProperty ? undefined room_id rows (shouldn't happen once every
+    // sync is tied to a room) fall through and are ignored, not blocked -
+    // safer to under-block than to falsely block an available room.
+    blockedDates
+      .filter((bd) => !isMultiKeyProperty || (selectedRoomId != null && Number(bd.room_id) === Number(selectedRoomId)))
+      .forEach((bd) => {
+        const start = new Date(bd.event_start.split(' ')[0]);
+        const end = new Date(bd.event_end.split(' ')[0]);
+        let current = new Date(start);
+        while (current < end) {
+          const year = current.getFullYear();
+          const month = String(current.getMonth() + 1).padStart(2, '0');
+          const day = String(current.getDate()).padStart(2, '0');
+          blocked.push(`${year}-${month}-${day}`);
+          current = new Date(current.getTime() + 86400000);
+        }
+      });
+
+    // 2. Existing guest bookings for the currently selected room
 
     guests
       .filter((g) => g.status === 'Active' || g.status === 'Booked')
@@ -284,6 +299,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const handleTariffChange = (val: number) => {
     setBookingRoomTariff(val);
     setBookingPending(val - bookingAdvance);
+  };
+  const handleRoomChange = (roomName: string) => {
+    setRoomNumber(roomName);
+    if (bookingRoomTariff === 0) {
+      const selectedRoom = rooms.find(r => r.name === roomName);
+      if (selectedRoom && selectedRoom.default_tariff != null) {
+        setBookingRoomTariff(selectedRoom.default_tariff);
+      }
+    }
   };
   const handleAdvanceChange = (val: number) => {
     setBookingAdvance(val);
@@ -773,7 +797,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             )}
           </div>
           
-          <form noValidate className="space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
+          <form noValidate className="app-form app-form--add-guest space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
             e.preventDefault();
             const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
@@ -864,7 +888,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           }}>
             {/* Row 0: Guest Name (Full width) */}
             <div>
-              <label className="block mb-1">{t('guest_name_label', 'Guest Name *')}</label>
               <Input
                 label={t('guest_name_label', 'Guest Name *')}
                 type="text"
@@ -878,7 +901,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 1: Contact Phone + Assigned Room (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">{t('contact_phone_label', 'Contact Phone Number *')}</label>
                 <Input
                   label={t('contact_phone_label', 'Contact Phone Number *')}
                   type="tel"
@@ -892,10 +914,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* Room Selector for MultiKey Properties */}
               {isMultiKeyProperty && rooms && rooms.length > 0 && (
                 <div>
-                  <label className="block mb-1">{t('assigned_room_label', 'Assigned Room / Villa *')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('assigned_room_label', 'Assigned Room / Villa *')}</label>
                   <StyledSelect
                     value={roomNumber}
-                    onChange={setRoomNumber}
+                    onChange={handleRoomChange}
                     options={rooms.map((room) => ({ value: room.name, label: room.name }))}
                     buttonClassName="!h-[38px] !rounded-xl !border-slate-200 !font-normal !text-xs focus:!ring-blue-500 focus:!border-blue-500 !ring-blue-500/20"
                   />
@@ -906,7 +928,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 2: Booking Source + No. of Guests (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1">{t('booking_source_label', 'Booking Source')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('booking_source_label', 'Booking Source')}</label>
                 <StyledSelect
                   value={bookingSourceLocal}
                   onChange={setBookingSourceLocal}
@@ -918,7 +940,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 />
               </div>
               <div>
-                <label className="block mb-1">{t('no_of_guests_label', 'No. of Guests')}</label>
                 <Input
                   label={t('no_of_guests_label', 'No. of Guests')}
                   type="number"
@@ -947,7 +968,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Check-In & Check-Out Date Buttons (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-xs font-bold">{t('checkin_date_label', 'Check-In Date *')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('checkin_date_label', 'Check-In Date *')}</label>
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
@@ -959,7 +980,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               <div>
-                <label className="block mb-1 text-xs font-bold">{t('checkout_date_label', 'Check-Out Date *')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('checkout_date_label', 'Check-Out Date *')}</label>
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
@@ -974,7 +995,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row: Check-In & Check-Out Time (2 columns) */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-xs font-bold">{t('checkin_time_label', 'Check-In Time (Optional)')}</label>
                 <Input
                   label={t('checkin_time_label', 'Check-In Time (Optional)')}
                   type="time"
@@ -983,7 +1003,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 />
               </div>
               <div>
-                <label className="block mb-1 text-xs font-bold">{t('checkout_time_label', 'Check-Out Time (Optional)')}</label>
                 <Input
                   label={t('checkout_time_label', 'Check-Out Time (Optional)')}
                   type="time"
@@ -995,7 +1014,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             {/* Total Room Tariff */}
             <div>
-              <label className="block mb-1">{t('room_rent', 'Room Rent / Price (₹)')}</label>
               <Input
                 label={t('room_rent', 'Room Rent / Price (₹)')}
                 type="number"
@@ -1010,7 +1028,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {bookingRoomTariff > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1">{t('advance_paid', 'Advance Paid (₹)')}</label>
                   <Input
                     label={t('advance_paid', 'Advance Paid (₹)')}
                     type="number"
@@ -1021,7 +1038,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {bookingAdvance > 0 && (
                   <div>
-                    <label className="block mb-1">{t('advance_received_by', 'Advance Received By *')}</label>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('advance_received_by', 'Advance Received By *')}</label>
                     <StyledSelect
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
@@ -1038,7 +1055,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {bookingAdvance > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1">{t('pending_balance_label', 'Pending Balance (₹)')}</label>
                   <Input
                     label={t('pending_balance_label', 'Pending Balance (₹)')}
                     type="number"
@@ -1049,7 +1065,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {bookingPending > 0 && (
                   <div>
-                    <label className="block mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('pending_received_by_label', 'Pending Received By')}</label>
                     <StyledSelect
                       value={pendingReceivedBy}
                       onChange={setPendingReceivedBy}
@@ -1356,13 +1372,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
                 <div className="flex justify-between items-center text-xs py-1">
                   <span className="text-slate-600 font-semibold">Advance Paid:</span>
-                  <strong className="text-emerald-600 font-bold">
+                  <strong className="summary-line summary-line--advance-paid text-emerald-600 font-bold">
                     + ₹{advancePaid.toFixed(2)} by {advancePayer}
                   </strong>
                 </div>
                 <div className="flex justify-between items-center text-xs py-1 border-t border-dashed border-slate-200 pt-2">
                   <span className="text-slate-600 font-semibold">Pending Lodging Due:</span>
-                  <strong className="text-emerald-700 font-bold">
+                  <strong className="summary-line summary-line--pending-lodging-due text-emerald-700 font-bold">
                     ₹{lodgingPendingDue.toFixed(2)} Settled via {pendingSettledBy}
                   </strong>
                 </div>
@@ -1376,10 +1392,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {/* INSERTION FORM WITH --CUSTOM-- DISH OPTION */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
-                  <form onSubmit={handleInsertFoodItem} className="space-y-3">
+                   <form onSubmit={handleInsertFoodItem} className="app-form app-form--add-food-order space-y-3">
                     <div className="flex flex-wrap items-end gap-3 text-xs">
                       <div className="flex-1 min-w-[200px]">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                           Select Dish / Item
                         </label>
                         <StyledSelect
@@ -1397,7 +1413,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       </div>
 
                       <div className="w-24">
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1 text-center">
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 text-center">
                           Quantity
                         </label>
                         <Input
@@ -1426,7 +1442,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     {selectedDishId === 'custom' && (
                       <div className="flex flex-wrap items-end gap-3 pt-2 border-t border-dashed border-slate-300 text-xs animate-in fade-in">
                         <div className="flex-1 min-w-[180px]">
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                             Custom Dish Name *
                           </label>
                           <Input
@@ -1439,7 +1455,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           />
                         </div>
                         <div className="w-32">
-                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                             Price (₹) *
                           </label>
                           <Input
@@ -1557,9 +1573,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <Plus className="w-4 h-4" /> Add Custom Adjustments
                 </div>
 
-                <form onSubmit={handleAddAdjustment} className="space-y-3">
+                <form onSubmit={handleAddAdjustment} className="app-form app-form--add-adjustment space-y-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       Strategy Type
                     </label>
                     <StyledSelect
@@ -1574,7 +1590,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                   {adjType === 'charge' ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                         Charge Category
                       </label>
                       <StyledSelect
@@ -1597,7 +1613,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                         Discount Label
                       </label>
                       <Input
@@ -1611,7 +1627,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       Amount (₹)
                     </label>
                     <Input
@@ -1642,7 +1658,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <Flag className="w-4 h-4" /> Final Checkout Split Settlement
                 </div>
 
-                <form onSubmit={handleCompleteCheckout} className="space-y-4">
+                <form onSubmit={handleCompleteCheckout} className="app-form app-form--complete-checkout space-y-4">
                   {/* Target Due & Running Stack Summary */}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
                     <div className="flex justify-between items-center text-slate-600 font-medium">

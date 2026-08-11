@@ -102,12 +102,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
-  const [, setBlockedDates] = useState<Array<{
+  const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
     event_title: string;
     reservation_url?: string;
     source?: string;
+    source_label?: string;
   }>>([]);
 
   // Fetch blocked dates from iCal sync
@@ -865,6 +866,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             const dayBooking = guests.find(
               (g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || g.expectedCheckout)
             );
+            // OTA-synced block for this day, on this room's own feed (this
+            // component already fetches get_blocked_dates scoped to whichever
+            // room's page it's rendered on). Only relevant when there's no
+            // direct guest booking already occupying the day - a synced OTA
+            // event usually corresponds 1:1 with a guest row once it's been
+            // turned into an actual booking, and the guest row should win.
+            const otaBlock = !dayBooking
+              ? blockedDates.find((bd) => {
+                  const start = bd.event_start.split(' ')[0].split('T')[0];
+                  const end = bd.event_end.split(' ')[0].split('T')[0];
+                  return dateStr >= start && dateStr < end;
+                })
+              : null;
             const isToday = d === today.getDate();
 
             const amount = (dayBooking as any)?.totalCharge || (dayBooking as any)?.totalAmount || (dayBooking as any)?.total_charge || 0;
@@ -906,6 +920,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
                   </button>
                 )}
+                {otaBlock && (
+                  <div
+                    title={t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-bold flex flex-col justify-center shadow-xs truncate w-full cursor-help"
+                  >
+                    <div className="truncate font-bold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -916,6 +938,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-400" />
             <span>{t('legend_today', 'Today')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-slate-500 dark:bg-slate-600" />
+            <span>{t('legend_ota_blocked', 'OTA-Blocked (not yet a booking)')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-teal-600" />

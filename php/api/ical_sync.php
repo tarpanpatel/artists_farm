@@ -268,7 +268,13 @@ class ICalSyncManager {
             foreach ($events as $event) {
                 // Store full event data including booking_id
                 $eventData = $event;
-                $eventData['source'] = 'airbnb'; // Mark source
+                // SECURITY/CORRECTNESS (11 Aug 2026): this used to be hardcoded to
+                // 'airbnb' regardless of which platform the feed actually came from -
+                // every Booking.com/Google/other feed's blocks were silently
+                // mislabeled. Use the sync config's own service_type/service_name
+                // (set correctly when the feed was connected) instead.
+                $eventData['source'] = $sync['service_type'] ?: 'other';
+                $eventData['source_label'] = $sync['service_name'] ?: ucfirst($eventData['source']);
 
                 $insertStmt->execute([
                     ':sync_id' => $sync['id'],
@@ -385,26 +391,60 @@ class ICalSyncManager {
 
     public function getBlockedDates($propertyId) {
         try {
-            $query = "SELECT event_start, event_end, event_title, event_data, external_event_id
+            $propertyId = intval($propertyId);
+            // If this resolved to a MULTI_KEY parent, expand to include its rooms too -
+            // each room is its own properties row and iCal syncs are connected per
+            // room, not per parent, so a parent-scoped call would otherwise silently
+            // return nothing for every multi-key property.
+            $scopeIds = [$propertyId];
+            $roomStmt = $this->pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+            $roomStmt->execute([$propertyId]);
+            foreach ($roomStmt->fetchAll(PDO::FETCH_COLUMN) as $roomId) {
+                $scopeIds[] = (int)$roomId;
+            }
+            $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+
+            $query = "SELECT event_start, event_end, event_title, event_data, external_event_id,
+                             c.property_id as room_id, c.service_type, c.service_name
                      FROM ical_synced_events e
                      JOIN ical_sync_configs c ON e.sync_config_id = c.id
-                     WHERE c.property_id = :property_id
+                     WHERE c.property_id IN ($placeholders)
                      AND e.sync_status = 'synced'
                      ORDER BY event_start ASC";
 
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute([':property_id' => intval($propertyId)]);
+            $stmt->execute($scopeIds);
             $events = $stmt->fetchAll();
 
             // Parse event_data to extract booking info
             foreach ($events as &$event) {
                 $data = json_decode($event['event_data'], true);
                 $event['reservation_url'] = $data['reservation_url'] ?? null;
-                $event['source'] = $data['source'] ?? 'unknown';
+                // Prefer the sync config's own service_type/service_name (set
+                // correctly when the feed was connected, see syncICalEvents()) over
+                // whatever's frozen into this row's event_data - the config is the
+                // live source of truth if it was ever corrected after the sync ran.
+                $event['source'] = $event['service_type'] ?: ($data['source'] ?? 'unknown');
+                $event['source_label'] = $event['service_name'] ?: ($data['source_label'] ?? ucfirst($event['source']));
 
-                // Determine if this is an Airbnb event
-                if (strpos($event['external_event_id'], '@airbnb.com') !== false) {
+                // The service_type enum only distinguishes google/airbnb/ical/other -
+                // in real data, feeds pulled in as the generic 'ical'/'other' still
+                // need a real platform label, and the external UID is a strong,
+                // verifiable signal for that (confirmed live: a real synced feed here
+                // is saved as service_type='ical' with a non-descriptive service_name
+                // like "Property Calendar", even though every event's UID ends
+                // '@airbnb.com' - Airbnb's own export format, not user-editable).
+                // Only override the generic/unknown case, never a specific value
+                // someone deliberately set (e.g. 'google').
+                if (in_array($event['source'], ['unknown', 'ical', 'other'], true)
+                    && strpos($event['external_event_id'], '@airbnb.com') !== false) {
                     $event['source'] = 'airbnb';
+                    // Only replace the label if it doesn't already say Airbnb - a
+                    // config named e.g. "Airbnb Calendar (Room 103)" is more useful
+                    // than flattening it down to the bare word "Airbnb".
+                    if (stripos($event['source_label'], 'airbnb') === false) {
+                        $event['source_label'] = 'Airbnb';
+                    }
                 }
             }
 
