@@ -14,6 +14,82 @@ function convertSnakeToCamel($array) {
 }
 
 require_once __DIR__ . '/../config/schema_cache.php';
+require_once __DIR__ . '/../security/input_validator.php';
+
+/**
+ * First-pass input validation for guest PII write actions. Validates only the
+ * fields actually present in the payload and returns validated (trimmed/
+ * normalised) versions of them so callers can merge the result over $input.
+ * Throws Exception with a user-facing message on the first invalid field.
+ */
+function validateGuestPiiInput(array $input): array {
+    $validated = [];
+
+    $name = $input['guest_name'] ?? $input['name'] ?? null;
+    if ($name !== null) {
+        $validated['guest_name'] = InputValidator::validateString($name, 1, 120);
+    }
+
+    $phone = $input['phone_number'] ?? $input['contact'] ?? null;
+    if ($phone !== null && trim((string)$phone) !== '') {
+        $phoneDigits = preg_replace('/\D/', '', (string)$phone);
+        if (strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
+            throw new Exception('Phone number must be 7 to 15 digits');
+        }
+        $validated['phone_number'] = $phoneDigits;
+    }
+
+    // Dates may arrive as "Y-m-d" or "Y-m-d H:i:s" - validate the date part only.
+    foreach (['checkin_date' => 'Check-in date', 'expected_checkout' => 'Check-out date'] as $field => $label) {
+        $value = $input[$field] ?? null;
+        if ($value !== null && trim((string)$value) !== '') {
+            $datePart = explode(' ', trim((string)$value))[0];
+            InputValidator::validateDate($datePart, 'Y-m-d');
+            $validated[$field] = trim((string)$value);
+        }
+    }
+
+    if (array_key_exists('no_of_guests', $input) && $input['no_of_guests'] !== null && $input['no_of_guests'] !== '') {
+        $validated['no_of_guests'] = InputValidator::validateInteger($input['no_of_guests'], 1, 100);
+    }
+    foreach (['base_room_rent', 'advance_paid', 'total_charge', 'pending_amount'] as $moneyField) {
+        if (array_key_exists($moneyField, $input) && $input[$moneyField] !== null && $input[$moneyField] !== '') {
+            $validated[$moneyField] = InputValidator::validateFloat($input[$moneyField], 0);
+        }
+    }
+
+    foreach (['notes' => 2000, 'booking_source' => 255, 'advance_received_by' => 255, 'pending_received_by' => 255] as $textField => $maxLen) {
+        if (isset($input[$textField]) && trim((string)$input[$textField]) !== '') {
+            $validated[$textField] = InputValidator::validateString($input[$textField], 1, $maxLen);
+        }
+    }
+
+    if (array_key_exists('is_foreign_guest', $input) && $input['is_foreign_guest'] !== null) {
+        $validated['is_foreign_guest'] = InputValidator::validateBoolean($input['is_foreign_guest']) ? 1 : 0;
+    }
+
+    return $validated;
+}
+
+/**
+ * Validates a guest/id-document identifier as a positive integer, emitting a
+ * 400 JSON error response and returning null when the value is missing or
+ * invalid so callers can short-circuit with `break`.
+ */
+function validateGuestIdOrRespond($value, string $fieldName = 'id') {
+    if ($value === null || $value === '') {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => $fieldName . ' is required']);
+        return null;
+    }
+    try {
+        return InputValidator::validateInteger($value, 1);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => $fieldName . ' must be a positive integer']);
+        return null;
+    }
+}
 
 function ensureIdVerificationSchema($pdo) {
     if (isSchemaVerified('schema_id_verification')) return;
@@ -161,6 +237,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
+                if (!is_array($input)) $input = [];
+                try {
+                    $input = array_merge($input, validateGuestPiiInput($input));
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                    break;
+                }
                 try {
                     // add_guest never actually wrote room_id - every booking landed
                     // in guests with room_id NULL regardless of which room the admin
@@ -276,8 +360,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
+                if (!is_array($input)) $input = [];
                 try {
-                    $guestId = $input['id'];
+                    $input = array_merge($input, validateGuestPiiInput($input));
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                    break;
+                }
+                try {
+                    $guestId = validateGuestIdOrRespond($input['id'] ?? null);
+                    if ($guestId === null) break;
                     $roomId = isset($input['room_id']) && $input['room_id'] !== '' ? intval($input['room_id']) : null;
                     $newCheckin = $input['checkin_date'] ?? date('Y-m-d');
                     $newCheckout = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
@@ -467,12 +560,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'delete_guest':
             if ($request_method === 'POST' || $request_method === 'DELETE') {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $guestId = $input['id'] ?? null;
-                if (!$guestId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
-                    break;
-                }
+                $guestId = validateGuestIdOrRespond($input['id'] ?? null);
+                if ($guestId === null) break;
                 try {
                     $stmt = $pdo->prepare("DELETE FROM guests WHERE id = ? AND property_id = ?");
                     $stmt->execute([$guestId, $propertyId]);
@@ -492,12 +581,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'checkout_guest':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                $guestId = validateGuestIdOrRespond($input['id'] ?? null);
+                if ($guestId === null) break;
                 try {
                     $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', checkout_date = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([date('Y-m-d'), $input['id'], $propertyId]);
+                    $stmt->execute([date('Y-m-d'), $guestId, $propertyId]);
                 } catch (PDOException $e) {
                     $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', check_out = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([date('Y-m-d H:i:s'), $input['id'], $propertyId]);
+                    $stmt->execute([date('Y-m-d H:i:s'), $guestId, $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
             }
@@ -507,12 +598,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
-                $guestId = $input['id'] ?? null;
-                if (!$guestId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
-                    break;
-                }
+                $guestId = validateGuestIdOrRespond($input['id'] ?? null);
+                if ($guestId === null) break;
                 try {
                     $stmt = $pdo->prepare("UPDATE guests SET status = 'Checked In', checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?");
                     $stmt->execute([date('Y-m-d H:i:s'), $guestId, $propertyId]);
@@ -528,12 +615,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
-                $guestId = $input['id'] ?? null;
-                if (!$guestId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
-                    break;
-                }
+                $guestId = validateGuestIdOrRespond($input['id'] ?? null);
+                if ($guestId === null) break;
                 try {
                     // Un-filing (staff caught a mistake) just clears the timestamp again.
                     $filed = !array_key_exists('filed', $input) || !empty($input['filed']);
@@ -549,12 +632,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_id_documents':
             ensureIdVerificationSchema($pdo);
-            $guestId = $_GET['guest_id'] ?? '';
-            if (!$guestId) {
-                http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'guest_id is required']);
-                break;
-            }
+            $guestId = validateGuestIdOrRespond($_GET['guest_id'] ?? null, 'guest_id');
+            if ($guestId === null) break;
             $stmt = $pdo->prepare("SELECT id, guest_index, file_path, uploaded_at FROM guest_id_documents WHERE guest_id = ? AND property_id = ? ORDER BY guest_index ASC");
             $stmt->execute([$guestId, $propertyId]);
             $docs = array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -565,10 +644,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             ensureIdVerificationSchema($pdo);
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $guestId = $input['guest_id'] ?? null;
-                $guestIndex = isset($input['guest_index']) ? intval($input['guest_index']) : null;
+                $guestId = validateGuestIdOrRespond($input['guest_id'] ?? null, 'guest_id');
+                if ($guestId === null) break;
+                try {
+                    $guestIndex = InputValidator::validateInteger($input['guest_index'] ?? null, 1, 100);
+                } catch (Exception $e) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'guest_index must be a positive integer']);
+                    break;
+                }
                 $filePath = $input['file_path'] ?? null;
-                if (!$guestId || $guestIndex === null || !$filePath) {
+                if (!$filePath) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'guest_id, guest_index, and file_path are required']);
                     break;
@@ -659,12 +745,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             ensureIdVerificationSchema($pdo);
             if ($request_method === 'POST' || $request_method === 'DELETE') {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $docId = $input['id'] ?? null;
-                if (!$docId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
-                    break;
-                }
+                $docId = validateGuestIdOrRespond($input['id'] ?? null, 'id');
+                if ($docId === null) break;
                 $pathStmt = $pdo->prepare("SELECT file_path FROM guest_id_documents WHERE id = ? AND property_id = ?");
                 $pathStmt->execute([$docId, $propertyId]);
                 $removedPath = $pathStmt->fetchColumn();
@@ -681,12 +763,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             ensureIdVerificationSchema($pdo);
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $guestId = $input['guest_id'] ?? null;
-                if (!$guestId) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'guest_id is required']);
-                    break;
-                }
+                $guestId = validateGuestIdOrRespond($input['guest_id'] ?? null, 'guest_id');
+                if ($guestId === null) break;
                 $stmt = $pdo->prepare("
                     SELECT g.guest_name, g.phone_number, g.adults, g.children, g.no_of_guests,
                            g.checkin_date, g.expected_checkout, g.is_foreign_guest, g.c_form_filed_at,
