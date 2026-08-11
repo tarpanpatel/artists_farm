@@ -38,6 +38,15 @@ if (file_exists($dist_index)) {
     $html = str_replace('href="dist/', 'href="/dist/', $html);
     $html = str_replace('="/assets/', '="/dist/assets/', $html);
 
+    // Point the manifest link at the dynamic per-request generator (php/manifest.php)
+    // instead of the static bundled manifest.json, so a PWA installed from THIS
+    // page's tenant/property reopens to the same place instead of the bare domain
+    // root (which has no tenant/property context and breaks things like the
+    // Public Demo Mode auto-login). Replaces whatever href is already there,
+    // static or Vite-hashed.
+    $manifestUrl = '/php/manifest.php?tenant_slug=' . urlencode($tenantSlug) . '&property_slug=' . urlencode($propertySlug);
+    $html = preg_replace('/<link rel="manifest" href="[^"]*"\s*\/?>/', '<link rel="manifest" href="' . $manifestUrl . '" />', $html);
+
     // Inject tenant and property slugs into the page so React can access them
     $html = str_replace('</head>', "<script>window.__TENANT_SLUG__ = '$tenantSlug'; window.__PROPERTY_SLUG__ = '$propertySlug';</script>\n</head>", $html);
 
