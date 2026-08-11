@@ -25,14 +25,18 @@ if (file_exists($dist_index)) {
     // Serve the production single-page application built from React
     $html = file_get_contents($dist_index);
 
-    // Fix all relative asset paths to be absolute from /artists_farm/
-    // This ensures assets load correctly regardless of the URL depth
-    $html = str_replace('href="./assets/', 'href="/artists_farm/dist/assets/', $html);
-    $html = str_replace('src="./assets/', 'src="/artists_farm/dist/assets/', $html);
-    $html = str_replace('./assets/', '/artists_farm/dist/assets/', $html);
-    $html = str_replace('src="dist/', 'src="/artists_farm/dist/', $html);
-    $html = str_replace('href="dist/', 'href="/artists_farm/dist/', $html);
-    $html = str_replace('="/assets/', '="/artists_farm/dist/assets/', $html);
+    // Fix all relative asset paths to be absolute from /dist/ - needed because
+    // the app is reachable at nested URLs (/{tenant}/{property}/...), where a
+    // relative "./assets/" would resolve relative to THAT path instead of the
+    // real location. Was hardcoded to "/artists_farm/dist/..." - a subfolder
+    // this site has never actually been deployed under (it's served from the
+    // domain root) - so every asset 404'd before this fix.
+    $html = str_replace('href="./assets/', 'href="/dist/assets/', $html);
+    $html = str_replace('src="./assets/', 'src="/dist/assets/', $html);
+    $html = str_replace('./assets/', '/dist/assets/', $html);
+    $html = str_replace('src="dist/', 'src="/dist/', $html);
+    $html = str_replace('href="dist/', 'href="/dist/', $html);
+    $html = str_replace('="/assets/', '="/dist/assets/', $html);
 
     // Inject tenant and property slugs into the page so React can access them
     $html = str_replace('</head>', "<script>window.__TENANT_SLUG__ = '$tenantSlug'; window.__PROPERTY_SLUG__ = '$propertySlug';</script>\n</head>", $html);

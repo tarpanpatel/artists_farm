@@ -1,6 +1,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /artists_farm/
+    # Was "/artists_farm/" - a subfolder this site has never actually been
+    # deployed under (served from the domain root on artistic-sthan.com).
+    RewriteBase /
 
     # Handle tenant/property routing for multi-tenant SaaS
     # e.g., /tenant-slug/property-slug/anything -> /index.php?tenant_slug=tenant-slug&property_slug=property-slug
