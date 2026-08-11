@@ -4,6 +4,9 @@
  * Artists Farm Resort & Kitchen Management System
  */
 
+// Automatically load Telescope error logger globally for all database-connected endpoints
+require_once __DIR__ . '/../errors/logger.php';
+
 // Restrict CORS to specific known origins. Local dev ports match src/services/api.ts's own
 // _isDev port list (3000/5173/5174/8080) - the CORS list only had 5173 before, a latent gap
 // (any of the other three ports would've been silently rejected by CORS if ever hit
@@ -76,13 +79,20 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
     $db_pass = '';
 } else {
     // Online Production Credentials
+    // SECURITY/CORRECTNESS (12 Aug 2026): was apartment_site - a database
+    // shared with an unrelated WordPress install on the same cPanel account
+    // (lamps_* tables). groundcode is a dedicated database with the full,
+    // current 91-table schema imported fresh from local dev.
     $db_host = 'localhost';
-    $live_db = 'apartment_site';
-    $db_user = 'apartment_site';
+    $live_db = 'groundcode';
+    $db_user = 'groundcode';
     $db_pass = getenv('DB_PASSWORD') ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : null);
     if ($db_pass === null) {
         http_response_code(500);
         echo json_encode(['error' => 'Database credentials not configured. Set DB_PASSWORD env var or create php/config/db_pass.php.']);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('sql', 'SQL Error', 'Production DB password missing: set DB_PASSWORD env var or php/config/db_pass.php', 'Database Config');
+        }
         error_log('Production DB password missing: set DB_PASSWORD env var or php/config/db_pass.php');
         exit();
     }
@@ -171,12 +181,18 @@ try {
         } catch (Exception $ex) {
             http_response_code(500);
             echo json_encode(['error' => 'Sandbox initialization failed.']);
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('sql', 'SQL Error', 'Sandbox database init error: ' . $ex->getMessage(), 'Database Config');
+            }
             error_log('Sandbox database init error: ' . $ex->getMessage());
             exit();
         }
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Database connection failed. Please contact system administrator.']);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('sql', 'SQL Error', 'Database connection error: ' . $e->getMessage(), 'Database Config');
+        }
         error_log('Database connection error: ' . $e->getMessage());
         exit();
     }
