@@ -205,7 +205,12 @@ if (!isset($_SESSION['username']) && $action !== 'login_user') {
             $demoStmt->execute([$demoPropertySlug]);
             $demoPropertyId = $demoStmt->fetchColumn();
             if ($demoPropertyId) {
-                $demoStaffStmt = $pdo->prepare("SELECT id, username, full_name, role FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Manager') DESC, id ASC LIMIT 1");
+                // Prefer the highest-privilege active account so demo visitors
+                // see the full tenant-admin experience (Full read-write access
+                // was the explicit decision for this feature), not whichever
+                // staff row happened to sort first. Falls back down the chain
+                // if a property's demo data predates the Super Admin persona.
+                $demoStaffStmt = $pdo->prepare("SELECT id, username, full_name, role FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Super Admin') DESC, (role = 'Admin') DESC, (role = 'Manager') DESC, id ASC LIMIT 1");
                 $demoStaffStmt->execute([$demoPropertyId]);
                 $demoStaff = $demoStaffStmt->fetch(PDO::FETCH_ASSOC);
                 if ($demoStaff) {
