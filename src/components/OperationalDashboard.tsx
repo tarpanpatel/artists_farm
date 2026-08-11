@@ -894,6 +894,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               'bg-red-600 dark:bg-red-600',
               'bg-indigo-600 dark:bg-indigo-600',
             ];
+            // Flat/muted, distinct from every active color above - this calendar
+            // never filtered out Checked Out bookings (unlike the multi-room one),
+            // but rendered them identically to active stays, which is exactly the
+            // "can't tell what's actually happening now" problem greying this out
+            // fixes.
+            const checkedOutColor = 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200';
+            const isDayBookingCheckedOut = (() => {
+              const s = String((dayBooking as any)?.status || '').trim().toLowerCase();
+              return s === 'checkedout' || s === 'checked out';
+            })();
 
             let guestColorIndex = 0;
             if (dayBooking) {
@@ -914,7 +924,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1.5 text-white text-xs font-bold flex flex-col justify-center ${colors[guestColorIndex]} shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : `text-white ${colors[guestColorIndex]}`} text-xs font-bold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
                   >
                     <div className="truncate font-bold">{dayBooking.guestName.split(' ')[0]}</div>
                     {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
@@ -942,6 +952,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-slate-500 dark:bg-slate-600" />
             <span>{t('legend_ota_blocked', 'OTA-Blocked (not yet a booking)')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" />
+            <span>{t('legend_checked_out', 'Checked Out (past stay)')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-teal-600" />

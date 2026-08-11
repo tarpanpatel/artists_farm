@@ -339,7 +339,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   // Calculate totals for a guest
   const calculateGuestTotal = (guest: Guest): number => {
-    const roomCharges = guest.roomRate ?? guest.totalAmount ?? 0;
+    // guest.roomRate is the PER-NIGHT rate (services/api.ts maps it from
+    // per_night_charges); guest.totalAmount is the actual full-stay charge
+    // (total_charge, i.e. nights x rate). This previously read roomRate
+    // first with totalAmount only as a fallback - since roomRate is always
+    // truthy for a real booking, totalAmount was never actually used. For
+    // any stay of 2+ nights that made the (correctly-computed, ~30%-of-total)
+    // advance look larger than a single night's rate, flipping this into a
+    // bogus "Refund Due to Guest" even though nothing was actually owed back.
+    const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;
     const advancePaid = guest.advanceAmount ?? 0;
     const foodBill = guest.foodBill ?? 0;
     return roomCharges - advancePaid + foodBill;
@@ -410,7 +418,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 // Same "Refund Due" relabeling as the per-guest card below -
                 // a raw negative number here read as a bug, not a refund.
                 return (
-                  <span className="text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                  <span className="summary-line summary-line--group-total text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
                     {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
                   </span>
                 );
@@ -461,29 +469,29 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
                     {/* Financial Breakdown */}
                     <div className="space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
-                      {guest.roomRate ? (
+                      {(guest.totalAmount || guest.roomRate) ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.roomRate.toFixed(2)}</span>
+                          <span className="summary-line summary-line--room-rate font-semibold text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
                         </div>
                       ) : null}
                       {guest.foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
+                          <span className="summary-line summary-line--food-bill font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
                         </div>
                       )}
                       {guest.advanceAmount > 0 && (
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-[11px]">
                           <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
-                          <span className="font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
+                          <span className="summary-line summary-line--advance-paid font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
                         <span className="text-slate-700 dark:text-slate-300">
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
-                        <span className={amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}>
+                        <span className={`summary-line summary-line--amount-due ${amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}`}>
                           ₹{Math.abs(amountDue).toFixed(2)}
                         </span>
                       </div>

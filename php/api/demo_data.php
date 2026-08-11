@@ -95,20 +95,25 @@ function generateDemoData($pdo, $propertyId) {
                 ->execute(['221 Ocean Drive, Candolim, North Goa, Goa 403515', 'https://maps.app.goo.gl/8xQz3vN2kP9r7T4A6', $propertyId]);
         }
 
+        // is_financial_handler=1 on Manager/Reception - real cash/advance-taking
+        // roles - so the "Advance/Pending Received By" dropdowns (both filter to
+        // staff.isFinancialHandler, see BookingDetailsModal.tsx) actually have
+        // someone to select instead of showing "No matches" against 4 real staff
+        // that all default to is_financial_handler=0.
         $demoUsers = [
-            ['username' => 'demo_manager', 'name' => 'Demo Manager', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active'],
-            ['username' => 'demo_chef', 'name' => 'Demo Chef', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active'],
-            ['username' => 'demo_house', 'name' => 'Demo Housekeeping', 'phone' => '9876543212', 'role' => 'Housekeeping', 'status' => 'Active'],
-            ['username' => 'demo_reception', 'name' => 'Demo Reception', 'phone' => '9876543213', 'role' => 'Manager/Reception', 'status' => 'Active'],
+            ['username' => 'demo_manager', 'name' => 'Demo Manager', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active', 'is_financial_handler' => 1],
+            ['username' => 'demo_chef', 'name' => 'Demo Chef', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active', 'is_financial_handler' => 0],
+            ['username' => 'demo_house', 'name' => 'Demo Housekeeping', 'phone' => '9876543212', 'role' => 'Housekeeping', 'status' => 'Active', 'is_financial_handler' => 0],
+            ['username' => 'demo_reception', 'name' => 'Demo Reception', 'phone' => '9876543213', 'role' => 'Manager/Reception', 'status' => 'Active', 'is_financial_handler' => 1],
         ];
 
         foreach ($demoUsers as $user) {
             $userId = 'DEMO-' . uniqid();
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO staff_users (id, property_id, username, full_name, phone, role, status, is_demo, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
+                INSERT IGNORE INTO staff_users (id, property_id, username, full_name, phone, role, status, is_financial_handler, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
             ");
-            $stmt->execute([$userId, $propertyId, $user['username'], $user['name'], $user['phone'], $user['role'], $user['status']]);
+            $stmt->execute([$userId, $propertyId, $user['username'], $user['name'], $user['phone'], $user['role'], $user['status'], $user['is_financial_handler']]);
         }
 
         // 2. Rooms - ensure 5 demo rooms exist with varied default tariffs
@@ -268,14 +273,23 @@ function generateDemoData($pdo, $propertyId) {
             }
         }
 
+        // Every booking here carries a real advance (advance = 30% of total,
+        // always > 0) - someone on staff has to have actually taken that
+        // payment, same as pending_received_by would for whoever settles the
+        // balance. Picked from the two financial-handler roles only (Manager,
+        // Reception), matching who the "Advance Received By" dropdown itself
+        // is scoped to.
+        $financialHandlerNames = ['Demo Manager', 'Demo Reception'];
+
         // Insert all bookings
         $roomNameById = array_column($rooms, 'name', 'id');
         foreach ($allBookings as $guest) {
+            $receivedBy = $financialHandlerNames[array_rand($financialHandlerNames)];
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 1)
+                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, advance_received_by, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 1)
             ");
-            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance']]);
+            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance'], $receivedBy]);
 
             // Checked-out bookings get a real settled receipt, same as an actual
             // checkout produces - otherwise Past Receipts stays empty despite a

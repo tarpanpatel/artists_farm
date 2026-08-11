@@ -23,6 +23,7 @@ production_export.sql
 vite-log.txt
 php/config/db_pass.php
 php/config/whatsapp_token.php
+php/config/unsplash_key.php
 .env
 .env.local
 .env.*.local

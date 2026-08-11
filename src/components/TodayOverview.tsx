@@ -71,12 +71,22 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // The booking API uses `Booked` and `Checked In` as well as the legacy
   // `Active` state. A calendar represents room occupancy/availability, not
   // only the legacy active-resident state, so all non-final stays belong here.
+  // Cancelled bookings never actually happened, so they stay excluded - but a
+  // Checked Out stay is real history and should still show, just visually
+  // distinct (greyed out) from what's actually happening right now, so a user
+  // browsing past months isn't looking at a calendar that's silently missing
+  // most of it.
   const calendarGuests = useMemo(() => {
     return guests.filter((g) => {
       const status = String(g.status || '').trim().toLowerCase();
-      return !['checkedout', 'checked out', 'cancelled', 'canceled'].includes(status);
+      return !['cancelled', 'canceled'].includes(status);
     });
   }, [guests]);
+
+  const isCheckedOutStatus = (status: any) => {
+    const s = String(status || '').trim().toLowerCase();
+    return s === 'checkedout' || s === 'checked out';
+  };
 
   const year = currentYear;
   const month = currentMonth;
@@ -101,7 +111,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       .sort((a, b) => new Date(a.checkinDate).getTime() - new Date(b.checkinDate).getTime());
   };
 
-  const getGuestColor = (guestId: any) => {
+  const getGuestColor = (guestId: any, status?: any) => {
+    if (isCheckedOutStatus(status)) {
+      // Deliberately flat/muted, distinct from every active-stay color below,
+      // so a completed stay reads as "history" at a glance rather than
+      // looking like it's still an active booking.
+      return 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 border border-slate-400/40 dark:border-slate-500/40';
+    }
     const colors = [
       'bg-teal-600 dark:bg-teal-600 hover:bg-teal-700 text-white border border-teal-700/30',
       'bg-emerald-600 dark:bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700/30',
@@ -390,8 +406,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         return (
                           <div
                             key={`${info.guest.id}-${idx}`}
-                            className={`px-2.5 rounded-md text-white font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
-                              info.guest.id
+                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
+                              info.guest.id,
+                              info.guest.status
                             )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
                             style={{
                               left: `${(info.startCol - 1) * 64 + 3}px`,
