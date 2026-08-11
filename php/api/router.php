@@ -45,6 +45,7 @@ require_once __DIR__ . '/configuration.php';
 require_once __DIR__ . '/multikey_properties.php';
 require_once __DIR__ . '/../service_requests/service_requests.php';
 require_once __DIR__ . '/../security/rate_limiter.php';
+require_once __DIR__ . '/../security/csrf_handler.php';
 require_once __DIR__ . '/../utils/mailer.php';
 require_once __DIR__ . '/../utils/welcome_template.php';
 
@@ -169,7 +170,9 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // here defensively since it's not property data), and the property-setup wizard (which does
 // its own tenant+property-slug ownership proof inline - see the 'update_property' case).
 // Every other action now requires an authenticated session, enforced universally below.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history'];
+// get_csrf_token added 12 Aug 2026: must be reachable before a CSRF token
+// exists at all (the token itself), and before any session/write gate below.
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -215,6 +218,19 @@ if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_a
             exit;
         }
     }
+}
+
+// SECURITY (12 Aug 2026): CSRF protection for every state-changing action
+// that isn't in $public_actions - the same "genuinely needs to work before/
+// without a session" boundary already established above, not a new one.
+// login_user/request_login_info/force_set_passcode are deliberately exempt:
+// there's no authenticated session yet for a forged request to hijack, and
+// the login flow already has its own brute-force protection (RateLimiter).
+// Every actual write once a session exists (add_guest, checkout_guest,
+// delete_user, ...) goes through apiFetch() in src/services/api.ts, which
+// attaches the X-CSRF-Token header automatically - see getCsrfToken() there.
+if ($is_write_action && !$is_public_action) {
+    CSRFHandler::validateRequest();
 }
 
 // === Tenant & Platform-Admin Access Helpers ===
@@ -461,6 +477,11 @@ if (in_array($action, $kitchen_module_actions, true)) {
 }
 
 switch ($action) {
+    // --- CSRF TOKEN ---
+    case 'get_csrf_token':
+        echo json_encode(['status' => 'success', 'token' => CSRFHandler::getToken()]);
+        break;
+
     // --- UNIFIED LOGIN ---
     case 'login_user':
         // Brute-force protection: 5 attempts / 5 minutes per client (IP + User-Agent

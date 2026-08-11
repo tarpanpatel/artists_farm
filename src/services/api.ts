@@ -229,6 +229,99 @@ export function clearApiCache(actionPrefix?: string) {
   }
 }
 
+// CSRF token cache (see php/security/csrf_handler.php + the get_csrf_token
+// action wired into router.php). Session-scoped, not per-request - fetched
+// once and reused for every write until the server says it's stale.
+let cachedCsrfToken: string | null = null;
+let csrfTokenPromise: Promise<string | null> | null = null;
+
+async function fetchCsrfToken(): Promise<string | null> {
+  try {
+    // Deliberately NOT apiFetch() - that would recurse back into this same
+    // token-attachment logic for the GET request that's supposed to fetch it.
+    const urlObj = new URL(API_BASE, window.location.origin);
+    urlObj.searchParams.set('action', 'get_csrf_token');
+    urlObj.searchParams.set('property_slug', getPropertySlug());
+    const res = await fetch(urlObj.toString(), { credentials: 'include', headers: getTestingHeaders() });
+    const json = await res.json();
+    return json?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getCsrfToken(): Promise<string | null> {
+  if (cachedCsrfToken) return cachedCsrfToken;
+  // Multiple concurrent writes on first load must not each fire their own
+  // token fetch - share the one in-flight request.
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetchCsrfToken().finally(() => { csrfTokenPromise = null; });
+  }
+  cachedCsrfToken = await csrfTokenPromise;
+  return cachedCsrfToken;
+}
+
+// SECURITY (12 Aug 2026): CSRF token attachment lives here, patched onto the
+// global fetch, rather than only inside apiFetch() below - a repo-wide audit
+// found ~49 raw fetch('.../router.php', ...) calls across 17 components that
+// bypass apiFetch() entirely (PlatformPropertyManagement, TenantDashboard,
+// CustomCSSOverride, ICalSyncManager, ...). Rewriting every one of those call
+// sites individually to attach the header was the "correct" fix but far too
+// large a surface to change safely in one pass without being able to
+// exercise each flow. Patching fetch itself protects all of them - existing
+// and any added later - without touching their request bodies/logic at all;
+// it only ever adds a header. get_csrf_token and GET requests are excluded
+// so this can never recurse into itself.
+function isCsrfProtectedRequest(urlStr: string, method: string): boolean {
+  if (method === 'GET' || !urlStr.includes('/php/api/router.php')) return false;
+  try {
+    const action = new URL(urlStr, window.location.origin).searchParams.get('action') || '';
+    return action !== 'get_csrf_token';
+  } catch {
+    return true;
+  }
+}
+
+if (typeof window !== 'undefined' && !(window as any).__csrfFetchPatched) {
+  (window as any).__csrfFetchPatched = true;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const method = (init?.method || (input instanceof Request ? input.method : undefined) || 'GET').toUpperCase();
+    const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+    if (!isCsrfProtectedRequest(urlStr, method)) {
+      return nativeFetch(input, init);
+    }
+
+    const withToken = async (): Promise<RequestInit | undefined> => {
+      const token = await getCsrfToken();
+      if (!token) return init;
+      const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+      headers.set('X-CSRF-Token', token);
+      return { ...init, headers };
+    };
+
+    let response = await nativeFetch(input, await withToken());
+
+    // Token can be stale (server restart clears sessions, or the 1h
+    // lifetime in csrf_handler.php elapsed) - refetch once and retry
+    // transparently instead of surfacing a confusing error to the user.
+    if (response.status === 403) {
+      try {
+        const body = await response.clone().json();
+        if (typeof body?.error === 'string' && body.error.toLowerCase().includes('csrf')) {
+          cachedCsrfToken = null;
+          response = await nativeFetch(input, await withToken());
+        }
+      } catch {
+        // Not a JSON CSRF error body - leave the original response as-is.
+      }
+    }
+
+    return response;
+  };
+}
+
 export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const method = (init?.method || 'GET').toUpperCase();
   const customHeaders = (init?.headers as Record<string, string>) || {};
@@ -256,6 +349,8 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     }
   }
 
+  // CSRF token attachment happens transparently inside the patched
+  // window.fetch above - nothing else to do here.
   const response = await fetch(urlObj.toString(), {
     ...init,
     credentials: 'include',
