@@ -35,10 +35,33 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `order_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `staff_meal_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `kitchen_wastage_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `kitchen_purchases_log` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `cash_drawer_entries` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `billing_receipts` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
     ];
     foreach ($alterCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
     }
+}
+
+// Real day-to-day activity (expenses, wastage, purchases, ...) doesn't land
+// one-per-day - some days have nothing logged, most have one or two, a few
+// busy days have several. Returns a flat list of DateTime objects (one entry
+// per event, days repeated for multi-event days) so callers can just
+// foreach() over it. $activeChance is the % chance any given day has any
+// activity at all.
+function burstyDayList($windowStart, $windowEnd, $activeChance = 55) {
+    $days = [];
+    for ($d = clone $windowStart; $d <= $windowEnd; $d->modify('+1 day')) {
+        if (rand(1, 100) > $activeChance) continue;
+        $roll = rand(1, 100);
+        $count = $roll <= 65 ? 1 : ($roll <= 88 ? 2 : rand(3, 4));
+        for ($c = 0; $c < $count; $c++) {
+            $days[] = clone $d;
+        }
+    }
+    return $days;
 }
 
 function generateDemoData($pdo, $propertyId) {
@@ -246,86 +269,199 @@ function generateDemoData($pdo, $propertyId) {
         }
 
         // Insert all bookings
+        $roomNameById = array_column($rooms, 'name', 'id');
         foreach ($allBookings as $guest) {
             $stmt = $pdo->prepare("
                 INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, is_demo)
                 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 1)
             ");
             $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance']]);
+
+            // Checked-out bookings get a real settled receipt, same as an actual
+            // checkout produces - otherwise Past Receipts stays empty despite a
+            // month of "completed" stays, which is exactly the kind of gap that
+            // makes seeded data read as thin rather than a real running site.
+            if ($guest['status'] === 'Checked Out') {
+                $checkinDt = new DateTime($guest['checkin']);
+                $checkoutDt = new DateTime($guest['checkout']);
+                $nights = max(1, $checkinDt->diff($checkoutDt)->days);
+                $roomTotal = $guest['total_charge'];
+                $foodTotal = rand(0, $nights * 300);
+                $miscTotal = rand(1, 100) <= 30 ? rand(50, 400) : 0;
+                $grandTotal = $roomTotal + $foodTotal + $miscTotal;
+                $paymentMethods = ['Cash', 'Online/UPI', 'Card'];
+                $stmt = $pdo->prepare("
+                    INSERT IGNORE INTO billing_receipts (id, property_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, 'Paid', ?)
+                ");
+                $stmt->execute([
+                    'RCP-' . uniqid(), $propertyId, $guest['name'], $roomNameById[$guest['room_id']] ?? '',
+                    $guest['checkin'], $guest['checkout'], $guest['per_night_charges'], $nights,
+                    $roomTotal, $roomTotal, $foodTotal, $miscTotal, $grandTotal, $guest['advance'],
+                    $paymentMethods[array_rand($paymentMethods)],
+                    $guest['checkout'],
+                ]);
+            }
         }
 
-        // 4. Demo Food Menu Items
-        $demoMenuItems = [
-            ['category' => 'Breakfast', 'name' => 'Scrambled Eggs & Toast', 'price' => 250],
-            ['category' => 'Breakfast', 'name' => 'Pancakes with Syrup', 'price' => 300],
-            ['category' => 'Breakfast', 'name' => 'Oatmeal with Fruits', 'price' => 200],
-            ['category' => 'Main Course', 'name' => 'Grilled Chicken Breast', 'price' => 450],
-            ['category' => 'Main Course', 'name' => 'Fish Curry', 'price' => 500],
-            ['category' => 'Main Course', 'name' => 'Vegetable Stir Fry', 'price' => 350],
-            ['category' => 'Beverages', 'name' => 'Fresh Orange Juice', 'price' => 100],
-            ['category' => 'Beverages', 'name' => 'Coffee', 'price' => 80],
-            ['category' => 'Beverages', 'name' => 'Tea', 'price' => 60],
-            ['category' => 'Snacks', 'name' => 'Samosas (4 pcs)', 'price' => 120],
-            ['category' => 'Snacks', 'name' => 'Garlic Bread', 'price' => 150],
-            ['category' => 'Desserts', 'name' => 'Chocolate Cake', 'price' => 200],
-            ['category' => 'Desserts', 'name' => 'Ice Cream', 'price' => 150],
+        // 4. Demo Food Menu Items - copied from the reference property (Artists
+        // Farm Jaipur, id 1)'s real ~70-item categorized menu instead of a small
+        // hardcoded placeholder list, with a category-representative image
+        // assigned (individually sourcing ~70 unique images isn't practical, but
+        // every item gets a real, thematically-correct photo this way). Falls
+        // back to a small built-in list if property 1's menu is ever empty.
+        $menuCategoryImages = [
+            'Starters' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Pakora.jpg',
+            'Chinese & Snacks' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Chow_mein.jpg',
+            'Pizzas & Sandwiches' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Pizza.jpg',
+            'Main Course' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Paneer_Butter_Masala.jpg',
+            'Breads & Rice' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Naan.jpg',
+            'Breakfast & Eggs' => 'https://placehold.co/800x600/png?text=Breakfast+%26+Eggs',
+            'Salads & Raita' => 'https://placehold.co/800x600/png?text=Salads+%26+Raita',
+            'Beverages' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Masala_chai.jpg',
         ];
 
+        $refMenuStmt = $pdo->prepare("
+            SELECT mi.name, mi.price, COALESCE(mc.name, 'Main Course') as category_name
+            FROM menu_items mi
+            LEFT JOIN menu_categories mc ON mi.category_id = mc.id
+            WHERE mi.property_id = 1 AND mi.is_demo = 0 AND mi.is_hidden = 0
+        ");
+        $refMenuStmt->execute();
+        $demoMenuItems = $refMenuStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($demoMenuItems)) {
+            $demoMenuItems = [
+                ['category_name' => 'Breakfast & Eggs', 'name' => 'Scrambled Eggs & Toast', 'price' => 250],
+                ['category_name' => 'Main Course', 'name' => 'Grilled Chicken Breast', 'price' => 450],
+                ['category_name' => 'Main Course', 'name' => 'Vegetable Stir Fry', 'price' => 350],
+                ['category_name' => 'Beverages', 'name' => 'Fresh Orange Juice', 'price' => 100],
+                ['category_name' => 'Starters', 'name' => 'Samosas (4 pcs)', 'price' => 120],
+            ];
+        }
+
         foreach ($demoMenuItems as $item) {
-            $catStmt = $pdo->prepare("SELECT id FROM menu_categories WHERE name = ? LIMIT 1");
-            $catStmt->execute([$item['category']]);
+            $catName = $item['category_name'];
+            // menu_categories was previously looked up/created by name only, with
+            // no property_id filter - meaning every property's demo run either
+            // reused whatever property happened to own that category name first,
+            // or (since the INSERT never set property_id either) silently
+            // mis-attributed new categories to property_id's column default (1,
+            // i.e. Jaipur). Scoped properly here.
+            $catStmt = $pdo->prepare("SELECT id FROM menu_categories WHERE name = ? AND property_id = ? LIMIT 1");
+            $catStmt->execute([$catName, $propertyId]);
             $catId = $catStmt->fetchColumn();
 
             if (!$catId) {
-                $stmt = $pdo->prepare("INSERT INTO menu_categories (name) VALUES (?)");
-                $stmt->execute([$item['category']]);
+                $stmt = $pdo->prepare("INSERT INTO menu_categories (property_id, name) VALUES (?, ?)");
+                $stmt->execute([$propertyId, $catName]);
                 $catId = $pdo->lastInsertId();
             }
 
+            $imageUrl = $menuCategoryImages[$catName] ?? 'https://placehold.co/800x600/png?text=' . urlencode($catName);
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO menu_items (property_id, category_id, name, price, is_hidden, is_demo)
-                VALUES (?, ?, ?, ?, 0, 1)
+                INSERT IGNORE INTO menu_items (property_id, category_id, name, price, is_hidden, image_path, is_demo)
+                VALUES (?, ?, ?, ?, 0, ?, 1)
             ");
-            $stmt->execute([$propertyId, $catId, $item['name'], $item['price']]);
+            $stmt->execute([$propertyId, $catId, $item['name'], $item['price'], $imageUrl]);
         }
 
-        // 5. Demo Inventory Items (using req_catalog table)
-        $demoInventory = [
-            ['name' => 'Chicken Breast', 'stock' => 15, 'unit' => 'kg'],
-            ['name' => 'Rice', 'stock' => 50, 'unit' => 'kg'],
-            ['name' => 'Eggs', 'stock' => 100, 'unit' => 'pcs'],
-            ['name' => 'Milk', 'stock' => 20, 'unit' => 'litre'],
-            ['name' => 'Vegetables Mix', 'stock' => 25, 'unit' => 'kg'],
-            ['name' => 'Cleaning Supplies', 'stock' => 8, 'unit' => 'bottles'],
-            ['name' => 'Tissue Paper', 'stock' => 2, 'unit' => 'packs', 'low_stock' => true],
+        // 5. Demo Inventory Items - same idea, copied from the reference
+        // property's real ~190-item catalog instead of 7 generic placeholders.
+        // Stock levels are randomized (the reference property's real
+        // current_stock reflects today's actual pantry, not something meaningful
+        // to copy verbatim) and images are assigned per broad material bucket -
+        // 190 individually-sourced images isn't practical, but grouping the ~20
+        // real categories into a handful of visual buckets keeps every item
+        // genuinely illustrated rather than blank.
+        $inventoryBucketImages = [
+            'Vegetables' => 'https://placehold.co/800x600/png?text=Vegetables+%26+Produce',
+            'Grocery' => 'https://placehold.co/800x600/png?text=Grocery+%26+Spices',
+            'Dairy' => 'https://placehold.co/800x600/png?text=Dairy+%26+Bakery',
+            'NonVeg' => 'https://placehold.co/800x600/png?text=Non-Veg+%26+Frozen',
+            'Beverages' => 'https://commons.wikimedia.org/wiki/Special:FilePath/Masala_chai.jpg',
+            'Housekeeping' => 'https://placehold.co/800x600/png?text=Housekeeping',
+            'Crockery' => 'https://placehold.co/800x600/png?text=Crockery+%26+Disposables',
+        ];
+        $inventoryCategoryBuckets = [
+            'Vegetables & Fresh Produce' => 'Vegetables', 'Vegetables' => 'Vegetables', 'Fruits & Desserts' => 'Vegetables',
+            'Kitchen & Grocery' => 'Grocery', 'Spices & Seasonings' => 'Grocery', 'Flours & Grains' => 'Grocery', 'Lentils & Pulses' => 'Grocery',
+            'Dairy & Fresh Produce' => 'Dairy', 'Oils & Dairy Staples' => 'Dairy', 'Dairy' => 'Dairy', 'Bakery' => 'Dairy',
+            'Non Veg' => 'NonVeg', 'Frozen / Cold' => 'NonVeg', 'Chinese & Continental Sauces' => 'NonVeg', 'Sauce' => 'NonVeg',
+            'Beverages & Breakfast' => 'Beverages',
+            'Pool & Maintenance' => 'Housekeeping', 'Housekeeping' => 'Housekeeping', 'Housekeeping & Disposables' => 'Housekeeping', 'Kitchen Appliance Repairs' => 'Housekeeping',
+            'Crockery & Cutlery' => 'Crockery', 'Disposables' => 'Crockery',
         ];
 
-        foreach ($demoInventory as $item) {
-            $stmt = $pdo->prepare("
-                INSERT IGNORE INTO req_catalog (property_id, item_name, current_stock, unit_label, category_id, is_demo)
-                VALUES (?, ?, ?, ?, 1, 1)
-            ");
-            $stmt->execute([$propertyId, $item['name'], $item['stock'], $item['unit']]);
+        $refInvStmt = $pdo->prepare("
+            SELECT rc.item_name, rc.unit_label, COALESCE(mcat.name, 'Kitchen & Grocery') as category_name
+            FROM req_catalog rc
+            LEFT JOIN material_categories mcat ON rc.category_id = mcat.id
+            WHERE rc.property_id = 1 AND rc.is_demo = 0
+        ");
+        $refInvStmt->execute();
+        $demoInventory = $refInvStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($demoInventory)) {
+            $demoInventory = [
+                ['item_name' => 'Chicken Breast', 'unit_label' => 'Kg', 'category_name' => 'Non Veg'],
+                ['item_name' => 'Basmati Rice', 'unit_label' => 'Kg', 'category_name' => 'Kitchen & Grocery'],
+                ['item_name' => 'Eggs', 'unit_label' => 'Pcs', 'category_name' => 'Dairy'],
+                ['item_name' => 'Milk', 'unit_label' => 'Ltr', 'category_name' => 'Dairy'],
+                ['item_name' => 'Mixed Vegetables', 'unit_label' => 'Kg', 'category_name' => 'Vegetables'],
+                ['item_name' => 'Dish Wash Liquid', 'unit_label' => 'Ltr', 'category_name' => 'Housekeeping'],
+            ];
         }
 
-        // 6. Demo Petty Cash Entries - spread across -30 to +7 window
+        foreach ($demoInventory as $item) {
+            $catName = $item['category_name'];
+            // Same property-scoping bug as menu_categories above, fixed the same way.
+            $catStmt = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = ? LIMIT 1");
+            $catStmt->execute([$catName, $propertyId]);
+            $catId = $catStmt->fetchColumn();
+            if (!$catId) {
+                $stmt = $pdo->prepare("INSERT INTO material_categories (property_id, name) VALUES (?, ?)");
+                $stmt->execute([$propertyId, $catName]);
+                $catId = $pdo->lastInsertId();
+            }
+
+            $bucket = $inventoryCategoryBuckets[$catName] ?? 'Grocery';
+            $imageUrl = $inventoryBucketImages[$bucket];
+            // Rough, plausible stock by unit - not trying to model real par
+            // levels, just avoiding every item showing an identical number.
+            $unit = strtolower($item['unit_label']);
+            $stock = (strpos($unit, 'kg') !== false || strpos($unit, 'ltr') !== false || strpos($unit, 'liter') !== false)
+                ? rand(2, 40) : rand(10, 150);
+            // ~12% of items land in a deliberately low/out-of-stock band so the
+            // Stock Alerts feature has something real to flag.
+            if (rand(1, 100) <= 12) { $stock = rand(0, 3); }
+
+            $stmt = $pdo->prepare("
+                INSERT IGNORE INTO req_catalog (property_id, item_name, current_stock, unit_label, category_id, image_path, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([$propertyId, $item['item_name'], $stock, $item['unit_label'], $catId, $imageUrl]);
+        }
+
+        // 6. Demo Petty Cash Entries - bursty across the -30..0 window (expenses
+        // are logged as they happen, not future-dated), matching how a real
+        // property actually spends: quiet days, ordinary days, and the
+        // occasional big-shopping-run day.
         $demoExpenses = [];
-        for ($i = 0; $i < 12; $i++) {
-            $daysOffset = rand(-30, 7);
-            $date = (clone $today)->modify("$daysOffset days")->format('Y-m-d');
-            $categories = ['Kitchen Purchase', 'Maintenance', 'Staff Advance', 'Miscellaneous', 'Utilities', 'Transport'];
-            $vendors = ['Local Market', 'Hardware Store', 'Cash Advance', 'Utilities', 'Transport Co', 'Online'];
-            $descs = [
-                'Fresh vegetables and groceries',
-                'Repair supplies',
-                'Advance to staff member',
-                'Phone bill recharge',
-                'Local transport',
-                'Cleaning supplies',
-            ];
+        $categories = ['Kitchen Purchase', 'Maintenance', 'Staff Advance', 'Miscellaneous', 'Utilities', 'Transport'];
+        $vendors = ['Local Market', 'Hardware Store', 'Cash Advance', 'Utilities', 'Transport Co', 'Online'];
+        $descs = [
+            'Fresh vegetables and groceries',
+            'Repair supplies',
+            'Advance to staff member',
+            'Phone bill recharge',
+            'Local transport',
+            'Cleaning supplies',
+        ];
+        foreach (burstyDayList($windowStart, $today, 45) as $day) {
             $catIdx = array_rand($categories);
             $demoExpenses[] = [
-                'date' => $date,
+                'date' => $day->format('Y-m-d'),
                 'category' => $categories[$catIdx],
                 'amount' => rand(200, 5000),
                 'vendor' => $vendors[$catIdx],
@@ -342,14 +478,14 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$expId, $propertyId, $exp['date'], $exp['category'], $exp['amount'], $exp['desc'], $exp['vendor']]);
         }
 
-        // 6b. Demo Staff Meal Logs - spread across the past 30 days (logs are
-        // historical records only, no future dates)
+        // 6b. Demo Staff Meal Logs - bursty across the past 30 days (logs are
+        // historical records only, no future dates). Meals get logged 2-3x on a
+        // normal day (breakfast/lunch/dinner) and sometimes get missed entirely.
         $mealDescs = ['Dal, rice, sabzi, roti', 'Chicken curry, rice', 'Leftover breakfast buffet', 'Veg thali', 'Fish curry, rice', 'Roti, sabzi, curd'];
         $mealStaffGroups = ['Demo Manager, Demo Chef', 'Demo Housekeeping, Demo Reception', 'Demo Chef', 'All Staff'];
         $mealHours = [8, 13, 20];
-        for ($i = 0; $i < 14; $i++) {
-            $daysOffset = rand(-30, 0);
-            $loggedAt = (clone $today)->modify("$daysOffset days")->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', $mealHours[array_rand($mealHours)], rand(0, 59));
+        foreach (burstyDayList($windowStart, $today, 60) as $day) {
+            $loggedAt = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', $mealHours[array_rand($mealHours)], rand(0, 59));
             $stmt = $pdo->prepare("
                 INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer, logged_at, is_demo)
                 VALUES (?, ?, ?, ?, ?, 1)
@@ -357,39 +493,114 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $mealStaffGroups[array_rand($mealStaffGroups)], $mealDescs[array_rand($mealDescs)], rand(0, 4) === 0 ? 1 : 0, $loggedAt]);
         }
 
-        // 7. Demo Service Requests - today's open requests + historical closed ones
+        // 6c. Demo Kitchen Wastage Logs - bursty across the past 30 days
+        $wastageItems = ['Tomato', 'Onion', 'Paneer', 'Bread', 'Milk', 'Green Salad', 'Rice', 'Chicken'];
+        $wastageReasons = ['Spoiled/Expired', 'Overcooked', 'Guest Return', 'Prep Wastage', 'Contaminated'];
+        foreach (burstyDayList($windowStart, $today, 35) as $day) {
+            $stmt = $pdo->prepare("
+                INSERT INTO kitchen_wastage_logs (id, property_id, date, item_name, wasted_qty, unit, reason, reported_by, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([
+                'WST-' . uniqid(), $propertyId, $day->format('Y-m-d'),
+                $wastageItems[array_rand($wastageItems)], rand(1, 8) / 2, 'Kg',
+                $wastageReasons[array_rand($wastageReasons)], 'Demo Chef',
+            ]);
+        }
+
+        // 6d. Demo Kitchen Purchases Log - bursty across the past 30 days,
+        // split between paid and unpaid / Farm Cash and Out-of-Pocket like a
+        // real property's actual purchase settlement mix.
+        $purchaseItems = [
+            ['name' => 'Basmati Rice', 'unit' => 'Kg', 'rate' => 65],
+            ['name' => 'Cooking Oil (Sunflower)', 'unit' => 'Ltr', 'rate' => 140],
+            ['name' => 'Chicken', 'unit' => 'Kg', 'rate' => 220],
+            ['name' => 'Fresh Vegetables Mix', 'unit' => 'Kg', 'rate' => 45],
+            ['name' => 'Paneer (Fresh)', 'unit' => 'Kg', 'rate' => 320],
+            ['name' => 'LPG Gas Cylinder', 'unit' => 'Pc', 'rate' => 1100],
+        ];
+        foreach (burstyDayList($windowStart, $today, 40) as $day) {
+            $item = $purchaseItems[array_rand($purchaseItems)];
+            $qty = round(rand(2, 20) / 2, 1);
+            $total = round($qty * $item['rate'], 2);
+            $isPaid = rand(1, 100) <= 70;
+            $stmt = $pdo->prepare("
+                INSERT INTO kitchen_purchases_log (id, property_id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, is_demo)
+                VALUES (?, ?, ?, ?, 'Standard', ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([
+                'PUR-' . uniqid(), $propertyId, $day->format('Y-m-d'), $item['name'],
+                $qty, $item['unit'], $total, $item['rate'], 'Demo Chef', 'Local Market',
+                $isPaid ? 'Paid' : 'Unpaid', rand(0, 1) ? 'Farm Cash' : 'Out-of-Pocket',
+            ]);
+        }
+
+        // 6e. Demo Cash Drawer Entries - a handover every few days plus the
+        // occasional manual adjustment
+        foreach (burstyDayList($windowStart, $today, 25) as $day) {
+            $type = rand(1, 100) <= 80 ? 'handover' : 'manual_adjustment';
+            $staffPick = $demoUsers[array_rand($demoUsers)];
+            $stmt = $pdo->prepare("
+                INSERT INTO cash_drawer_entries (property_id, staff_id, staff_name, type, amount, handed_to, notes, created_at, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([
+                $propertyId, 'DEMO-CASH-' . uniqid(), $staffPick['name'], $type,
+                rand(500, 8000), $type === 'handover' ? 'Demo Manager' : null,
+                $type === 'handover' ? 'End of shift handover' : 'Petty cash top-up',
+                $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(18, 22), rand(0, 59)),
+            ]);
+        }
+
+        // 7. Demo Service Requests - real varied guests (not one generic "Demo
+        // Guest" for every request), correct status vocabulary, and a genuine
+        // pending/fulfilled mix. The real app uses 'Pending'/'Fulfilled'
+        // (confirmed via `SELECT DISTINCT status FROM service_requests` against
+        // live data) - this previously wrote lowercase 'open'/'resolved', which
+        // wouldn't have matched whatever status-based filtering/styling the UI
+        // does, though fulfilled_at/fulfilled_by were also never populated at
+        // all so a "closed" demo request wouldn't show who closed it or when.
         $serviceRequestTypes = [
             'ac_heating_issue', 'hot_water_geyser', 'fresh_towels', 'extra_bedding',
             'tea_coffee_replenish', 'late_checkout_request', 'wifi_connectivity'
         ];
 
-        $todayStr = $today->format('Y-m-d');
         $serviceRequests = [];
         foreach ($serviceRequestTypes as $typeId) {
-            // 2-3 requests per type, some today (open), some past (closed)
-            for ($i = 0; $i < rand(2, 3); $i++) {
-                $daysOffset = rand(-25, 2);
-                $reqDate = (clone $today)->modify("$daysOffset days")->format('Y-m-d H:i:s');
-                $isToday = ($daysOffset >= -1 && $daysOffset <= 0);
+            foreach (burstyDayList($windowStart, $today, 30) as $day) {
+                if (rand(1, 100) > 40) continue; // not every active day generates every request type
+                $reqDate = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(7, 22), rand(0, 59));
+                $isRecent = $day >= (clone $today)->modify('-2 days');
+                // Recent requests are more likely to still be pending, matching how
+                // a real property clears its backlog over time rather than
+                // instantly.
+                $isPending = $isRecent ? (rand(1, 100) <= 70) : (rand(1, 100) <= 15);
+                $guestName = $guestNames[array_rand($guestNames)];
                 $roomId = $roomIds[array_rand($roomIds)];
 
-                $serviceRequests[] = [
+                $req = [
                     'property_id' => $propertyId,
                     'room_id' => $roomId,
                     'request_type' => $typeId,
-                    'description' => ucwords(str_replace('_', ' ', $typeId)) . ' - Demo request',
-                    'requested_by' => 'Demo Guest',
-                    'status' => $isToday ? 'open' : 'resolved',
+                    'description' => ucwords(str_replace('_', ' ', $typeId)) . ' - requested by guest',
+                    'requested_by' => $guestName,
+                    'status' => $isPending ? 'Pending' : 'Fulfilled',
                     'scheduled_at' => $reqDate,
                     'created_at' => $reqDate,
                     'is_demo' => 1,
                 ];
+                if (!$isPending) {
+                    $fulfilledDelay = rand(15, 240); // 15min - 4hr turnaround
+                    $req['fulfilled_at'] = (new DateTime($reqDate))->modify("+$fulfilledDelay minutes")->format('Y-m-d H:i:s');
+                    $req['fulfilled_by'] = 'Demo Manager';
+                }
+                $serviceRequests[] = $req;
             }
         }
 
         $stmt = $pdo->prepare("
-            INSERT IGNORE INTO service_requests (property_id, room_id, request_type, description, requested_by, status, scheduled_at, created_at, is_demo)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT IGNORE INTO service_requests (property_id, room_id, request_type, description, requested_by, status, scheduled_at, created_at, fulfilled_at, fulfilled_by, is_demo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         foreach ($serviceRequests as $req) {
             $stmt->execute([
@@ -401,6 +612,8 @@ function generateDemoData($pdo, $propertyId) {
                 $req['status'],
                 $req['scheduled_at'],
                 $req['created_at'],
+                $req['fulfilled_at'] ?? null,
+                $req['fulfilled_by'] ?? null,
                 $req['is_demo']
             ]);
         }
@@ -568,6 +781,26 @@ function clearDemoData($pdo, $propertyId) {
 
         // Delete demo audit logs
         $stmt = $pdo->prepare("DELETE FROM audit_logs WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo kitchen wastage logs
+        $stmt = $pdo->prepare("DELETE FROM kitchen_wastage_logs WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo kitchen purchases log
+        $stmt = $pdo->prepare("DELETE FROM kitchen_purchases_log WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo cash drawer entries
+        $stmt = $pdo->prepare("DELETE FROM cash_drawer_entries WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo billing receipts
+        $stmt = $pdo->prepare("DELETE FROM billing_receipts WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
