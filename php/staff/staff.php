@@ -93,7 +93,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_staff':
         case 'get_users':
             try {
-                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
+                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -105,6 +105,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         'role'               => $r['role'],
                         'phone'              => $r['phone'] ?? '',
                         'monthlySalary'      => (float)($r['monthlySalary'] ?? 0),
+                        'dailyWage'          => (float)($r['dailyWage'] ?? 0),
                         'status'             => $r['status'] ?? 'Active',
                         'isFinancialHandler' => (bool)$r['isFinancialHandler'],
                         'passcode'           => $r['passcode'],
@@ -136,8 +137,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $newStaffId = $input['id'] ?? ('usr-' . time());
                     $accessAllProperties = !empty($input['accessAllProperties']) ? 1 : 0;
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -145,6 +146,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             phone = VALUES(phone),
                             phone_number = VALUES(phone_number),
                             monthly_salary = VALUES(monthly_salary),
+                            daily_wage = VALUES(daily_wage),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
@@ -159,6 +161,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $username,
                         $username,
                         $input['monthlySalary'] ?? 0,
+                        $input['dailyWage'] ?? 0,
                         $input['status'] ?? 'Active',
                         !empty($input['isFinancialHandler']) ? 1 : 0,
                         $passcode,
@@ -194,6 +197,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $role             = $input['role'] ?? ($existing['role'] ?? 'Staff');
                     $phone            = $input['phone'] ?? ($existing['phone'] ?? '');
                     $monthlySalary    = isset($input['monthlySalary']) ? $input['monthlySalary'] : ($existing['monthly_salary'] ?? 0);
+                    $dailyWage        = isset($input['dailyWage']) ? $input['dailyWage'] : ($existing['daily_wage'] ?? 0);
                     $status           = $input['status'] ?? ($existing['status'] ?? 'Active');
                     $isFinancialHandler = isset($input['isFinancialHandler']) ? ($input['isFinancialHandler'] ? 1 : 0) : ($existing['is_financial_handler'] ?? 0);
                     if (!empty($input['passcode']) && !preg_match('/^\d{6}$/', $input['passcode'])) {
@@ -217,8 +221,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         ? ($input['accessAllProperties'] ? 1 : 0)
                         : (int)($existing['access_all_properties'] ?? 0);
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -226,6 +230,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             phone = VALUES(phone),
                             phone_number = VALUES(phone_number),
                             monthly_salary = VALUES(monthly_salary),
+                            daily_wage = VALUES(daily_wage),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
@@ -240,6 +245,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $phone,
                         $phoneNumber,
                         $monthlySalary,
+                        $dailyWage,
                         $status,
                         $isFinancialHandler,
                         $passcode,

@@ -94,7 +94,6 @@ try {
       ['label' => 'Misc Charges', 'tabKey' => 'petty_cash', 'uniqueKey' => 'misc_charges'],
       ['label' => 'Staff & Permissions', 'tabKey' => 'staff', 'uniqueKey' => 'staff_permissions'],
       ['label' => 'Attendance Calendar', 'tabKey' => 'staff', 'uniqueKey' => 'attendance_calendar'],
-      ['label' => 'Staff Directory', 'tabKey' => 'staff', 'uniqueKey' => 'staff_directory_salaries'],
       ['label' => 'Dashboard Analytics', 'tabKey' => 'analytics', 'uniqueKey' => 'dashboard_analytics'],
       ['label' => 'Purchase Analytics', 'tabKey' => 'analytics', 'uniqueKey' => 'purchase_analytics'],
       ['label' => 'Past Receipts', 'tabKey' => 'audit_logs', 'uniqueKey' => 'past_receipts_log'],

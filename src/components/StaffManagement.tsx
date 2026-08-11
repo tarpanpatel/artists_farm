@@ -76,6 +76,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newIsFinancialHandler, setNewIsFinancialHandler] = useState(false);
   const [newAccessAllProperties, setNewAccessAllProperties] = useState(false);
   const [newQrCodeUrl, setNewQrCodeUrl] = useState('');
+  const [newDailyWage, setNewDailyWage] = useState('');
 
   // 2. Create Payee
   const [newPayeeName, setNewPayeeName] = useState('');
@@ -91,6 +92,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
   const [updateAccessAllProperties, setUpdateAccessAllProperties] = useState(false);
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
+  const [updateDailyWage, setUpdateDailyWage] = useState('');
 
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -315,6 +317,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       isFinancialHandler: newIsFinancialHandler,
       qrCodeUrl: newQrCodeUrl || undefined,
       status: 'Active',
+      dailyWage: newDailyWage ? Number(newDailyWage) : 0,
     };
     const saved = await addStaffUserDB({
       id: newUser.id,
@@ -327,6 +330,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       accessAllProperties: newUser.accessAllProperties,
       qrCodeUrl: newUser.qrCodeUrl,
       status: newUser.status,
+      dailyWage: newUser.dailyWage,
     });
     if (!saved) {
       showToast('Unable to save the staff member to the database.', { type: 'error' });
@@ -340,6 +344,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewQrCodeUrl('');
     setNewIsFinancialHandler(false);
     setNewAccessAllProperties(false);
+    setNewDailyWage('');
   };
 
    const handleDeleteUser = async (id: string) => {
@@ -423,6 +428,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       isFinancialHandler: updateIsFinancialHandler,
       accessAllProperties: updateAccessAllProperties,
       qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+      dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
     });
     if (!saved) {
       showToast('Unable to update the user in the database.', { type: 'error' });
@@ -435,6 +441,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setUpdatePasscode('');
     setUpdateRole('');
     setUpdateQrCodeUrl('');
+    setUpdateDailyWage('');
     showToast('User account updated successfully!', { type: 'success' });
   };
 
@@ -906,6 +913,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </Tooltip>
                       </div>
                     </div>
+                    <div>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newDailyWage}
+                        onChange={(e) => setNewDailyWage(e.target.value)}
+                        placeholder="e.g. 800"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
                     <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
                       <input
                         type="checkbox"
@@ -965,6 +983,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             setUpdateRole(target.role);
                             setUpdateIsFinancialHandler(target.isFinancialHandler);
                             setUpdateAccessAllProperties(Boolean(target.accessAllProperties));
+                            setUpdateDailyWage(target.dailyWage ? String(target.dailyWage) : '');
                           }
                         }}
                         placeholder="-- Choose User Profile --"
@@ -1052,6 +1071,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {t('help_label', 'Help?')}
                         </span>
                       </Tooltip>
+                    </div>
+                    <div>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={updateDailyWage}
+                        onChange={(e) => setUpdateDailyWage(e.target.value)}
+                        placeholder="e.g. 800"
+                        className="text-slate-900 dark:text-white"
+                      />
                     </div>
                     <div>
                       <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>

@@ -280,6 +280,9 @@ export interface UserAccount {
   isFinancialHandler: boolean;
   qrCodeUrl?: string;
   status: string;
+  // Flat day-rate for staff paid daily rather than a monthly salary -
+  // independent figure, not derived from monthlySalary.
+  dailyWage?: number;
   // When true, this staff member can log into any property under their own
   // tenant instead of being locked to a single one - see php/security/access_control.php
   // and StaffPropertyPicker.tsx. Never spans tenants.

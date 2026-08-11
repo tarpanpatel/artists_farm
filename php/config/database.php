@@ -122,6 +122,17 @@ try {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
         }
 
+        $staffUsersCols = [
+            // Independent day-rate for staff paid daily rather than a monthly
+            // salary - not derived from monthly_salary (the roster page already
+            // computes monthly_salary / days-in-month as a read-only reference;
+            // this is a genuinely separate, directly-editable figure).
+            "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `daily_wage` DECIMAL(10,2) DEFAULT 0.00",
+        ];
+        foreach ($staffUsersCols as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+
         if (function_exists('initializeDatabaseTables')) {
             initializeDatabaseTables($pdo);
         }
