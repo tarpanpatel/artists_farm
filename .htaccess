@@ -1,3 +1,10 @@
+# The server's default DirectoryIndex order favors index.html over index.php,
+# so requests to / were serving the raw Vite SOURCE template (script src=
+# "/src/main.tsx", never transpiled in production) instead of routing to
+# index.php, which injects tenant/property slugs and serves dist/index.html.
+# Result: a blank page with just the <title> visible, nothing ever mounts.
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     # Was "/artists_farm/" - a subfolder this site has never actually been
