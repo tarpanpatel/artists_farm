@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { StaffMember } from '../types';
-import { getPropertySlug } from '../services/api';
+import { getPropertySlug, apiFetch, API_ROOT_BASE } from '../services/api';
 
 // Normalize role string from backend (e.g., 'super_admin' -> 'Super Admin')
 function normalizeRole(role: string): string {
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync auth state with localStorage on mount and whenever it changes
   useEffect(() => {
-    const checkAuthState = () => {
+    const checkAuthState = async () => {
       const key = authKey();
 
       // Check property-specific auth key first
@@ -125,6 +125,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           } catch (e) {
             console.error('Failed to parse generic session:', e);
+          }
+        } else {
+          // Public demo mode (12 Aug 2026): a designated property (see
+          // properties.is_public_demo) auto-authenticates anonymous visitors
+          // with a REAL PHP session, server-side (router.php, right before
+          // $is_authenticated_user is captured) - using a real staff account
+          // on that property, not a fake frontend-only user object. This
+          // check_session call is how the frontend finds out that happened,
+          // since the backend session is invisible to localStorage-based
+          // state otherwise. (A prior version of this skipped the backend
+          // entirely and fabricated a fake "Tenant Admin" user directly here -
+          // it looked like it worked but every real data request still 401'd,
+          // since nothing here can create an actual PHP session.)
+          try {
+            const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=check_session`);
+            const data = await res.json();
+            if (data?.authenticated && data?.user) {
+              localStorage.setItem(key, 'true');
+              isAuth = true;
+
+              const user: StaffMember = {
+                id: String(data.user.id ?? data.user.username),
+                name: data.user.username,
+                username: data.user.username,
+                role: data.user.role || 'Staff',
+                phone: data.user.username,
+                monthlySalary: 0,
+                status: 'Active',
+              };
+              localStorage.setItem(userKey(), JSON.stringify(user));
+              setIsAuthenticated(true);
+              setCurrentUser(user);
+              setActiveRole(normalizeRole(user.role));
+              return;
+            }
+          } catch (e) {
+            console.error('check_session failed:', e);
           }
         }
       }

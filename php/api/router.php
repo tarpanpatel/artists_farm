@@ -181,11 +181,47 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // Every other action now requires an authenticated session, enforced universally below.
 // get_csrf_token added 12 Aug 2026: must be reachable before a CSRF token
 // exists at all (the token itself), and before any session/write gate below.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'get_audit_logs'];
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// PUBLIC DEMO MODE (12 Aug 2026): properties.is_public_demo lets anonymous
+// visitors get full real access to one specific, designated property
+// without logging in - a genuine PHP session auto-created from a real staff
+// account on that property, not a frontend-only illusion. (A prior attempt
+// at this faked the frontend's belief that the visitor was logged in, but
+// never created a real session - every actual data request still 401'd,
+// since every gate below checks $_SESSION, not frontend state.) Runs before
+// $is_authenticated_user is captured so every gate below sees a real,
+// already-authenticated session. Skipped for login_user itself so a real
+// login is never silently overridden.
+if (!isset($_SESSION['username']) && $action !== 'login_user') {
+    $demoPropertySlug = $_GET['property_slug'] ?? '';
+    if ($demoPropertySlug) {
+        try {
+            $demoStmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
+            $demoStmt->execute([$demoPropertySlug]);
+            $demoPropertyId = $demoStmt->fetchColumn();
+            if ($demoPropertyId) {
+                $demoStaffStmt = $pdo->prepare("SELECT id, username, full_name, role FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Manager') DESC, id ASC LIMIT 1");
+                $demoStaffStmt->execute([$demoPropertyId]);
+                $demoStaff = $demoStaffStmt->fetch(PDO::FETCH_ASSOC);
+                if ($demoStaff) {
+                    $_SESSION['user_id'] = $demoStaff['id'];
+                    $_SESSION['username'] = $demoStaff['username'];
+                    $_SESSION['role'] = $demoStaff['role'] ?: 'Manager';
+                    $_SESSION['property_id'] = $demoPropertyId;
+                    $_SESSION['is_public_demo_session'] = true;
+                }
+            }
+        } catch (PDOException $e) {
+            // is_public_demo column may not exist yet on some environment -
+            // fail open to "not a demo property" rather than 500ing every request.
+        }
+    }
+}
 
 // Require API key for write/delete actions, unless user is authenticated via session
 $is_write_action = in_array($request_method, ['POST', 'PUT', 'DELETE']);
@@ -489,6 +525,27 @@ switch ($action) {
     // --- CSRF TOKEN ---
     case 'get_csrf_token':
         echo json_encode(['status' => 'success', 'token' => CSRFHandler::getToken()]);
+        break;
+
+    // Lets the frontend detect a session it didn't create itself - notably
+    // the public-demo auto-login above, which only ever touches $_SESSION,
+    // never anything the frontend's own localStorage-based auth state can see.
+    case 'check_session':
+        if (isset($_SESSION['username'])) {
+            echo json_encode([
+                'status' => 'success',
+                'authenticated' => true,
+                'is_public_demo_session' => !empty($_SESSION['is_public_demo_session']),
+                'user' => [
+                    'id' => $_SESSION['user_id'] ?? null,
+                    'username' => $_SESSION['username'],
+                    'role' => $_SESSION['role'] ?? 'Staff',
+                    'property_id' => $_SESSION['property_id'] ?? null,
+                ],
+            ]);
+        } else {
+            echo json_encode(['status' => 'success', 'authenticated' => false]);
+        }
         break;
 
     // --- UNIFIED LOGIN ---
@@ -1774,7 +1831,7 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("
                 UPDATE properties
-                SET name = ?, slug = ?, tailwind_color_scheme = ?, status = ?, telegram_template_customization_enabled = ?
+                SET name = ?, slug = ?, tailwind_color_scheme = ?, status = ?, telegram_template_customization_enabled = ?, is_public_demo = ?
                 WHERE id = ?
             ");
             $ok = $stmt->execute([
@@ -1783,6 +1840,7 @@ switch ($action) {
                 $input['color_scheme'] ?? 'blue',
                 $input['status'] ?? 'active',
                 !empty($input['telegram_template_customization_enabled']) ? 1 : 0,
+                !empty($input['is_public_demo']) ? 1 : 0,
                 $property_id
             ]);
             echo json_encode(['success' => $ok, 'message' => $ok ? 'Property updated' : 'Failed']);

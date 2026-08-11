@@ -28,6 +28,19 @@ function initializeDatabaseTables($pdo) {
             error_log("Users table column migration error: " . $e->getMessage());
         }
 
+        // Public demo mode (12 Aug 2026): lets a designated property (e.g. the
+        // luxe-stays sales demo) grant real, full access to anonymous
+        // visitors without a login - see the is_public_demo check in
+        // router.php, right before $is_authenticated_user is captured.
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM properties LIKE 'is_public_demo'");
+            if (!$stmt->fetch()) {
+                $pdo->exec("ALTER TABLE properties ADD COLUMN `is_public_demo` TINYINT(1) NOT NULL DEFAULT 0");
+            }
+        } catch (Exception $e) {
+            error_log("properties.is_public_demo migration error: " . $e->getMessage());
+        }
+
         // Ensure staff_users table has phone_number and passcode columns
         try {
             $stmt = $pdo->query("SHOW TABLES LIKE 'staff_users'");

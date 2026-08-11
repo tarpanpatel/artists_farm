@@ -5,6 +5,7 @@ import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
 import { ScrollToTopButton } from './ScrollToTopButton';
+import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 
 interface Tenant {
@@ -33,6 +34,7 @@ interface Property {
   timezone?: string;
   parent_property_id?: number;
   telegram_template_customization_enabled?: number;
+  is_public_demo?: number;
 }
 
 interface PlatformPropertyManagementProps {
@@ -249,6 +251,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           color_scheme: editingProperty.tailwind_color_scheme,
           status: editingProperty.status,
           telegram_template_customization_enabled: !!editingProperty.telegram_template_customization_enabled,
+          is_public_demo: !!editingProperty.is_public_demo,
         }),
       });
 
@@ -380,7 +383,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const openPropertyWithAutoLogin = (property: Property, tenantSlug: string) => {
     try {
       // Root admin can access any property - open in new tab with property slug
-      const propertyUrl = `/artists_farm/${tenantSlug}/${property.slug}/`;
+      const propertyUrl = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/`;
       window.open(propertyUrl, '_blank');
     } catch (err) {
       setError('Failed to open property');
@@ -1189,6 +1192,23 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {t('telegram_customization_hint', "All templates are designed here at the root admin level. When off, this property's Super Admin can view templates and the live preview but can't edit the wording.")}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-300 dark:border-slate-600">
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {t('public_demo_mode_label', 'Public Demo Mode')}
+                  </span>
+                  <ToggleSwitch
+                    enabled={!!editingProperty.is_public_demo}
+                    onChange={(enabled) =>
+                      setEditingProperty({ ...editingProperty, is_public_demo: enabled ? 1 : 0 })
+                    }
+                  />
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {t('public_demo_mode_hint', 'When on, anyone who opens this property\'s URL gets full real access automatically - no login required. Meant for a sales/demo property only - never enable this on a property with real guest data.')}
                 </p>
               </div>
 
