@@ -42,6 +42,21 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
     setSavingCFormId(null);
   };
 
+  // Different flows in this app have historically written different spellings
+  // for the same real-world state (confirmed against live data: 'CheckedOut'
+  // AND 'Checked Out' both exist, same for 'Active'/'Checked In', 'Booked'/
+  // 'Confirmed') - this page's status filter and badge only ever recognized
+  // one spelling each, so a guest checked out via the "other" code path
+  // simply vanished from every filter but 'All'. Normalize before comparing
+  // instead of relying on an exact string match.
+  const normalizeStayStatus = (status: string): 'Active' | 'CheckedOut' | 'Booked' | 'Other' => {
+    const s = (status || '').trim().toLowerCase();
+    if (s === 'active' || s === 'checked in') return 'Active';
+    if (s === 'checkedout' || s === 'checked out') return 'CheckedOut';
+    if (s === 'booked' || s === 'confirmed') return 'Booked';
+    return 'Other';
+  };
+
   // Filter logic
   const filteredGuests = useMemo(() => {
     return guests.filter((g) => {
@@ -54,7 +69,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
         g.roomNumber.toLowerCase().includes(q);
 
       // 2. Status match
-      const matchesStatus = statusFilter === 'All' || g.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' || normalizeStayStatus(g.status) === statusFilter;
 
       // 3. Foreigner filter match
       const matchesForeign =
@@ -136,13 +151,14 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       cell: (row: Guest) => {
         let bg = 'bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-400';
         let label: string = row.status;
-        if (row.status === 'Active') {
+        const normalized = normalizeStayStatus(row.status);
+        if (normalized === 'Active') {
           bg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
           label = t('checked_in_badge', 'Active Stay');
-        } else if (row.status === 'CheckedOut') {
+        } else if (normalized === 'CheckedOut') {
           bg = 'bg-slate-100 text-slate-800 dark:bg-slate-800/80 dark:text-slate-300';
           label = t('checked_out_badge', 'Checked Out');
-        } else if (row.status === 'Booked') {
+        } else if (normalized === 'Booked') {
           bg = 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300';
           label = t('reserved_badge', 'Reserved');
         }
