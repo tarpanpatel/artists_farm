@@ -99,6 +99,18 @@ What's still open:
   lands in that property's dashboard already logged in (no second login
   prompt), then navigate directly to a different property in the same
   tenant's URL and confirm that also just works without re-authenticating.
+- **Room default tariff, real browser session.** Verified via direct
+  database checks and matching the exact queries the API uses (set a real
+  room's/property's `default_tariff`, confirmed it round-trips correctly,
+  reset it afterward) but never clicked through in the UI. For a multi-key
+  property: open Rooms management, set a tariff on a room via the inline
+  edit (pencil icon), confirm it saves and displays; open Add Booking,
+  select that room, confirm the Room Rent field pre-fills with that tariff
+  and is still editable; select a different room and confirm the rate
+  updates to *that* room's tariff. For a single property: set a tariff via
+  Edit Property, confirm it saves. Also worth confirming the field is
+  correctly hidden on a MULTI_KEY *parent* property's own Edit Property
+  form (only its rooms should show the field, not the parent itself).
 
 ---
 
