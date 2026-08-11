@@ -131,7 +131,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const totalOutflowExpenses = filteredExpenses
     .filter((e) => e.type === 'Expense')
     .reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalKitchenPurchaseCost = filteredKitchenPurchases.reduce((sum, p: any) => sum + (p.totalCost || p.amount || 0), 0);
+  // get_kitchen_purchases (php/inventory/inventory.php) returns total_price as
+  // totalPrice - this was reading totalCost/amount, neither of which exist on
+  // the response, so kitchen purchase cost (and Kitchen Net Profit, which
+  // subtracts it) was always 0 regardless of how much was actually spent.
+  // Also wrapped in Number() - decimal columns come through PDO as strings,
+  // so `sum + p.totalPrice` was silently doing string concatenation once the
+  // field name was fixed, not addition.
+  const totalKitchenPurchaseCost = filteredKitchenPurchases.reduce((sum, p: any) => sum + (Number(p.totalPrice) || 0), 0);
 
   const totalGrossRevenue = roomRevenue + kitchenRevenue;
   const netOperatingMargin = totalGrossRevenue - totalOutflowExpenses;
@@ -145,7 +152,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           acc[name] = { count: 0, revenue: 0 };
         }
         acc[name].count += (item.quantity || 1);
-        acc[name].revenue += (item.price || 0) * (item.quantity || 1);
+        acc[name].revenue += (item.unitPrice || 0) * (item.quantity || 1);
       });
     }
     return acc;
@@ -200,18 +207,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Revenue', data: roomPerformance.map((r) => r.revenue) }
   ];
 
-  const purchaseItems = filteredKitchenPurchases.reduce((acc, p: any) => {
-    const name = p.itemName || 'Unknown';
-    if (!acc[name]) {
-      acc[name] = { count: 0, totalCost: 0 };
-    }
-    acc[name].count += p.quantity || 1;
-    acc[name].totalCost += p.totalCost || p.amount || 0;
-    return acc;
-  }, {} as Record<string, { count: number; totalCost: number }>);
+  const expenseItems = filteredExpenses
+    .filter((e) => e.type === 'Expense')
+    .reduce((acc, e) => {
+      const name = e.description || e.predefinedItemSelection || 'Other Expense';
+      const cat = e.costCategory || e.category || 'General';
+      if (!acc[name]) {
+        acc[name] = { count: 0, category: cat, totalCost: 0 };
+      }
+      acc[name].count += 1;
+      acc[name].totalCost += Number(e.amount) || 0;
+      return acc;
+    }, {} as Record<string, { count: number; category: string; totalCost: number }>);
 
-  const sortedPurchaseItems = Object.entries(purchaseItems)
-    .sort((a, b) => (b[1] as { count: number; totalCost: number }).totalCost - (a[1] as { count: number; totalCost: number }).totalCost);
+  const sortedExpenseItems = Object.entries(expenseItems)
+    .sort((a, b) => b[1].totalCost - a[1].totalCost);
 
   const brandColor = '#2563eb';
   const brandSecondary = '#0ea5e9';
@@ -293,14 +303,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [dangerColor],
-    xaxis: { categories: sortedPurchaseItems.slice(0, 15).map(([name]) => name) },
+    xaxis: { categories: sortedExpenseItems.slice(0, 15).map(([name]) => name) },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
   };
 
   const expensesBarSeries = [
-    { name: 'Total Cost', data: sortedPurchaseItems.slice(0, 15).map(([, data]) => (data as { count: number; totalCost: number }).totalCost) }
+    { name: 'Total Cost', data: sortedExpenseItems.slice(0, 15).map(([, data]) => data.totalCost) }
   ];
 
   const dateFilterOptions: { label: string; value: DateFilter }[] = [
@@ -752,23 +762,23 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <tr>
                       <th className="p-3">#</th>
                       <th className="p-3">{t('item_description_column', 'Item Description')}</th>
-                      <th className="p-3 text-center">{t('expense_qty_column', 'Qty')}</th>
+                      <th className="p-3 text-center">{t('category_column', 'Category')}</th>
                       <th className="p-3 text-right">{t('total_cost_rupees_column', 'Total Cost (₹)')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {sortedPurchaseItems.map(([name, data], idx) => {
-                      const itemData = data as { count: number; totalCost: number };
+                    {sortedExpenseItems.map(([name, data], idx) => {
+                      const itemData = data as { count: number; category: string; totalCost: number };
                       return (
                         <tr key={name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                           <td className="p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{name}</td>
-                          <td className="p-3 text-center font-semibold text-blue-600">{itemData.count}</td>
-                          <td className="p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN')}</td>
+                          <td className="p-3 text-center font-semibold text-blue-600">{itemData.category}</td>
+                          <td className="p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         </tr>
                       );
                     })}
-                    {sortedPurchaseItems.length === 0 && (
+                    {sortedExpenseItems.length === 0 && (
                       <tr>
                         <td colSpan={4} className="text-center p-6 text-slate-400">
                           {t('no_expenses_recorded_message', 'No expenses recorded for the selected period.')}

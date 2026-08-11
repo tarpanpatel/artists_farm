@@ -6,7 +6,9 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../modules/module_manager.php';
+require_once __DIR__ . '/../finance/ledger.php';
 
 // The router starts the session when this file is require_once'd; a direct hit
 // needs its own boot so the auth gate below can see $_SESSION['username'].
@@ -102,10 +104,10 @@ function generateDemoData($pdo, $propertyId) {
         // someone to select instead of showing "No matches" against 4 real staff
         // that all default to is_financial_handler=0.
         $demoUsers = [
-            ['username' => 'demo_manager', 'name' => 'Demo Manager', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active', 'is_financial_handler' => 1],
-            ['username' => 'demo_chef', 'name' => 'Demo Chef', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active', 'is_financial_handler' => 0],
-            ['username' => 'demo_house', 'name' => 'Demo Housekeeping', 'phone' => '9876543212', 'role' => 'Housekeeping', 'status' => 'Active', 'is_financial_handler' => 0],
-            ['username' => 'demo_reception', 'name' => 'Demo Reception', 'phone' => '9876543213', 'role' => 'Manager/Reception', 'status' => 'Active', 'is_financial_handler' => 1],
+            ['username' => 'demo_manager', 'name' => 'Rajesh Kumar', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active', 'is_financial_handler' => 1],
+            ['username' => 'demo_chef', 'name' => 'Sunil Yadav', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active', 'is_financial_handler' => 0],
+            ['username' => 'demo_house', 'name' => 'Lakshmi Devi', 'phone' => '9876543212', 'role' => 'Housekeeping', 'status' => 'Active', 'is_financial_handler' => 0],
+            ['username' => 'demo_reception', 'name' => 'Neha Gupta', 'phone' => '9876543213', 'role' => 'Manager/Reception', 'status' => 'Active', 'is_financial_handler' => 1],
         ];
 
         foreach ($demoUsers as $user) {
@@ -255,9 +257,9 @@ function generateDemoData($pdo, $propertyId) {
                 $advance = (int)($totalCharge * 0.3);
 
                 // Status: past stays are checked out, current/future are checked in
-                $status = 'Checked In';
+                $status = GUEST_STATUS_CHECKED_IN;
                 if ($stay['end'] <= $today) {
-                    $status = 'Checked Out';
+                    $status = GUEST_STATUS_CHECKED_OUT;
                 }
 
                 $allBookings[] = [
@@ -280,7 +282,7 @@ function generateDemoData($pdo, $propertyId) {
         // balance. Picked from the two financial-handler roles only (Manager,
         // Reception), matching who the "Advance Received By" dropdown itself
         // is scoped to.
-        $financialHandlerNames = ['Demo Manager', 'Demo Reception'];
+        $financialHandlerNames = ['Rajesh Kumar', 'Neha Gupta'];
 
         // Insert all bookings
         $roomNameById = array_column($rooms, 'name', 'id');
@@ -291,12 +293,33 @@ function generateDemoData($pdo, $propertyId) {
                 VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 1)
             ");
             $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance'], $receivedBy]);
+            $lastGuestId = $pdo->lastInsertId();
+
+            // Every real booking posts its advance to the ledger (see add_guest
+            // in guests.php) - P&L/Balance Sheet/Cash Flow read from
+            // financial_ledger, not the operational tables directly, so without
+            // this those reports stay empty no matter how much real activity
+            // exists in guests/petty_cash/etc.
+            postFinancialLedger($pdo, [
+                'entry_key' => 'guest_advance:demo:' . $lastGuestId,
+                'direction' => 'credit',
+                'amount' => $guest['advance'],
+                'category' => 'Guest Registration Advance',
+                'payment_method' => 'Cash',
+                'party_type' => 'guest',
+                'party_id' => $lastGuestId,
+                'party_name' => $guest['name'],
+                'source_type' => 'guest_registration',
+                'source_id' => $lastGuestId,
+                'description' => 'Advance collected at guest registration',
+                'occurred_at' => $guest['checkin'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59)),
+            ], $propertyId);
 
             // Checked-out bookings get a real settled receipt, same as an actual
             // checkout produces - otherwise Past Receipts stays empty despite a
             // month of "completed" stays, which is exactly the kind of gap that
             // makes seeded data read as thin rather than a real running site.
-            if ($guest['status'] === 'Checked Out') {
+            if ($guest['status'] === GUEST_STATUS_CHECKED_OUT) {
                 $checkinDt = new DateTime($guest['checkin']);
                 $checkoutDt = new DateTime($guest['checkout']);
                 $nights = max(1, $checkinDt->diff($checkoutDt)->days);
@@ -305,17 +328,40 @@ function generateDemoData($pdo, $propertyId) {
                 $miscTotal = rand(1, 100) <= 30 ? rand(50, 400) : 0;
                 $grandTotal = $roomTotal + $foodTotal + $miscTotal;
                 $paymentMethods = ['Cash', 'Online/UPI', 'Card'];
+                $receiptId = 'RCP-' . uniqid();
+                $checkoutTime = $guest['checkout'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59));
                 $stmt = $pdo->prepare("
                     INSERT IGNORE INTO billing_receipts (id, property_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, 'Paid', ?)
                 ");
                 $stmt->execute([
-                    'RCP-' . uniqid(), $propertyId, $guest['name'], $roomNameById[$guest['room_id']] ?? '',
+                    $receiptId, $propertyId, $guest['name'], $roomNameById[$guest['room_id']] ?? '',
                     $guest['checkin'], $guest['checkout'], $guest['per_night_charges'], $nights,
                     $roomTotal, $roomTotal, $foodTotal, $miscTotal, $grandTotal, $guest['advance'],
                     $paymentMethods[array_rand($paymentMethods)],
-                    $guest['checkout'],
+                    $checkoutTime,
                 ]);
+
+                // Settlement at checkout is the balance actually collected THEN
+                // (grand total minus the advance already ledgered above), same
+                // as handleCheckout in receipts.php.
+                $settlement = $grandTotal - $guest['advance'];
+                if ($settlement > 0) {
+                    postFinancialLedger($pdo, [
+                        'entry_key' => 'checkout_settlement:demo:' . $receiptId,
+                        'direction' => 'credit',
+                        'amount' => $settlement,
+                        'category' => 'Guest Checkout Settlement',
+                        'payment_method' => $paymentMethods[array_rand($paymentMethods)],
+                        'party_type' => 'guest',
+                        'party_id' => $lastGuestId,
+                        'party_name' => $guest['name'],
+                        'source_type' => 'billing_receipt',
+                        'source_id' => $receiptId,
+                        'description' => 'Balance collected on checkout',
+                        'occurred_at' => $checkoutTime,
+                    ], $propertyId);
+                }
             }
         }
 
@@ -568,16 +614,33 @@ function generateDemoData($pdo, $propertyId) {
             $expId = 'EXP-' . uniqid();
             $stmt = $pdo->prepare("
                 INSERT IGNORE INTO petty_cash (id, property_id, date, category, amount, description, vendor_name, approved_by, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Demo Manager', 1)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Rajesh Kumar', 1)
             ");
             $stmt->execute([$expId, $propertyId, $exp['date'], $exp['category'], $exp['amount'], $exp['desc'], $exp['vendor']]);
+
+            // Every real expense is also an accounting debit (see add_petty_cash
+            // in petty_cash.php) - without this the P&L/Cash Flow never see a
+            // month of real petty-cash spend, same gap as the guest side had.
+            postFinancialLedger($pdo, [
+                'entry_key' => 'expense:demo:' . $expId,
+                'direction' => 'debit',
+                'amount' => $exp['amount'],
+                'category' => $exp['category'],
+                'payment_method' => 'Cash',
+                'party_type' => 'payee',
+                'party_name' => $exp['vendor'],
+                'source_type' => 'expense',
+                'source_id' => $expId,
+                'description' => $exp['desc'],
+                'occurred_at' => $exp['date'] . ' ' . sprintf('%02d:%02d:00', rand(9, 19), rand(0, 59)),
+            ], $propertyId);
         }
 
         // 6b. Demo Staff Meal Logs - bursty across the past 30 days (logs are
         // historical records only, no future dates). Meals get logged 2-3x on a
         // normal day (breakfast/lunch/dinner) and sometimes get missed entirely.
         $mealDescs = ['Dal, rice, sabzi, roti', 'Chicken curry, rice', 'Leftover breakfast buffet', 'Veg thali', 'Fish curry, rice', 'Roti, sabzi, curd'];
-        $mealStaffGroups = ['Demo Manager, Demo Chef', 'Demo Housekeeping, Demo Reception', 'Demo Chef', 'All Staff'];
+        $mealStaffGroups = ['Rajesh Kumar, Sunil Yadav', 'Lakshmi Devi, Neha Gupta', 'Sunil Yadav', 'All Staff'];
         $mealHours = [8, 13, 20];
         foreach (burstyDayList($windowStart, $today, 60) as $day) {
             $loggedAt = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', $mealHours[array_rand($mealHours)], rand(0, 59));
@@ -599,7 +662,7 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([
                 'WST-' . uniqid(), $propertyId, $day->format('Y-m-d'),
                 $wastageItems[array_rand($wastageItems)], rand(1, 8) / 2, 'Kg',
-                $wastageReasons[array_rand($wastageReasons)], 'Demo Chef',
+                $wastageReasons[array_rand($wastageReasons)], 'Sunil Yadav',
             ]);
         }
 
@@ -625,7 +688,7 @@ function generateDemoData($pdo, $propertyId) {
             ");
             $stmt->execute([
                 'PUR-' . uniqid(), $propertyId, $day->format('Y-m-d'), $item['name'],
-                $qty, $item['unit'], $total, $item['rate'], 'Demo Chef', 'Local Market',
+                $qty, $item['unit'], $total, $item['rate'], 'Sunil Yadav', 'Local Market',
                 $isPaid ? 'Paid' : 'Unpaid', rand(0, 1) ? 'Farm Cash' : 'Out-of-Pocket',
             ]);
         }
@@ -635,16 +698,38 @@ function generateDemoData($pdo, $propertyId) {
         foreach (burstyDayList($windowStart, $today, 25) as $day) {
             $type = rand(1, 100) <= 80 ? 'handover' : 'manual_adjustment';
             $staffPick = $demoUsers[array_rand($demoUsers)];
+            $drawerAmount = rand(500, 8000);
+            $drawerStaffId = 'DEMO-CASH-' . uniqid();
+            $drawerNotes = $type === 'handover' ? 'End of shift handover' : 'Petty cash top-up';
+            $drawerAt = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(18, 22), rand(0, 59));
             $stmt = $pdo->prepare("
                 INSERT INTO cash_drawer_entries (property_id, staff_id, staff_name, type, amount, handed_to, notes, created_at, is_demo)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
             ");
             $stmt->execute([
-                $propertyId, 'DEMO-CASH-' . uniqid(), $staffPick['name'], $type,
-                rand(500, 8000), $type === 'handover' ? 'Demo Manager' : null,
-                $type === 'handover' ? 'End of shift handover' : 'Petty cash top-up',
-                $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(18, 22), rand(0, 59)),
+                $propertyId, $drawerStaffId, $staffPick['name'], $type,
+                $drawerAmount, $type === 'handover' ? 'Rajesh Kumar' : null,
+                $drawerNotes, $drawerAt,
             ]);
+            $drawerEntryId = $pdo->lastInsertId();
+
+            // Same debit/credit split as add_cash_drawer_entry in petty_cash.php
+            // - a handover moves cash out of the drawer (debit), a manual
+            // adjustment (drawer top-up) brings cash in (credit).
+            postFinancialLedger($pdo, [
+                'entry_key' => 'cash_drawer:demo:' . $drawerEntryId,
+                'direction' => $type === 'manual_adjustment' ? 'credit' : 'debit',
+                'amount' => $drawerAmount,
+                'category' => 'Cash Drawer ' . $type,
+                'payment_method' => 'Cash',
+                'party_type' => 'staff',
+                'party_id' => $drawerStaffId,
+                'party_name' => $staffPick['name'],
+                'source_type' => 'cash_drawer',
+                'source_id' => $drawerEntryId,
+                'description' => $drawerNotes,
+                'occurred_at' => $drawerAt,
+            ], $propertyId);
         }
 
         // 7. Demo Service Requests - real varied guests (not one generic "Demo
@@ -687,7 +772,7 @@ function generateDemoData($pdo, $propertyId) {
                 if (!$isPending) {
                     $fulfilledDelay = rand(15, 240); // 15min - 4hr turnaround
                     $req['fulfilled_at'] = (new DateTime($reqDate))->modify("+$fulfilledDelay minutes")->format('Y-m-d H:i:s');
-                    $req['fulfilled_by'] = 'Demo Manager';
+                    $req['fulfilled_by'] = 'Rajesh Kumar';
                 }
                 $serviceRequests[] = $req;
             }
@@ -795,7 +880,7 @@ function generateDemoData($pdo, $propertyId) {
         $demoLogs = [];
         foreach ($allBookings as $booking) {
             $demoLogs[] = ['action' => 'Guest Checked In - ' . $booking['name'], 'module' => 'guests', 'ts' => $booking['checkin'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59))];
-            if ($booking['status'] === 'Checked Out') {
+            if ($booking['status'] === GUEST_STATUS_CHECKED_OUT) {
                 $demoLogs[] = ['action' => 'Guest Checked Out - ' . $booking['name'], 'module' => 'guests', 'ts' => $booking['checkout'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59))];
             }
         }
@@ -805,12 +890,12 @@ function generateDemoData($pdo, $propertyId) {
         $genericLogTemplates = [
             ['action' => 'Inventory Updated - Chicken Breast', 'module' => 'inventory'],
             ['action' => 'Petty Cash Entry - Kitchen Purchase', 'module' => 'finance'],
-            ['action' => 'Staff Attendance Marked - Demo Manager', 'module' => 'staff'],
+            ['action' => 'Staff Attendance Marked - Rajesh Kumar', 'module' => 'staff'],
             ['action' => 'Service Request Created - AC Issue', 'module' => 'service_requests'],
             ['action' => 'Stock Requisition Fulfilled', 'module' => 'inventory'],
             ['action' => 'Menu Item Price Updated', 'module' => 'kitchen'],
             ['action' => 'Cash Drawer Handover', 'module' => 'finance'],
-            ['action' => 'Staff Attendance Marked - Demo Chef', 'module' => 'staff'],
+            ['action' => 'Staff Attendance Marked - Sunil Yadav', 'module' => 'staff'],
         ];
         foreach ($genericLogTemplates as $tpl) {
             $daysOffset = rand(-30, 0);
@@ -838,6 +923,7 @@ function generateDemoData($pdo, $propertyId) {
 
 function clearDemoData($pdo, $propertyId) {
     ensureDemoSchema($pdo);
+    ensureFinancialLedger($pdo);
 
     try {
         $pdo->beginTransaction();
@@ -922,6 +1008,16 @@ function clearDemoData($pdo, $propertyId) {
 
         // Delete demo payees
         $stmt = $pdo->prepare("DELETE FROM payee_entities WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo financial ledger entries - generateDemoData() posts these
+        // (guest_advance/checkout_settlement/expense/cash_drawer, each keyed
+        // 'type:demo:id') alongside the operational rows above. Without this
+        // they'd survive every clear, so a regenerate would double (or
+        // n-tuple) every ledger total against fresh operational rows that no
+        // longer match the old source_id's.
+        $stmt = $pdo->prepare("DELETE FROM financial_ledger WHERE property_id = ? AND entry_key LIKE '%:demo:%'");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
