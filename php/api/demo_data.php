@@ -16,6 +16,30 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Ensure the is_demo flag exists on every table the generator writes to and
+// clearDemoData() filters deletes by. Split out so both generateDemoData()
+// and clearDemoData() can call it first - clearDemoData() is also reachable
+// standalone (the modal's "Exit Test Mode" action), and on a property whose
+// tables never had a demo cycle run against them yet, its is_demo = 1 WHERE
+// clauses would otherwise fail with "Unknown column 'is_demo'" before the
+// ALTER ever got a chance to run.
+function ensureDemoSchema($pdo) {
+    $alterCols = [
+        "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `guests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `menu_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `petty_cash` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `audit_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `service_requests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `order_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+    ];
+    foreach ($alterCols as $sql) {
+        try { $pdo->exec($sql); } catch (PDOException $e) {}
+    }
+}
+
 function generateDemoData($pdo, $propertyId) {
     // Check if dummy history mode is enabled
     try {
@@ -27,26 +51,13 @@ function generateDemoData($pdo, $propertyId) {
         }
     } catch (PDOException $e) {}
 
+    ensureDemoSchema($pdo);
+
     // Always start from a clean slate.
     clearDemoData($pdo, $propertyId);
 
     try {
         $pdo->beginTransaction();
-
-        // Ensure is_demo flag exists on every table we write to
-        $alterCols = [
-            "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `guests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `menu_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `petty_cash` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `audit_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `service_requests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-            "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
-        ];
-        foreach ($alterCols as $sql) {
-            try { $pdo->exec($sql); } catch (PDOException $e) {}
-        }
 
         // 1. Demo Users (Staff with different roles)
         $demoUsers = [
@@ -81,11 +92,16 @@ function generateDemoData($pdo, $propertyId) {
             $existing = $checkStmt->fetchColumn();
 
             if (!$existing) {
+                // properties.slug is globally unique, not scoped per-property, so the
+                // plain 'room-101' etc. slug only survives the very first property this
+                // generator ever ran against - every property after that collides with
+                // the same slug already taken. Suffix with the parent property id.
+                $roomSlug = $requiredRoom['slug'] . '-' . $propertyId;
                 $createStmt = $pdo->prepare("
                     INSERT INTO properties (parent_property_id, name, slug, property_type, is_active, default_tariff, created_at)
                     VALUES (?, ?, ?, 'MULTI_KEY_ROOM', 1, ?, NOW())
                 ");
-                $createStmt->execute([$propertyId, $requiredRoom['name'], $requiredRoom['slug'], $requiredRoom['tariff']]);
+                $createStmt->execute([$propertyId, $requiredRoom['name'], $roomSlug, $requiredRoom['tariff']]);
             } else {
                 $updateStmt = $pdo->prepare("UPDATE properties SET default_tariff = ? WHERE id = ?");
                 $updateStmt->execute([$requiredRoom['tariff'], $existing]);
@@ -148,10 +164,16 @@ function generateDemoData($pdo, $propertyId) {
                 $totalNights = array_sum($stayLengths);
             }
 
-            // Generate stay dates scattered across the window
+            // Generate stay dates scattered across the window. $d must start as a
+            // clone, not a reference to $windowStart itself - DateTime is mutable,
+            // so $d->modify() below was advancing the shared $windowStart in place
+            // on every call. First room in the property got a real date window;
+            // every room after it saw $windowStart already past $windowEnd, so
+            // $availableDays came back empty and the loop below crashed trying to
+            // clone a non-existent $availableDays[0].
             $stayDates = [];
             $availableDays = [];
-            for ($d = $windowStart; $d <= $windowEnd; $d->modify('+1 day')) {
+            for ($d = clone $windowStart; $d <= $windowEnd; $d->modify('+1 day')) {
                 $availableDays[] = clone $d;
             }
 
@@ -438,6 +460,8 @@ function generateDemoData($pdo, $propertyId) {
 }
 
 function clearDemoData($pdo, $propertyId) {
+    ensureDemoSchema($pdo);
+
     try {
         $pdo->beginTransaction();
 
