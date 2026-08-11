@@ -34,6 +34,7 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `service_requests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `order_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `staff_meal_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
     ];
     foreach ($alterCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
@@ -60,6 +61,17 @@ function generateDemoData($pdo, $propertyId) {
         $pdo->beginTransaction();
 
         // 1. Demo Users (Staff with different roles)
+        // A property mid-onboarding (empty address) reads as a fresh, half-set-up
+        // account, not a site that's supposedly been running for a month - fill it
+        // in, but only if it's genuinely empty so this never overwrites a real
+        // property's real address if the generator is ever pointed at one.
+        $addrStmt = $pdo->prepare("SELECT address FROM properties WHERE id = ?");
+        $addrStmt->execute([$propertyId]);
+        if (empty($addrStmt->fetchColumn())) {
+            $pdo->prepare("UPDATE properties SET address = ?, google_maps_link = ? WHERE id = ?")
+                ->execute(['221 Ocean Drive, Candolim, North Goa, Goa 403515', 'https://maps.app.goo.gl/8xQz3vN2kP9r7T4A6', $propertyId]);
+        }
+
         $demoUsers = [
             ['username' => 'demo_manager', 'name' => 'Demo Manager', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active'],
             ['username' => 'demo_chef', 'name' => 'Demo Chef', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active'],
@@ -330,6 +342,21 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$expId, $propertyId, $exp['date'], $exp['category'], $exp['amount'], $exp['desc'], $exp['vendor']]);
         }
 
+        // 6b. Demo Staff Meal Logs - spread across the past 30 days (logs are
+        // historical records only, no future dates)
+        $mealDescs = ['Dal, rice, sabzi, roti', 'Chicken curry, rice', 'Leftover breakfast buffet', 'Veg thali', 'Fish curry, rice', 'Roti, sabzi, curd'];
+        $mealStaffGroups = ['Demo Manager, Demo Chef', 'Demo Housekeeping, Demo Reception', 'Demo Chef', 'All Staff'];
+        $mealHours = [8, 13, 20];
+        for ($i = 0; $i < 14; $i++) {
+            $daysOffset = rand(-30, 0);
+            $loggedAt = (clone $today)->modify("$daysOffset days")->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', $mealHours[array_rand($mealHours)], rand(0, 59));
+            $stmt = $pdo->prepare("
+                INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer, logged_at, is_demo)
+                VALUES (?, ?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([$propertyId, $mealStaffGroups[array_rand($mealStaffGroups)], $mealDescs[array_rand($mealDescs)], rand(0, 4) === 0 ? 1 : 0, $loggedAt]);
+        }
+
         // 7. Demo Service Requests - today's open requests + historical closed ones
         $serviceRequestTypes = [
             'ac_heating_issue', 'hot_water_geyser', 'fresh_towels', 'extra_bedding',
@@ -431,23 +458,44 @@ function generateDemoData($pdo, $propertyId) {
             }
         }
 
-        // 9. Demo Audit Logs
-        $demoLogs = [
-            ['action' => 'Guest Checked In - ' . $guestNames[0], 'module' => 'guests'],
-            ['action' => 'Food Order Created - Table 5', 'module' => 'kitchen'],
+        // 9. Demo Audit Logs - spread across the same 30-day window as everything
+        // else, not all stamped 'now'. A property that's supposedly been running
+        // for a month with an activity trail that's entirely one instant old reads
+        // as obviously fake. Correlate with the real bookings/orders already
+        // generated above where possible instead of inventing disconnected events.
+        $demoLogs = [];
+        foreach ($allBookings as $booking) {
+            $demoLogs[] = ['action' => 'Guest Checked In - ' . $booking['name'], 'module' => 'guests', 'ts' => $booking['checkin'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59))];
+            if ($booking['status'] === 'Checked Out') {
+                $demoLogs[] = ['action' => 'Guest Checked Out - ' . $booking['name'], 'module' => 'guests', 'ts' => $booking['checkout'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59))];
+            }
+        }
+        foreach ($kdsOrders as $order) {
+            $demoLogs[] = ['action' => 'Food Order Created - ' . $order['room_number'], 'module' => 'kitchen', 'ts' => $order['order_time']];
+        }
+        $genericLogTemplates = [
             ['action' => 'Inventory Updated - Chicken Breast', 'module' => 'inventory'],
             ['action' => 'Petty Cash Entry - Kitchen Purchase', 'module' => 'finance'],
             ['action' => 'Staff Attendance Marked - Demo Manager', 'module' => 'staff'],
             ['action' => 'Service Request Created - AC Issue', 'module' => 'service_requests'],
-            ['action' => 'Demo Data Generated', 'module' => 'system'],
+            ['action' => 'Stock Requisition Fulfilled', 'module' => 'inventory'],
+            ['action' => 'Menu Item Price Updated', 'module' => 'kitchen'],
+            ['action' => 'Cash Drawer Handover', 'module' => 'finance'],
+            ['action' => 'Staff Attendance Marked - Demo Chef', 'module' => 'staff'],
         ];
+        foreach ($genericLogTemplates as $tpl) {
+            $daysOffset = rand(-30, 0);
+            $ts = (clone $today)->modify("$daysOffset days")->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59));
+            $demoLogs[] = ['action' => $tpl['action'], 'module' => $tpl['module'], 'ts' => $ts];
+        }
+        $demoLogs[] = ['action' => 'Demo Data Generated', 'module' => 'system', 'ts' => date('Y-m-d H:i:s')];
 
         foreach ($demoLogs as $log) {
             $stmt = $pdo->prepare("
                 INSERT INTO audit_logs (property_id, timestamp, user, action, status, module, is_demo)
                 VALUES (?, ?, 'System', ?, 'Success', ?, 1)
             ");
-            $stmt->execute([$propertyId, date('Y-m-d H:i:s'), $log['action'], $log['module']]);
+            $stmt->execute([$propertyId, $log['ts'], $log['action'], $log['module']]);
         }
 
         $pdo->commit();
@@ -489,6 +537,11 @@ function clearDemoData($pdo, $propertyId) {
 
         // Delete demo petty cash entries
         $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo staff meal logs
+        $stmt = $pdo->prepare("DELETE FROM staff_meal_logs WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
