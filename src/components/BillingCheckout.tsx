@@ -562,7 +562,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       </PageHeader>
 
       {/* Tabs Navigation & Search Bar */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
           <Button
@@ -619,7 +619,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="space-y-8">
           {upcomingByDate.map((dateGroup) => (
             <div key={dateGroup.dateStr}>
-              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h3 className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 {dateGroup.label}
               </h3>
@@ -633,7 +633,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
       {/* Empty Search Result */}
       {filteredGroups.length === 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-12 text-center">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-12 text-center">
           <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">
             {t('no_guest_records_found', 'No Guest Records Found')}

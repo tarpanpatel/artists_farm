@@ -596,7 +596,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
               />
             </div>
-            <div className="text-[9px] text-slate-400 mb-1 font-mono">{filteredIcons.length} icons</div>
+            <div className="text-[9px] text-slate-400 mb-1">{filteredIcons.length} icons</div>
             <div className="grid grid-cols-8 gap-1 max-h-[240px] overflow-y-auto">
               {filteredIcons.slice(0, 120).map(name => {
                 const Ic = getIconComponent(name);
@@ -673,7 +673,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         {customUrlInput[item.id] !== undefined && showTabPickerFor !== item.id && (
           <div className="ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
             <Input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus className="flex-1" />
-            <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
+            <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
             <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
         )}

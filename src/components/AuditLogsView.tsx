@@ -18,6 +18,7 @@ import {
 import { AuditLog, BillingReceipt } from '../types';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
@@ -395,16 +396,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 <div className="flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-blue-600" />
                   <span className="font-extrabold text-slate-900 dark:text-white text-sm">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
-                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-mono text-slate-500">{receipts.length} receipts</span>
+                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-500">{receipts.length} receipts</span>
                 </div>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
+                  <Input
                     type="text"
                     value={receiptsSearch}
                     onChange={(e) => setReceiptsSearch(e.target.value)}
                     placeholder={t('search_receipts_placeholder', 'Search receipts...')}
-                    className="pl-9 pr-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
                   />
                 </div>
               </div>
@@ -427,7 +427,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: STAFF ACTIVITY TRAIL */}
       {activeTab === 'activity' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-2xs">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
               <ShieldAlert className="w-6 h-6 text-indigo-600" />
@@ -436,21 +436,23 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                <input
+                <Input
                   type="text"
                   placeholder={t('search_activity_placeholder', 'Search activity...')}
                   value={activitySearch}
                   onChange={(e) => setActivitySearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-48 transition-all"
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                  className="w-48"
+                  fullWidth={false}
                 />
               </div>
 
-              <input
+              <Input
                 type="date"
                 value={activityDate}
                 onChange={(e) => setActivityDate(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 dark:text-slate-300 transition-all"
+                className="w-48"
+                fullWidth={false}
               />
 
               <StyledSelect
@@ -504,14 +506,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               paginationRowsPerPageOptions={[15, 30, 50, 100]}
               subHeader={
                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={activitySubSearch}
-                    onChange={(e) => setActivitySubSearch(e.target.value)}
-                    placeholder={t('search_by_action_or_user_placeholder', 'Search by action or user...')}
-                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                <Input
+                  type="text"
+                  value={activitySubSearch}
+                  onChange={(e) => setActivitySubSearch(e.target.value)}
+                  placeholder={t('search_by_action_or_user_placeholder', 'Search by action or user...')}
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                />
                 </div>
               }
               customStyles={customStyles}
@@ -531,7 +532,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               <Lock className="w-5 h-5 text-blue-600" />
               <span>{t('security_login_trace_heading', 'Security Login Trace & Authentication Audit')}</span>
             </h3>
-            <span className="font-mono text-slate-400 font-bold text-xs">{loginTraceLogs.length} {t('login_events_count_label', 'Login Events')}</span>
+            <span className="text-slate-400 font-bold text-xs">{loginTraceLogs.length} {t('login_events_count_label', 'Login Events')}</span>
           </div>
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <DataTable
@@ -621,14 +622,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               paginationRowsPerPageOptions={[15, 30, 50, 100]}
               subHeader={
                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={loginSearch}
-                    onChange={(e) => setLoginSearch(e.target.value)}
-                    placeholder={t('search_by_user_or_action_placeholder', 'Search by user or action...')}
-                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <Input
+                  type="text"
+                  value={loginSearch}
+                  onChange={(e) => setLoginSearch(e.target.value)}
+                  placeholder={t('search_by_user_or_action_placeholder', 'Search by user or action...')}
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                />
                 </div>
               }
               customStyles={customStyles}
@@ -648,7 +648,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               <ScrollText className="w-5 h-5 text-blue-600" />
               <span>{t('staff_activity_operational_audit_heading', 'Staff Activity & Operational Audit Trail')}</span>
             </h3>
-            <span className="font-mono text-slate-400 font-bold text-xs">{logs.length} {t('activity_log_entries_count_label', 'Activity Log Entries')}</span>
+            <span className="text-slate-400 font-bold text-xs">{logs.length} {t('activity_log_entries_count_label', 'Activity Log Entries')}</span>
           </div>
           <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <DataTable
@@ -719,14 +719,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               paginationRowsPerPageOptions={[15, 30, 50, 100]}
               subHeader={
                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={auditSearch}
-                    onChange={(e) => setAuditSearch(e.target.value)}
-                    placeholder={t('search_by_action_or_module_placeholder', 'Search by action or module...')}
-                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <Input
+                  type="text"
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  placeholder={t('search_by_action_or_module_placeholder', 'Search by action or module...')}
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                />
                 </div>
               }
               customStyles={customStyles}
@@ -770,39 +769,35 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 1. ACCOMMODATION INVOICE BREAKDOWN */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <Home className="w-4 h-4 text-emerald-600" />
                       <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          {t('base_lodging_charges_contract_label', 'BASE LODGING CHARGES (CONTRACT)')}
-                        </label>
-                        <input
+                        <Input
+                          label={t('base_lodging_charges_contract_label', 'BASE LODGING CHARGES (CONTRACT)')}
                           type="number"
                           value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
                           onChange={(e) => {
                             const val = Number(e.target.value);
                             setEditingReceipt(prev => prev ? ({ ...prev, roomRent: val, roomTotal: val }) : null);
                           }}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold text-sm"
+                          labelClassName="text-[11px]"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          {t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
-                        </label>
-                        <input
+                        <Input
+                          label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
                           type="number"
                           value={editingReceipt.advancePaid ?? 0}
                           onChange={(e) => {
                             const val = Number(e.target.value);
                             setEditingReceipt(prev => prev ? ({ ...prev, advancePaid: val }) : null);
                           }}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold text-sm"
+                          labelClassName="text-[11px]"
                         />
                       </div>
                     </div>
@@ -857,7 +852,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 2. FOOD ORDERS & INCIDENTALS LOG */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <Utensils className="w-4 h-4 text-emerald-600" />
                       <span>{t('food_orders_incidentals_log_heading', 'FOOD ORDERS & INCIDENTALS LOG')}</span>
                     </h4>
@@ -875,12 +870,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         }))}
                       />
 
-                      <input
+                      <Input
                         type="number"
                         min="1"
                         value={dishQty}
                         onChange={(e) => setDishQty(Number(e.target.value))}
-                        className="w-16 p-2.5 text-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-extrabold"
+                        className="w-16 text-center"
+                        fullWidth={false}
                       />
 
                       <button
@@ -954,7 +950,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 3. ADD CUSTOM ADJUSTMENTS */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <PlusCircle className="w-4 h-4 text-emerald-600" />
                       <span>{t('audit_add_custom_adjustments_heading', 'ADD CUSTOM ADJUSTMENTS')}</span>
                     </h4>
@@ -973,24 +969,24 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('label_description_label', 'LABEL DESCRIPTION')}</label>
-                      <input
+                      <Input
+                        label={t('label_description_label', 'LABEL DESCRIPTION')}
                         type="text"
                         placeholder={t('service_apology_placeholder', 'e.g., Service Apology...')}
                         value={adjLabel}
                         onChange={(e) => setAdjLabel(e.target.value)}
-                        className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-medium"
+                        labelClassName="text-[10px]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">{t('amount_rupees_label', 'AMOUNT (₹)')}</label>
-                      <input
+                      <Input
+                        label={t('amount_rupees_label', 'AMOUNT (₹)')}
                         type="number"
                         placeholder="0.00"
                         value={adjAmount}
                         onChange={(e) => setAdjAmount(e.target.value)}
-                        className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-extrabold"
+                        labelClassName="text-[10px]"
                       />
                     </div>
 
@@ -1005,7 +1001,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 4. CHECKOUT MODIFICATIONS AUDIT TRAIL */}
                   <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 space-y-2">
-                    <h4 className="font-extrabold text-amber-800 dark:text-amber-400 text-xs flex items-center gap-1.5 uppercase tracking-wide">
+                    <h4 className="font-extrabold text-amber-800 dark:text-amber-400 text-[10px] flex items-center gap-1.5 uppercase tracking-wide">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
                       <span>{t('checkout_modifications_audit_heading', 'CHECKOUT MODIFICATIONS AUDIT TRAIL')}</span>
                     </h4>
@@ -1024,7 +1020,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 5. FINAL FINANCIAL POSITION */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <CreditCard className="w-4 h-4 text-emerald-600" />
                       <span>{t('final_financial_position_heading', 'FINAL FINANCIAL POSITION')}</span>
                     </h4>

@@ -179,7 +179,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           <h2 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">
             {t('error_loading_application_heading')}
           </h2>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+          <p className="text-sm text-slate-700 dark:text-slate-300 mb-4">
             {error}
           </p>
           <button

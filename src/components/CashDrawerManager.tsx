@@ -181,7 +181,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
       {/* Entry Form */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
-        <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-emerald-500 pl-2.5 mb-4 flex items-center gap-1.5">
+        <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>
               <Handshake className="w-4 h-4" />
@@ -250,12 +250,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
           <div>
             <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('notes_optional_label', 'Notes (Optional)')}</label>
-            <input
+            <Input
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder={activeForm === 'handover' ? t('handover_notes_placeholder', 'e.g., End of day handover, shift change...') : t('adjustment_notes_placeholder', "e.g., Correcting yesterday's error...")}
-              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
             />
           </div>
 
@@ -302,15 +301,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             <Users className="w-4 h-4 text-emerald-600" />
             {t('staff_cash_responsibility_heading', 'STAFF CASH RESPONSIBILITY')}
           </h3>
-          <div className="relative">
-            <input
+          <div>
+            <Input
               type="text"
               placeholder={t('filter_staff_placeholder', 'Filter staff...')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg text-[11px] font-medium focus:border-emerald-500 focus:outline-hidden w-48"
+              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+              className="w-48"
             />
-            <Search className="absolute left-2 top-2 text-slate-400 w-3.5 h-3.5" />
           </div>
         </div>
 
@@ -463,15 +462,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               highlightOnHover
               subHeader={
                 <div className="w-full flex items-center justify-between">
-                  <span className="font-mono text-slate-400 font-bold text-xs">{drawerEntries.length} entries</span>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input
+                  <span className="text-slate-400 font-bold text-xs">{drawerEntries.length} entries</span>
+                  <div>
+                    <Input
                       type="text"
                       value={searchHistory}
                       onChange={e => setSearchHistory(e.target.value)}
                       placeholder={t('search_staff_type_notes_placeholder', 'Search staff, type, notes...')}
-                      className="pl-7 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-[11px] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-56"
+                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                      className="w-56"
                     />
                   </div>
                 </div>

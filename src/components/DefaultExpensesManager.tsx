@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search, Zap } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -212,7 +212,7 @@ export const DefaultExpensesManager: React.FC = () => {
   return (
     <div className="space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -230,7 +230,7 @@ export const DefaultExpensesManager: React.FC = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               title={t('sync_defaults_tooltip', 'Populate all 20 default categories across all MultiKey properties')}
             >
-              {syncing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : '⚡'}
+              {syncing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
               {t('sync_defaults_button', 'Sync Defaults')}
             </button>
             <button
@@ -270,7 +270,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Add New Item Form */}
       {isAddingNew && (
-        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+        <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
           <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('add_new_expense_item_title', 'Add New Expense Item')}</h3>
           <form onSubmit={handleAddItem} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -323,7 +323,7 @@ export const DefaultExpensesManager: React.FC = () => {
       {allCategories.length === 0 && (
         <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No expense categories yet. Click <strong>"⚡ Sync Defaults"</strong> to populate all 20 default categories.
+            No expense categories yet. Click <strong>"Sync Defaults"</strong> to populate all 20 default categories.
           </p>
         </div>
       )}
@@ -341,7 +341,7 @@ export const DefaultExpensesManager: React.FC = () => {
       {categories.length > 0 && (
       <div className="space-y-4">
         {categories.map((category) => (
-          <div key={category} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div key={category} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-slate-100 dark:bg-slate-700 px-4 py-2">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
@@ -350,7 +350,7 @@ export const DefaultExpensesManager: React.FC = () => {
                 {filteredExpenses[category].map((item) => {
                   const ItemIcon = getExpenseItemIcon(item.label, category);
                   return (
-                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                  <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-1">
                         <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />

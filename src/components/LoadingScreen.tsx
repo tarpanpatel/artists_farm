@@ -38,10 +38,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 
         {/* Message */}
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
             {t('artists_farm_brand')}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {message}
           </p>
         </div>

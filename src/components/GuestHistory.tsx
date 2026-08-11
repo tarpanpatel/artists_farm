@@ -13,6 +13,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { markCFormFiled } from '../services/api';
 import { useToast } from './ToastContext';
 import { Input } from './Input';
+import { StyledSelect } from './StyledSelect';
 
 interface GuestHistoryProps {
   guests: Guest[];
@@ -159,7 +160,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       grow: 2,
       cell: (row: Guest) => (
         <div className="flex flex-col py-2">
-          <div className="flex items-center gap-1 font-mono font-semibold text-slate-900 dark:text-white">
+          <div className="flex items-center gap-1 font-extrabold text-slate-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
             <span className="text-blue-600 dark:text-blue-400">₹{row.totalAmount || 0}</span>
           </div>
@@ -193,7 +194,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
               checked={isFiled}
               disabled={isSaving}
               onChange={(e) => handleToggleCForm(row, e.target.checked)}
-              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
             />
             <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
               {isFiled ? (
@@ -228,7 +229,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       </div>
 
       {/* Filters and Search Bar */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col lg:flex-row items-center gap-4">
+      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col lg:flex-row items-center gap-4">
         {/* Search */}
         <div className="relative w-full lg:w-96">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -246,36 +247,36 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
           {/* Stay Status Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-slate-500 font-semibold">{t('status_filter_label', 'Status:')}</span>
-            <select
+            <StyledSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none font-semibold cursor-pointer"
-            >
-              <option value="All">{t('all_stays_option', 'All Stays')}</option>
-              <option value="Active">{t('active_stays_option', 'Active stays only')}</option>
-              <option value="CheckedOut">{t('checked_out_stays_option', 'Checked out only')}</option>
-              <option value="Booked">{t('reserved_stays_option', 'Reserved only')}</option>
-            </select>
+              onChange={(v) => setStatusFilter(v as any)}
+              options={[
+                { value: 'All', label: t('all_stays_option', 'All Stays') },
+                { value: 'Active', label: t('active_stays_option', 'Active stays only') },
+                { value: 'CheckedOut', label: t('checked_out_stays_option', 'Checked out only') },
+                { value: 'Booked', label: t('reserved_stays_option', 'Reserved only') },
+              ]}
+            />
           </div>
 
           {/* Nationality Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-slate-500 font-semibold">{t('nationality_filter_label', 'Nationality:')}</span>
-            <select
+            <StyledSelect
               value={foreignFilter}
-              onChange={(e) => setForeignFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none font-semibold cursor-pointer"
-            >
-              <option value="All">{t('all_nations_option', 'All Nations')}</option>
-              <option value="Foreigner">{t('foreign_nations_option', 'Foreign Nationals (C-Form required)')}</option>
-              <option value="Indian">{t('indian_nations_option', 'Indian Nationals')}</option>
-            </select>
+              onChange={(v) => setForeignFilter(v as any)}
+              options={[
+                { value: 'All', label: t('all_nations_option', 'All Nations') },
+                { value: 'Foreigner', label: t('foreign_nations_option', 'Foreign Nationals (C-Form required)') },
+                { value: 'Indian', label: t('indian_nations_option', 'Indian Nationals') },
+              ]}
+            />
           </div>
         </div>
       </div>
 
       {/* Data Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
         <DataTable
           columns={columns}
           data={filteredGuests}

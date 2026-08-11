@@ -387,7 +387,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
       {activeSubTab === 'food_menu' && (
         <div className="space-y-4">
           {/* Controls Bar */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="w-full md:w-64">
                 <Input
@@ -427,13 +427,13 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 onDrop={(e) => handleFoodDrop(e, index)}
                 className={`bg-white rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
                   draggedFoodIndex === index ? 'opacity-40 border-blue-400' : ''
-                } ${item.available ? 'border-gray-200' : 'border-red-200 bg-red-50/20'}`}
+                } ${item.available ? 'border-slate-200' : 'border-red-200 bg-red-50/20'}`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <GripVertical className="w-4 h-4 text-slate-300 hover:text-slate-600 shrink-0" />
-                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                         {item.category}
                       </span>
                     </div>
@@ -451,7 +451,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   </div>
 
                   {/* Food Item Image Preview / Quick Upload */}
-                  <div className="relative group rounded-lg overflow-hidden bg-gray-50 border border-gray-200 h-28 flex items-center justify-center">
+                  <div className="relative group rounded-lg overflow-hidden bg-slate-50 border border-slate-200 h-28 flex items-center justify-center">
                     {item.imagePath ? (
                       <img
                         src={item.imagePath}
@@ -462,7 +462,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         }}
                       />
                     ) : (
-                      <div className="flex flex-col items-center gap-1 text-gray-400 p-2">
+                      <div className="flex flex-col items-center gap-1 text-slate-400 p-2">
                         <ImageIcon className="w-6 h-6" />
                         <span className="text-[10px] font-medium">{t('no_image_uploaded_label', 'No Image Uploaded')}</span>
                       </div>
@@ -496,17 +496,17 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
+                    <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
                     <p className="text-emerald-700 font-semibold text-sm mt-0.5">₹{item.price.toFixed(2)}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-3 text-xs">
-                  <span className="text-[10px] font-mono text-gray-400">ID: {item.id}</span>
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-3 text-xs">
+                  <span className="text-[10px] font-mono text-slate-400">ID: {item.id}</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => requirePasscode(() => handleOpenEditFood(item))}
-                      className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                       title={t('edit_item_tooltip', 'Edit Item')}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -580,13 +580,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <form onSubmit={handleSaveNavItem} className="space-y-3.5 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">{t('menu_title_label', 'Menu Title / Label')}</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={navForm.title}
                   onChange={(e) => setNavForm({ ...navForm, title: e.target.value })}
                   placeholder={t('resident_registration_placeholder', 'e.g. Resident Registration')}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
 
@@ -708,12 +707,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
-                  <input
+                  <Input
                     type="url"
                     value={navForm.customUrl}
                     onChange={(e) => setNavForm({ ...navForm, customUrl: e.target.value })}
                     placeholder={t('custom_link_url_placeholder', 'e.g. https://example.com or /some/path')}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-xs"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">{t('custom_link_help', 'If set, clicking this menu item opens this link instead of an internal tab.')}</p>
                 </div>
@@ -767,13 +765,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <form onSubmit={handleSaveFoodItem} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">{t('item_title_name_label', 'Item Title / Name')}</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={foodForm.name}
                   onChange={(e) => setFoodForm({ ...foodForm, name: e.target.value })}
                   placeholder={t('paneer_butter_masala_placeholder', 'e.g. Paneer Butter Masala')}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
 
@@ -789,14 +786,13 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">{t('price_rupees_label', 'Price (₹)')}</label>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="1"
                     required
                     value={foodForm.price}
                     onChange={(e) => setFoodForm({ ...foodForm, price: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-bold"
                   />
                 </div>
               </div>
@@ -825,12 +821,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                       />
                     </label>
 
-                    <input
+                    <Input
                       type="text"
                       value={foodForm.imagePath}
                       onChange={(e) => setFoodForm({ ...foodForm, imagePath: e.target.value })}
                       placeholder={t('or_enter_image_url_placeholder', 'Or enter image URL / asset path...')}
-                      className="flex-1 p-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono text-[11px]"
+                      className="flex-1"
                     />
                   </div>
 
@@ -899,7 +895,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
             </div>
 
-            <input
+            <Input
               type="password"
               autoComplete="new-password"
               autoFocus
@@ -908,7 +904,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleVerifyPasscode(); } }}
               placeholder={t('enter_passcode_placeholder', 'Enter passcode')}
-              className="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-center text-lg font-mono tracking-[0.3em] focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+              className="text-center"
             />
 
             {passcodeError && (

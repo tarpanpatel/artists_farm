@@ -33,7 +33,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         {activeTab === 'theme' ? (
           <ThemeManagement />
         ) : (

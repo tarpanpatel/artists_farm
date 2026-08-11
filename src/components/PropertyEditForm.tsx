@@ -3,6 +3,7 @@ import { Loader, CheckCircle2, AlertCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { WhatsAppEditor } from './WhatsAppEditor';
 
 /**
@@ -277,7 +278,7 @@ We look forward to welcoming you!`;
           </div>
 
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('whatsapp_voucher_template_label', 'WhatsApp Voucher Template')}</label>
-          <textarea
+          <Textarea
             value={whatsappTemplate}
             onChange={(e) => setWhatsappTemplate(e.target.value)}
             placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmed…')}
@@ -294,7 +295,7 @@ We look forward to welcoming you!`;
                 💬
               </span>
               <div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>
+                <h4 className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">Updates live as you edit property details & template</p>
               </div>
             </div>
@@ -329,7 +330,7 @@ We look forward to welcoming you!`;
           ) : (
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
               <div className="bg-indigo-600 p-3 text-white">
-                <p className="text-[11px] font-mono uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
+                <p className="text-[10px] uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
                 <h3 className="text-sm font-bold mt-0.5">{name.trim() || 'Property Name'}</h3>
                 <p className="text-xs text-indigo-100 mt-1">{email.trim() || 'contact@property.com'} · {phone.trim() || '+91 99999 99999'}</p>
               </div>

@@ -140,12 +140,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           className={`
             p-2 text-center rounded-full text-sm font-medium transition relative
             ${isDisabled
-              ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-40'
+              ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-40'
               : selected || isOtherDate
               ? 'bg-black dark:bg-white text-white dark:text-black font-bold'
               : inRange
-              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
-              : 'text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+              ? 'bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-white'
+              : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
             }
           `}
         >
@@ -191,25 +191,25 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           />
 
           {/* Modal */}
-          <div className="fixed z-[70] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-screen overflow-y-auto">
+          <div className="fixed z-[70] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-screen overflow-y-auto">
             {/* Title with Bouncing Arrow */}
             <div className="mb-6 text-center relative">
               {title ? (
                 // Generic (non-booking) usage - plain heading, no check-in/
                 // check-out decoration.
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                   {title}
                 </h2>
               ) : isCheckout && value ? (
                 // Show date range summary when checkout date is selected
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {t('check_in_label')} {new Date(otherDate || '').toLocaleDateString('en-GB')} - {t('check_out_label')} {new Date(value).toLocaleDateString('en-GB')}
                 </p>
               ) : (
                 // Show title with bouncing arrow when still selecting
                 <>
                   <div className="flex items-center justify-center gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                       {isCheckout ? t('select_checkout_date_title', 'Select Check-Out Date') : t('select_checkin_date_title', 'Select Check-In Date')}
                     </h2>
                     <ArrowDown
@@ -219,7 +219,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     />
                   </div>
                   {otherDate && isCheckout && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                       {t('check_in_label')} {new Date(otherDate).toLocaleDateString('en-GB')}
                     </p>
                   )}
@@ -230,7 +230,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             {/* Close button */}
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+              className="absolute top-4 right-4 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition"
             >
               <X size={20} />
             </button>
@@ -239,12 +239,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <div className="grid grid-cols-2 gap-6">
             {/* Month 1 */}
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4 text-center">
                 {monthNames[month1.getMonth()]} {month1.getFullYear()}
               </h3>
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                  <div key={`month1-${idx}-${day}`} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
+                  <div key={`month1-${idx}-${day}`} className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 h-8">
                     {day}
                   </div>
                 ))}
@@ -256,12 +256,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
             {/* Month 2 */}
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4 text-center">
                 {monthNames[month2.getMonth()]} {month2.getFullYear()}
               </h3>
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                  <div key={`month2-${idx}-${day}`} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 h-8">
+                  <div key={`month2-${idx}-${day}`} className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 h-8">
                     {day}
                   </div>
                 ))}
@@ -276,7 +276,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <div className="flex justify-between items-center mt-6">
             <button
               onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition"
             >
               <ChevronLeft size={20} />
             </button>
@@ -290,7 +290,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       setIsOpen(false);
                     }
                   }}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm font-medium"
+                  className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition text-sm font-medium"
                 >
                   {t('clear_dates_button', 'Clear dates')}
                 </button>
@@ -303,7 +303,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 className={`px-4 py-2 rounded-lg transition text-sm font-medium ${
                   isCheckout && value
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
+                    : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200'
                 }`}
               >
                 {isCheckout && value ? t('save_button', 'Save') : t('close_button', 'Close')}
@@ -311,7 +311,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </div>
             <button
               onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition"
             >
               <ChevronRight size={20} />
             </button>

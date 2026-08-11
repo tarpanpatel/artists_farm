@@ -334,7 +334,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       </PageHeader>
 
       {/* Control Card & Dropdowns */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-2xs space-y-6">
+      <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-2xs space-y-6">
         {/* Segment Tabs Selector */}
         <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
           <button
@@ -369,12 +369,12 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-dashed border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-dashed border-slate-200">
           {exportRangeType === 'month' && (
             <>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-500" />
+                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-slate-500" />
                   <span>{t('target_month_label', 'Target Month')}</span>
                 </label>
                 <StyledSelect
@@ -388,8 +388,8 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-500" />
+                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-slate-500" />
                   <span>{t('target_year_label', 'Target Year')}</span>
                 </label>
                 <StyledSelect
@@ -406,8 +406,8 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
           {exportRangeType === 'year' && (
             <div className="col-span-2 max-w-sm">
-              <label className="block text-xs font-bold text-gray-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-gray-500" />
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-slate-500" />
                 <span>{t('target_year_label', 'Target Year')}</span>
               </label>
               <StyledSelect
@@ -426,7 +426,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                   <Input
                     label={t('start_date_label', 'Start Date')}
-                    leftIcon={<Calendar className="w-4 h-4 text-gray-500" />}
+                    leftIcon={<Calendar className="w-4 h-4 text-slate-500" />}
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
@@ -436,7 +436,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <div>
                   <Input
                     label={t('end_date_label', 'End Date')}
-                    leftIcon={<Calendar className="w-4 h-4 text-gray-500" />}
+                    leftIcon={<Calendar className="w-4 h-4 text-slate-500" />}
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
@@ -451,11 +451,11 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 1: Bookings */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
                 <span>{t('bookings_export_title', 'Accommodations Booking Spreadsheet')}</span>
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {t('bookings_export_description', 'Extracts comprehensive check-in logs, occupancy timelines, advance splits, food bills, and total room collections.')}
               </p>
             </div>
@@ -473,11 +473,11 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {kitchenModuleEnabled && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
               <div className="space-y-1">
-                <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-amber-600" />
                   <span>{t('kitchen_purchases_export_title', 'Kitchen Purchases Workbook')}</span>
                 </h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {t('kitchen_purchases_export_description', 'Downloads inventory replenishment lists, raw ration tracking, volume unit weights, and market vendor bills.')}
                 </p>
               </div>
@@ -495,11 +495,11 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 3: Farm Upkeep & Utilities */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-purple-600" />
                 <span>{t('maintenance_utilities_export_title', 'Property Maintenance & Utilities Logs')}</span>
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {t('maintenance_utilities_export_description', 'Generates itemized expense spreadsheets for water tankers, electricity bills, hardware, and physical farm upkeep.')}
               </p>
             </div>
@@ -516,11 +516,11 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 4: Payroll & Salaries */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
                 <span>{t('payroll_salaries_export_title', 'Payroll & Salaries Registry')}</span>
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {t('payroll_salaries_export_description', 'Compiles all recorded payouts, staff management stipends, logged cash advances, and deductions.')}
               </p>
             </div>

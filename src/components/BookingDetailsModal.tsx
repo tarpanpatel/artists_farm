@@ -6,6 +6,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
@@ -270,7 +271,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('today_guest_name_label', 'Guest Name')}</label>
                 {isEditing ? (
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className={inputClass} />
+                  <Input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {guest.guestName}
@@ -315,7 +316,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('phone_label', 'Phone')}</label>
                 {isEditing ? (
-                  <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className={inputClass} />
+                  <Input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {guest.phoneNumber || '—'}
@@ -325,7 +326,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('no_of_guests_label', 'No. of Guests')}</label>
                 {isEditing ? (
-                  <input type="number" min={1} value={editGuests} onChange={(e) => setEditGuests(e.target.value)} className={inputClass} />
+                  <Input type="number" min={1} value={editGuests} onChange={(e) => setEditGuests(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {noOfGuests} guest{noOfGuests !== 1 ? 's' : ''}
@@ -366,7 +367,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div>
               <label className={fieldLabelClass}>{t('room_rent', 'Room Rent / Price (₹)')}</label>
               {isEditing ? (
-                <input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} className={inputClass} />
+                <Input type="number" min={0} value={editRoomRent} onChange={(e) => setEditRoomRent(e.target.value)} />
               ) : (
                 <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                   ₹{roomRent}
@@ -379,7 +380,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('today_advance_paid_label', 'Advance Paid')}</label>
                 {isEditing ? (
-                  <input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} className={inputClass} />
+                  <Input type="number" min={0} value={editAdvance} onChange={(e) => setEditAdvance(e.target.value)} />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
                     ₹{advancePaid}
@@ -492,7 +493,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                                 showToast('Failed to update C-Form status', { type: 'error' });
                               }
                             }}
-                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                           />
                           <span>C-Form Filed</span>
                           {guest.cFormFiledAt && (

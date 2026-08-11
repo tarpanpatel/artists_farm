@@ -436,21 +436,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{roomName}</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
                     <button
                       onClick={() => {
                         setIsEditingRoomName(true);
                         setEditingRoomName(roomName || '');
                       }}
-                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition text-gray-600 hover:text-gray-900"
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition text-slate-600 hover:text-slate-900"
                       title={t('edit_room_name_tooltip', 'Edit room name')}
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-xs text-gray-500">in Goa Homes</p>
-                    {roomId && <p className="text-xs text-gray-400">(ID: {roomId})</p>}
+                    <p className="text-xs text-slate-500">in Goa Homes</p>
+                    {roomId && <p className="text-xs text-slate-400">(ID: {roomId})</p>}
                   </div>
                 </div>
               </div>
@@ -460,8 +460,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       ) : null}
       {/* Front-desk Alerts */}
       {(totalAlerts > 0 || clearedGuests.length > 0) && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('alerts_heading', 'Alerts')}
             {totalAlerts > 0 && (
@@ -471,18 +471,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             )}
           </h3>
           {totalAlerts === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t('no_outstanding_issues', 'No outstanding issues.')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('no_outstanding_issues', 'No outstanding issues.')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700">
+                  <tr className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                     <th className="pb-2 pr-3">{t('alerts_col_guest_room', 'Guest / Room')}</th>
                     <th className="pb-2 pr-3">{t('alerts_col_issue', 'Issue')}</th>
                     <th className="pb-2 w-36">{t('alerts_col_action', 'Action')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
                   {combinedAlerts.slice(0, 5).map(({ guest: g, severity, reasons }) => (
                     <tr
                       key={g.id}
@@ -492,7 +492,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         <div className={`text-sm font-bold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
                           {g.guestName}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{g.roomNumber}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
                       </td>
                       <td className="py-2.5 pr-3 align-top">
                         <div className="space-y-0.5">
@@ -524,7 +524,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           )}
 
           {combinedAlerts.length > 5 && (
-            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+            <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end">
               <button
                 onClick={() => setShowAllAlertsModal(true)}
                 className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
@@ -535,14 +535,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
           )}
           {clearedGuests.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
               <button
                 onClick={() => setShowCleared((prev) => !prev)}
                 className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {t('cleared_label', 'Cleared')} ({clearedGuests.length})
-                <span className="text-gray-400 font-normal">{showCleared ? '▲' : '▼'}</span>
+                <span className="text-slate-400 font-normal">{showCleared ? '▲' : '▼'}</span>
               </button>
               {showCleared && (
                 <ul className="space-y-1.5 mt-2">
@@ -570,8 +570,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
       {cFormPending.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5">
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('cform_filing_due_heading', 'C-Form Filing Due')}
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
@@ -594,12 +594,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     onClick={() => setSelectedBooking(g)}
                     className="text-left cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{g.guestName}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{g.guestName}</p>
                     <p className={`text-xs font-medium ${due.overdue ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
                       {due.label}
                     </p>
                   </button>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer whitespace-nowrap shrink-0">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap shrink-0">
                     <input
                       type="checkbox"
                       disabled={cFormSavingId === g.id}
@@ -618,10 +618,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* 3-Column Operational Row: Guest Staying / Check-ins | Kitchen Queue | Requisitions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: Resident Profile / Today's Check-ins & Pending Actions */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 {t('current_resident_profile_heading', 'Guest Currently Staying')}
               </h3>
@@ -632,25 +632,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
             {checkedInGuest ? (
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-gray-400" /> {t('guest_name_colon_label', 'Guest Name:')}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-slate-400" /> {t('guest_name_colon_label', 'Guest Name:')}
                   </span>
-                  <span className="font-bold text-gray-900 dark:text-white text-sm">{checkedInGuest.guestName}</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">{checkedInGuest.guestName}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-gray-400" /> {t('contact_phone_colon_label', 'Contact Phone:')}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" /> {t('contact_phone_colon_label', 'Contact Phone:')}
                   </span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">{checkedInGuest.phoneNumber}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{checkedInGuest.phoneNumber}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-slate-700/60">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-gray-400" /> {t('dates_colon_label', 'Dates:')}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/60">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> {t('dates_colon_label', 'Dates:')}
                   </span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {(() => {
                       const formatDate = (dateStr?: string) => {
                         if (!dateStr) return '';
@@ -665,27 +665,27 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 </div>
 
                 <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-500 dark:text-gray-400 font-medium">{t('room_label', 'Room:')}</span>
-                  <span className="font-bold bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white px-2.5 py-1 rounded border border-gray-200 dark:border-slate-600">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">{t('room_label', 'Room:')}</span>
+                  <span className="font-bold bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-2.5 py-1 rounded border border-slate-200 dark:border-slate-600">
                     {checkedInGuest.roomNumber}
                   </span>
                 </div>
               </div>
             ) : todaysCheckins.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 mb-2">{t('todays_checkins_heading', "Today's Check-ins & Pending Actions")}</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2">{t('todays_checkins_heading', "Today's Check-ins & Pending Actions")}</p>
                 {todaysCheckins.slice(0, 5).map((g) => {
                   const verified = g.idVerificationStatus === 'Complete';
                   return (
                     <div
                       key={g.id}
                       className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 ${
-                        verified ? 'border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50' : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'
+                        verified ? 'border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50' : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'
                       }`}
                     >
                       <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">{g.guestName}</p>
-                        <p className="text-[11px] text-gray-500">{g.roomNumber}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">{g.guestName}</p>
+                        <p className="text-[11px] text-slate-500">{g.roomNumber}</p>
                       </div>
                       {verified ? (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -707,7 +707,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 })}
               </div>
             ) : (
-              <div className="py-8 text-center text-gray-400 text-xs font-medium">
+              <div className="py-8 text-center text-slate-400 text-xs font-medium">
                 {t('no_active_resident_message', 'No guest currently staying.')}
               </div>
             )}
@@ -724,10 +724,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
         {/* Column 2: Kitchen KDS Card */}
         {kitchenModuleEnabled ? (
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
                 </h3>
@@ -737,15 +737,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
 
               {recentOrders.length > 0 ? (
-                <ul className="divide-y divide-gray-100 dark:divide-slate-700 text-xs">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
                   {recentOrders.slice(0, 5).map((ord) => (
                     <li key={ord.id} className="py-2.5 flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                           <span>{ord.id}</span>
-                          <span className="text-gray-400 font-normal">({ord.roomNumber})</span>
+                          <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-0.5 line-clamp-1">
+                        <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 line-clamp-1">
                           {ord.items.map((i) => `${i.name} (${i.quantity})`).join(', ')}
                         </p>
                       </div>
@@ -765,7 +765,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   ))}
                 </ul>
               ) : (
-                <div className="py-8 text-center text-gray-400 text-xs font-medium">
+                <div className="py-8 text-center text-slate-400 text-xs font-medium">
                   {t('no_active_kitchen_tickets_message', 'No active kitchen tickets.')}
                 </div>
               )}
@@ -780,17 +780,17 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-center items-center text-center text-gray-400 text-xs">
-            <Utensils className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
+            <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
             <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
           </div>
         )}
 
         {/* Column 3: Requisitions Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-2xs p-5 flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 {t('requisitions_label', 'Requisitions')}
               </h3>
@@ -800,12 +800,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
 
             {stockAlerts.length > 0 ? (
-              <ul className="divide-y divide-gray-100 dark:divide-slate-700 text-xs">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
                 {stockAlerts.slice(0, 5).map((item) => (
                   <li key={item.id} className="py-2 flex items-center justify-between gap-2">
                     <div>
-                      <p className="font-bold text-gray-900 dark:text-white">{item.name}</p>
-                      <p className="text-gray-500 text-[11px]">{item.category}</p>
+                      <p className="font-bold text-slate-900 dark:text-white">{item.name}</p>
+                      <p className="text-slate-500 text-[11px]">{item.category}</p>
                     </div>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
                       {item.currentStock} / {item.minThreshold} {item.unit}
@@ -814,7 +814,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 ))}
               </ul>
             ) : (
-              <div className="py-8 text-center text-gray-400 text-xs font-medium">
+              <div className="py-8 text-center text-slate-400 text-xs font-medium">
                 {t('all_stocks_sufficient', 'All inventory items sufficient.')}
               </div>
             )}
@@ -831,10 +831,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </div>
 
       {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700">
-          <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
             {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
           </h3>
@@ -844,7 +844,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 dark:text-gray-500 mb-1 uppercase tracking-wider">
+        <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
           <div>Sun</div>
           <div>Mon</div>
           <div>Tue</div>
@@ -857,7 +857,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         {/* Calendar Grid - Full Width Spread Out */}
         <div className="grid grid-cols-7 gap-2 text-xs">
           {Array.from({ length: firstDay }).map((_, idx) => (
-            <div key={`empty-${idx}`} className="h-24 rounded-lg bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/40" />
+            <div key={`empty-${idx}`} className="h-24 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40" />
           ))}
 
           {daysArray.map((d) => {
@@ -893,10 +893,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 className={`h-24 rounded-lg border p-2 transition-all flex flex-col justify-between ${
                   isToday
                     ? 'bg-blue-50/70 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/30'
-                    : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                 }`}
               >
-                <span className={`text-xs font-bold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'}`}>{d}</span>
+                <span className={`text-xs font-bold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}</span>
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
@@ -912,7 +912,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
 
         {/* Calendar Legend */}
-        <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-400" />
             <span>{t('legend_today', 'Today')}</span>

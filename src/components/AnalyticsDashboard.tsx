@@ -17,6 +17,7 @@ import { fetchKitchenPurchasesFromDB, fetchFinancialLedger } from '../services/a
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { StyledSelect } from './StyledSelect';
+import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -467,7 +468,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <PieChart className="w-4 h-4 text-blue-600" /> {t('operational_financial_breakdown_heading', 'Operational Financial Breakdown & Margin Analysis')}
             </h3>
 
@@ -527,7 +528,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {activeTab === 'bookings' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('monthly_bookings_revenue_guests_heading', 'Monthly Bookings, Revenue & Guest Count')}</span>
             </h3>
 
@@ -576,7 +577,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
           {isMultiKeyProperty && activeRooms.length > 0 && (
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-blue-600 pl-2.5">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BedDouble className="w-4 h-4 text-blue-600" /> {t('room_by_room_performance_heading', 'Room-by-Room Performance Comparison')}
               </h3>
 
@@ -622,7 +623,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {activeTab === 'food' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-cyan-500 pl-2.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('food_menu_performance_heading', 'Food Menu Performance & Most Popular Dish Analytics')}</span>
             </h3>
 
@@ -669,7 +670,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {activeTab === 'kitchen' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-amber-500 pl-2.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('kitchen_sales_purchases_profit_heading', 'Kitchen Sales, Purchases & Net Profit')}</span>
             </h3>
 
@@ -736,7 +737,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {activeTab === 'expenses' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-red-500 pl-2.5">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               {t('expense_items_cost_breakdown_heading', '🛒 Expense Items - Total Cost Breakdown')}
             </h3>
 
@@ -787,14 +788,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-emerald-500 pl-2.5">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-emerald-600" /> {t('profit_loss_statement_heading', 'Profit & Loss Statement')}
               </h3>
-              <input
+              <Input
                 type="month"
                 value={ledgerMonth}
                 onChange={(e) => setLedgerMonth(e.target.value)}
-                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+                fullWidth={false}
               />
             </div>
 
@@ -853,14 +854,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-purple-500 pl-2.5">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Layers className="w-4 h-4 text-purple-600" /> {t('balance_sheet_heading', 'Balance Sheet')}
               </h3>
-              <input
+              <Input
                 type="month"
                 value={ledgerMonth}
                 onChange={(e) => setLedgerMonth(e.target.value)}
-                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+                fullWidth={false}
               />
             </div>
 
@@ -894,14 +895,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-l-3 border-cyan-500 pl-2.5">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('cash_flow_statement_heading', 'Cash Flow Statement')}
               </h3>
-              <input
+              <Input
                 type="month"
                 value={ledgerMonth}
                 onChange={(e) => setLedgerMonth(e.target.value)}
-                className="text-xs border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-900"
+                fullWidth={false}
               />
             </div>
 

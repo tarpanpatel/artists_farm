@@ -314,7 +314,7 @@ export const EmailSettingsPanel: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </button>

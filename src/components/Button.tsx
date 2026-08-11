@@ -21,7 +21,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     secondary:
       'bg-[var(--btn-secondary-bg)] border border-[var(--btn-secondary-border)] hover:bg-[var(--btn-secondary-hover)] active:bg-[var(--btn-secondary-active)] text-[var(--btn-secondary-text)] focus:ring-4 focus:ring-[var(--btn-secondary-ring)] shadow-xs hover:shadow-sm',
     tertiary:
-      'text-gray-900 bg-gray-100 hover:bg-gray-200 focus:ring-4 focus:ring-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white',
+      'text-slate-900 bg-slate-100 hover:bg-slate-200 focus:ring-4 focus:ring-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white',
     success:
       'text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 focus:ring-4 focus:ring-emerald-500/30 shadow-sm',
     danger:

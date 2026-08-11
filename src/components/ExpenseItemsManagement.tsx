@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Loader2, Lock } from 'lucide-react';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -128,7 +128,7 @@ export const ExpenseItemsManagement: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title={t('predefined_expense_items_heading', 'Predefined Expense Items')}
-        subtitle={t('expense_items_description', 'System defaults (🔒) cannot be edited. Add custom items or modify the defaults through Root Admin.')}
+        subtitle={t('expense_items_description', 'System defaults cannot be edited. Add custom items or modify the defaults through Root Admin.')}
       />
 
       {/* Messages */}
@@ -142,7 +142,7 @@ export const ExpenseItemsManagement: React.FC = () => {
 
       {/* Toolbar */}
       {allItems.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button
@@ -250,7 +250,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             if (filteredCategory.length === 0 && searchQuery) return null;
 
             return (
-              <div key={category} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div key={category} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
                   <h3 className="font-bold text-slate-900 dark:text-white">{category}</h3>
                 </div>
@@ -259,14 +259,14 @@ export const ExpenseItemsManagement: React.FC = () => {
                     {(filteredCategory.length > 0 ? filteredCategory : categoryItems).map((item) => {
                       const ItemIcon = getExpenseItemIcon(item.label, category);
                       return (
-                      <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
+                      <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md dark:hover:bg-slate-700 transition-all">
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <ItemIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5" />
                             <span className="font-semibold text-slate-900 dark:text-white text-sm leading-tight flex-1">{item.label}</span>
                             {item.is_system_default && (
-                              <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded whitespace-nowrap">
-                                🔒
+                              <span className="text-xs font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded whitespace-nowrap inline-flex items-center">
+                                <Lock className="w-3.5 h-3.5" />
                               </span>
                             )}
                           </div>

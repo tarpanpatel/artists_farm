@@ -1,6 +1,7 @@
 import React, { useRef, useCallback } from 'react';
 import { Bold, Italic, Strikethrough, List, Quote, Code } from 'lucide-react';
 import { Button } from './Button';
+import { Textarea } from './Textarea';
 
 interface WhatsAppEditorProps {
   value: string;
@@ -59,7 +60,7 @@ export const WhatsAppEditor: React.FC<WhatsAppEditorProps> = ({
          ))}
          <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">WhatsApp formatting</span>
        </div>
-      <textarea
+      <Textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}

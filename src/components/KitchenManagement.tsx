@@ -1120,7 +1120,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }, {})
                     ).map(([category, items]) => (
                       <div key={category}>
-                        <h4 className="text-[11px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <h4 className="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block"></span>
                           {category}
                           <span className="text-slate-400 dark:text-slate-500 font-bold normal-case tracking-normal">({items.length})</span>
@@ -1273,7 +1273,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Cart Total & Submit Button */}
                 <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-xs">{t('total_label')}</span>
+                    <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-[10px]">{t('total_label')}</span>
                     <span className="font-black text-emerald-600 text-base">
                       ₹{totalCartSum.toFixed(2)}
                     </span>
@@ -1406,7 +1406,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 3: MENU CATALOG */}
       {activeTab === 'menu_catalog' && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t('resort_food_beverage_catalog_header')}</h3>
             <button
@@ -1433,7 +1433,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB 4: RAW MATERIAL REQUISITIONS */}
       {activeTab === 'requisitions' && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t('kitchen_requisitions_header')}</h3>
             <button
@@ -1596,8 +1596,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Left Panel: Record Consumption */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
-<h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
-                <span>➕</span> {t('record_consumption_heading')}
+<h3 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+                <Plus className="w-4 h-4" /> {t('record_consumption_heading')}
               </h3>
 
             <div className="space-y-4">
@@ -1676,9 +1676,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase">{t('quantity_label')}</label>
                 <div className="flex items-center gap-1 w-32">
-                  <button onClick={() => setSmQuantity(Math.max(1, smQuantity - 1))} type="button" className="w-10 h-10 flex items-center justify-center bg-cyan-500 text-white rounded-l-xl font-bold hover:bg-cyan-600 transition-colors cursor-pointer shadow-2xs">-</button>
+                  <button onClick={() => setSmQuantity(Math.max(1, smQuantity - 1))} type="button" className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded-l-xl font-bold transition-colors cursor-pointer shadow-2xs">-</button>
                   <div className="h-10 flex-1 flex items-center justify-center bg-white dark:bg-slate-900 border-y border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 shadow-2xs">{smQuantity}</div>
-                  <button onClick={() => setSmQuantity(smQuantity + 1)} type="button" className="w-10 h-10 flex items-center justify-center bg-cyan-500 text-white rounded-r-xl font-bold hover:bg-cyan-600 transition-colors cursor-pointer shadow-2xs">+</button>
+                  <button onClick={() => setSmQuantity(smQuantity + 1)} type="button" className="w-10 h-10 flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded-r-xl font-bold transition-colors cursor-pointer shadow-2xs">+</button>
                 </div>
               </div>
 
@@ -1695,11 +1695,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           {/* Right Panel: Monthly Tracking Log */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col h-full">
-            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-500" /> {t('monthly_tracking_log_heading')}
               </div>
-              <span className="font-mono text-slate-400 font-bold text-[10px]">{smLogs.length} {t('entries_suffix')}</span>
+              <span className="text-slate-400 font-bold text-[10px]">{smLogs.length} {t('entries_suffix')}</span>
             </h3>
             
             <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
@@ -1764,7 +1764,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
-                  <span className="text-sm">➕</span> {t('create_custom_meal_heading')}
+                  <Plus className="w-4 h-4" /> {t('create_custom_meal_heading')}
                 </h3>
               </div>
               
@@ -1829,7 +1829,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 />
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setShowPresetModal(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer">{t('cancel_button')}</button>
-                  <button onClick={handleSavePreset} className="px-3 py-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg cursor-pointer flex items-center gap-1.5">
+                  <button onClick={handleSavePreset} className="px-3 py-1.5 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer flex items-center gap-1.5">
                     <Save className="w-3 h-3" /> {t('save_preset_button')}
                   </button>
                 </div>
@@ -1873,13 +1873,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">{t('recipe_name_label')}</label>
                 {editingRecipeName ? (
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={tempRecipeName}
                       onChange={(e) => setTempRecipeName(e.target.value)}
                       onBlur={() => { setRecipeName(tempRecipeName); setEditingRecipeName(false); }}
                       onKeyDown={(e) => { if (e.key === 'Enter') { setRecipeName(tempRecipeName); setEditingRecipeName(false); } if (e.key === 'Escape') setEditingRecipeName(false); }}
-                      className="flex-1 p-2 rounded-lg border border-indigo-300 text-xs font-bold bg-white dark:bg-slate-900 dark:text-white"
                       autoFocus
                     />
                   </div>
@@ -2025,7 +2024,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             {/* Ingredients Table */}
             <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
                   <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                     <Boxes className="w-4 h-4 text-indigo-500" /> {t('ingredients_heading')}
@@ -2187,7 +2186,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" /> {t('add_to_recipe_button')}
                 </button>
@@ -2409,7 +2408,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
       <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-sm">
         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
         <span>{t('current_guest_served_dishes_heading')}</span>
-        <span className="text-xs font-mono text-slate-400 ml-1">({servedLogs.length} {t('total_suffix')})</span>
+        <span className="text-xs text-slate-400 ml-1">({servedLogs.length} {t('total_suffix')})</span>
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
         <DataTable

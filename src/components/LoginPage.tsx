@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { t } from '../i18n/en';
+import { Input } from './Input';
 
 interface LoginPageProps {
   onLoginSuccess: (userData: {
@@ -204,10 +205,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
             {t('forgot_passcode_title', 'Forgot Your Passcode?')}
           </h1>
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center mb-8">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
             {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
           </p>
 
@@ -232,15 +233,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('mobile_username_label', 'Mobile Number / Username')}
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
                   <Phone className="w-4 h-4" />
-                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 pr-2">+91</span>
+                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
                 </div>
-                <input
+                <Input
                   type="text"
                   value={forgotMobile}
                   onChange={(e) => {
@@ -248,7 +249,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     setForgotResult(null);
                   }}
                   placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
-                  className="w-full pl-16 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-semibold text-sm placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  className="pl-16"
                   disabled={isSendingLoginInfo}
                   autoFocus
                 />
@@ -280,7 +281,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 setShowForgotPassword(false);
                 setForgotResult(null);
               }}
-              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> {t('back_to_login_button', 'Back to Login')}
             </button>
@@ -300,10 +301,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
             {t('set_new_passcode_title', 'Set a New Passcode')}
           </h1>
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center mb-8">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
             You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
           </p>
 
@@ -316,37 +317,37 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('new_passcode_label', 'New 6-Digit Passcode')}
               </label>
               <div className="relative">
-                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-                <input
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <Input
                   type="password"
                   value={newPasscode}
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="• • • • • •"
                   maxLength={6}
                   autoFocus
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono text-center tracking-[0.4em] font-bold text-lg placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                  className="pl-10 text-center"
                   disabled={isSavingPasscode}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('confirm_new_passcode_label', 'Confirm New Passcode')}
               </label>
               <div className="relative">
-                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-                <input
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <Input
                   type="password"
                   value={confirmPasscode}
                   onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="• • • • • •"
                   maxLength={6}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono text-center tracking-[0.4em] font-bold text-lg placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
+                  className="pl-10 text-center"
                   disabled={isSavingPasscode}
                 />
               </div>
@@ -386,10 +387,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">
+        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
           Artists Farm
         </h1>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 text-center mb-8 uppercase tracking-wider">
+        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 text-center mb-8 uppercase tracking-wider">
           {t('login_subtitle', 'Mobile & Passcode Terminal Login')}
         </p>
 
@@ -405,20 +406,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* Mobile Number Input */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               {t('mobile_username_label', 'Mobile Number / Username')}
             </label>
             <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
                 <Phone className="w-4 h-4" />
-                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 pr-2">+91</span>
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
               </div>
-              <input
+              <Input
                 type="text"
                 value={mobileNumber}
                 onChange={handleMobileChange}
                 placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
-                className="w-full pl-16 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-semibold text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="pl-16"
                 disabled={isLoading}
                 autoFocus
               />
@@ -427,18 +428,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* 6-Digit Passcode Input */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               {t('pin_passcode_label', '6-Digit PIN Passcode')}
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
-              <input
+              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <Input
                 type="password"
                 value={passcode}
                 onChange={handlePasscodeChange}
                 placeholder="• • • • • •"
                 maxLength={6}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono text-center tracking-[0.4em] font-bold text-lg placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="pl-10 text-center"
                 disabled={isLoading}
               />
             </div>
@@ -478,7 +479,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </form>
 
         {/* Footer */}
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-6">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">
           {t('login_footer_copyright', '© 2026 Artists Farm Resort & Kitchen Management System')}
         </p>
 
@@ -486,7 +487,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="mt-4 text-center">
           <a
             href="/artists_farm/"
-            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             {t('back_to_home_link', '← Back to Home')}
           </a>

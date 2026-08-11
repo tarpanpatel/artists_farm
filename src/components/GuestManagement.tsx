@@ -3,10 +3,15 @@ import {
   Receipt,
   Building,
   X,
+  Calendar,
   QrCode,
   Share2,
   Printer,
   Trash2,
+  Home,
+  Utensils,
+  Plus,
+  Flag
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
@@ -744,9 +749,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     return (
       <div className="guest-management-container w-full flex justify-center items-start">
         {/* Form Card */}
-        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs p-4 space-y-3 max-w-[550px] w-full">
+        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
-            <h3 className="text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
+            <h3 className="text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
               {isMultiKeyProperty && roomNumber ? (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 normal-case">
@@ -946,12 +951,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-left text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-between"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-left flex items-center justify-between cursor-pointer transition-all"
                 >
                   <span>{checkinDate ? new Date(checkinDate).toLocaleDateString('en-GB') : 'Select date'}</span>
-                  <svg className="w-4 h-4 text-blue-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
+                  <Calendar className="w-4 h-4 text-blue-600" />
                 </button>
               </div>
 
@@ -960,12 +963,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowDateRangePicker(true)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-left text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center justify-between"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-left flex items-center justify-between cursor-pointer transition-all"
                 >
                   <span>{expectedCheckout ? new Date(expectedCheckout).toLocaleDateString('en-GB') : 'Select date'}</span>
-                  <svg className="w-4 h-4 text-blue-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
+                  <Calendar className="w-4 h-4 text-blue-600" />
                 </button>
               </div>
             </div>
@@ -1189,7 +1190,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
         {/* Right Column: Booking Calendar (hidden in guest_registration mode) */}
         {activeMenuItemKey !== 'guest_registration' && (
-          <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden flex flex-col">
+          <div className="active-guests-table-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden flex flex-col">
             <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
               <TodayOverview
                 guests={guests}
@@ -1279,13 +1280,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   return (
     <div className="guest-management-container space-y-6">
       {/* Top Banner Header for Billing */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div>
-          <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Receipt className="w-6 h-6 text-blue-600" />
             Guest Billing & Checkout Terminal
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Manage lodging contracts, insert food incidentals, apply adjustments, and run split settlement checkouts
           </p>
         </div>
@@ -1298,16 +1299,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         <div className="space-y-6">
           {/* BUG 5 FIX: Guard for empty Active guest list */}
           {checkedInGuests.length === 0 ? (
-            <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center">
-              <Building className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-gray-700 mb-1">No Active Residents</h3>
-              <p className="text-sm text-gray-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-2xs text-center">
+              <Building className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-700 mb-1">No Active Residents</h3>
+              <p className="text-sm text-slate-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
             </div>
           ) : (<>
           {/* Active Resident Selector Bar */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
-              <span className="font-bold text-gray-700">Active Resident Account:</span>
+              <span className="font-bold text-slate-700">Active Resident Account:</span>
               <StyledSelect
                 className="w-64"
                 value={selectedGuestId}
@@ -1345,22 +1346,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* LEFT COLUMN: ACCOMMODATION + FOOD LOG (LG: 7 COLS) */}
             <div className="lg:col-span-7 space-y-6">
               {/* CARD 1: ACCOMMODATION INVOICE BREAKDOWN */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
-                <div className="text-sm font-extrabold text-slate-900 border-b border-gray-100 pb-2 flex items-center gap-2">
-                  <span>🏡</span> Accommodation Invoice Breakdown
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Home className="w-4 h-4" /> Accommodation Invoice Breakdown
                 </div>
                 <div className="flex justify-between items-center text-xs py-1">
-                  <span className="text-gray-600 font-semibold">Base Lodging Charges:</span>
-                  <strong className="text-gray-900 font-bold">₹{baseLodging.toFixed(2)}</strong>
+                  <span className="text-slate-600 font-semibold">Base Lodging Charges:</span>
+                  <strong className="text-slate-900 font-bold">₹{baseLodging.toFixed(2)}</strong>
                 </div>
                 <div className="flex justify-between items-center text-xs py-1">
-                  <span className="text-gray-600 font-semibold">Advance Paid:</span>
+                  <span className="text-slate-600 font-semibold">Advance Paid:</span>
                   <strong className="text-emerald-600 font-bold">
                     + ₹{advancePaid.toFixed(2)} by {advancePayer}
                   </strong>
                 </div>
-                <div className="flex justify-between items-center text-xs py-1 border-t border-dashed border-gray-200 pt-2">
-                  <span className="text-gray-600 font-semibold">Pending Lodging Due:</span>
+                <div className="flex justify-between items-center text-xs py-1 border-t border-dashed border-slate-200 pt-2">
+                  <span className="text-slate-600 font-semibold">Pending Lodging Due:</span>
                   <strong className="text-emerald-700 font-bold">
                     ₹{lodgingPendingDue.toFixed(2)} Settled via {pendingSettledBy}
                   </strong>
@@ -1368,9 +1369,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               {/* CARD 2: FOOD ORDERS & INCIDENTALS LOG */}
-              <div className="receipts-log-table-card bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs space-y-4">
-                <div className="text-sm font-extrabold text-slate-900 border-b border-gray-100 pb-2 flex items-center gap-2">
-                  <span>🍽️</span> Food Orders & Incidentals Log
+              <div className="receipts-log-table-card bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Utensils className="w-4 h-4" /> Food Orders & Incidentals Log
                 </div>
 
                 {/* INSERTION FORM WITH --CUSTOM-- DISH OPTION */}
@@ -1506,7 +1507,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 {/* MANUAL ADJUSTMENTS APPLIED SUMMARY BOX */}
                 {adjustments.length > 0 && (
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
-                    <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">
+                    <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
                       Manual Adjustments Applied
                     </span>
                     {adjustments.map((adj) => (
@@ -1528,7 +1529,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded cursor-pointer"
                             title="Remove Adjustment"
                           >
-                            ✕
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -1551,9 +1552,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* RIGHT COLUMN: CUSTOM ADJUSTMENTS + SPLIT CHECKOUT (LG: 5 COLS) */}
             <div className="lg:col-span-5 space-y-6">
               {/* CARD 3: ADD CUSTOM ADJUSTMENTS */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-2xs space-y-4 text-xs">
-                <div className="text-sm font-extrabold text-slate-900 border-b border-gray-100 pb-2 flex items-center gap-2">
-                  <span>➕</span> Add Custom Adjustments
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+                <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Custom Adjustments
                 </div>
 
                 <form onSubmit={handleAddAdjustment} className="space-y-3">
@@ -1638,7 +1639,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* CARD 4: SPLIT PAYMENT INTEGRATED FINAL CHECKOUT SETTLEMENT BLOCK */}
               <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500/80 shadow-md space-y-4 text-xs">
                 <div className="text-sm font-extrabold text-emerald-800 border-b border-emerald-100 pb-2 flex items-center gap-2">
-                  <span>🏁</span> Final Checkout Split Settlement
+                  <Flag className="w-4 h-4" /> Final Checkout Split Settlement
                 </div>
 
                 <form onSubmit={handleCompleteCheckout} className="space-y-4">
@@ -1759,7 +1760,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                               className="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-sm cursor-pointer"
                               title="Remove row"
                             >
-                              ✕
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           )}
 
@@ -1827,7 +1828,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       onClick={handleAddSplitRow}
                       className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-400 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
                     >
-                      ➕ Add Payment Split Row
+                      Add Payment Split Row
                     </button>
                   </div>
 
@@ -1876,7 +1877,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {isQrModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+            <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-900">
               Scan UPI QR Target: {qrModalTitle}
             </h4>
 

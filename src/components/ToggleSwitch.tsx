@@ -21,7 +21,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         className={`app-toggle-switch relative inline-flex h-6 w-11 items-center rounded-full transition-colors overflow-visible ${
           enabled
             ? 'bg-blue-600 dark:bg-blue-500'
-            : 'bg-gray-300 dark:bg-gray-600'
+            : 'bg-slate-300 dark:bg-slate-600'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         role="switch"
         aria-checked={enabled}
@@ -33,7 +33,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         />
       </button>
       {label && (
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
           {label}
         </span>
       )}

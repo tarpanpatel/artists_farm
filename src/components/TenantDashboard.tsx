@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { t } from '../i18n/en';
@@ -720,7 +721,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </p>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
-                  <textarea
+                  <Textarea
                     value={editInstructions}
                     onChange={e => setEditInstructions(e.target.value)}
                     placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
@@ -761,7 +762,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full">
                   <p className="font-bold text-red-700 dark:text-red-400">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
                   <div className="text-xs space-y-2 mt-1">
-                    <p className="font-semibold text-[11px] uppercase tracking-wider text-red-600 dark:text-red-400">{t('deletion_consequences_for_label', '⚠️ Deletion Consequences for')} "{modal.property.name}":</p>
+                    <p className="font-semibold text-[10px] uppercase tracking-wider text-red-600 dark:text-red-400">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
                     <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300">
                       <li>All <strong>active and upcoming bookings</strong> (present and future stays) will be permanently deleted.</li>
                       <li>Past bookings (checked-out/cancelled) and associated financial ledger records <strong>will remain intact</strong> for historical audit trail.</li>

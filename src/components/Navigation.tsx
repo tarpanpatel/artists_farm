@@ -336,7 +336,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
-                : 'text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700'
+                : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center gap-2.5 truncate">
@@ -350,9 +350,9 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </span>
               )}
               {isExpanded ? (
-                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
               ) : (
-                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
               )}
             </div>
           </button>
@@ -388,13 +388,13 @@ export const Navigation: React.FC<NavigationProps> = ({
         className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'p-2.5 text-xs font-semibold' : depth === 1 ? 'p-2 text-xs font-semibold' : 'p-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
-            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
+            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
         }`}
       >
         <div className="flex items-center gap-2.5 truncate">
           <ItemIcon
             className={`${iconSize} shrink-0 ${
-              isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'
+              isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'
             }`}
           />
           <span className="truncate">{node.title}</span>
@@ -431,14 +431,14 @@ export const Navigation: React.FC<NavigationProps> = ({
         className={`relative w-10 h-10 my-0.5 flex items-center justify-center rounded-xl transition-all cursor-pointer group no-underline ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs'
-            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
+            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
         }`}
       >
         <ItemIcon className="w-4 h-4" />
         {item.badge && (
           <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-slate-800" />
         )}
-        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-gray-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
+        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
           {item.label}
         </span>
       </a>
@@ -450,13 +450,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       {isSidebarOpen && (
         <div
           onClick={onCloseSidebar}
-          className="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
         />
       )}
 
       <aside
         id="mainSidebarNavigationContainer"
-        className={`fixed top-0 left-0 z-30 h-screen pt-16 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 ${
+        className={`fixed top-0 left-0 z-30 h-screen pt-16 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen
@@ -473,7 +473,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 .map((item, i) => renderIconItem(item, i))}
             </div>
 
-            <div className="flex flex-col items-center gap-2 w-full px-2 pb-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div className="flex flex-col items-center gap-2 w-full px-2 pb-3 pt-3 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={handleLogoutClick}
                 title="Sign Out Terminal"
@@ -484,7 +484,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               <button
                 onClick={onToggleIconOnly}
                 title="Expand Navigation Menu"
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -493,7 +493,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         ) : (
           <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
             <div className="space-y-1">
-              <div className="px-3 pb-2 mb-2 border-b border-gray-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
+              <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
                 Hello, {currentUser?.name || 'there'}
               </div>
 
@@ -501,7 +501,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               {tree.map(node => renderNode(node, 0))}
 
               {customUrlRootItems.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
+                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
                   <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
                   {customUrlRootItems.map(item => {
                     const ItemIcon = getIconComponent(item.iconName);
@@ -526,7 +526,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
 
-            <div className="pt-4 mt-auto border-t border-gray-200 dark:border-slate-700">
+            <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={handleLogoutClick}
                 className="w-full flex items-center gap-3 p-2.5 text-xs font-bold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"

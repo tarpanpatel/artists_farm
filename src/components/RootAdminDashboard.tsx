@@ -181,7 +181,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
         />
       )}
 
@@ -194,12 +194,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
           <div className="space-y-1">
             {/* Branding */}
-            <div className="px-3 pb-3 mb-2 border-b border-gray-100 dark:border-slate-700/80">
+            <div className="px-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-700/80">
               <h1 className="text-sm font-bold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
             </div>
 
-            <div className="px-3 pb-2 mb-2 border-b border-gray-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
+            <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
               Hello, {displayUsername}
             </div>
 
@@ -214,10 +214,10 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   className={`w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-400'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'}`} />
                   <span className="truncate">{item.label}</span>
                 </button>
               );
@@ -235,7 +235,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </button>
           </div>
 
-          <div className="pt-4 mt-auto border-t border-gray-200 dark:border-slate-700 space-y-2">
+          <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div className="px-2.5 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{t('logged_in_as_label', 'Logged in as')}</p>
               <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{displayUsername}</p>
@@ -262,7 +262,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               title={t('toggle_sidebar_tooltip', 'Toggle Sidebar Menu')}
               aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
-              className="md:hidden p-2 -ml-1 text-gray-600 dark:text-gray-300 rounded-lg hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+              className="md:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -299,7 +299,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {activeSection === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('system_status_label', 'System Status')}</p>
@@ -311,7 +311,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('global_css_configured_label', 'Global CSS Configured')}</p>
@@ -323,7 +323,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('admin_level_label', 'Admin Level')}</p>
@@ -336,7 +336,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
                   <button

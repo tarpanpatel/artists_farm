@@ -104,9 +104,9 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               </h2>
               <button
                 onClick={() => !isSaving && setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl leading-none cursor-pointer"
+                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
@@ -138,7 +138,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               <button
                 onClick={handleSave}
                 disabled={isSaving || !editAddress.trim()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {isSaving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 {t('save_address_button', 'Save Address')}

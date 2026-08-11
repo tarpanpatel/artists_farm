@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader } from 'lucide-react';
 import { Button } from './Button';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface PropertySetupWizardProps {
@@ -108,22 +109,20 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('address_label', 'Address')}</label>
-                  <input
+                  <Input
                     type="text"
                     value={editAddress}
                     onChange={(e) => setEditAddress(e.target.value)}
                     placeholder={t('full_property_address_placeholder', 'Full property address')}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('google_maps_link_optional_label', 'Google Maps Link (optional)')}</label>
-                  <input
+                  <Input
                     type="text"
                     value={editMapsLink}
                     onChange={(e) => setEditMapsLink(e.target.value)}
                     placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>

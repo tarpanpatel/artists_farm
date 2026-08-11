@@ -243,7 +243,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
     // Security Gate check for Salaries
     if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin') {
-      showToast('🔒 Access Denied: Only Admins or Super Admins are authorized to record Salary payments.', { type: 'error' });
+      showToast('Access Denied: Only Admins or Super Admins are authorized to record Salary payments.', { type: 'error' });
       return;
     }
 
@@ -373,8 +373,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           on narrow screens since a fixed side-by-side track can't fit. */}
       <div className="grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
       <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-        <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-red-500 pl-2.5 mb-4 flex items-center gap-1.5">
-          {t('add_expenses_heading', '📝 ADD EXPENSES')}
+        <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+          {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>
 
         <form onSubmit={handleSubmit} className="add-expense-form space-y-4">
@@ -414,7 +414,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   options={staff.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
                 />
                 {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
-                  <p className="text-red-500 font-semibold text-[10px] mt-1">{t('salary_access_warning_message', '🔒 Warning: You are not logged in as Admin. Salary submission will be blocked.')}</p>
+                  <p className="text-red-500 font-semibold text-[10px] mt-1">{t('salary_access_warning_message', 'Warning: You are not logged in as Admin. Salary submission will be blocked.')}</p>
                 )}
               </div>
             ) : (
@@ -491,7 +491,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               />
               {formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                  💡 Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
+                  Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
               )}
             </div>
@@ -617,7 +617,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="btn-submit-expense bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
+              className="btn-submit-expense bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
             >
               <span>{t('add_expense_button', 'ADD EXPENSE')}</span>
             </button>
@@ -629,7 +629,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {/* Live Search & Filter Panel */}
       <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="font-bold text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', '📅 Select Ledger Month')}</span>
+          <span className="font-bold text-slate-700 dark:text-slate-300">{t('select_ledger_month_label', 'Select Ledger Month')}</span>
           <StyledSelect
             value={selectedMonth}
             onChange={setSelectedMonth}
@@ -655,7 +655,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </div>
 
       {/* Cost Logs DataTable */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         <DataTable
           columns={[
             {
@@ -666,7 +666,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               cell: (entry: any) => {
                 const isEditingDate = editingCell?.id === entry.id && editingCell.field === 'date';
                 return isEditingDate ? (
-                  <input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-blue-500 rounded text-slate-900 text-[11px]" />
+                  <input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="p-1 border border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)] focus:outline-none rounded text-slate-900 dark:text-slate-100 text-[11px] bg-[var(--input-bg-default)] text-[var(--input-text-default)]" />
                 ) : (
                   <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
                 );
@@ -759,7 +759,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <h3 className="font-semibold text-slate-800 dark:text-white text-sm">
                 {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
-              <span className="font-mono text-slate-400 font-bold text-xs">{filteredEntries.length} {t('entries_label', 'entries')}</span>
+              <span className="text-slate-400 font-bold text-xs">{filteredEntries.length} {t('entries_label', 'entries')}</span>
             </div>
           }
           customStyles={{

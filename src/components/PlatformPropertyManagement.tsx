@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -513,7 +513,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading platform...</p>
+          <p className="text-slate-600 dark:text-slate-400">Loading platform...</p>
         </div>
       </div>
     );
@@ -534,18 +534,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           <div className="flex items-center gap-3">
             <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white">
                 {t('platform_title', 'Artists Farm Platform')}
               </h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 {t('admin_dashboard_subtitle', 'Administration Dashboard')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{username}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">{t('platform_admin_label', 'Platform Admin')}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{username}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{t('platform_admin_label', 'Platform Admin')}</p>
             </div>
             <Button
               onClick={handleLogout}
@@ -571,11 +571,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('total_tenants_label', 'Total Tenants')}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('total_tenants_label', 'Total Tenants')}</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {tenants.length}
                 </p>
               </div>
@@ -583,11 +583,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('total_properties_label', 'Total Properties')}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('total_properties_label', 'Total Properties')}</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {properties.length}
                 </p>
               </div>
@@ -595,11 +595,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('active_tenants_label', 'Active Tenants')}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('active_tenants_label', 'Active Tenants')}</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {tenants.filter((t) => t.is_active).length}
                 </p>
               </div>
@@ -611,7 +611,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         {/* Tenants with Collapsible Properties */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
             <Button
               onClick={() => setShowAddTenantModal(true)}
               className="flex items-center gap-2"
@@ -652,17 +652,17 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           {isExpanded ? (
                             <ChevronDown className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                           ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                            <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                           )}
                         </div>
                          <div className="flex-1">
-                           <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">
+                           <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
                              {tenant.name}
                            </h3>
-                           <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                           <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
                              Tenant ID: {tenant.id}
                            </p>
-                           <p className="text-sm text-gray-600 dark:text-gray-400">
+                           <p className="text-sm text-slate-600 dark:text-slate-400">
                              Slots Used: {tenant.slots_used ?? tenantProperties.length}/{tenant.max_properties}
                            </p>
                          </div>
@@ -672,7 +672,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           className={`px-3 py-1 text-xs font-bold rounded-full ${
                             tenant.is_active
                               ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300'
+                              : 'bg-slate-100 text-slate-800 dark:bg-slate-900/50 dark:text-slate-300'
                           }`}
                         >
                           {tenant.is_active ? t('active_status_badge', 'Active') : t('inactive_status_badge', 'Inactive')}
@@ -709,31 +709,31 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   {isExpanded && (
                     <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-700/30">
                       <div className="mb-6">
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">
                           {t('subscription_details_heading', 'Subscription Details')}
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                           <div>
-                            <p className="text-gray-600 dark:text-gray-400">{t('plan_label', 'Plan')}</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="text-slate-600 dark:text-slate-400">{t('plan_label', 'Plan')}</p>
+                            <p className="font-medium text-slate-900 dark:text-white">
                               {tenant.subscription_status}
                             </p>
                           </div>
                           <div>
-                            <p className="text-gray-600 dark:text-gray-400">{t('email_label', 'Email')}</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="text-slate-600 dark:text-slate-400">{t('email_label', 'Email')}</p>
+                            <p className="font-medium text-slate-900 dark:text-white">
                               {tenant.email || '-'}
                             </p>
                           </div>
                           <div>
-                            <p className="text-gray-600 dark:text-gray-400">{t('phone_label', 'Phone')}</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="text-slate-600 dark:text-slate-400">{t('phone_label', 'Phone')}</p>
+                            <p className="font-medium text-slate-900 dark:text-white">
                               {tenant.phone || '-'}
                             </p>
                           </div>
                           <div>
-                            <p className="text-gray-600 dark:text-gray-400">{t('max_properties_label', 'Max Properties')}</p>
-                            <p className="font-medium text-gray-900 dark:text-white">
+                            <p className="text-slate-600 dark:text-slate-400">{t('max_properties_label', 'Max Properties')}</p>
+                            <p className="font-medium text-slate-900 dark:text-white">
                               {tenant.max_properties}
                             </p>
                           </div>
@@ -741,15 +741,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                         {/* Login Credentials - always visible to root admin, even after the tenant changes their own passcode */}
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5 mb-2">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-2">
                             <KeyRound className="w-3.5 h-3.5 text-indigo-500" /> {t('login_credentials_label', 'Login Credentials')}
                           </p>
                           {credsLoadingId === tenant.id ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                               <Loader className="w-3 h-3 animate-spin" /> Loading...
                             </p>
                           ) : tenantCredsMap[tenant.id] === 'not_found' || !tenantCredsMap[tenant.id] ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
                               {t('no_login_exists_message', 'No login exists for this tenant yet.')}
                             </p>
                           ) : (
@@ -759,13 +759,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               return (
                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                                   <div>
-                                    <p className="text-gray-600 dark:text-gray-400 text-xs">{t('username_column', 'Username')}</p>
-                                    <p className="font-mono font-bold text-gray-900 dark:text-white">{creds.username}</p>
+                                    <p className="text-slate-600 dark:text-slate-400 text-xs">{t('username_column', 'Username')}</p>
+                                    <p className="font-mono font-bold text-slate-900 dark:text-white">{creds.username}</p>
                                   </div>
                                   <div>
-                                    <p className="text-gray-600 dark:text-gray-400 text-xs">{t('passcode_label', 'Passcode')}</p>
+                                    <p className="text-slate-600 dark:text-slate-400 text-xs">{t('passcode_label', 'Passcode')}</p>
                                     <div className="flex items-center gap-2">
-                                      <p className="font-mono font-bold text-gray-900 dark:text-white tracking-widest">
+                                      <p className="font-mono font-bold text-slate-900 dark:text-white tracking-widest">
                                         {isRevealed ? creds.passcode : '•'.repeat(creds.passcode.length || 6)}
                                       </p>
                                       <Button
@@ -805,7 +805,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       {/* Properties List */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                             Properties ({tenantProperties.length})
                           </h4>
                           <Button
@@ -823,7 +823,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           </Button>
                         </div>
                         {tenantProperties.length === 0 ? (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
                             {t('no_properties_yet_message', 'No properties yet')}
                           </p>
                         ) : (
@@ -848,7 +848,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                   <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">
                                           {prop.name}
                                         </p>
                                         <span className={`text-xs font-bold px-2 py-0.5 rounded ${
@@ -859,14 +859,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                           {isMultiKey ? t('multi_key_badge', 'Multi-Key') : t('single_badge', 'Single')}
                                         </span>
                                       </div>
-                                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                                      <p className="text-xs text-slate-600 dark:text-slate-400">
                                         Slug: {prop.slug}
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                       <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-xs text-gray-600 dark:text-gray-400">{t('active_toggle_label', 'Active:')}</span>
+                                          <span className="text-xs text-slate-600 dark:text-slate-400">{t('active_toggle_label', 'Active:')}</span>
                                           <ToggleSwitch
                                             enabled={prop.status === 'active'}
                                             onChange={() => togglePropertyStatus(prop.id, prop.status)}
@@ -875,7 +875,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         </div>
                                         {!isRoom && (
                                           <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-600 dark:text-gray-400">{t('kitchen_toggle_label', 'Kitchen:')}</span>
+                                            <span className="text-xs text-slate-600 dark:text-slate-400">{t('kitchen_toggle_label', 'Kitchen:')}</span>
                                             <ToggleSwitch
                                               enabled={kitchenEnabled}
                                               onChange={() => toggleKitchenModule(prop.id, kitchenEnabled)}
@@ -912,7 +912,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         variant="ghost"
                                         size="xs"
                                       >
-                                        ✕
+                                        <X className="w-4 h-4" />
                                       </Button>
                                     </div>
                                   </div>
@@ -927,18 +927,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         >
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-0.5">
-                                              <span className="text-xs font-bold text-slate-400">🚪</span>
-                                              <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                                              <span className="text-xs font-bold text-slate-400"><DoorOpen className="w-3.5 h-3.5" /></span>
+                                              <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
                                                 {room.name}
                                               </p>
                                             </div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                                            <p className="text-xs text-slate-500 dark:text-slate-500">
                                               Slug: {room.slug}
                                             </p>
                                           </div>
                                           <div className="flex items-center gap-3 shrink-0">
                                             <div className="flex items-center gap-2">
-                                              <span className="text-xs text-gray-600 dark:text-gray-400">{t('active_toggle_label', 'Active:')}</span>
+                                              <span className="text-xs text-slate-600 dark:text-slate-400">{t('active_toggle_label', 'Active:')}</span>
                                               <ToggleSwitch
                                                 enabled={room.status === 'active'}
                                                 onChange={() => togglePropertyStatus(room.id, room.status)}
@@ -973,7 +973,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                               variant="ghost"
                                               size="xs"
                                             >
-                                              ✕
+                                              <X className="w-3 h-3" />
                                             </Button>
                                           </div>
                                         </div>
@@ -999,13 +999,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showEditTenantModal && editingTenant && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('edit_tenant_heading', 'Edit Tenant')}
             </h3>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('tenant_name_label', 'Tenant Name')}
                 </label>
                 <Input
@@ -1022,7 +1022,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('email_label', 'Email')}
                 </label>
                 <Input
@@ -1035,7 +1035,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('phone_label', 'Phone')}
                 </label>
                 <Input
@@ -1050,7 +1050,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('slug_label', 'Slug')}
                 </label>
                 <Input
@@ -1068,7 +1068,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('subscription_status_label', 'Subscription Status')}
                 </label>
                 <StyledSelect
@@ -1100,7 +1100,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     }
                     className="w-4 h-4 rounded"
                   />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t('active_status_badge', 'Active')}
                   </span>
                 </label>
@@ -1133,16 +1133,16 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showPropertyModal && editingProperty && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
               {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
             </h3>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('property_name_label', 'Property Name')}
                   <span
-                    className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 cursor-help hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                     title={t('property_name_help_tooltip', 'The display name guests see for this property/room. Automatically generates the URL slug.')}
                   >
                     {t('help_label', 'Help?')}
@@ -1163,7 +1163,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('slug_label', 'Slug')}
                 </label>
                 <Input
@@ -1175,9 +1175,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-              <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
+              <div className="pt-2 border-t border-slate-300 dark:border-slate-600">
                 <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t('allow_telegram_customization_label', 'Allow Telegram Template Customization')}
                   </span>
                   <ToggleSwitch
@@ -1187,18 +1187,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     }
                   />
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {t('telegram_customization_hint', "All templates are designed here at the root admin level. When off, this property's Super Admin can view templates and the live preview but can't edit the wording.")}
                 </p>
               </div>
 
               {showPropertyModal === 'add' && (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     {t('property_type_label', 'Property Type')}
                   </label>
                   <div className="space-y-2">
-                    <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700/50">
+                    <label className="flex items-center gap-3 p-3 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700/50">
                       <input
                         type="radio"
                         name="propertyType"
@@ -1210,11 +1210,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         className="w-4 h-4"
                       />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{t('single_property_option', 'Single Property')}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('single_property_hint', 'One group of guests at a time')}</p>
+                        <p className="font-medium text-slate-900 dark:text-white">{t('single_property_option', 'Single Property')}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{t('single_property_hint', 'One group of guests at a time')}</p>
                       </div>
                     </label>
-                    <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700/50">
+                    <label className="flex items-center gap-3 p-3 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700/50">
                       <input
                         type="radio"
                         name="propertyType"
@@ -1226,8 +1226,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         className="w-4 h-4"
                       />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{t('multi_key_property_option', 'Multi Key Property')}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('multi_key_property_hint', 'Multiple rooms/suites with shared staff & expenses')}</p>
+                        <p className="font-medium text-slate-900 dark:text-white">{t('multi_key_property_option', 'Multi Key Property')}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{t('multi_key_property_hint', 'Multiple rooms/suites with shared staff & expenses')}</p>
                       </div>
                     </label>
                   </div>
@@ -1236,7 +1236,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
               {editingProperty.property_type === 'SINGLE' && showPropertyModal === 'add' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     {t('color_scheme_label', 'Color Scheme')}
                   </label>
                   <StyledSelect
@@ -1259,7 +1259,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         {t('currency_label', 'Currency')}
                       </label>
                       <Input
@@ -1272,7 +1272,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         {t('timezone_label', 'Timezone')}
                       </label>
                       <Input
@@ -1289,9 +1289,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               )}
 
               {showPropertyModal === 'add' && (
-                <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
+                <div className="pt-2 border-t border-slate-300 dark:border-slate-600">
                   <label className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       {t('include_kitchen_module_label', 'Include Kitchen Module')}
                     </span>
                     <ToggleSwitch
@@ -1342,19 +1342,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showDeletePropertyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('delete_property_heading', 'Delete Property?')}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 font-bold text-red-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600">
               {t('deletion_consequences_label', '⚠️ Deletion Consequences for this Property:')}
             </p>
-            <ul className="text-sm text-gray-600 dark:text-gray-400 mb-4 list-disc list-inside space-y-1">
+            <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
               <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
               <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
               <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
             </ul>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-              Type <span className="font-bold font-mono text-gray-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+              Type <span className="font-bold font-mono text-slate-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:
             </p>
             <Input
               type="text"
@@ -1409,11 +1409,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <>
                 <div className="flex items-center gap-2 mb-1">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {t('tenant_created_heading', 'Tenant Created')}
                   </h3>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                   {t('temp_passcode_only_shown_hint', "This is the only time the temporary passcode is shown - share it now.")}
                 </p>
 
@@ -1423,14 +1423,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
                 ) : (
                   <>
-                    <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-2 mb-3">
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-2 mb-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">{t('username_column', 'Username')}</span>
-                        <span className="font-mono font-bold text-gray-900 dark:text-white">{newTenantCredentials.username}</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('username_column', 'Username')}</span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">{newTenantCredentials.username}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">{t('temporary_passcode_label', 'Temporary Passcode')}</span>
-                        <span className="font-mono font-bold text-gray-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('temporary_passcode_label', 'Temporary Passcode')}</span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
                       </div>
                     </div>
 
@@ -1475,13 +1475,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </>
             ) : (
               <>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
                   {t('add_new_tenant_heading', 'Add New Tenant')}
                 </h3>
 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       {t('tenant_name_label', 'Tenant Name')}
                     </label>
                     <Input
@@ -1500,7 +1500,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       {t('url_slug_label', 'URL Slug')}
                     </label>
                     <Input
@@ -1513,13 +1513,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       className="font-mono"
                       placeholder={t('tenant_slug_placeholder', 'e.g., vrikshawan')}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {t('url_slug_hint', "Auto-filled from the name. Used in the property URL - not the login username (that's the phone number below).")}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       {t('email_label', 'Email')}
                     </label>
                     <Input
@@ -1533,7 +1533,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
                     </label>
                     <Input

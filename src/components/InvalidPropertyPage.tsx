@@ -30,10 +30,10 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
         </div>
 
         {/* Error Message */}
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 text-center">
           {t('invalid_property_heading')}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+        <p className="text-slate-600 dark:text-slate-400 text-center mb-6">
           {t('invalid_property_message')}
         </p>
 
@@ -48,7 +48,7 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
         </a>
 
         {/* Help Text */}
-        <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
+        <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-4">
           {t('invalid_property_help_text')}
         </p>
       </div>

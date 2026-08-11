@@ -6,6 +6,7 @@ import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface MiscChargeTemplate {
@@ -197,7 +198,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       selector: (row: MiscChargeTemplate) => row.id,
       width: '100px',
       cell: (row: MiscChargeTemplate) => (
-        <span className="font-mono text-xs text-gray-500">{row.id}</span>
+        <span className="font-mono text-xs text-slate-500">{row.id}</span>
       ),
     },
     {
@@ -206,18 +207,17 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
-          <input
+          <Input
             type="text"
             value={editForm.label || ''}
             onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-            className="w-full p-1.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
           />
         ) : (
           <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-900 dark:text-white">{row.label}</span>
+            <span className="font-bold text-slate-900 dark:text-white">{row.label}</span>
             {row.is_system_default && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">
-                {t('system_default_badge', '🔒 Default')}
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                {t('system_default_badge', 'Default')}
               </span>
             )}
           </div>
@@ -230,11 +230,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
-          <input
+          <Input
             type="text"
             value={editForm.category || ''}
             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-            className="w-full p-1.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
           />
         ) : (
           <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
@@ -249,11 +248,10 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       cell: (row: MiscChargeTemplate) => {
         const editing = isEditing === row.id;
         return editing ? (
-          <input
+          <Input
             type="number"
             value={editForm.default_amount || 0}
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
-            className="w-full p-1.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
           />
         ) : (
           <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
@@ -282,7 +280,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               title={isSystemDefault ? t('system_default_edit_disabled_tooltip', 'System default items cannot be edited') : t('edit_button', 'Edit')}
               className={`p-1 rounded-full transition-colors ${
                 isSystemDefault
-                  ? 'text-gray-400 cursor-not-allowed'
+                  ? 'text-slate-400 cursor-not-allowed'
                   : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer'
               }`}
             >
@@ -294,7 +292,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
               title={isSystemDefault ? t('system_default_delete_disabled_tooltip', 'System default items cannot be deleted') : t('delete_button', 'Delete')}
               className={`p-1 rounded-full transition-colors ${
                 isSystemDefault
-                  ? 'text-gray-400 cursor-not-allowed'
+                  ? 'text-slate-400 cursor-not-allowed'
                   : 'text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer'
               }`}
             >
@@ -310,14 +308,14 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
     <div className="space-y-6">
       <PageHeader
         title={t('misc_charges_heading', 'Expense Categories & Items')}
-        subtitle={t('misc_charges_description', 'System default categories (🔒 marked) cannot be edited or deleted. Add custom items within any category as needed.')}
+        subtitle={t('misc_charges_description', 'System default categories (marked) cannot be edited or deleted. Add custom items within any category as needed.')}
       >
         <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
           {t('add_new_service_button', 'Add New Service')}
         </PageHeaderButton>
       </PageHeader>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <DataTable
           columns={columns}
           data={filteredCharges}
@@ -326,17 +324,17 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           paginationPerPage={15}
           paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
           noDataComponent={
-            <div className="text-center py-6 text-gray-500 font-medium">
+            <div className="text-center py-6 text-slate-500 font-medium">
               {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}
             </div>
           }
           subHeader={
-            <input
+            <Input
               type="text"
               placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full max-w-xs p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+              className="w-full max-w-xs"
             />
           }
           highlightOnHover
@@ -346,43 +344,40 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-700">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('service_name_label', 'Service Name')}</label>
-                <input
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('service_name_label', 'Service Name')}</label>
+                <Input
                   type="text"
                   required
                   value={newForm.label}
                   onChange={(e) => setNewForm({ ...newForm, label: e.target.value })}
                   placeholder={t('service_name_placeholder', 'e.g. Pet Fee')}
-                  className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('category_label', 'Category')}</label>
-                <input
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('category_label', 'Category')}</label>
+                <Input
                   type="text"
                   required
                   value={newForm.category}
                   onChange={(e) => setNewForm({ ...newForm, category: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('default_price_label', 'Default Price (₹)')}</label>
-                <input
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('default_price_label', 'Default Price (₹)')}</label>
+                <Input
                   type="number"
                   required
                   value={newForm.default_amount === '' as unknown as number ? '' : newForm.default_amount}
                   onChange={(e) => setNewForm({ ...newForm, default_amount: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) })}
-                  className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-bold"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
               </div>
             </form>
           </div>

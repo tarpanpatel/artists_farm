@@ -9,6 +9,7 @@ import {
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
+import { Input } from './Input';
 import { t } from '../i18n/en';
 
 interface PropertyOption {
@@ -131,7 +132,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -156,24 +157,22 @@ export const ServiceRequestTypesManager: React.FC = () => {
 
         <form onSubmit={handleSaveType} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 border-b border-slate-200 dark:border-slate-700 pb-4 mb-4 items-end">
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('type_label_field', 'Label')}</label>
-            <input
+            <Input
+              label={t('type_label_field', 'Label')}
               type="text"
               value={newTypeLabel}
               onChange={(e) => setNewTypeLabel(e.target.value)}
               placeholder={t('type_label_placeholder', 'e.g. Pet Friendly Supplies')}
-              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('type_category_field', 'Category')}</label>
-            <input
+            <Input
+              label={t('type_category_field', 'Category')}
               type="text"
               value={newTypeCategory}
               onChange={(e) => setNewTypeCategory(e.target.value)}
               list="service-type-categories"
               placeholder={t('type_category_placeholder', 'e.g. Housekeeping')}
-              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
             />
             <datalist id="service-type-categories">
               {categories.map((c) => (
@@ -216,7 +215,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[55vh] overflow-y-auto pr-1">
             {categories.map((category) => (
               <div key={category}>
-                <h4 className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">{category}</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">{category}</h4>
                 <div className="space-y-1.5">
                   {requestTypes.filter((rt) => rt.category === category).map((rt) => (
                     <div key={rt.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700">

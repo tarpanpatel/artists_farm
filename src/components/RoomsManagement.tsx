@@ -227,7 +227,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1 truncate">{room.name}</p>
+                  <p className="font-semibold text-slate-900 dark:text-white text-sm mb-1 truncate">{room.name}</p>
                   <span
                     className={`inline-block px-2 py-1 text-xs font-bold rounded ${
                       status === 'booked'
@@ -238,7 +238,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                     {status === 'booked' ? t('booked_badge', 'Booked') : t('available_badge', 'Available')}
                   </span>
                   {roomData && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                       Revenue: {property.currency} {roomData.total_revenue.toFixed(0)}
                     </p>
                   )}
@@ -276,7 +276,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       {showAddRoomModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
 
             {property.room_count >= 10 && (
               <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded">

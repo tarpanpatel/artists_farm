@@ -155,8 +155,8 @@ export const ThemeManagement: React.FC = () => {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('theme_settings_heading', 'Theme Settings')}</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('theme_settings_heading', 'Theme Settings')}</h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           {t('theme_settings_description', 'Customize the platform appearance for all users')}
         </p>
       </div>
@@ -172,15 +172,15 @@ export const ThemeManagement: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Colors */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('colors_section_label', 'Colors')}</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('colors_section_label', 'Colors')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.colors).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24 capitalize">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 w-24 capitalize">
                   {key}
                 </label>
                 <div className="flex items-center gap-2 flex-1">
-                  <input
+                  <Input
                     type="color"
                     value={value}
                     onChange={(e) => handleColorChange(`colors.${key}`, e.target.value)}
@@ -202,15 +202,15 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Dark Mode Colors */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dark_mode_section_label', 'Dark Mode')}</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('dark_mode_section_label', 'Dark Mode')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.darkMode).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-32 capitalize">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 w-32 capitalize">
                   {key.replace(/([A-Z])/g, ' $1')}
                 </label>
                 <div className="flex items-center gap-2 flex-1">
-                  <input
+                  <Input
                     type="color"
                     value={value}
                     onChange={(e) => handleColorChange(`darkMode.${key}`, e.target.value)}
@@ -232,10 +232,10 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Typography */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('typography_section_label', 'Typography')}</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('typography_section_label', 'Typography')}</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('font_family_label', 'Font Family')}
               </label>
               <Input
@@ -245,7 +245,7 @@ export const ThemeManagement: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('base_font_size_label', 'Base Font Size')}
               </label>
               <Input
@@ -255,7 +255,7 @@ export const ThemeManagement: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 {t('heading_scale_label', 'Heading Scale')}
               </label>
               <Input
@@ -270,11 +270,11 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Border Radius */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('border_radius_section_label', 'Border Radius')}</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('border_radius_section_label', 'Border Radius')}</h3>
           <div className="space-y-3">
             {Object.entries(settings.borderRadius).map(([key, value]) => (
               <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">
                   {key}
                 </label>
                 <Input
@@ -290,11 +290,11 @@ export const ThemeManagement: React.FC = () => {
 
       {/* Shadows */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('shadows_section_label', 'Shadows')}</h3>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('shadows_section_label', 'Shadows')}</h3>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {Object.entries(settings.shadows).map(([key, value]) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">
                 {key}
               </label>
               <Input
@@ -308,7 +308,7 @@ export const ThemeManagement: React.FC = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-6 border-t border-gray-200 dark:border-slate-700">
+      <div className="flex gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
         <Button
           onClick={handleSave}
           disabled={isSaving}

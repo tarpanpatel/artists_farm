@@ -556,7 +556,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               
               {/* Accommodation & Booking Dates */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
                   <Home className="w-4 h-4 text-blue-600" />
                   <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
                 </div>
@@ -649,7 +649,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {kitchenModuleEnabled && (
                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
+                    <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-cyan-600" />
                       {t('food_incidentals_heading', 'Food Orders & Incidentals Log')}
                     </span>
@@ -753,8 +753,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Strategy Type Custom Adjustments */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
-                  {t('add_custom_adjustments_heading', '➕ Add Custom Adjustments')}
+                <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
+                  {t('add_custom_adjustments_heading', 'Add Custom Adjustments')}
                 </span>
 
                 <form onSubmit={handleAddAdjustment} className="space-y-3 text-xs">
@@ -849,7 +849,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Final Checkout Split Settlement Box */}
               <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border-2 border-emerald-500/80 p-5 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
                   <span>{t('final_checkout_split_heading', 'Final Checkout Split Settlement')}</span>
                 </div>
@@ -952,24 +952,48 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                           ) : (
                             <div className="space-y-1.5 pt-1">
                               <div className="grid grid-cols-2 gap-1.5">
-                                <label className="text-[10px]">{t('low_tier_max_label', 'Low tier max (₹)')}
-                                  <input type="number" value={rateDraft.accLowMax} onChange={(e) => setRateDraft({ ...rateDraft, accLowMax: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
-                                <label className="text-[10px]">{t('mid_tier_max_label', 'Mid tier max (₹)')}
-                                  <input type="number" value={rateDraft.accMidMax} onChange={(e) => setRateDraft({ ...rateDraft, accMidMax: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
-                                <label className="text-[10px]">{t('low_rate_label', 'Low rate (%)')}
-                                  <input type="number" value={rateDraft.accLowRate} onChange={(e) => setRateDraft({ ...rateDraft, accLowRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
-                                <label className="text-[10px]">{t('mid_rate_label', 'Mid rate (%)')}
-                                  <input type="number" value={rateDraft.accMidRate} onChange={(e) => setRateDraft({ ...rateDraft, accMidRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
-                                <label className="text-[10px]">{t('high_rate_label', 'High rate (%)')}
-                                  <input type="number" value={rateDraft.accHighRate} onChange={(e) => setRateDraft({ ...rateDraft, accHighRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
-                                <label className="text-[10px]">{t('food_rate_label', 'Food rate (%)')}
-                                  <input type="number" value={rateDraft.foodRate} onChange={(e) => setRateDraft({ ...rateDraft, foodRate: Number(e.target.value) })} className="w-full p-1 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900" />
-                                </label>
+                                <Input
+                                  label={t('low_tier_max_label', 'Low tier max (₹)')}
+                                  type="number"
+                                  value={rateDraft.accLowMax}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, accLowMax: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
+                                <Input
+                                  label={t('mid_tier_max_label', 'Mid tier max (₹)')}
+                                  type="number"
+                                  value={rateDraft.accMidMax}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, accMidMax: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
+                                <Input
+                                  label={t('low_rate_label', 'Low rate (%)')}
+                                  type="number"
+                                  value={rateDraft.accLowRate}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, accLowRate: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
+                                <Input
+                                  label={t('mid_rate_label', 'Mid rate (%)')}
+                                  type="number"
+                                  value={rateDraft.accMidRate}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, accMidRate: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
+                                <Input
+                                  label={t('high_rate_label', 'High rate (%)')}
+                                  type="number"
+                                  value={rateDraft.accHighRate}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, accHighRate: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
+                                <Input
+                                  label={t('food_rate_label', 'Food rate (%)')}
+                                  type="number"
+                                  value={rateDraft.foodRate}
+                                  onChange={(e) => setRateDraft({ ...rateDraft, foodRate: Number(e.target.value) })}
+                                  labelClassName="text-[10px]"
+                                />
                               </div>
                               <div className="flex justify-end gap-2">
                                 <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-bold text-slate-500 cursor-pointer">{t('cancel_button', 'Cancel')}</button>

@@ -129,7 +129,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 return (
                   <React.Fragment key={option.value}>
                     {showGroupHeader && (
-                      <div className="px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-[var(--input-placeholder)]">
+                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--input-placeholder)]">
                         {option.group}
                       </div>
                     )}

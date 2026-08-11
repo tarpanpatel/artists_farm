@@ -241,7 +241,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Main Calendar View Section */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header with navigation */}
         <div className="flex justify-between items-center">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>

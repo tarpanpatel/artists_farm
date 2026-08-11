@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { Textarea } from './Textarea';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -206,28 +207,28 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         </PageHeaderButton>
       </PageHeader>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         {loading ? (
-          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">{t('loading_spinner_default_message', 'Loading...')}</div>
+          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">{t('loading_spinner_default_message', 'Loading...')}</div>
         ) : requests.length === 0 ? (
-          <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
+          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
         ) : (
           <div className="space-y-6">
             {pending.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
                 <div className="space-y-2">
                   {pending.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-900 dark:text-white text-sm">{r.requestType}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm">{r.requestType}</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
                         </div>
-                        {r.description && <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">{r.description}</p>}
-                        <p className="text-[11px] text-gray-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
+                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{r.description}</p>}
+                        <p className="text-[11px] text-slate-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
                       </div>
                         <Button
                           variant="success"
@@ -247,18 +248,18 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
             {fulfilled.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
                 <div className="space-y-2">
                   {fulfilled.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-900 dark:text-white text-sm">{r.requestType}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm">{r.requestType}</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
+                        <p className="text-[11px] text-slate-400 mt-0.5">
                           {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
                         </p>
                       </div>
@@ -276,20 +277,20 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
                 <Clock className="w-5 h-5 text-indigo-500" />
                 {t('new_service_request_heading', 'New Service Request')}
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreate} className="space-y-4">
               {isMultiKeyProperty && rooms.length > 0 && (
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('room_field_label', 'Room')}</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('room_field_label', 'Room')}</label>
                   <StyledSelect
                     value={newRoomId}
                     onChange={setNewRoomId}
@@ -299,7 +300,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('request_type_label', 'Request Type')}</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('request_type_label', 'Request Type')}</label>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
@@ -308,13 +309,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('details_label', 'Details')}</label>
-                <textarea
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('details_label', 'Details')}</label>
+                <Textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
                   rows={3}
-                  className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">

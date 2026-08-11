@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, X, ArrowRight } from 'lucide-react';
+import { Building2, X, ArrowRight, Lightbulb } from 'lucide-react';
 import { t } from '../i18n/en';
 
 interface Room {
@@ -103,7 +103,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
         {/* Footer Info */}
         <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-            💡 {t('room_selector_tip')}
+            <Lightbulb className="w-3.5 h-3.5 inline-block mr-1" /> {t('room_selector_tip')}
           </p>
         </div>
 

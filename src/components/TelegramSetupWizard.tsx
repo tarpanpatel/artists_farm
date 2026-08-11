@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Bot,
   Save,
+  Lightbulb,
 } from 'lucide-react';
 import { Input } from './Input';
 import {
@@ -460,7 +461,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     onClick={() => setShowBotFatherGuide(true)}
                     className="text-xs font-bold text-sky-600 hover:underline cursor-pointer block mt-1"
                   >
-                    {t('show_botfather_guide_button', '💡 Show BotFather setup guide')}
+                    <Lightbulb className="w-3.5 h-3.5 inline-block mr-1" /> {t('show_botfather_guide_button', 'Show BotFather setup guide')}
                   </button>
                 )}
               </div>
