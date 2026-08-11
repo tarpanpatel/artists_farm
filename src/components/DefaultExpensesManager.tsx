@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader, Search, Zap } from 'lucide-react';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search, Zap } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -193,7 +193,7 @@ export const DefaultExpensesManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -230,7 +230,7 @@ export const DefaultExpensesManager: React.FC = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               title={t('sync_defaults_tooltip', 'Populate all 20 default categories across all MultiKey properties')}
             >
-              {syncing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
               {t('sync_defaults_button', 'Sync Defaults')}
             </button>
             <button
@@ -272,10 +272,10 @@ export const DefaultExpensesManager: React.FC = () => {
       {isAddingNew && (
         <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
           <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('add_new_expense_item_title', 'Add New Expense Item')}</h3>
-          <form onSubmit={handleAddItem} className="space-y-3">
+          <form onSubmit={handleAddItem} className="app-form app-form--add-expense-item space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('item_name_required_label', 'Item Name *')}
                 </label>
                 <Input
@@ -285,7 +285,7 @@ export const DefaultExpensesManager: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('category_required_label', 'Category *')}
                 </label>
                 <StyledSelect
@@ -397,9 +397,9 @@ export const DefaultExpensesManager: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('edit_expense_item_title', 'Edit Expense Item')}</h3>
-            <form onSubmit={handleEditItem} className="space-y-4">
+            <form onSubmit={handleEditItem} className="app-form app-form--edit-expense-item space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('item_name_label', 'Item Name')}
                 </label>
                 <Input

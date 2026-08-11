@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Building2, LogOut, Plus, AlertCircle, Loader,
+  Building2, LogOut, Plus, AlertCircle, Loader2,
   Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, X, User, MessageSquare,
   Settings, Calendar, Users,
@@ -273,7 +273,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <Loader className="w-8 h-8 animate-spin text-indigo-500 mx-auto" />
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto" />
           <p className="text-sm text-slate-500 dark:text-slate-400">{t('loading_tenant_dashboard_message', 'Loading tenant dashboard…')}</p>
         </div>
       </div>
@@ -599,7 +599,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 )}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('tenant_property_type_label', 'Property Type')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('tenant_property_type_label', 'Property Type')}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setNewPropType('SINGLE')}
@@ -621,7 +621,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </div>
               {newPropType === 'MULTI_KEY' && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('number_of_rooms_label', 'Number of Rooms')}
                     <span className="text-slate-400 font-normal ml-1">(max {remaining} slot{remaining !== 1 ? 's' : ''} available)</span>
                   </label>
@@ -646,7 +646,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 id="confirm-add-property-btn"
                 variant="primary"
                 size="sm"
-                leftIcon={addLoading ? <Loader className="w-4 h-4 animate-spin" /> : undefined}
+                leftIcon={addLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
                 onClick={handleAddProperty}
                 disabled={addLoading || newPropRooms > remaining}
               >
@@ -720,7 +720,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   {t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, those lines are simply omitted.')}
                 </p>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
                   <Textarea
                     value={editInstructions}
                     onChange={e => setEditInstructions(e.target.value)}
@@ -738,7 +738,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <Button
                 variant="primary"
                 size="sm"
-                leftIcon={editLoading ? <Loader className="w-4 h-4 animate-spin" /> : undefined}
+                leftIcon={editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
                 onClick={handleEditProperty}
                 disabled={editLoading || !editName.trim()}
               >

@@ -112,7 +112,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="app-form app-form--login p-6 space-y-5">
           {errorMsg && (
             <div className="p-3 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded-xl text-xs font-semibold text-red-600 dark:text-red-300 flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -130,7 +130,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
                 <span className="text-xs font-bold border-r border-slate-300 dark:border-slate-600 pr-2">+91</span>
               </div>
               <Input
-                type="text"
+                type="tel"
                 value={mobileNumber}
                 onChange={handleMobileChange}
                 placeholder={t('ten_digit_mobile_placeholder')}
@@ -155,6 +155,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               }}
               placeholder={t('passcode_dots_placeholder')}
               maxLength={6}
+              inputMode="numeric"
               className="text-center tracking-widest text-2xl font-black py-3"
             />
           </div>

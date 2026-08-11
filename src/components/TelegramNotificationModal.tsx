@@ -1312,7 +1312,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                         className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-xs"
                       >
                         <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">{t('button_text_label', 'Button Text:')}</label>
+                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('button_text_label', 'Button Text:')}</label>
                           <Input
                             type="text"
                             value={btn.text}
@@ -1323,7 +1323,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                         </div>
 
                         <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 block mb-0.5">{t('action_callback_url_label', 'Action Callback / URL:')}</label>
+                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('action_callback_url_label', 'Action Callback / URL:')}</label>
                           <Input
                             type="text"
                             value={btn.url || btn.callback_data || ''}

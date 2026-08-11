@@ -577,9 +577,9 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveNavItem} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveNavItem} className="app-form app-form--save-nav-item space-y-3.5 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('menu_title_label', 'Menu Title / Label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_title_label', 'Menu Title / Label')}</label>
                 <Input
                   type="text"
                   required
@@ -591,7 +591,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t('target_section_tab_label', 'Target Section / Tab')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('target_section_tab_label', 'Target Section / Tab')}</label>
                   <StyledSelect
                     value={navForm.tabKey}
                     onChange={(val) => setNavForm({ ...navForm, tabKey: val })}
@@ -611,7 +611,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t('category_group_label', 'Category Group')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_group_label', 'Category Group')}</label>
                   <StyledSelect
                     value={navForm.category}
                     onChange={(val) => setNavForm({ ...navForm, category: val })}
@@ -621,7 +621,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('parent_menu_item_label', 'Parent Menu Item (Hierarchy)')}</label>
                 <StyledSelect
                   value={navForm.parentId || ''}
                   onChange={(val) => setNavForm({ ...navForm, parentId: val || null })}
@@ -637,7 +637,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('icon_label', 'Icon')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('icon_label', 'Icon')}</label>
                 <div className="grid grid-cols-6 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
                   {AVAILABLE_ICONS.slice(0, 12).map((item) => {
                     const IconC = item.icon;
@@ -661,7 +661,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('permitted_roles_rbac_label', 'Permitted Roles (RBAC)')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('permitted_roles_rbac_label', 'Permitted Roles (RBAC)')}</label>
                 <div className="flex flex-wrap gap-1.5">
                   {SYSTEM_ROLES.map((role) => {
                     const isChecked = navForm.roles.includes(role);
@@ -706,7 +706,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{t('custom_link_optional_heading', 'Custom Link (Optional)')}</p>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('external_url_custom_link_label', 'External URL / Custom Link')}</label>
                   <Input
                     type="url"
                     value={navForm.customUrl}
@@ -762,9 +762,9 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveFoodItem} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveFoodItem} className="app-form app-form--save-food-item space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('item_title_name_label', 'Item Title / Name')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_title_name_label', 'Item Title / Name')}</label>
                 <Input
                   type="text"
                   required
@@ -776,7 +776,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t('menu_category_label', 'Category')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('menu_category_label', 'Category')}</label>
                   <StyledSelect
                     value={foodForm.category}
                     onChange={(val) => setFoodForm({ ...foodForm, category: val })}
@@ -785,7 +785,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t('price_rupees_label', 'Price (₹)')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('price_rupees_label', 'Price (₹)')}</label>
                   <Input
                     type="number"
                     min="0"
@@ -798,7 +798,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
@@ -904,6 +904,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               onChange={e => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleVerifyPasscode(); } }}
               placeholder={t('enter_passcode_placeholder', 'Enter passcode')}
+              inputMode="numeric"
               className="text-center"
             />
 

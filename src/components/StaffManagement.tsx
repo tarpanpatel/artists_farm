@@ -840,9 +840,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               {/* Tab Content */}
               <div className="p-5">
                 {userFormTab === 'create' ? (
-                  <form onSubmit={handleCreateUser} className="space-y-3">
+                  <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')}</label>
                       <Input
                         type="text"
                         required
@@ -854,7 +854,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                         <Input
                           type="tel"
                           required
@@ -862,11 +862,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           value={newUsername}
                           onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           placeholder="10-digit mobile number"
-                          className="text-slate-900 dark:text-white font-mono"
+                          className="text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('six_digit_passcode_label', '6-Digit Passcode PIN')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')}</label>
                         <Input
                           type="password"
                           required
@@ -874,13 +874,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           value={newPasscode}
                           onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="••••••"
+                          inputMode="numeric"
                           className="text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('team_role', 'Team Role')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
                         <StyledSelect
                           value={newRole}
                           onChange={(val) => setNewRole(val as any)}
@@ -923,7 +924,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       </Tooltip>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
                       <Input
                         type="file"
                         accept="image/*"
@@ -950,9 +951,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   </form>
                 ) : (
-                  <form onSubmit={handleUpdateUserSubmit} className="space-y-3">
+                  <form onSubmit={handleUpdateUserSubmit} className="app-form app-form--update-user space-y-3">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('select_staff_target_account_label', 'Select Staff Target Account')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_target_account_label', 'Select Staff Target Account')}</label>
                       <StyledSelect
                         value={selectedUpdateUserId}
                         onChange={(uid) => {
@@ -972,7 +973,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_name_label', 'Staff Name')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')}</label>
                         <Input
                           type="text"
                           value={updateFullName}
@@ -982,14 +983,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                         <Input
                           type="tel"
                           maxLength={10}
                           value={updateUsername}
                           onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           placeholder="10-digit mobile number"
-                          className="text-slate-900 dark:text-white font-mono"
+                          className="text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -1002,13 +1003,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           value={updatePasscode}
                           onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="••••••"
+                          inputMode="numeric"
                           className="text-center font-mono font-bold tracking-widest text-sm"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('new_system_role_label', 'New System Role')}</label>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
                         <StyledSelect
                           value={updateRole}
                           onChange={(val) => setUpdateRole(val as any)}
@@ -1052,7 +1054,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       </Tooltip>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
                       <Input
                         type="file"
                         accept="image/*"
@@ -1085,7 +1087,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <Plus className="w-4 h-4" /> Register Account Payee
                 </h4>
 
-                <form onSubmit={handleCreatePayee} className="space-y-3">
+                <form onSubmit={handleCreatePayee} className="app-form app-form--create-payee space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Input
@@ -1099,7 +1101,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('classification_group_label', 'Classification Group')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_group_label', 'Classification Group')}</label>
                       <StyledSelect
                         value={newPayeeType}
                         onChange={(val) => setNewPayeeType(val as any)}
@@ -1112,7 +1114,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot')}</label>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot')}</label>
                     <Input
                       type="file"
                       accept="image/*"
@@ -1700,7 +1702,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               {t('edit_payee_settings_heading', 'Edit Payee Account Settings')}
             </h3>
 
-            <form onSubmit={handleUpdatePayeeSave} className="space-y-3">
+            <form onSubmit={handleUpdatePayeeSave} className="app-form app-form--update-payee space-y-3">
               <div>
                 <Input
                   label={t('payee_account_name_label', 'Payee Account Name')}
@@ -1713,7 +1715,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">{t('classification_type_label', 'Classification Type')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_type_label', 'Classification Type')}</label>
                 <StyledSelect
                   value={editingPayee.type}
                   onChange={(val) => setEditingPayee({ ...editingPayee, type: val as any })}
@@ -1725,7 +1727,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Replace QR Code Graphic Blueprint (Optional)</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Replace QR Code Graphic Blueprint (Optional)</label>
                 <Input
                   type="file"
                   accept="image/*"
@@ -1776,7 +1778,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleAddStaffSubmit} className="space-y-3">
+            <form onSubmit={handleAddStaffSubmit} className="app-form app-form--add-staff space-y-3">
               <div>
                 <Input
                   label={t('staff_name_required_label', 'Staff Name *')}
@@ -1789,7 +1791,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">{t('team_role', 'Team Role')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
                 <StyledSelect
                   value={role}
                   onChange={(val) => setRole(val as any)}
@@ -1806,21 +1808,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder="10-digit mobile number"
-                  className="font-mono"
                 />
               </div>
 
               <div>
-                <Input
-                  label={t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}
-                  type="password"
-                  required
-                  maxLength={6}
-                  value={rosterPasscode}
-                  onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="••••••"
-                  className="text-center font-mono font-bold tracking-widest"
-                />
+                  <Input
+                    label={t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}
+                    type="password"
+                    required
+                    maxLength={6}
+                    value={rosterPasscode}
+                    onChange={(e) => setRosterPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="••••••"
+                    inputMode="numeric"
+                    className="text-center font-mono font-bold tracking-widest"
+                  />
               </div>
 
               <div>

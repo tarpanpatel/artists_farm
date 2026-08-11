@@ -196,10 +196,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           )}
         </h3>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="app-form app-form--cash-drawer space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('select_staff_member_label', 'Select Staff Member *')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
               <StyledSelect
                 value={selectedStaffId}
                 onChange={setSelectedStaffId}
@@ -232,7 +232,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
           {activeForm === 'handover' && (
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('handing_over_to_label', 'Handing Over To *')}</label>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('handing_over_to_label', 'Handing Over To *')}</label>
               <StyledSelect
                 value={handedTo}
                 onChange={setHandedTo}
@@ -249,7 +249,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           )}
 
           <div>
-            <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">{t('notes_optional_label', 'Notes (Optional)')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
             <Input
               type="text"
               value={notes}

@@ -287,10 +287,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleCreate} className="app-form app-form--create-service-request space-y-4">
               {isMultiKeyProperty && rooms.length > 0 && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('room_field_label', 'Room')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('room_field_label', 'Room')}</label>
                   <StyledSelect
                     value={newRoomId}
                     onChange={setNewRoomId}
@@ -300,7 +300,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('request_type_label', 'Request Type')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('request_type_label', 'Request Type')}</label>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
@@ -309,7 +309,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">{t('details_label', 'Details')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_label', 'Details')}</label>
                 <Textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}

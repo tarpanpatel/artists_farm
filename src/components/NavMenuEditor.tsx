@@ -5,7 +5,7 @@ import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
   Check, X, LayoutDashboard, Navigation as NavIcon,
   Layers, PanelLeftClose, PanelRightOpen,
-  ExternalLink
+  ExternalLink, Loader2
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
@@ -898,7 +898,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           >
             {isSaving ? (
               <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 {t('saving_button', 'Saving...')}
               </>
             ) : (

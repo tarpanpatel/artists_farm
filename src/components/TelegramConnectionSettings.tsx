@@ -85,7 +85,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
 
       {/* Bot token */}
       <div>
-        <label className="text-[11px] font-semibold text-slate-300 block mb-1">{t('bot_api_token_label')}</label>
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('bot_api_token_label')}</label>
         <Input
           type="text"
           value={config.botToken ?? ''}
@@ -96,7 +96,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
 
       {/* Reminder nudge threshold */}
       <div>
-        <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
           {t('auto_reminder_interval_label')}
         </label>
         <div className="w-32">

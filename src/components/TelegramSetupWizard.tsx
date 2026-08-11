@@ -393,7 +393,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
 
               {/* Bot API Token */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{t('bot_api_token_label', 'Bot API Token')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('bot_api_token_label', 'Bot API Token')}</label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="text"
@@ -468,7 +468,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
 
               {/* Auto-Reminder Interval */}
               <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('auto_reminder_interval_label', 'Auto-Reminder Interval (Minutes)')}
                 </label>
                 <Input

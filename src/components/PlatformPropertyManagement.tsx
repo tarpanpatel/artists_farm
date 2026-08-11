@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader2, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -512,7 +512,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400">Loading platform...</p>
         </div>
       </div>
@@ -746,7 +746,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           </p>
                           {credsLoadingId === tenant.id ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                              <Loader className="w-3 h-3 animate-spin" /> Loading...
+                              <Loader2 className="w-3 h-3 animate-spin" /> Loading...
                             </p>
                           ) : tenantCredsMap[tenant.id] === 'not_found' || !tenantCredsMap[tenant.id] ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1005,7 +1005,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('tenant_name_label', 'Tenant Name')}
                 </label>
                 <Input
@@ -1022,7 +1022,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('email_label', 'Email')}
                 </label>
                 <Input
@@ -1035,11 +1035,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('phone_label', 'Phone')}
                 </label>
                 <Input
-                  type="text"
+                  type="tel"
                   value={editingTenant.phone || ''}
                   onChange={(e) =>
                     setEditingTenant({ ...editingTenant, phone: e.target.value })
@@ -1050,7 +1050,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('slug_label', 'Slug')}
                 </label>
                 <Input
@@ -1068,7 +1068,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('subscription_status_label', 'Subscription Status')}
                 </label>
                 <StyledSelect
@@ -1163,7 +1163,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   {t('slug_label', 'Slug')}
                 </label>
                 <Input
@@ -1194,7 +1194,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
               {showPropertyModal === 'add' && (
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('property_type_label', 'Property Type')}
                   </label>
                   <div className="space-y-2">
@@ -1236,7 +1236,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
               {editingProperty.property_type === 'SINGLE' && showPropertyModal === 'add' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('color_scheme_label', 'Color Scheme')}
                   </label>
                   <StyledSelect
@@ -1259,7 +1259,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                         {t('currency_label', 'Currency')}
                       </label>
                       <Input
@@ -1272,7 +1272,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                         {t('timezone_label', 'Timezone')}
                       </label>
                       <Input
@@ -1326,7 +1326,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               >
                 {operationLoading ? (
                   <>
-                    <Loader className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3 h-3 animate-spin" />
                     Saving...
                   </>
                 ) : (
@@ -1389,7 +1389,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               >
                 {operationLoading ? (
                   <>
-                    <Loader className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3 h-3 animate-spin" />
                     Deleting...
                   </>
                 ) : (
@@ -1481,7 +1481,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       {t('tenant_name_label', 'Tenant Name')}
                     </label>
                     <Input
@@ -1500,7 +1500,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       {t('url_slug_label', 'URL Slug')}
                     </label>
                     <Input
@@ -1519,7 +1519,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       {t('email_label', 'Email')}
                     </label>
                     <Input
@@ -1533,11 +1533,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                       {t('tenant_phone_login_username_label', 'Phone (also becomes their login username)')}
                     </label>
                     <Input
-                      type="text"
+                      type="tel"
                       value={newTenant.phone}
                       onChange={(e) =>
                         setNewTenant({ ...newTenant, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
@@ -1571,7 +1571,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   >
                     {operationLoading ? (
                       <>
-                        <Loader className="w-3 h-3 animate-spin" />
+                        <Loader2 className="w-3 h-3 animate-spin" />
                         Creating...
                       </>
                     ) : (

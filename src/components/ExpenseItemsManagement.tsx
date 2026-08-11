@@ -173,11 +173,11 @@ export const ExpenseItemsManagement: React.FC = () => {
 
           {/* Add New Item Form */}
           {isAddingNew && (
-            <form onSubmit={handleAddItem} className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+            <form onSubmit={handleAddItem} className="app-form app-form--add-expense-item space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
               <h3 className="font-semibold text-slate-900 dark:text-white">{t('add_custom_expense_item_heading', 'Add Custom Expense Item')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('item_name_required_label', 'Item Name *')}
                   </label>
                   <Input
@@ -187,7 +187,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('category_required_label', 'Category *')}
                   </label>
                   <StyledSelect
@@ -199,7 +199,7 @@ export const ExpenseItemsManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                     {t('default_amount_label', 'Default Amount (₹)')}
                   </label>
                   <Input

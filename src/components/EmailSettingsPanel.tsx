@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Send, Loader, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -138,7 +138,7 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_host_label', 'SMTP Host')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_host_label', 'SMTP Host')}</label>
             <Input
               type="text"
               value={host}
@@ -147,7 +147,7 @@ export const EmailSettingsPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('port_label', 'Port')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('port_label', 'Port')}</label>
             <Input
               type="text"
               inputMode="numeric"
@@ -160,7 +160,7 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_username_label', 'SMTP Username')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_username_label', 'SMTP Username')}</label>
             <Input
               type="text"
               value={smtpUsername}
@@ -169,7 +169,7 @@ export const EmailSettingsPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('smtp_password_label', 'SMTP Password')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_password_label', 'SMTP Password')}</label>
             <Input
               type="password"
               value={password}
@@ -181,7 +181,7 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_name_label', 'From Name')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_name_label', 'From Name')}</label>
             <Input
               type="text"
               value={fromName}
@@ -189,7 +189,7 @@ export const EmailSettingsPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('from_email_label', 'From Email')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_email_label', 'From Email')}</label>
             <Input
               type="email"
               value={fromEmail}
@@ -198,7 +198,7 @@ export const EmailSettingsPanel: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('encryption_label', 'Encryption')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('encryption_label', 'Encryption')}</label>
             <StyledSelect
               value={encryption}
               onChange={(val) => setEncryption(val as any)}
@@ -245,7 +245,7 @@ export const EmailSettingsPanel: React.FC = () => {
               size="md"
               onClick={handleSendTest}
               disabled={isTesting || !testEmail}
-              leftIcon={isTesting ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              leftIcon={isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             >
               {t('send_test_email_button', 'Send Test Email')}
             </Button>

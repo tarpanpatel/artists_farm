@@ -2124,9 +2124,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* Add Ingredient Form */}
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3 h-fit">
               <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
-              <form onSubmit={handleAddIngredient} className="space-y-3">
+              <form onSubmit={handleAddIngredient} className="app-form app-form--add-ingredient space-y-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">{t('from_kitchen_stock_label')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_kitchen_stock_label')}</label>
                   {inventory && inventory.length > 0 ? (
                     <StyledSelect
                       searchable
@@ -2159,7 +2159,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">Unit</label>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Unit</label>
                     <StyledSelect
                       value={newIngUnit}
                       onChange={setNewIngUnit}
@@ -2207,7 +2207,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreateMenuItem} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateMenuItem} className="app-form app-form--create-menu-item space-y-3 text-xs">
               <div>
                 <Input
                   label={t('item_name_required_label')}
@@ -2220,7 +2220,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('category_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
                 <StyledSelect
                   value={newItemCategory}
                   onChange={(val) => setNewItemCategory(val as any)}
@@ -2245,7 +2245,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('item_image_upload_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
@@ -2329,7 +2329,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleReqSubmit} className="space-y-3 text-xs">
+            <form onSubmit={handleReqSubmit} className="app-form app-form--submit-requisition space-y-3 text-xs">
               <div>
                 <Input
                   label={t('material_name_required_label')}
@@ -2352,7 +2352,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">{t('unit_label')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                   <StyledSelect
                     value={reqUnit}
                     onChange={setReqUnit}

@@ -230,17 +230,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   }, [selectedRoomSlugOverride]);
 
-  // Global Input UX Enhancements
+  // Global Input UX Enhancements (select-on-focus + decimal inputmode for numbers)
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLInputElement;
+      const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-        const type = target.type;
-        if (type === 'number' || type === 'text' || type === 'tel' || type === 'email' || target.tagName === 'TEXTAREA') {
-          target.select();
+        const input = target as HTMLInputElement;
+        if (['text', 'number', 'password', 'tel', 'email', 'search'].includes(input.type) || input.tagName === 'TEXTAREA') {
+          input.select();
         }
-        if (target.type === 'number') {
-          target.setAttribute('inputmode', 'decimal');
+        if (input.type === 'number' && input.getAttribute('inputmode') !== 'decimal') {
+          input.setAttribute('inputmode', 'decimal');
         }
       }
     };
@@ -248,9 +248,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
     document.addEventListener('focusin', handleFocusIn);
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
-
-
-  // Load global system CSS on app startup from API
   useEffect(() => {
     const loadGlobalCSS = async () => {
       try {
@@ -360,40 +357,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // staff logs out from the picker screen instead of picking anything.
   const [propertySelection, setPropertySelection] = useState<{ tenantId: number; tenantSlug: string; user: any } | null>(null);
 
-  useEffect(() => {
-    // Global behavior for all inputs
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT') {
-        const input = target as HTMLInputElement;
-        if (['text', 'number', 'password', 'tel', 'email', 'search'].includes(input.type)) {
-          // Select text on focus for easier editing
-          input.select();
-        }
-      }
-    };
-
-    const handleInputEvents = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT') {
-        const input = target as HTMLInputElement;
-        if (input.type === 'number' && input.getAttribute('inputmode') !== 'decimal') {
-          input.setAttribute('inputmode', 'decimal');
-        }
-      }
-    };
-
-    document.addEventListener('focusin', handleFocus);
-    document.addEventListener('mouseover', handleInputEvents);
-    document.addEventListener('touchstart', handleInputEvents);
-
-    return () => {
-      document.removeEventListener('focusin', handleFocus);
-      document.removeEventListener('mouseover', handleInputEvents);
-      document.removeEventListener('touchstart', handleInputEvents);
-    };
-  }, []);
-
   const handleLoginFailed = (username: string) => {
     logAudit(`Staff User ${username} failed login attempt`, { status: 'Failed', module: 'login', user: username });
   };
@@ -457,6 +420,25 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (window.location.hash !== targetHash) {
       window.history.pushState({ tab: activeTab, key: activeMenuItemKey }, '', targetHash);
     }
+  }, [activeTab, activeMenuItemKey, navItems]);
+
+  // Dynamic body classes (WordPress body_class() equivalent)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const body = document.body;
+    const removePrefixes = ['page-', 'tab-', 'tenant-', 'property-'];
+    const toRemove = Array.from(body.classList).filter(c => removePrefixes.some(p => c.startsWith(p)));
+    body.classList.remove(...toRemove);
+
+    const currentItem = navItems.find((i) => (i.uniqueKey || i.tabKey) === activeMenuItemKey);
+    const rawSlug = currentItem?.urlSlug || activeMenuItemKey || 'unknown';
+    const pageSlug = rawSlug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown';
+    body.classList.add(`page-${pageSlug}`);
+    body.classList.add(`tab-${activeTab}`);
+
+    const { tenantSlug, propertySlug } = getPropertyAndRoomSlugs();
+    if (tenantSlug) body.classList.add(`tenant-${tenantSlug}`);
+    if (propertySlug) body.classList.add(`property-${propertySlug}`);
   }, [activeTab, activeMenuItemKey, navItems]);
 
   // Application Data States
@@ -1760,6 +1742,7 @@ ${itemsStr}
                   <EditPropertyPage property={preloadedData.currentProperty} />
                 </ErrorBoundary>
               )}
+
             </main>
           </div>
         )}

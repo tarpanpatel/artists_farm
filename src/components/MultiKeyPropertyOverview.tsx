@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader, AlertCircle, Users, TrendingUp, BarChart3, DollarSign } from 'lucide-react';
+import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
@@ -171,7 +171,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400">{t('loading_property_label', 'Loading property...')}</p>
         </div>
       </div>

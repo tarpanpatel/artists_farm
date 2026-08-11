@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 
@@ -212,7 +212,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
           </p>
 
-          <form onSubmit={handleRequestLoginInfo} className="space-y-5">
+          <form onSubmit={handleRequestLoginInfo} className="app-form app-form--request-login-info space-y-5">
             {forgotResult && (
               <div className={`flex gap-3 p-3 rounded-xl border ${
                 forgotResult.type === 'success'
@@ -242,7 +242,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
                 </div>
                 <Input
-                  type="text"
+                  type="tel"
                   value={forgotMobile}
                   onChange={(e) => {
                     setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
@@ -263,7 +263,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             >
               {isSendingLoginInfo ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>{t('sending_button', 'Sending...')}</span>
                 </>
               ) : (
@@ -308,7 +308,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
           </p>
 
-          <form onSubmit={handleSetNewPasscode} className="space-y-5">
+          <form onSubmit={handleSetNewPasscode} className="app-form app-form--set-passcode space-y-5">
             {error && (
               <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
@@ -328,6 +328,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="• • • • • •"
                   maxLength={6}
+                  inputMode="numeric"
                   autoFocus
                   className="pl-10 text-center"
                   disabled={isSavingPasscode}
@@ -347,6 +348,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="• • • • • •"
                   maxLength={6}
+                  inputMode="numeric"
                   className="pl-10 text-center"
                   disabled={isSavingPasscode}
                 />
@@ -360,7 +362,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             >
               {isSavingPasscode ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>{t('saving_button', 'Saving...')}</span>
                 </>
               ) : (
@@ -395,7 +397,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </p>
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="app-form app-form--login space-y-5">
           {/* Error Message */}
           {error && (
             <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
@@ -415,7 +417,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
               </div>
               <Input
-                type="text"
+                type="tel"
                 value={mobileNumber}
                 onChange={handleMobileChange}
                 placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
@@ -439,6 +441,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 onChange={handlePasscodeChange}
                 placeholder="• • • • • •"
                 maxLength={6}
+                inputMode="numeric"
                 className="pl-10 text-center"
                 disabled={isLoading}
               />
@@ -466,7 +469,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 <span>{t('authenticating_button', 'Authenticating...')}</span>
               </>
             ) : (

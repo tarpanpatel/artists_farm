@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Pencil, Loader, CheckCircle2, X, ExternalLink, Building2 } from 'lucide-react';
+import { MapPin, Pencil, Loader2, CheckCircle2, X, ExternalLink, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -124,7 +124,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
                 placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
               />
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('instructions_label', 'Instructions')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('instructions_label', 'Instructions')}</label>
                 <Textarea
                   rows={4}
                   value={editInstructions}
@@ -140,7 +140,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
                 disabled={isSaving || !editAddress.trim()}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                {isSaving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 {t('save_address_button', 'Save Address')}
               </button>
               <button

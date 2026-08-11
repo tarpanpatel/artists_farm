@@ -835,10 +835,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <ClipboardEdit className="w-4 h-4" /> RECORD WASTAGE / SPILLAGE INCIDENT
           </h3>
 
-          <form onSubmit={handleRecordWastage} className="record-wastage-form space-y-4">
+          <form onSubmit={handleRecordWastage} className="record-wastage-form app-form app-form--record-wastage space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Select Material Item *</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Select Material Item *</label>
                 <StyledSelect
                   searchable
                   value={wastedItem}
@@ -849,7 +849,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Wasted / Spilled Quantity *</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Wasted / Spilled Quantity *</label>
                 <div className="flex gap-2">
                   <Input
                     type="number"
@@ -871,7 +871,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Reason for Loss *</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Reason for Loss *</label>
                 <StyledSelect
                   value={wastedReason}
                   onChange={setWastedReason}
@@ -1168,7 +1168,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </h3>
           </div>
 
-          <form onSubmit={handleSavePurchase} className="space-y-4">
+          <form onSubmit={handleSavePurchase} className="app-form app-form--save-purchase space-y-4">
             <div>
               <Input
                 label={t('purchase_date_label', 'Purchase Date')}
@@ -1934,13 +1934,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </button>
               </div>
 
-              <form onSubmit={handleSaveCatalogItem} className="p-4 space-y-4 text-xs">
+              <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item p-4 space-y-4 text-xs">
                 <div>
                   <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('category_label')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
                   <StyledSelect
                     value={catCategory}
                     onChange={setCatCategory}
@@ -1959,7 +1959,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       <Input label={t('pack_size_label')} type="number" step="0.01" required value={catPackSize} onChange={e => setCatPackSize(Number(e.target.value))} />
                     </div>
                     <div className="w-1/2">
-                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('unit_label')}</label>
+                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                       <StyledSelect
                         value={catUnit}
                         onChange={setCatUnit}
@@ -1970,7 +1970,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_image_label')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label')}</label>
                   <Input type="file" accept="image/*" onChange={handleImageUpload} className="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400" />
                   {catImagePath && (
                     <div className="mt-2">
@@ -2184,7 +2184,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           <h5 className="font-bold text-slate-800 text-sm">{namePart}</h5>
                           <div className="grid grid-cols-4 gap-3">
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('delivered_qty_label')}</label>
+                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label')}</label>
                               <Input 
                                 type="number" 
                                 value={data.qty}
@@ -2193,7 +2193,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('cost_price_label')}</label>
+                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_price_label')}</label>
                               <Input 
                                 type="number" 
                                 value={data.cost}
@@ -2202,7 +2202,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('size_label')}</label>
+                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('size_label')}</label>
                               <Input 
                                 type="number" 
                                 value={data.size}
@@ -2211,7 +2211,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] text-slate-400 font-semibold mb-1">{t('unit_format_label')}</label>
+                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_format_label')}</label>
                               <StyledSelect
                                 value={data.unit}
                                 onChange={(val) => updateFulfillData(namePart, 'unit', val)}
@@ -2745,7 +2745,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreateItem} className="space-y-3">
+            <form onSubmit={handleCreateItem} className="app-form app-form--create-item space-y-3">
               <div>
                 <Input
                   label={`${t('item_name_label')} *`}
@@ -2758,7 +2758,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('category_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('category_label')}</label>
                 <StyledSelect
                   value={category}
                   onChange={setCategory}
@@ -2792,7 +2792,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">{t('unit_label')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_label')}</label>
                   <StyledSelect
                     value={unit}
                     onChange={setUnit}
@@ -2807,7 +2807,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">{t('item_image_upload_label')}</label>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">

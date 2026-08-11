@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Layers, Home, ExternalLink, LogOut, Loader } from 'lucide-react';
+import { Building2, Layers, Home, ExternalLink, LogOut, Loader2 } from 'lucide-react';
 import { API_ROOT_BASE } from '../services/api';
 import { StaffMember } from '../types';
 import { t } from '../i18n/en';
@@ -115,7 +115,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader className="w-6 h-6 text-slate-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
           </div>
         ) : error ? (
           <div className="text-center py-16 text-red-600 dark:text-red-400 text-sm font-medium">{error}</div>

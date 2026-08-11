@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock } from 'lucide-react';
+import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
@@ -699,7 +699,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
             <div className="p-5">
               {!iconsLoaded ? (
                 <div className="text-center py-16">
-                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
                   <p className="text-xs text-slate-400 font-medium">{t('loading_lucide_library_message', 'Loading complete Lucide library...')}</p>
                 </div>
               ) : filteredIcons.length === 0 ? (

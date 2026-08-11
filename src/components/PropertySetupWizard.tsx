@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader } from 'lucide-react';
+import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { t } from '../i18n/en';
@@ -108,7 +108,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('address_label', 'Address')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('address_label', 'Address')}</label>
                   <Input
                     type="text"
                     value={editAddress}
@@ -117,7 +117,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('google_maps_link_optional_label', 'Google Maps Link (optional)')}</label>
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('google_maps_link_optional_label', 'Google Maps Link (optional)')}</label>
                   <Input
                     type="text"
                     value={editMapsLink}
@@ -132,7 +132,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   size="sm"
                   onClick={handleSaveLocation}
                   disabled={isSavingLocation || !editAddress.trim()}
-                  leftIcon={isSavingLocation ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  leftIcon={isSavingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 >
                   {t('save_address_button', 'Save Address')}
                 </Button>

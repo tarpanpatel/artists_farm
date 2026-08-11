@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode } from 'lucide-react';
+import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2 } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
@@ -626,7 +626,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center font-bold">
                     <span className="text-slate-700 dark:text-slate-300">{t('advance_paid_label', 'Advance Paid:')}</span>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
+                    <span className="summary-line summary-line--advance-paid text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
@@ -641,7 +641,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 flex justify-between items-center text-xs font-bold border border-amber-200 dark:border-amber-800">
                   <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
-                  <span className="text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
+                  <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -757,7 +757,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {t('add_custom_adjustments_heading', 'Add Custom Adjustments')}
                 </span>
 
-                <form onSubmit={handleAddAdjustment} className="space-y-3 text-xs">
+                <form onSubmit={handleAddAdjustment} className="app-form app-form--add-adjustment space-y-3 text-xs">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('strategy_type_label', 'Strategy Type')}</label>
                     <StyledSelect
@@ -1042,17 +1042,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   <div className="border-t-2 border-emerald-300 dark:border-emerald-700 pt-2 space-y-1">
                     <div className="flex justify-between items-center text-xs font-bold text-slate-500 dark:text-slate-400">
                       <span>{t('grand_total_full_stay_label', 'Grand Total (Full Stay):')}</span>
-                      <span>₹{grandTotalFullStay.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-total">₹{grandTotalFullStay.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm font-extrabold">
                       <span className="text-slate-900 dark:text-white">{t('grand_target_due_label', 'Grand Target Due (Pending Today):')}</span>
-                      <span className="text-emerald-700 dark:text-emerald-400 text-lg">₹{grandTargetDue.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-target-due text-emerald-700 dark:text-emerald-400 text-lg">₹{grandTargetDue.toFixed(2)}</span>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center text-[11px] pt-1">
                     <span>{t('total_stacked_entered_label', 'Total Stacked Entered:')}</span>
-                    <span className={`font-bold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`summary-line summary-line--total-stacked font-bold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
                       ₹{totalSplitSum.toFixed(2)}
                     </span>
                   </div>
@@ -1195,7 +1195,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4" />
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             {isProcessing
               ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
               : internalMode === 'edit-only'
@@ -1315,11 +1315,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </div>
                 <div className="flex justify-between text-black font-semibold">
                   <span>{t('advance_paid_dash_label', '[-] Advance Paid:')}</span>
-                  <span>₹{advancePaid.toFixed(2)}</span>
+                  <span className="summary-line summary-line--advance-paid">₹{advancePaid.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
                   <span>{t('pending_lodging_settled_label', 'Pending Lodging Settled:')}</span>
-                  <span>₹{lodgingPendingDue.toFixed(2)}</span>
+                  <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1394,7 +1394,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* Grand Total */}
               <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
                 <span>{t('grand_total_payable_label', 'Grand Total Payable:')}</span>
-                <span>₹{grandTargetDue.toFixed(2)}</span>
+                <span className="summary-line summary-line--grand-total-payable">₹{grandTargetDue.toFixed(2)}</span>
               </div>
             </div>
           </div>

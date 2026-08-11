@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RotateCcw, Loader } from 'lucide-react';
+import { Save, RotateCcw, Loader2 } from 'lucide-react';
 import { fetchThemeSettings, saveThemeSettings, applyThemeSettings, ThemeSettings } from '../services/themeService';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -146,7 +146,7 @@ export const ThemeManagement: React.FC = () => {
   if (isLoading || !settings) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -235,7 +235,7 @@ export const ThemeManagement: React.FC = () => {
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('typography_section_label', 'Typography')}</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 {t('font_family_label', 'Font Family')}
               </label>
               <Input
@@ -245,7 +245,7 @@ export const ThemeManagement: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 {t('base_font_size_label', 'Base Font Size')}
               </label>
               <Input
@@ -255,7 +255,7 @@ export const ThemeManagement: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 {t('heading_scale_label', 'Heading Scale')}
               </label>
               <Input
@@ -274,7 +274,7 @@ export const ThemeManagement: React.FC = () => {
           <div className="space-y-3">
             {Object.entries(settings.borderRadius).map(([key, value]) => (
               <div key={key}>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 capitalize">
                   {key}
                 </label>
                 <Input
@@ -294,7 +294,7 @@ export const ThemeManagement: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {Object.entries(settings.shadows).map(([key, value]) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 capitalize">
                 {key}
               </label>
               <Input
@@ -316,7 +316,7 @@ export const ThemeManagement: React.FC = () => {
           variant="primary"
           size="md"
         >
-          {isSaving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
         </Button>
         <Button
