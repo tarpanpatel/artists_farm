@@ -7,7 +7,9 @@
 require_once __DIR__ . '/logger.php';
 
 // Handle API requests
-$action = $_GET['action'] ?? $_POST['action'] ?? null;
+$rawBody = file_get_contents('php://input');
+$jsonInput = !empty($rawBody) ? json_decode($rawBody, true) : null;
+$action = $_GET['action'] ?? $_POST['action'] ?? ($jsonInput['action'] ?? null);
 
 if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_logs' || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)) {
     header('Content-Type: application/json');
@@ -27,7 +29,7 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
     $dateTo = $_GET['date_to'] ?? '';
 
     if ($action === 'log_event') {
-        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        $input = is_array($jsonInput) ? $jsonInput : $_POST;
         $portalInput = $input['portal'] ?? 'js';
         $severityInput = $input['severity'] ?? 'JS Exception';
         $msgInput = $input['msg'] ?? 'Client Error';
@@ -313,21 +315,21 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
     }
 
     function matchesTimeframe(log, timeframe, dateFrom, dateTo) {
+        if (!log || !log.timestamp) return true;
         if (timeframe === 'custom') {
-            if (!dateFrom && !dateTo) return true;
-            if (!log.timestamp) return true;
             const logDate = log.timestamp.split(' ')[0].split('T')[0];
             if (dateFrom && logDate < dateFrom) return false;
             if (dateTo && logDate > dateTo) return false;
             return true;
         }
         if (timeframe === 'all') return true;
-        const t = new Date(log.timestamp).getTime();
+        const formattedTs = log.timestamp.includes('T') ? log.timestamp : log.timestamp.replace(' ', 'T');
+        const t = new Date(formattedTs).getTime();
         if (isNaN(t)) return true;
         const h = (Date.now() - t) / 3600000;
-        if (timeframe === 'today') return h <= 24;
+        if (timeframe === 'today') return h >= -24 && h <= 24;
         if (timeframe === 'yesterday') return h > 24 && h <= 48;
-        if (timeframe === '7days') return h <= 168;
+        if (timeframe === '7days') return h >= -24 && h <= 168;
         return true;
     }
 

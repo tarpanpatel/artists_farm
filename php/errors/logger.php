@@ -45,6 +45,11 @@ if (!class_exists('TelescopeLogger')) {
 
         private static function appendLog($entry) {
             $file = self::$logFile;
+            $dir = dirname($file);
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+
             $logs = [];
 
             if (file_exists($file)) {
@@ -55,23 +60,20 @@ if (!class_exists('TelescopeLogger')) {
                         $logs = $decoded;
                     }
                 }
+            } else {
+                @touch($file);
+                @chmod($file, 0666);
             }
 
             // Unshift new entry to top
             array_unshift($logs, $entry);
 
-            // Cap at last 300 log entries - this file is read, JSON-decoded,
-            // and fully rewritten (with an exclusive lock) on every single
-            // call, so its size directly sets how long each request holds
-            // that lock. Under concurrent traffic, that queues every other
-            // request's own log write (and thus its whole response) behind
-            // it - a 2000-entry cap measurably serialized requests under
-            // load; 300 is still plenty of recent history for the debug view.
+            // Cap at last 300 log entries
             if (count($logs) > 300) {
                 $logs = array_slice($logs, 0, 300);
             }
 
-            @file_put_contents($file, json_encode($logs), LOCK_EX);
+            @file_put_contents($file, json_encode($logs, JSON_PRETTY_PRINT), LOCK_EX);
         }
 
         /**
@@ -190,7 +192,7 @@ if (!class_exists('TelescopeLogger')) {
     }
 
     // Set global error and exception handlers to catch PHP failures without database dependency
-    set_exception_handler(function ($exception) {
+    set_exception_handler(function (\Throwable $exception) {
         // Only log REAL errors, not expected/recoverable ones
         if (strpos($exception->getMessage(), 'Expected') === false) {
             TelescopeLogger::log('php', 'Exception', $exception->getMessage(), 'PHP Exception Handler', [
@@ -202,13 +204,20 @@ if (!class_exists('TelescopeLogger')) {
     });
 
     set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-        // Skip notices and warnings in production - only log actual errors
+        // Skip notices and warnings in production - only log actual errors.
+        // (A direct-server edit outside git briefly removed this filter,
+        // which would have flooded Telescope with routine PHP notices/
+        // warnings instead of just the errors worth actually looking at.)
         if ($errno === E_NOTICE || $errno === E_USER_NOTICE || $errno === E_WARNING || $errno === E_USER_WARNING) {
-            return false; // Don't log development warnings
+            return false;
         }
 
         $severity = 'Warning';
-        if ($errno === E_ERROR || $errno === E_USER_ERROR) $severity = 'Fatal Error';
+        if ($errno === E_ERROR || $errno === E_USER_ERROR) {
+            $severity = 'Fatal Error';
+        } elseif ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED) {
+            $severity = 'Deprecated';
+        }
 
         TelescopeLogger::log('php', $severity, $errstr, 'PHP Error Handler', [
             'file' => $errfile,
