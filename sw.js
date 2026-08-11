@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-pos-v3';
+const CACHE_NAME = 'farm-pos-v4';
 
 // 1. Install Event: Skip waiting to activate immediately
 self.addEventListener('install', event => {
@@ -52,8 +52,12 @@ self.addEventListener('fetch', event => {
                         );
                     }
                     
-                    // Silent 204 No Content for missing background assets instead of throwing 408
-                    return new Response('', { status: 204, statusText: 'No Content' });
+                    // Silent 204 No Content for missing background assets instead of
+                    // throwing 408. Must be `null`, not '' - 204 is a null-body status
+                    // per the Fetch spec, and Chrome throws "Response with null body
+                    // status cannot have body" if you pass anything else, even an
+                    // empty string.
+                    return new Response(null, { status: 204, statusText: 'No Content' });
                 });
             })
     );
