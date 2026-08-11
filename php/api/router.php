@@ -47,6 +47,7 @@ if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
     require_once __DIR__ . '/../telegram/telegram.php';
 }
 require_once __DIR__ . '/../modules/module_manager.php';
+require_once __DIR__ . '/db_export.php';
 require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/../theme/theme_settings.php';
 require_once __DIR__ . '/configuration.php';
@@ -419,7 +420,7 @@ $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full proper
 // param, so it skips this gate) always worked fine. Confirmed via the Apache
 // access log: every POST save_nav_menu request returned 403, going back to
 // the gate's original commit - this was never a frontend bug.
-$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu'];
+$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu', 'export_database_dump'];
 
 // SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
 // *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
@@ -1548,12 +1549,17 @@ switch ($action) {
         exit;
 
     case 'toggle_property_module':
-        $input = json_decode(file_get_contents('php://input'), true);
-        $property_id = $input['property_id'] ?? '';
-        $module_name = $input['module_name'] ?? '';
-        $enabled = $input['enabled'] ?? false;
+        $rawInput = file_get_contents('php://input');
+        $input = !empty($rawInput) ? json_decode($rawInput, true) : [];
+        if (!is_array($input)) {
+            $input = [];
+        }
 
-        if (!$property_id || !$module_name) {
+        $property_id = $input['property_id'] ?? $input['propertyId'] ?? $_POST['property_id'] ?? $_POST['propertyId'] ?? $_GET['property_id'] ?? $_GET['propertyId'] ?? '';
+        $module_name = $input['module_name'] ?? $input['moduleName'] ?? $input['module_slug'] ?? $_POST['module_name'] ?? $_POST['module_slug'] ?? $_GET['module_name'] ?? 'kitchen';
+        $enabled = isset($input['enabled']) ? (bool)$input['enabled'] : (isset($input['is_enabled']) ? (bool)$input['is_enabled'] : (isset($_POST['enabled']) ? (bool)$_POST['enabled'] : false));
+
+        if (empty($property_id) || empty($module_name)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'property_id and module_name required']);
             exit;
@@ -2142,6 +2148,12 @@ switch ($action) {
     // arbitrary property_id (which would wipe/poison another tenant's live rows).
     case 'reset_test_database':
         handle_reset_test_database($db_host, $db_user, $db_pass, $live_db, $test_db);
+        break;
+
+    // Lets a platform admin download a full mysqldump of the live DB from the
+    // Root Dashboard - see deploy/pull-live-data.ps1 for the SSH equivalent.
+    case 'export_database_dump':
+        handleExportDatabaseDump($pdo, $db_host, $db_user, $db_pass, $db_name);
         break;
 
     case 'generate_demo_data':

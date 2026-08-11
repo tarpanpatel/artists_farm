@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -12,6 +12,8 @@ import { AccountSettings } from './AccountSettings';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { TelegramConfig } from '../types';
 import { AuthProvider } from '../contexts/AuthContext';
+import { apiFetch, API_ROOT_BASE } from '../services/api';
+import { useToast } from './ToastContext';
 
 // TelegramNotificationModal requires this prop but never actually reads it
 // (its real "Send to:" routing state is fetched internally) - a stable
@@ -36,9 +38,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -62,6 +64,34 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   // immediately in the sidebar/header without needing a full re-login.
   const [displayUsername, setDisplayUsername] = useState(username);
   const handleUsernameChange = (newUsername: string) => setDisplayUsername(newUsername);
+  const [isExportingDb, setIsExportingDb] = useState(false);
+  const { showToast } = useToast();
+
+  const handleDownloadLiveDb = async () => {
+    setIsExportingDb(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=export_database_dump`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || `Export failed (HTTP ${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      link.setAttribute('download', `artists_farm_live_${stamp}.sql`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast('Database export downloaded', { type: 'success' });
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to export database', { type: 'error' });
+    } finally {
+      setIsExportingDb(false);
+    }
+  };
 
   // Keep the URL hash and localStorage in sync with the active section
   useEffect(() => {
@@ -163,6 +193,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       label: t('root_account_settings_label', 'Account Settings'),
       icon: UserCog,
       section: 'account_settings' as SectionType,
+    },
+    {
+      id: 'db_sync',
+      label: t('root_db_sync_label', 'Sync to Local'),
+      icon: DatabaseBackup,
+      section: 'db_sync' as SectionType,
     },
   ];
 
@@ -277,6 +313,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_label', 'Telegram Templates')}
                 {activeSection === 'email_settings' && t('root_email_settings_label', 'Email Settings')}
                 {activeSection === 'account_settings' && t('root_account_settings_label', 'Account Settings')}
+                {activeSection === 'db_sync' && t('root_db_sync_label', 'Sync to Local')}
               </h2>
               <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_subtitle', 'System overview and analytics')}
@@ -288,6 +325,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_subtitle', "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.")}
                 {activeSection === 'email_settings' && t('root_email_settings_subtitle', 'SMTP connection and the tenant welcome email/WhatsApp message template')}
                 {activeSection === 'account_settings' && t('root_account_settings_subtitle', 'Edit your root admin username, passcode, email, phone and GSTIN')}
+                {activeSection === 'db_sync' && t('root_db_sync_subtitle', 'Download a full copy of the live database to keep local dev in sync')}
               </p>
             </div>
           </div>
@@ -429,6 +467,37 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Account Settings Section */}
           {activeSection === 'account_settings' && (
             <AccountSettings username={displayUsername} onUsernameChange={handleUsernameChange} />
+          )}
+
+          {/* DB Sync Section */}
+          {activeSection === 'db_sync' && (
+            <div className="max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center shrink-0">
+                  <DatabaseBackup className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {t('root_db_sync_heading', 'Download Live Database')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {t('root_db_sync_description', 'Downloads a full mysqldump of the live database (structure + all data) so you can import it into local dev and keep it in sync with whatever real data now exists on the live site.')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadLiveDb}
+                disabled={isExportingDb}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+              >
+                {isExportingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseBackup className="w-4 h-4" />}
+                {isExportingDb ? t('root_db_sync_exporting', 'Exporting...') : t('root_db_sync_download_button', 'Download .sql File')}
+              </button>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                {t('root_db_sync_import_hint', 'After downloading, import it into your local MySQL (e.g. via phpMyAdmin\'s Import tab, or `mysql -u root artists_farm_resort < file.sql`).')}
+              </p>
+            </div>
           )}
         </div>
       </main>
