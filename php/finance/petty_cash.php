@@ -12,6 +12,7 @@ if (file_exists($seedFile)) {
 
 function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
+    require_once __DIR__ . '/../config/guest_status.php';
     switch ($action) {
         case 'get_petty_cash':
             try {
@@ -419,8 +420,16 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             try {
                 // Auto-create the cash_drawer_entries table if it doesn't exist
 
-                // Step 1: Get all staff members
-                $staffStmt = $pdo->query("SELECT id, username, full_name, role FROM staff_users WHERE status = 'Active' ORDER BY CAST(id AS UNSIGNED) ASC");
+                // Step 1: Get all staff members - property_id filter added 11 Aug 2026:
+                // this had none at all, so every property's Cash Drawer page listed
+                // every active staff member on the entire platform, across every
+                // tenant, not just this property's own staff. The per-staff
+                // financial calculations below (Steps 2-5) were already correctly
+                // property_id-scoped, so this never leaked financial totals across
+                // tenants - just exposed who exists (names, roles, usernames) on
+                // every other tenant's account.
+                $staffStmt = $pdo->prepare("SELECT id, username, full_name, role FROM staff_users WHERE status = 'Active' AND property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC");
+                $staffStmt->execute([$propertyId]);
                 $staffMembers = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
 
                 $summaries = [];
@@ -435,9 +444,9 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                             COALESCE(SUM(CASE WHEN advance_received_by = :name THEN advance_paid ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN pending_received_by = :name2 THEN pending_amount ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN food_received_by = :name3 THEN total_food ELSE 0 END), 0) as total_cash_in
-                            FROM guests WHERE status = 'CheckedOut' AND property_id = :property_id";
+                             FROM guests WHERE status = :status AND property_id = :property_id";
                         $stmtIn = $pdo->prepare($sqlIn);
-                        $stmtIn->execute([':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName, ':property_id' => $propertyId]);
+                        $stmtIn->execute([':status' => GUEST_STATUS_CHECKEDOUT_LEGACY, ':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName, ':property_id' => $propertyId]);
                         $cashIn = (float)$stmtIn->fetchColumn();
                     } catch (PDOException $e) {}
 
