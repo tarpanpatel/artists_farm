@@ -28,6 +28,7 @@ import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { ConfirmDialogProvider } from './components/ConfirmDialogContext';
 import { LoginModal } from './components/LoginModal';
+import { StaffPropertyPicker } from './components/StaffPropertyPicker';
 import { StaffProvider, useStaff } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider } from './contexts/FinanceContext';
@@ -351,6 +352,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
     login(staffMember);
     logAudit(`Staff User ${staffMember.name} logged into POS portal`, { status: 'Success', module: 'login', user: staffMember.name });
   };
+
+  // Staff with access_all_properties (see php/security/access_control.php) don't
+  // go straight into this property's dashboard on login - they need to pick
+  // which property to enter first. Set by LoginModal's onNeedsPropertySelection,
+  // cleared once StaffPropertyPicker navigates away (full page load) or the
+  // staff logs out from the picker screen instead of picking anything.
+  const [propertySelection, setPropertySelection] = useState<{ tenantId: number; tenantSlug: string; user: any } | null>(null);
 
   useEffect(() => {
     // Global behavior for all inputs
@@ -1329,10 +1337,20 @@ ${itemsStr}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col font-sans text-gray-900 dark:text-gray-100 antialiased transition-colors">
-        {!isAuthenticated && (
+        {!isAuthenticated && propertySelection && (
+          <StaffPropertyPicker
+            tenantId={propertySelection.tenantId}
+            tenantSlug={propertySelection.tenantSlug}
+            user={propertySelection.user}
+            onLogout={() => setPropertySelection(null)}
+          />
+        )}
+
+        {!isAuthenticated && !propertySelection && (
           <LoginModal
             onLoginSuccess={handleLoginSuccess}
             onLoginFailed={handleLoginFailed}
+            onNeedsPropertySelection={setPropertySelection}
           />
         )}
 

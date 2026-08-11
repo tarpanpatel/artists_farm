@@ -7,9 +7,15 @@ import { t } from '../i18n/en';
 interface LoginModalProps {
   onLoginSuccess: (user: StaffMember) => void;
   onLoginFailed: (username: string) => void;
+  // Called instead of onLoginSuccess when the authenticated account has
+  // access_all_properties set (see php/security/access_control.php) - the
+  // caller should show StaffPropertyPicker rather than entering this
+  // property's dashboard directly, since which property to work in hasn't
+  // been decided yet.
+  onNeedsPropertySelection?: (info: { tenantId: number; tenantSlug: string; user: any }) => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginFailed }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginFailed, onNeedsPropertySelection }) => {
   const [mobileNumber, setMobileNumber] = useState<string>('');
   const [passcode, setPasscode] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -63,6 +69,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
       const data = await response.json();
 
       if (data.success && data.user) {
+        if (data.user.access_all_properties && onNeedsPropertySelection) {
+          onNeedsPropertySelection({
+            tenantId: data.user.tenant_id,
+            tenantSlug: data.user.tenant_slug,
+            user: data.user,
+          });
+          return;
+        }
         const user: StaffMember = {
           id: String(data.user.id),
           name: data.user.name || data.user.username,
@@ -87,7 +101,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white text-center relative">
           <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
@@ -108,12 +122,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
           {/* Mobile Number Field */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('mobile_number_label')}
             </label>
             <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-400 dark:text-gray-500 z-10">
-                <span className="text-xs font-bold border-r border-gray-300 dark:border-gray-600 pr-2">+91</span>
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400 dark:text-slate-500 z-10">
+                <span className="text-xs font-bold border-r border-slate-300 dark:border-slate-600 pr-2">+91</span>
               </div>
               <Input
                 type="text"
@@ -128,7 +142,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
           {/* 6-Digit Passcode Field */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('six_digit_pin_label')}
             </label>
             <Input
@@ -152,7 +166,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
                 key={num}
                 type="button"
                 onClick={() => handlePasscodeKey(num)}
-                className="py-3 text-lg font-bold bg-gray-100 dark:bg-slate-700/70 text-gray-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+                className="py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
               >
                 {num}
               </button>
@@ -160,21 +174,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
             <button
               type="button"
               onClick={handleClear}
-              className="py-3 text-xs font-bold bg-gray-100 dark:bg-slate-700/70 text-gray-500 dark:text-gray-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
+              className="py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
             >
               {t('clear_keypad_button')}
             </button>
             <button
               type="button"
               onClick={() => handlePasscodeKey('0')}
-              className="py-3 text-lg font-bold bg-gray-100 dark:bg-slate-700/70 text-gray-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+              className="py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
             >
               0
             </button>
             <button
               type="button"
               onClick={handleBackspace}
-              className="py-3 text-xs font-bold bg-gray-100 dark:bg-slate-700/70 text-gray-500 dark:text-gray-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
+              className="py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
             >
               ⌫
             </button>

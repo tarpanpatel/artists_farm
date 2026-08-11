@@ -19,6 +19,14 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(30) DEFAULT ''",
             "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `monthly_salary` DECIMAL(10,2) DEFAULT 0",
             "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `status` VARCHAR(20) DEFAULT 'Active'",
+            // "Access All Properties" - a staff member who can log into any property
+            // under their own tenant instead of being locked to the one row's
+            // property_id. Applies per staff `id` (same id repeats across multiple
+            // property_id rows in this compound-key table) - kept in sync across
+            // every row for that id, see add_user/update_user below, so login's
+            // `LIMIT 1` (whichever row it happens to fetch) always sees the right
+            // value regardless of which specific row comes back.
+            "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `access_all_properties` TINYINT(1) NOT NULL DEFAULT 0",
         ];
         foreach ($alterCols as $sql) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
@@ -85,7 +93,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_staff':
         case 'get_users':
             try {
-                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
+                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -100,7 +108,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         'status'             => $r['status'] ?? 'Active',
                         'isFinancialHandler' => (bool)$r['isFinancialHandler'],
                         'passcode'           => $r['passcode'],
-                        'qrCodeUrl'          => $r['qrCodeUrl']
+                        'qrCodeUrl'          => $r['qrCodeUrl'],
+                        'accessAllProperties' => (bool)($r['accessAllProperties'] ?? false),
                     ];
                 }, $rows);
                 echo json_encode(['status' => 'success', 'data' => $data]);
@@ -125,8 +134,10 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $newStaffId = $input['id'] ?? ('usr-' . time());
+                    $accessAllProperties = !empty($input['accessAllProperties']) ? 1 : 0;
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -137,9 +148,10 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
-                            qr_code_url = VALUES(qr_code_url)");
+                            qr_code_url = VALUES(qr_code_url),
+                            access_all_properties = VALUES(access_all_properties)");
                     $stmt->execute([
-                        $input['id'] ?? ('usr-' . time()),
+                        $newStaffId,
                         $propertyId,
                         $username,
                         $input['fullName'] ?? ($input['name'] ?? $username),
@@ -150,8 +162,14 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $input['status'] ?? 'Active',
                         !empty($input['isFinancialHandler']) ? 1 : 0,
                         $passcode,
-                        $input['qrCodeUrl'] ?? ''
+                        $input['qrCodeUrl'] ?? '',
+                        $accessAllProperties
                     ]);
+                    // Keep the flag consistent across every property_id row this staff
+                    // id already has (compound-key table - login's LIMIT 1 may fetch
+                    // any one of them, so all rows must agree).
+                    $syncStmt = $pdo->prepare("UPDATE staff_users SET access_all_properties = ? WHERE id = ?");
+                    $syncStmt->execute([$accessAllProperties, $newStaffId]);
                     echo json_encode(['status' => 'success', 'message' => 'Staff member created successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -191,9 +209,16 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     $passcode         = !empty($input['passcode']) ? $input['passcode'] : ($existing['passcode'] ?? '1234');
                     $qrCodeUrl        = isset($input['qrCodeUrl']) && $input['qrCodeUrl'] !== '' ? $input['qrCodeUrl'] : ($existing['qr_code_url'] ?? '');
                     $phoneNumber      = $input['username'] ?? ($existing['phone_number'] ?? $username);
+                    // Only overwrite when the field is actually present in the payload -
+                    // same "absent means leave alone" convention as the rest of this
+                    // merge, so a partial update (e.g. just changing salary) can't
+                    // accidentally reset this to off.
+                    $accessAllProperties = isset($input['accessAllProperties'])
+                        ? ($input['accessAllProperties'] ? 1 : 0)
+                        : (int)($existing['access_all_properties'] ?? 0);
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, status, is_financial_handler, passcode, qr_code_url, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -204,7 +229,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
                             passcode = VALUES(passcode),
-                            qr_code_url = VALUES(qr_code_url)");
+                            qr_code_url = VALUES(qr_code_url),
+                            access_all_properties = VALUES(access_all_properties)");
                     $stmt->execute([
                         $input['id'],
                         $propertyId,
@@ -217,8 +243,15 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $status,
                         $isFinancialHandler,
                         $passcode,
-                        $qrCodeUrl
+                        $qrCodeUrl,
+                        $accessAllProperties
                     ]);
+                    // Keep the flag consistent across every property_id row this staff
+                    // id has - same reasoning as add_user above.
+                    if (isset($input['accessAllProperties'])) {
+                        $syncStmt = $pdo->prepare("UPDATE staff_users SET access_all_properties = ? WHERE id = ?");
+                        $syncStmt->execute([$accessAllProperties, $input['id']]);
+                    }
                     echo json_encode(['status' => 'success', 'message' => 'Staff member updated successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

@@ -209,6 +209,10 @@ export interface StaffMember {
   isFinancialHandler?: boolean;
   qrCodeUrl?: string;
   avatarUrl?: string;
+  // When true, this staff member can log into any property under their own
+  // tenant instead of being locked to a single one - see php/security/access_control.php
+  // and StaffPropertyPicker.tsx. Never spans tenants.
+  accessAllProperties?: boolean;
 }
 
 export interface AttendanceRecord {
@@ -276,6 +280,10 @@ export interface UserAccount {
   isFinancialHandler: boolean;
   qrCodeUrl?: string;
   status: string;
+  // When true, this staff member can log into any property under their own
+  // tenant instead of being locked to a single one - see php/security/access_control.php
+  // and StaffPropertyPicker.tsx. Never spans tenants.
+  accessAllProperties?: boolean;
 }
 
 export interface TelegramTemplate {

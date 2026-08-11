@@ -163,7 +163,7 @@ try {
     // 2. Search in `staff_users` table (Property Staff)
     if ($hasPhoneCandidate) {
         $stmt = $pdo->prepare("
-            SELECT id, username, phone_number, full_name, role, passcode, property_id
+            SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
             FROM staff_users
             WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
             LIMIT 1
@@ -171,7 +171,7 @@ try {
         $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
     } else {
         $stmt = $pdo->prepare("
-            SELECT id, username, phone_number, full_name, role, passcode, property_id
+            SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
             FROM staff_users
             WHERE username = ? AND status = 'Active'
             LIMIT 1
@@ -187,6 +187,51 @@ try {
         // every staff account regardless of their actual set passcode.
         $storedPasscode = $staff['passcode'] ?? '123456';
         if ($storedPasscode === $passcode) {
+            // "Access All Properties" staff (11 Aug 2026) - same logic as router.php's
+            // login_user, kept in sync deliberately since this file is the one
+            // LoginModal.tsx (the actual staff-facing login form) calls directly.
+            // Don't lock the session to this one row's property_id - resolve their
+            // tenant instead and let isPropertyAccessAllowed() permit any property
+            // under it once they pick one from the picker.
+            if (!empty($staff['access_all_properties'])) {
+                $tenantStmt = $pdo->prepare("
+                    SELECT p.tenant_id, t.slug as tenant_slug
+                    FROM properties p
+                    JOIN tenants t ON t.id = p.tenant_id
+                    WHERE p.id = ?
+                    LIMIT 1
+                ");
+                $tenantStmt->execute([$staff['property_id']]);
+                $tenantRow = $tenantStmt->fetch();
+
+                $_SESSION['user_id'] = $staff['id'];
+                $_SESSION['username'] = $staff['username'];
+                $_SESSION['role'] = $staff['role'] ?: 'Staff';
+                $_SESSION['staff_access_all_properties'] = true;
+                $_SESSION['staff_tenant_id'] = $tenantRow['tenant_id'] ?? null;
+                // Deliberately not setting $_SESSION['property_id'] here - see
+                // access_control.php.
+
+                setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Staff login successful',
+                    'user' => [
+                        'id' => $staff['id'],
+                        'username' => $staff['username'],
+                        'name' => $staff['full_name'] ?: $staff['username'],
+                        'role' => $staff['role'] ?: 'Staff',
+                        'must_change_passcode' => false,
+                        'access_all_properties' => true,
+                        'tenant_id' => $tenantRow['tenant_id'] ?? null,
+                        'tenant_slug' => $tenantRow['tenant_slug'] ?? null,
+                    ]
+                ]);
+                exit;
+            }
+
             $_SESSION['user_id'] = $staff['id'];
             $_SESSION['username'] = $staff['username'];
             $_SESSION['role'] = $staff['role'] ?: 'Staff';
@@ -215,8 +260,9 @@ try {
         }
     }
 
-    // 3. Fallback check: if default admin account login attempt
-    if (($rawIdentifier === 'admin' || $mobileNumber === '9999999999' || $rawIdentifier === 'root' || str_contains($rawIdentifier, 'vrikshawan')) && ($passcode === '123456' || $passcode === 'admin')) {
+    // 3. Emergency admin fallback (last-resort root login when all real accounts are inaccessible)
+    $emergencyPassword = getenv('EMERGENCY_ADMIN_PASSWORD');
+    if (!empty($emergencyPassword) && $passcode === $emergencyPassword) {
         $_SESSION['user_id'] = 1;
         $_SESSION['username'] = $rawIdentifier ?: 'admin';
         $_SESSION['role'] = 'root_admin';
@@ -227,7 +273,7 @@ try {
 
         echo json_encode([
             'success' => true,
-            'message' => 'Default admin login successful',
+            'message' => 'Emergency admin login successful',
             'user' => [
                 'id' => 1,
                 'username' => $rawIdentifier ?: 'admin',

@@ -228,6 +228,17 @@ function resolveCallerTenantIds(PDO $pdo): array {
     $uid = $_SESSION['user_id'];
     $tenantIds = [];
 
+    // "Access All Properties" staff (11 Aug 2026) - already know their tenant
+    // directly from login, no need to look it up via a specific property_id row.
+    // Checked before the isset($_SESSION['property_id']) branch below for the same
+    // reason as isPropertyAccessAllowed() - property_id gets set as a side effect
+    // once this kind of staff navigates into a property, and if the plain-staff
+    // branch ran first afterwards it would wrongly narrow them to just that one
+    // property's tenant lookup path instead of using the already-known value.
+    if (!empty($_SESSION['staff_access_all_properties']) && !empty($_SESSION['staff_tenant_id'])) {
+        return [(int)$_SESSION['staff_tenant_id']];
+    }
+
     // SECURITY (11 Aug 2026): users.id and staff_users.id are independent auto-increment
     // sequences that can collide (confirmed in this DB - id 11 exists as unrelated rows in
     // both tables). This used to query BOTH tables unconditionally for every session, so a
@@ -581,7 +592,7 @@ switch ($action) {
             // 2. Search in staff_users table
             if ($hasPhoneCandidate) {
                 $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id
+                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
                     FROM staff_users
                     WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
                     LIMIT 1
@@ -589,7 +600,7 @@ switch ($action) {
                 $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
             } else {
                 $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id
+                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
                     FROM staff_users
                     WHERE username = ? AND status = 'Active'
                     LIMIT 1
@@ -605,6 +616,56 @@ switch ($action) {
                 // for every staff account regardless of their actual set passcode.
                 $storedPasscode = $staff['passcode'] ?? '123456';
                 if ($storedPasscode === $passcode) {
+                    // "Access All Properties" staff (11 Aug 2026): don't lock the session to
+                    // this one row's property_id - that's exactly the bug this feature fixes
+                    // (LIMIT 1 above can fetch any of a multi-property staff's rows, so picking
+                    // THIS row's property_id would be arbitrary). Instead resolve their tenant
+                    // once (any of their rows works - staff can never span tenants, enforced at
+                    // the point access_all_properties gets turned on) and let them choose which
+                    // property to enter from a picker; isPropertyAccessAllowed() then permits
+                    // any property under that tenant, not just one.
+                    if (!empty($staff['access_all_properties'])) {
+                        $tenantStmt = $pdo->prepare("
+                            SELECT p.tenant_id, t.slug as tenant_slug
+                            FROM properties p
+                            JOIN tenants t ON t.id = p.tenant_id
+                            WHERE p.id = ?
+                            LIMIT 1
+                        ");
+                        $tenantStmt->execute([$staff['property_id']]);
+                        $tenantRow = $tenantStmt->fetch();
+
+                        $_SESSION['user_id'] = $staff['id'];
+                        $_SESSION['username'] = $staff['username'];
+                        $_SESSION['role'] = $staff['role'] ?: 'Staff';
+                        $_SESSION['staff_access_all_properties'] = true;
+                        $_SESSION['staff_tenant_id'] = $tenantRow['tenant_id'] ?? null;
+                        // Deliberately NOT setting $_SESSION['property_id'] here -
+                        // isPropertyAccessAllowed() (access_control.php) sets it as a
+                        // side effect once they actually navigate into a property.
+
+                        setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                        $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
+
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Login successful',
+                            'user' => [
+                                'id' => $staff['id'],
+                                'username' => $staff['username'],
+                                'name' => $staff['full_name'] ?: $staff['username'],
+                                'role' => $staff['role'] ?: 'Staff',
+                                'is_platform_admin' => false,
+                                'default_tenant_id' => null,
+                                'must_change_passcode' => false,
+                                'access_all_properties' => true,
+                                'tenant_id' => $tenantRow['tenant_id'] ?? null,
+                                'tenant_slug' => $tenantRow['tenant_slug'] ?? null,
+                            ]
+                        ]);
+                        exit;
+                    }
+
                     $_SESSION['user_id'] = $staff['id'];
                     $_SESSION['username'] = $staff['username'];
                     $_SESSION['role'] = $staff['role'] ?: 'Staff';
@@ -630,8 +691,9 @@ switch ($action) {
                 }
             }
 
-            // 3. Default Admin fallback for initial setup
-            if (($rawIdentifier === 'admin' || $mobileNumber === '9999999999' || $rawIdentifier === 'root' || str_contains($rawIdentifier, 'vrikshawan')) && ($passcode === '123456' || $passcode === 'admin')) {
+            // 3. Emergency admin fallback (last-resort root login when all real accounts are inaccessible)
+            $emergencyPassword = getenv('EMERGENCY_ADMIN_PASSWORD');
+            if (!empty($emergencyPassword) && $passcode === $emergencyPassword) {
                 $_SESSION['user_id'] = 1;
                 $_SESSION['username'] = $rawIdentifier ?: 'admin';
                 $_SESSION['role'] = 'root_admin';
@@ -642,7 +704,7 @@ switch ($action) {
 
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Default admin login successful',
+                    'message' => 'Emergency admin login successful',
                     'user' => [
                         'id' => 1,
                         'username' => $rawIdentifier ?: 'admin',

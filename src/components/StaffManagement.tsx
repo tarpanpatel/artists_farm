@@ -9,7 +9,12 @@ import {
   X,
   Check,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  Calendar,
+  CalendarDays,
+  Settings,
+  Target
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
@@ -69,6 +74,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newPasscode, setNewPasscode] = useState('');
   const [newRole, setNewRole] = useState<UserAccount['role']>('');
   const [newIsFinancialHandler, setNewIsFinancialHandler] = useState(false);
+  const [newAccessAllProperties, setNewAccessAllProperties] = useState(false);
   const [newQrCodeUrl, setNewQrCodeUrl] = useState('');
 
   // 2. Create Payee
@@ -83,6 +89,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateRole, setUpdateRole] = useState<UserAccount['role'] | ''>('');
   const [updatePasscode, setUpdatePasscode] = useState('');
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
+  const [updateAccessAllProperties, setUpdateAccessAllProperties] = useState(false);
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
 
   // Modals / Lightboxes
@@ -199,6 +206,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       role: member.role,
       passcodePin: member.passcode || '',
       isFinancialHandler: Boolean(member.isFinancialHandler),
+      accessAllProperties: Boolean(member.accessAllProperties),
       qrCodeUrl: member.qrCodeUrl,
       status: member.status,
     })));
@@ -316,6 +324,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       passcode: newUser.passcodePin,
       phone: newUser.username,
       isFinancialHandler: newUser.isFinancialHandler,
+      accessAllProperties: newUser.accessAllProperties,
       qrCodeUrl: newUser.qrCodeUrl,
       status: newUser.status,
     });
@@ -330,6 +339,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewPasscode('');
     setNewQrCodeUrl('');
     setNewIsFinancialHandler(false);
+    setNewAccessAllProperties(false);
   };
 
    const handleDeleteUser = async (id: string) => {
@@ -352,6 +362,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setUpdateRole(user.role);
      setUpdatePasscode('');
      setUpdateIsFinancialHandler(user.isFinancialHandler);
+     setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
      setUpdateQrCodeUrl(user.qrCodeUrl || '');
      setUserFormTab('update');
    };
@@ -410,6 +421,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       role: updateRole || targetUser.role,
       passcode: updatePasscode || targetUser.passcodePin,
       isFinancialHandler: updateIsFinancialHandler,
+      accessAllProperties: updateAccessAllProperties,
       qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
     });
     if (!saved) {
@@ -570,10 +582,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               className={`font-bold transition-all cursor-pointer shadow-2xs ${
                 isBulkSelectEnabled
                   ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
-                  : 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
-              {isBulkSelectEnabled ? '✕ Exit Bulk Mode' : '⚡ Enable Bulk Select'}
+              {isBulkSelectEnabled ? (<><X className="w-4 h-4" /> Exit Bulk Mode</>) : (<><Zap className="w-4 h-4" /> Enable Bulk Select</>)}
             </Button>
 
             {isBulkSelectEnabled && (
@@ -584,7 +596,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   size="sm"
                   className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
                 >
-                  📅 Select Today ({staff.length})
+                  <><Calendar className="w-4 h-4" /> Select Today ({staff.length})</>
                 </Button>
                 <Button
                   onClick={handleSelectAllCells}
@@ -592,7 +604,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   size="sm"
                   className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
                 >
-                  🗓️ Select Month
+                  <><CalendarDays className="w-4 h-4" /> Select Month</>
                 </Button>
                 {selectedCells.size > 0 && (
                   <Button
@@ -618,11 +630,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             {/* Table 1: Active System Users & Staff */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-indigo-600 pl-2.5">
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
                   {t('active_system_users_heading', 'Active System Users & Staff')}
                 </h3>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 font-mono">{users.length} {t('registered_suffix', 'Registered')}</span>
+                  <span className="text-xs text-slate-400">{users.length} {t('registered_suffix', 'Registered')}</span>
                 </div>
               </div>
 
@@ -726,10 +738,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             {/* Table 2: Registered Payees (Vendors & Third Parties) */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm border-l-3 border-orange-500 pl-2.5">
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
                   {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
                 </h3>
-                <span className="text-xs text-slate-400 font-mono">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
+                <span className="text-xs text-slate-400">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
               </div>
 
               <DataTable
@@ -811,7 +823,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
                   }`}
                 >
-                  ➕ Create Login Staff Account
+                  <span className="inline-flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Create Login Staff Account</span>
                 </button>
                 <button
                   onClick={() => setUserFormTab('update')}
@@ -821,7 +833,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
                   }`}
                 >
-                  ⚙ Update Staff Account
+                  <span className="inline-flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Update Staff Account</span>
                 </button>
               </div>
 
@@ -887,15 +899,32 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
                         <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <span className="inline-flex items-center rounded-lg bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                             {t('help_label', 'Help?')}
                           </span>
                         </Tooltip>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        id="newAccessAllPropertiesCheck"
+                        checked={newAccessAllProperties}
+                        onChange={(e) => setNewAccessAllProperties(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="newAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        {t('access_all_properties_label', 'Access All Properties')}
+                      </label>
+                      <Tooltip content={t('access_all_properties_help_tooltip', 'This staff member can log into any property under this tenant, not just this one - they pick which property after logging in.')}>
+                        <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {t('help_label', 'Help?')}
+                        </span>
+                      </Tooltip>
+                    </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => {
@@ -934,6 +963,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             setUpdateUsername(target.username);
                             setUpdateRole(target.role);
                             setUpdateIsFinancialHandler(target.isFinancialHandler);
+                            setUpdateAccessAllProperties(Boolean(target.accessAllProperties));
                           }
                         }}
                         placeholder="-- Choose User Profile --"
@@ -998,15 +1028,32 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           {t('cash_handling_user_label', 'Cash Handling User')}
                         </label>
                         <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <span className="inline-flex items-center rounded-lg bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
                             {t('help_label', 'Help?')}
                           </span>
                         </Tooltip>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                      <input
+                        type="checkbox"
+                        id="updateAccessAllPropertiesCheck"
+                        checked={updateAccessAllProperties}
+                        onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="updateAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        {t('access_all_properties_label', 'Access All Properties')}
+                      </label>
+                      <Tooltip content={t('access_all_properties_help_tooltip', 'This staff member can log into any property under this tenant, not just this one - they pick which property after logging in.')}>
+                        <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {t('help_label', 'Help?')}
+                        </span>
+                      </Tooltip>
+                    </div>
                     <div>
                       <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
-                      <input
+                      <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => {
@@ -1035,7 +1082,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs">
               <div className="p-5 space-y-3">
                 <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  ➕ Register Account Payee
+                  <Plus className="w-4 h-4" /> Register Account Payee
                 </h4>
 
                 <form onSubmit={handleCreatePayee} className="space-y-3">
@@ -1066,7 +1113,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                   <div>
                     <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot')}</label>
-                    <input
+                    <Input
                       type="file"
                       accept="image/*"
                       onChange={(e) => {
@@ -1083,7 +1130,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
                   >
                     Save Payee to Database
                   </button>
@@ -1099,15 +1146,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="space-y-4">
           {/* Bulk Marking Action Buttons */}
           {(isBulkSelectEnabled || selectedCells.size > 0) && (
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-                <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  ⚡ Bulk Selection Actions
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5" /> Bulk Selection Actions
                 </div>
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                   {selectedCells.size > 0 ? (
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      🎯 {selectedCells.size} cell{selectedCells.size > 1 ? 's' : ''} selected
+                    <span className="text-blue-600 dark:text-blue-400 font-bold inline-flex items-center gap-1">
+                      <Target className="w-3.5 h-3.5" /> {selectedCells.size} cell{selectedCells.size > 1 ? 's' : ''} selected
                     </span>
                   ) : (
                     <span>Select cells in the grid below to bulk update</span>
@@ -1141,7 +1188,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Half Day')}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <span className="w-4 h-4 rounded bg-indigo-700 flex items-center justify-center text-[10px]">L</span>
                   <span>{t('mark_leave_halfday_label', 'Mark Leave / Half Day (L)')}</span>
@@ -1158,7 +1205,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
           )}
 
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
             <button
               onClick={() => {
                 if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
@@ -1190,18 +1237,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
             <div className="overflow-x-auto relative">
               <table className="datatable w-full text-center border-collapse text-xs">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-slate-900/80 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-slate-700 font-bold">
-                    <th className="sticky left-0 bg-gray-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white">
+                  <tr className="bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold">
+                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                       Staff Member
                     </th>
                     {monthDays.map((d) => (
                       <th
                         key={`num-${d.dayNum}`}
-                        className={`px-2 py-2 min-w-[36px] max-w-[40px] text-[11px] border-r border-gray-200 dark:border-slate-700/60 ${
+                        className={`px-2 py-2 min-w-[36px] max-w-[40px] text-[11px] border-r border-slate-200 dark:border-slate-700/60 ${
                           d.isToday ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-bold' : ''
                         }`}
                       >
@@ -1210,12 +1257,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     ))}
                   </tr>
 
-                  <tr className="bg-gray-50/70 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-slate-700 font-medium text-[10px]">
-                    <th className="sticky left-0 bg-gray-50 dark:bg-slate-900 z-20 border-r border-gray-200 dark:border-slate-700"></th>
+                  <tr className="bg-slate-50/70 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 font-medium text-[10px]">
+                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 border-r border-slate-200 dark:border-slate-700"></th>
                     {monthDays.map((d) => (
                       <th
                         key={`name-${d.dayNum}`}
-                        className={`px-2 py-1.5 border-r border-gray-200 dark:border-slate-700/60 ${
+                        className={`px-2 py-1.5 border-r border-slate-200 dark:border-slate-700/60 ${
                           d.isToday ? 'bg-amber-100/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold' : ''
                         }`}
                       >
@@ -1225,10 +1272,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-700/60 text-gray-800 dark:text-gray-200">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-800 dark:text-slate-200">
                   {staff.map((member) => (
-                    <tr key={member.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-700/40 transition-colors">
-                      <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-gray-50 dark:group-hover:bg-slate-700/60 z-10 text-left px-4 py-3 font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-slate-700 truncate min-w-[150px]">
+                    <tr key={member.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
+                      <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/60 z-10 text-left px-4 py-3 font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-700 truncate min-w-[150px]">
                         {member.name}
                       </td>
 
@@ -1241,7 +1288,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           <td
                             key={cellKey}
                             onClick={() => handleCellClick(member, d.dateStr)}
-                            className={`px-1 py-2 border-r border-gray-100 dark:border-slate-700/40 cursor-pointer transition-all select-none ${
+                            className={`px-1 py-2 border-r border-slate-100 dark:border-slate-700/40 cursor-pointer transition-all select-none ${
                               isSelected
                                 ? 'bg-blue-100 dark:bg-blue-900/80 ring-2 ring-blue-500 z-10'
                                 : d.isToday
@@ -1268,7 +1315,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             )}
 
                             {!status && (
-                              <span className="text-gray-300 dark:text-gray-600 font-bold text-xs">
+                              <span className="text-slate-300 dark:text-slate-600 font-bold text-xs">
                                 -
                               </span>
                             )}
@@ -1300,7 +1347,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   name: 'Staff Name',
                   selector: (row: any) => row.staff.name,
                   sortable: true,
-                  cell: (row: any) => <span className="font-bold text-gray-900 dark:text-white text-sm">{row.staff.name}</span>,
+                  cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
                 },
                 {
                   name: 'Daily Wage (₹)',
@@ -1308,7 +1355,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   sortable: true,
                   right: true,
                   width: '120px',
-                  cell: (row: any) => <span className="font-mono text-gray-600 dark:text-gray-300">₹{row.dailyWage.toFixed(2)}</span>,
+                  cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
                 },
                 {
                   name: 'Present Days',
@@ -1316,7 +1363,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   sortable: true,
                   center: true,
                   width: '110px',
-                  cell: (row: any) => <><span className="font-bold text-gray-800 dark:text-gray-200">{row.presentDays}</span><span className="text-gray-400 dark:text-gray-500"> days</span></>,
+                  cell: (row: any) => <><span className="font-bold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
                 },
                 {
                   name: 'Total Earned (₹)',
@@ -1451,7 +1498,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 rows: { style: { minHeight: '52px' } },
               }}
               noDataComponent={
-                <div className="p-8 text-center text-gray-400 font-semibold text-xs">No active staff members found</div>
+                <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
               }
             />
 
@@ -1464,7 +1511,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
                       <span className="font-bold text-red-800 dark:text-red-300">{adv.staffName}</span>
                       <span className="text-red-600 dark:text-red-400">- ₹{adv.amount.toLocaleString('en-IN')}</span>
-                      <span className="text-gray-400 dark:text-gray-500">{adv.reason}</span>
+                      <span className="text-slate-400 dark:text-slate-500">{adv.reason}</span>
                       <button
                         onClick={async () => {
                           const ok = await deleteStaffAdvanceFromDB(adv.id);
@@ -1489,12 +1536,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
       {/* SUB-TAB 3: ROSTER LIST VIEW */}
       {activeSubTab === 'roster' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-xs p-5 transition-colors space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 pb-3">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 transition-colors space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
               {t('staff_directory_payroll_heading', 'Staff Member Directory & Payroll Breakdown')}
             </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
               {t('total_payroll_label', 'Total Payroll:')} ₹{totalPayroll.toLocaleString('en-IN')} / mo
             </span>
           </div>
@@ -1506,13 +1553,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 selector: (row: any) => row.id,
                 sortable: true,
                 width: '100px',
-                cell: (row: any) => <span className="font-mono font-bold text-gray-500 dark:text-gray-400">{row.id}</span>,
+                cell: (row: any) => <span className="font-mono font-bold text-slate-500 dark:text-slate-400">{row.id}</span>,
               },
               {
                 name: 'Full Name',
                 selector: (row: any) => row.name,
                 sortable: true,
-                cell: (row: any) => <span className="font-bold text-gray-900 dark:text-white text-sm">{row.name}</span>,
+                cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white text-sm">{row.name}</span>,
               },
               {
                 name: 'Role',
@@ -1526,7 +1573,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
                   />
                 ) : (
-                  <span className="font-medium text-gray-600 dark:text-gray-300">{row.role}</span>
+                  <span className="font-medium text-slate-600 dark:text-slate-300">{row.role}</span>
                 ),
               },
               {
@@ -1543,7 +1590,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     fullWidth={false}
                   />
                 ) : (
-                  <span className="font-mono text-gray-600 dark:text-gray-300">{row.phone}</span>
+                  <span className="font-mono text-slate-600 dark:text-slate-300">{row.phone}</span>
                 ),
               },
               {
@@ -1615,7 +1662,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   rows: { style: { minHeight: '52px' } },
                 }}
             noDataComponent={
-              <div className="p-8 text-center text-gray-400 font-semibold text-xs">No staff members found.</div>
+              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
             }
           />
         </div>
@@ -1649,7 +1696,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {editingPayee && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl text-xs">
-            <h3 className="font-bold text-slate-900 text-sm border-l-3 border-sky-600 pl-2">
+            <h3 className="font-extrabold text-slate-900 text-sm">
               {t('edit_payee_settings_heading', 'Edit Payee Account Settings')}
             </h3>
 
@@ -1679,7 +1726,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Replace QR Code Graphic Blueprint (Optional)</label>
-                <input
+                <Input
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -1718,12 +1765,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {/* Add Staff Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-gray-200 dark:border-slate-700 shadow-2xl p-6 space-y-4 text-xs">
-            <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 pb-3">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('add_new_staff_member_heading', 'Add New Staff Member')}</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4 text-xs">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{t('add_new_staff_member_heading', 'Add New Staff Member')}</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1742,7 +1789,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-1">{t('team_role', 'Team Role')}</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">{t('team_role', 'Team Role')}</label>
                 <StyledSelect
                   value={role}
                   onChange={(val) => setRole(val as any)}
@@ -1786,11 +1833,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 />
               </div>
 
-              <div className="pt-3 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>

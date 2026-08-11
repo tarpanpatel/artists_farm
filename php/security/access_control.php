@@ -32,6 +32,23 @@ function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
 
     if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
 
+    // "Access All Properties" staff (11 Aug 2026, see router.php/authenticate.php
+    // login_user): allowed into any property under their own tenant, not locked to
+    // one property_id. Checked BEFORE the plain isset($_SESSION['property_id'])
+    // branch below on purpose - once this kind of staff navigates into a property,
+    // the sync below also sets $_SESSION['property_id'] (so other code that reads
+    // it directly, e.g. calendar_session.php, sees the right value), and if the
+    // isset() branch ran first afterwards it would wrongly narrow them back down
+    // to that one property instead of their whole tenant.
+    if (!empty($_SESSION['staff_access_all_properties']) && !empty($_SESSION['staff_tenant_id'])) {
+        $stmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+        $stmt->execute([$propertyId]);
+        $row = $stmt->fetch();
+        $allowed = $row && (int)$row['tenant_id'] === (int)$_SESSION['staff_tenant_id'];
+        if ($allowed) $_SESSION['property_id'] = $propertyId;
+        return $allowed;
+    }
+
     if (isset($_SESSION['property_id'])) {
         return (int)$_SESSION['property_id'] === $propertyId;
     }
