@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -13,6 +13,7 @@ interface Room {
   room_order: number;
   is_active: number;
   created_at: string;
+  default_tariff: number | null;
 }
 
 interface Property {
@@ -51,10 +52,15 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: '', slug: '' });
+  const [newRoom, setNewRoom] = useState({ name: '', slug: '', default_tariff: '' });
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
   const [slotUsage, setSlotUsage] = useState<{ total_slots: number; used_slots: number; remaining_slots: number } | null>(null);
+  // Inline tariff edit - a room row's tariff can be edited in place, no
+  // separate "edit room" screen exists for anything else on this page yet.
+  const [editingTariffRoomId, setEditingTariffRoomId] = useState<number | null>(null);
+  const [tariffDraft, setTariffDraft] = useState('');
+  const [savingTariff, setSavingTariff] = useState(false);
 
   const { confirm } = useConfirm();
 
@@ -107,13 +113,14 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
           parent_property_id: propertyId,
           room_name: newRoom.name,
           room_slug: newRoom.slug,
+          default_tariff: newRoom.default_tariff,
         }),
       });
 
       const data = await response.json();
       if (data.success) {
         setShowAddRoomModal(false);
-        setNewRoom({ name: '', slug: '' });
+        setNewRoom({ name: '', slug: '', default_tariff: '' });
         await loadData();
         onUpdated?.();
       } else {
@@ -124,6 +131,35 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       setError('Failed to add room');
     } finally {
       setAddingRoom(false);
+    }
+  };
+
+  const handleStartEditTariff = (room: Room) => {
+    setEditingTariffRoomId(room.id);
+    setTariffDraft(room.default_tariff != null ? String(room.default_tariff) : '');
+  };
+
+  const handleSaveTariff = async (roomId: number) => {
+    setSavingTariff(true);
+    try {
+      const response = await apiFetch('/php/api/router.php?action=update_room_tariff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, default_tariff: tariffDraft }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEditingTariffRoomId(null);
+        await loadData();
+        onUpdated?.();
+      } else {
+        setError(data.message || 'Failed to update tariff');
+      }
+    } catch (err) {
+      console.error('Failed to update tariff:', err);
+      setError('Failed to update tariff');
+    } finally {
+      setSavingTariff(false);
     }
   };
 
@@ -162,7 +198,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader className="w-6 h-6 animate-spin text-indigo-600 mr-2" />
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mr-2" />
         <p className="text-sm text-slate-500">{t('loading_rooms_label', 'Loading rooms...')}</p>
       </div>
     );
@@ -242,6 +278,50 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                       Revenue: {property.currency} {roomData.total_revenue.toFixed(0)}
                     </p>
                   )}
+                  {editingTariffRoomId === room.id ? (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Input
+                        type="number"
+                        value={tariffDraft}
+                        onChange={(e) => setTariffDraft(e.target.value)}
+                        placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+                        className="!h-8 !py-1 w-28 text-xs"
+                        autoFocus
+                      />
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => handleSaveTariff(room.id)}
+                        disabled={savingTariff}
+                        className="text-emerald-600 dark:text-emerald-400"
+                        title={t('save_tooltip', 'Save')}
+                      >
+                        {savingTariff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setEditingTariffRoomId(null)}
+                        disabled={savingTariff}
+                        className="text-slate-400"
+                        title={t('cancel_button', 'Cancel')}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStartEditTariff(room)}
+                      className="flex items-center gap-1 mt-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      {room.default_tariff != null
+                        ? t('default_tariff_display', 'Default Tariff: {{currency}} {{amount}}/night')
+                            .replace('{{currency}}', property.currency || '₹')
+                            .replace('{{amount}}', room.default_tariff.toFixed(0))
+                        : t('set_default_tariff_label', 'Set Default Tariff')}
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex gap-2 shrink-0">
@@ -260,7 +340,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                     className="text-red-600 dark:text-red-400"
                   >
                     {deletingRoom === room.id ? (
-                      <Loader className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Trash2 className="w-4 h-4" />
                     )}
@@ -308,6 +388,16 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                   placeholder={t('room_slug_placeholder', 'e.g., suite-a')}
                 />
               </div>
+
+              <div>
+                <Input
+                  label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+                  type="number"
+                  value={newRoom.default_tariff}
+                  onChange={(e) => setNewRoom({ ...newRoom, default_tariff: e.target.value })}
+                  placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -316,7 +406,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 className="flex-1"
                 onClick={() => {
                   setShowAddRoomModal(false);
-                  setNewRoom({ name: '', slug: '' });
+                  setNewRoom({ name: '', slug: '', default_tariff: '' });
                 }}
               >
                 {t('cancel_button', 'Cancel')}
@@ -326,7 +416,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 className="flex-1"
                 onClick={handleAddRoom}
                 disabled={addingRoom || !newRoom.name || !newRoom.slug}
-                leftIcon={addingRoom ? <Loader className="w-3 h-3 animate-spin" /> : undefined}
+                leftIcon={addingRoom ? <Loader2 className="w-3 h-3 animate-spin" /> : undefined}
               >
                 {addingRoom ? t('adding_room_button', 'Adding...') : t('add_room_button', 'Add Room')}
               </Button>

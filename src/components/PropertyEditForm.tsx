@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -23,6 +23,8 @@ interface PropertyEditFormProps {
     instructions?: string;
     whatsapp_voucher_template?: string;
     telegram_template_customization_enabled?: number | boolean;
+    property_type?: string;
+    default_tariff?: number | null;
   };
   onCancel?: () => void;
   onSaved?: () => void;
@@ -46,6 +48,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [instructions, setInstructions] = useState(property.instructions || '');
   const [checkinTime, setCheckinTime] = useState((property as any).checkin_time || '14:00');
   const [checkoutTime, setCheckoutTime] = useState((property as any).checkout_time || '11:00');
+  // Only meaningful for SINGLE properties - a MULTI_KEY parent isn't itself
+  // bookable, each of its rooms has its own tariff (set in RoomsManagement.tsx).
+  const [defaultTariff, setDefaultTariff] = useState(
+    property.default_tariff != null ? String(property.default_tariff) : ''
+  );
   const [whatsappTemplate, setWhatsappTemplate] = useState(property.whatsapp_voucher_template || '');
   const [telegramCustomization, setTelegramCustomization] = useState(
     !!property.telegram_template_customization_enabled
@@ -127,6 +134,7 @@ We look forward to welcoming you!`;
           instructions,
           checkin_time: checkinTime,
           checkout_time: checkoutTime,
+          default_tariff: defaultTariff,
           whatsapp_voucher_template: whatsappTemplate,
           telegram_template_customization_enabled: telegramCustomization,
         }),
@@ -231,6 +239,21 @@ We look forward to welcoming you!`;
         </div>
       </div>
 
+      {/* Multi-key parent properties aren't themselves bookable - each room has
+          its own tariff, set in RoomsManagement.tsx instead. */}
+      {property.property_type !== 'MULTI_KEY' && (
+        <div>
+          <Input
+            type="number"
+            label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+            value={defaultTariff}
+            onChange={(e) => setDefaultTariff(e.target.value)}
+            placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+            helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+          />
+        </div>
+      )}
+
       <div>
         <Input
           type="text"
@@ -242,7 +265,7 @@ We look forward to welcoming you!`;
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
+        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
         <WhatsAppEditor
           value={instructions}
           onChange={setInstructions}
@@ -277,7 +300,7 @@ We look forward to welcoming you!`;
              ))}
           </div>
 
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t('whatsapp_voucher_template_label', 'WhatsApp Voucher Template')}</label>
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('whatsapp_voucher_template_label', 'WhatsApp Voucher Template')}</label>
           <Textarea
             value={whatsappTemplate}
             onChange={(e) => setWhatsappTemplate(e.target.value)}
@@ -358,7 +381,7 @@ We look forward to welcoming you!`;
           disabled={isSaving || !name.trim()}
           className="flex items-center gap-2"
         >
-          {isSaving && <Loader className="w-4 h-4 animate-spin" />}
+          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
           {submitLabel || t('save_changes_button', 'Save Changes')}
         </Button>
       </div>

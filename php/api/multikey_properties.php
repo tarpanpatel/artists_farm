@@ -45,6 +45,10 @@ function handleMultiKeyPropertyRequests($pdo, $request_method, $action, $propert
             updateRoomName($pdo, $propertyId, $currentProperty);
             break;
 
+        case 'update_room_tariff':
+            updateRoomTariff($pdo, $propertyId, $currentProperty);
+            break;
+
         case 'restore_multikey_room':
             restoreMultiKeyRoom($pdo, $propertyId, $currentProperty);
             break;
@@ -442,6 +446,13 @@ function addMultiKeyRoom($pdo) {
     $parent_property_id = $input['parent_property_id'] ?? '';
     $room_name = $input['room_name'] ?? '';
     $room_slug = $input['room_slug'] ?? '';
+    // Optional - a room can be added without a rate and priced later via
+    // update_room_tariff. Blank/non-numeric input is treated as "not set" (NULL),
+    // not as a coerced 0, so the Add Booking form correctly falls back to manual
+    // entry rather than pre-filling ₹0.
+    $default_tariff = (isset($input['default_tariff']) && $input['default_tariff'] !== '' && is_numeric($input['default_tariff']))
+        ? (float)$input['default_tariff']
+        : null;
 
     // Validate required fields
     if (!$parent_property_id || !$room_name || !$room_slug) {
@@ -499,10 +510,10 @@ function addMultiKeyRoom($pdo) {
 
         // Create room as MULTI_KEY_ROOM
         $stmt = $pdo->prepare("
-            INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active)
-            VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1)
+            INSERT INTO properties (tenant_id, parent_property_id, name, slug, property_type, room_order, is_active, default_tariff)
+            VALUES (?, ?, ?, ?, 'MULTI_KEY_ROOM', ?, 1, ?)
         ");
-        $stmt->execute([$parent['tenant_id'], $parent_property_id, $room_name, $room_slug, $next_order]);
+        $stmt->execute([$parent['tenant_id'], $parent_property_id, $room_name, $room_slug, $next_order, $default_tariff]);
         $room_id = $pdo->lastInsertId();
 
         // Enable same modules as parent
@@ -567,13 +578,17 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
 
         // Get all rooms (non-deleted)
         $stmt = $pdo->prepare("
-            SELECT id, name, slug, room_order, is_active, created_at
+            SELECT id, name, slug, room_order, is_active, created_at, default_tariff
             FROM properties
             WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
             ORDER BY room_order ASC
         ");
         $stmt->execute([$property_id]);
         $rooms = $stmt->fetchAll();
+        foreach ($rooms as &$room) {
+            $room['default_tariff'] = $room['default_tariff'] !== null ? (float)$room['default_tariff'] : null;
+        }
+        unset($room);
 
         // Get shared data
         $stmt = $pdo->prepare("
@@ -848,6 +863,59 @@ function updateRoomName($pdo, $propertyId = 0, $currentProperty = []) {
             'message' => 'Room renamed successfully',
             'room_id' => (int)$room_id,
             'new_name' => $new_name
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+/**
+ * Update a room's default per-night tariff - lets Add Booking auto-populate a
+ * starting price for that room instead of every booking starting blank.
+ * POST /api/router.php?action=update_room_tariff
+ */
+function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $room_id = $input['room_id'] ?? '';
+    $hasTariff = array_key_exists('default_tariff', (array)$input);
+    $raw_tariff = $input['default_tariff'] ?? null;
+
+    if (!$room_id) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'room_id is required']);
+        exit;
+    }
+    // Explicitly allow clearing the tariff back to "not set" (null/empty string),
+    // but reject a present, non-empty value that isn't actually a number.
+    if ($hasTariff && $raw_tariff !== null && $raw_tariff !== '' && !is_numeric($raw_tariff)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'default_tariff must be a number']);
+        exit;
+    }
+    $new_tariff = ($hasTariff && $raw_tariff !== null && $raw_tariff !== '') ? (float)$raw_tariff : null;
+
+    denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $room_id);
+
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND property_type = 'MULTI_KEY_ROOM'");
+        $stmt->execute([$room_id]);
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Room not found']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("UPDATE properties SET default_tariff = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->execute([$new_tariff, $room_id]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Room tariff updated successfully',
+            'room_id' => (int)$room_id,
+            'default_tariff' => $new_tariff
         ]);
 
     } catch (Exception $e) {

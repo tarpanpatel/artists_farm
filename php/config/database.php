@@ -111,6 +111,12 @@ try {
             "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",
             "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `whatsapp_voucher_template` TEXT DEFAULT NULL",
             "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `instructions` TEXT DEFAULT NULL",
+            // Default per-night rate for this room/property - lets the Add Booking
+            // form auto-populate a starting price instead of every booking starting
+            // blank (see RoomsManagement.tsx / GuestManagement.tsx). Applies to both
+            // MULTI_KEY_ROOM rows and SINGLE properties - a single property's "room"
+            // is the property itself.
+            "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `default_tariff` DECIMAL(10,2) DEFAULT NULL",
         ];
         foreach ($propertyWhatsAppCols as $sql) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}

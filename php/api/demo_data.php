@@ -17,14 +17,36 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 function generateDemoData($pdo, $propertyId) {
-    // Always start from a clean slate. Previously relied on INSERT IGNORE
-    // to avoid duplicates, but there's no unique key backing that, so every
-    // repeat click silently added a second full copy of the demo dataset on
-    // top of the last one instead of replacing it.
+    // Check if dummy history mode is enabled
+    try {
+        $stmt = $pdo->prepare("SELECT dummy_history_enabled FROM properties WHERE id = ?");
+        $stmt->execute([$propertyId]);
+        $dummyHistoryEnabled = (bool)($stmt->fetchColumn() ?: 0);
+        if ($dummyHistoryEnabled) {
+            return ['status' => 'success', 'message' => 'Dummy history mode active - data is fixed'];
+        }
+    } catch (PDOException $e) {}
+
+    // Always start from a clean slate.
     clearDemoData($pdo, $propertyId);
 
     try {
         $pdo->beginTransaction();
+
+        // Ensure is_demo flag exists on every table we write to
+        $alterCols = [
+            "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `guests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `menu_items` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `petty_cash` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `audit_logs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `service_requests` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `orders` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        ];
+        foreach ($alterCols as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
 
         // 1. Demo Users (Staff with different roles)
         $demoUsers = [
@@ -37,106 +59,168 @@ function generateDemoData($pdo, $propertyId) {
         foreach ($demoUsers as $user) {
             $userId = 'DEMO-' . uniqid();
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO staff_users (id, property_id, username, full_name, phone, role, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                INSERT IGNORE INTO staff_users (id, property_id, username, full_name, phone, role, status, is_demo, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
             ");
             $stmt->execute([$userId, $propertyId, $user['username'], $user['name'], $user['phone'], $user['role'], $user['status']]);
         }
 
-        // 2. Demo Guests (Various booking statuses)
-        // Get available rooms for multi-key properties
-        $roomIds = [];
-        try {
-            $roomStmt = $pdo->prepare("
-                SELECT id FROM properties
-                WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'
-                ORDER BY name ASC
-            ");
-            $roomStmt->execute([$propertyId]);
-            $roomIds = $roomStmt->fetchAll(PDO::FETCH_COLUMN);
-        } catch (Exception $e) {
-            error_log("[demo_data.php] Error fetching rooms: " . $e->getMessage());
-        }
-
-        // Ensure we have all 5 demo rooms
+        // 2. Rooms - ensure 5 demo rooms exist with varied default tariffs
         $requiredRooms = [
-            ['name' => 'Room 101', 'slug' => 'room-101'],
-            ['name' => 'Room 102', 'slug' => 'room-102'],
-            ['name' => 'Room 103', 'slug' => 'room-103'],
-            ['name' => 'Room 104', 'slug' => 'room-104'],
-            ['name' => 'Room 105', 'slug' => 'room-105'],
+            ['name' => 'Room 101', 'slug' => 'room-101', 'tariff' => 2200],
+            ['name' => 'Room 102', 'slug' => 'room-102', 'tariff' => 2500],
+            ['name' => 'Room 103', 'slug' => 'room-103', 'tariff' => 2000],
+            ['name' => 'Room 104', 'slug' => 'room-104', 'tariff' => 1800],
+            ['name' => 'Room 105', 'slug' => 'room-105', 'tariff' => 2400],
         ];
 
-        try {
-            // Create any missing rooms
-            foreach ($requiredRooms as $requiredRoom) {
-                $checkStmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND name = ?");
-                $checkStmt->execute([$propertyId, $requiredRoom['name']]);
-                $existing = $checkStmt->fetchColumn();
+        $roomIds = [];
+        foreach ($requiredRooms as $requiredRoom) {
+            $checkStmt = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND name = ? AND is_deleted = 0");
+            $checkStmt->execute([$propertyId, $requiredRoom['name']]);
+            $existing = $checkStmt->fetchColumn();
 
-                if (!$existing) {
-                    $createStmt = $pdo->prepare("
-                        INSERT INTO properties (parent_property_id, name, slug, property_type, is_active, created_at)
-                        VALUES (?, ?, ?, 'MULTI_KEY_ROOM', 1, NOW())
-                    ");
-                    $createStmt->execute([$propertyId, $requiredRoom['name'], $requiredRoom['slug']]);
-                    error_log("[demo_data.php] Created room: " . $requiredRoom['name']);
+            if (!$existing) {
+                $createStmt = $pdo->prepare("
+                    INSERT INTO properties (parent_property_id, name, slug, property_type, is_active, default_tariff, created_at)
+                    VALUES (?, ?, ?, 'MULTI_KEY_ROOM', 1, ?, NOW())
+                ");
+                $createStmt->execute([$propertyId, $requiredRoom['name'], $requiredRoom['slug'], $requiredRoom['tariff']]);
+            } else {
+                $updateStmt = $pdo->prepare("UPDATE properties SET default_tariff = ? WHERE id = ?");
+                $updateStmt->execute([$requiredRoom['tariff'], $existing]);
+            }
+        }
+
+        // Re-fetch all room IDs with their tariffs
+        $roomStmt = $pdo->prepare("
+            SELECT id, name, default_tariff FROM properties
+            WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
+            ORDER BY name ASC
+        ");
+        $roomStmt->execute([$propertyId]);
+        $rooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
+        $roomIds = array_column($rooms, 'id');
+        $roomTariffs = [];
+        foreach ($rooms as $r) {
+            $roomTariffs[(int)$r['id']] = (float)$r['default_tariff'];
+        }
+
+        if (empty($roomIds)) {
+            $roomIds = [null];
+            $rooms = [['id' => null, 'name' => 'N/A', 'default_tariff' => 2000]];
+        }
+
+        // 3. Demo Guests - realistic bookings across 37-day window (-30 to +7)
+        $today = new DateTime('today');
+        $windowStart = (clone $today)->modify('-30 days');
+        $windowEnd = (clone $today)->modify('+7 days');
+        $windowDays = 37;
+
+        // Generate bookings per room: ~70% occupancy, 6-9 stays, 2-5 nights each
+        $guestNames = [
+            'Arjun Mehta', 'Priya Sharma', 'Rahul Verma', 'Sneha Kapoor', 'Vikram Singh',
+            'Ananya Iyer', 'Karthik Reddy', 'Divya Nair', 'Rohan Joshi', 'Meera Pillai',
+            'Siddharth Rao', 'Kavya Menon', 'Aditya Varma', 'Pooja Bhatt', 'Varun Malhotra'
+        ];
+
+        $allBookings = [];
+        $nameIndex = 0;
+
+        foreach ($rooms as $roomIdx => $room) {
+            $roomId = $room['id'];
+            $tariff = $room['default_tariff'] ?? 2000;
+            $stayCount = 6 + array_rand(range(0, 3)); // 6-9 stays
+            $targetOccupiedDays = (int)($windowDays * (0.65 + (array_rand([0, 5, 10, 15]) / 100))); // 65-75%
+            $stayLengths = [];
+            $totalNights = 0;
+            for ($i = 0; $i < $stayCount; $i++) {
+                $len = rand(2, 5);
+                $stayLengths[] = $len;
+                $totalNights += $len;
+            }
+            // Scale stay lengths to match target occupancy
+            if ($totalNights > 0 && $targetOccupiedDays > 0) {
+                $scale = min(1.0, $targetOccupiedDays / $totalNights);
+                $stayLengths = array_map(function($len) use ($scale) {
+                    return max(2, (int)round($len * $scale));
+                }, $stayLengths);
+                $totalNights = array_sum($stayLengths);
+            }
+
+            // Generate stay dates scattered across the window
+            $stayDates = [];
+            $availableDays = [];
+            for ($d = $windowStart; $d <= $windowEnd; $d->modify('+1 day')) {
+                $availableDays[] = clone $d;
+            }
+
+            $idx = 0;
+            $attempts = 0;
+            while ($idx < count($stayLengths) && $attempts < 100) {
+                $attempts++;
+                $startOffset = rand(0, max(0, count($availableDays) - $stayLengths[$idx] - 1));
+                $start = $availableDays[$startOffset];
+                $end = (clone $start)->modify('+' . $stayLengths[$idx] . ' days');
+
+                // Check overlap with existing stays
+                $overlaps = false;
+                foreach ($stayDates as $s) {
+                    if ($start < $s['end'] && $end > $s['start']) {
+                        $overlaps = true;
+                        break;
+                    }
+                }
+                if (!$overlaps) {
+                    $stayDates[] = ['start' => $start, 'end' => $end, 'length' => $stayLengths[$idx]];
+                    $idx++;
                 }
             }
 
-            // Re-fetch all room IDs
-            $roomStmt = $pdo->prepare("
-                SELECT id FROM properties
-                WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'
-                ORDER BY name ASC
-            ");
-            $roomStmt->execute([$propertyId]);
-            $roomIds = $roomStmt->fetchAll(PDO::FETCH_COLUMN);
-            error_log("[demo_data.php] Total rooms available: " . count($roomIds));
-        } catch (Exception $e) {
-            error_log("[demo_data.php] Error managing rooms: " . $e->getMessage());
-            $roomIds = [null];
+            // Sort stays by start date
+            usort($stayDates, function($a, $b) { return $a['start'] <=> $b['start']; });
+
+            foreach ($stayDates as $stay) {
+                $guestName = $guestNames[$nameIndex % count($guestNames)];
+                $nameIndex++;
+                $phone = '9988776' . str_pad((string)(($roomIdx * 100 + $nameIndex) % 1000), 3, '0', STR_PAD_LEFT);
+
+                $checkin = $stay['start']->format('Y-m-d');
+                $checkout = $stay['end']->format('Y-m-d');
+                $nights = $stay['length'];
+                $totalCharge = $tariff * $nights;
+                $advance = (int)($totalCharge * 0.3);
+
+                // Status: past stays are checked out, current/future are checked in
+                $status = 'Checked In';
+                if ($stay['end'] <= $today) {
+                    $status = 'Checked Out';
+                }
+
+                $allBookings[] = [
+                    'name' => $guestName,
+                    'phone' => $phone,
+                    'checkin' => $checkin,
+                    'checkout' => $checkout,
+                    'status' => $status,
+                    'room_id' => $roomId,
+                    'per_night_charges' => $tariff,
+                    'total_charge' => $totalCharge,
+                    'advance' => $advance,
+                ];
+            }
         }
 
-        // Create demo guests with back-to-back bookings across all 5 rooms
-        $demoGuests = [
-            // Room 101: Back-to-back bookings
-            ['name' => 'John Smith', 'phone' => '9988776655', 'checkin' => date('Y-m-d'), 'checkout' => date('Y-m-d', strtotime('+3 days')), 'status' => 'Checked In', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
-            ['name' => 'Mike Wilson', 'phone' => '9988776657', 'checkin' => date('Y-m-d', strtotime('+3 days')), 'checkout' => date('Y-m-d', strtotime('+6 days')), 'status' => 'Checked In', 'room_idx' => 0, 'per_night_charges' => 5000, 'total_charge' => 15000, 'advance' => 5000],
-
-            // Room 102: Back-to-back bookings
-            ['name' => 'Sarah Johnson', 'phone' => '9988776656', 'checkin' => date('Y-m-d', strtotime('-1 day')), 'checkout' => date('Y-m-d', strtotime('+2 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
-            ['name' => 'Emma Davis', 'phone' => '9988776658', 'checkin' => date('Y-m-d', strtotime('+2 days')), 'checkout' => date('Y-m-d', strtotime('+5 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
-            ['name' => 'Oliver Brown', 'phone' => '9988776662', 'checkin' => date('Y-m-d', strtotime('+5 days')), 'checkout' => date('Y-m-d', strtotime('+8 days')), 'status' => 'Checked In', 'room_idx' => 1, 'per_night_charges' => 4500, 'total_charge' => 13500, 'advance' => 4500],
-        ];
-
-        // Add bookings for rooms 103, 104, 105 if they exist (3+ rooms)
-        if (count($roomIds) > 2) {
-            // Room 103: Booking checking out TODAY + future booking
-            $demoGuests[] = ['name' => 'Robert Taylor', 'phone' => '9988776670', 'checkin' => date('Y-m-d', strtotime('-2 days')), 'checkout' => date('Y-m-d'), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 7000, 'advance' => 3500];
-            $demoGuests[] = ['name' => 'Alice Brown', 'phone' => '9988776659', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
-            $demoGuests[] = ['name' => 'Bob Green', 'phone' => '9988776660', 'checkin' => date('Y-m-d', strtotime('+10 days')), 'checkout' => date('Y-m-d', strtotime('+13 days')), 'status' => 'Checked In', 'room_idx' => 2, 'per_night_charges' => 3500, 'total_charge' => 10500, 'advance' => 3500];
-
-            // Room 104: Back-to-back bookings
-            $demoGuests[] = ['name' => 'Carol White', 'phone' => '9988776661', 'checkin' => date('Y-m-d', strtotime('+4 days')), 'checkout' => date('Y-m-d', strtotime('+7 days')), 'status' => 'Checked In', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
-            $demoGuests[] = ['name' => 'David Lee', 'phone' => '9988776663', 'checkin' => date('Y-m-d', strtotime('+7 days')), 'checkout' => date('Y-m-d', strtotime('+10 days')), 'status' => 'Checked In', 'room_idx' => 3, 'per_night_charges' => 4000, 'total_charge' => 12000, 'advance' => 4000];
-
-            // Room 105: Back-to-back bookings
-            $demoGuests[] = ['name' => 'Fiona Taylor', 'phone' => '9988776664', 'checkin' => date('Y-m-d', strtotime('+9 days')), 'checkout' => date('Y-m-d', strtotime('+12 days')), 'status' => 'Checked In', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
-            $demoGuests[] = ['name' => 'George Harris', 'phone' => '9988776665', 'checkin' => date('Y-m-d', strtotime('+12 days')), 'checkout' => date('Y-m-d', strtotime('+15 days')), 'status' => 'Checked In', 'room_idx' => 4, 'per_night_charges' => 3800, 'total_charge' => 11400, 'advance' => 3800];
-        }
-
-        foreach ($demoGuests as $guest) {
-            $roomIdx = min($guest['room_idx'], count($roomIds) - 1);
-            $roomId = $roomIds[$roomIdx] ?? null;
+        // Insert all bookings
+        foreach ($allBookings as $guest) {
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 1)
             ");
-            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $roomId, $guest['per_night_charges'], $guest['total_charge'], $guest['advance']]);
+            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance']]);
         }
 
-        // 3. Demo Food Menu Items
+        // 4. Demo Food Menu Items
         $demoMenuItems = [
             ['category' => 'Breakfast', 'name' => 'Scrambled Eggs & Toast', 'price' => 250],
             ['category' => 'Breakfast', 'name' => 'Pancakes with Syrup', 'price' => 300],
@@ -154,7 +238,6 @@ function generateDemoData($pdo, $propertyId) {
         ];
 
         foreach ($demoMenuItems as $item) {
-            // Find or create category
             $catStmt = $pdo->prepare("SELECT id FROM menu_categories WHERE name = ? LIMIT 1");
             $catStmt->execute([$item['category']]);
             $catId = $catStmt->fetchColumn();
@@ -166,13 +249,13 @@ function generateDemoData($pdo, $propertyId) {
             }
 
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO menu_items (property_id, category_id, name, price, is_hidden)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT IGNORE INTO menu_items (property_id, category_id, name, price, is_hidden, is_demo)
+                VALUES (?, ?, ?, ?, 0, 1)
             ");
             $stmt->execute([$propertyId, $catId, $item['name'], $item['price']]);
         }
 
-        // 4. Demo Inventory Items (using req_catalog table)
+        // 5. Demo Inventory Items (using req_catalog table)
         $demoInventory = [
             ['name' => 'Chicken Breast', 'stock' => 15, 'unit' => 'kg'],
             ['name' => 'Rice', 'stock' => 50, 'unit' => 'kg'],
@@ -180,46 +263,167 @@ function generateDemoData($pdo, $propertyId) {
             ['name' => 'Milk', 'stock' => 20, 'unit' => 'litre'],
             ['name' => 'Vegetables Mix', 'stock' => 25, 'unit' => 'kg'],
             ['name' => 'Cleaning Supplies', 'stock' => 8, 'unit' => 'bottles'],
+            ['name' => 'Tissue Paper', 'stock' => 2, 'unit' => 'packs', 'low_stock' => true],
         ];
 
         foreach ($demoInventory as $item) {
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO req_catalog (property_id, item_name, current_stock, unit_label, category_id)
-                VALUES (?, ?, ?, ?, 1)
+                INSERT IGNORE INTO req_catalog (property_id, item_name, current_stock, unit_label, category_id, is_demo)
+                VALUES (?, ?, ?, ?, 1, 1)
             ");
             $stmt->execute([$propertyId, $item['name'], $item['stock'], $item['unit']]);
         }
 
-        // 5. Demo Petty Cash Entries
-        $demoExpenses = [
-            ['date' => date('Y-m-d'), 'category' => 'Kitchen Purchase', 'amount' => 2500, 'vendor' => 'Local Market', 'desc' => 'Fresh vegetables and groceries'],
-            ['date' => date('Y-m-d', strtotime('-1 day')), 'category' => 'Maintenance', 'amount' => 1500, 'vendor' => 'Hardware Store', 'desc' => 'Repair supplies'],
-            ['date' => date('Y-m-d', strtotime('-2 days')), 'category' => 'Staff Advance', 'amount' => 5000, 'vendor' => 'Cash Advance', 'desc' => 'Advance to staff member'],
-            ['date' => date('Y-m-d', strtotime('-3 days')), 'category' => 'Miscellaneous', 'amount' => 800, 'vendor' => 'Utilities', 'desc' => 'Phone bill recharge'],
-        ];
+        // 6. Demo Petty Cash Entries - spread across -30 to +7 window
+        $demoExpenses = [];
+        for ($i = 0; $i < 12; $i++) {
+            $daysOffset = rand(-30, 7);
+            $date = (clone $today)->modify("$daysOffset days")->format('Y-m-d');
+            $categories = ['Kitchen Purchase', 'Maintenance', 'Staff Advance', 'Miscellaneous', 'Utilities', 'Transport'];
+            $vendors = ['Local Market', 'Hardware Store', 'Cash Advance', 'Utilities', 'Transport Co', 'Online'];
+            $descs = [
+                'Fresh vegetables and groceries',
+                'Repair supplies',
+                'Advance to staff member',
+                'Phone bill recharge',
+                'Local transport',
+                'Cleaning supplies',
+            ];
+            $catIdx = array_rand($categories);
+            $demoExpenses[] = [
+                'date' => $date,
+                'category' => $categories[$catIdx],
+                'amount' => rand(200, 5000),
+                'vendor' => $vendors[$catIdx],
+                'desc' => $descs[$catIdx],
+            ];
+        }
 
         foreach ($demoExpenses as $exp) {
             $expId = 'EXP-' . uniqid();
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO petty_cash (id, property_id, date, category, amount, description, vendor_name, approved_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Demo Manager')
+                INSERT IGNORE INTO petty_cash (id, property_id, date, category, amount, description, vendor_name, approved_by, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Demo Manager', 1)
             ");
             $stmt->execute([$expId, $propertyId, $exp['date'], $exp['category'], $exp['amount'], $exp['desc'], $exp['vendor']]);
         }
 
-        // 6. Demo Audit Logs
+        // 7. Demo Service Requests - today's open requests + historical closed ones
+        $serviceRequestTypes = [
+            'ac_heating_issue', 'hot_water_geyser', 'fresh_towels', 'extra_bedding',
+            'tea_coffee_replenish', 'late_checkout_request', 'wifi_connectivity'
+        ];
+
+        $todayStr = $today->format('Y-m-d');
+        $serviceRequests = [];
+        foreach ($serviceRequestTypes as $typeId) {
+            // 2-3 requests per type, some today (open), some past (closed)
+            for ($i = 0; $i < rand(2, 3); $i++) {
+                $daysOffset = rand(-25, 2);
+                $reqDate = (clone $today)->modify("$daysOffset days")->format('Y-m-d H:i:s');
+                $isToday = ($daysOffset >= -1 && $daysOffset <= 0);
+                $roomId = $roomIds[array_rand($roomIds)];
+
+                $serviceRequests[] = [
+                    'property_id' => $propertyId,
+                    'room_id' => $roomId,
+                    'request_type' => $typeId,
+                    'description' => ucwords(str_replace('_', ' ', $typeId)) . ' - Demo request',
+                    'requested_by' => 'Demo Guest',
+                    'status' => $isToday ? 'open' : 'resolved',
+                    'scheduled_at' => $reqDate,
+                    'created_at' => $reqDate,
+                    'is_demo' => 1,
+                ];
+            }
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO service_requests (property_id, room_id, request_type, description, requested_by, status, scheduled_at, created_at, is_demo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        foreach ($serviceRequests as $req) {
+            $stmt->execute([
+                $req['property_id'],
+                $req['room_id'],
+                $req['request_type'],
+                $req['description'],
+                $req['requested_by'],
+                $req['status'],
+                $req['scheduled_at'],
+                $req['created_at'],
+                $req['is_demo']
+            ]);
+        }
+
+        // 8. Demo KDS Orders - today's live orders + historical completed ones
+        // Get menu item IDs for ordering
+        $menuItemStmt = $pdo->prepare("SELECT id FROM menu_items WHERE property_id = ? AND is_demo = 1 LIMIT 10");
+        $menuItemStmt->execute([$propertyId]);
+        $menuItemIds = $menuItemStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($menuItemIds)) {
+            $menuItemIds = [1];
+        }
+
+        $kdsStatuses = ['Pending', 'Preparing', 'Ready', 'Completed'];
+        $kdsOrders = [];
+        for ($i = 0; $i < 15; $i++) {
+            $daysOffset = rand(-25, 0);
+            $orderTime = (clone $today)->modify("$daysOffset days")->format('Y-m-d H:i:s');
+            $status = $kdsStatuses[array_rand($kdsStatuses)];
+
+            // Prefer today's orders to be Pending/Preparing/Ready
+            if ($daysOffset >= -1) {
+                $status = $kdsStatuses[array_rand([0, 1, 2])]; // Pending, Preparing, or Ready
+            }
+
+            $kdsOrders[] = [
+                'property_id' => $propertyId,
+                'guest_id' => null,
+                'room_number' => 'Room ' . (101 + $i % 5),
+                'order_time' => $orderTime,
+                'status' => $status,
+                'is_demo' => 1,
+            ];
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO orders (property_id, guest_id, order_time, status, is_demo)
+            VALUES (?, ?, ?, ?, 1)
+        ");
+        foreach ($kdsOrders as $order) {
+            $stmt->execute([$order['property_id'], $order['guest_id'], $order['order_time'], $order['status']]);
+            $orderId = $pdo->lastInsertId();
+
+            // Add 1-3 items per order
+            $itemCount = rand(1, 3);
+            for ($j = 0; $j < $itemCount; $j++) {
+                $menuItemId = $menuItemIds[array_rand($menuItemIds)];
+                $qty = rand(1, 3);
+                $itemStatus = $order['status'] === 'Completed' ? 'Served' : ($order['status'] === 'Ready' ? 'Ready' : 'Pending');
+                $itemStmt = $pdo->prepare("
+                    INSERT INTO order_items (order_id, menu_item_id, quantity, item_status, is_demo)
+                    VALUES (?, ?, ?, ?, 1)
+                ");
+                $itemStmt->execute([$orderId, $menuItemId, $qty, $itemStatus]);
+            }
+        }
+
+        // 9. Demo Audit Logs
         $demoLogs = [
-            ['action' => 'Guest Checked In - John Smith', 'module' => 'guests'],
+            ['action' => 'Guest Checked In - ' . $guestNames[0], 'module' => 'guests'],
             ['action' => 'Food Order Created - Table 5', 'module' => 'kitchen'],
             ['action' => 'Inventory Updated - Chicken Breast', 'module' => 'inventory'],
             ['action' => 'Petty Cash Entry - Kitchen Purchase', 'module' => 'finance'],
             ['action' => 'Staff Attendance Marked - Demo Manager', 'module' => 'staff'],
+            ['action' => 'Service Request Created - AC Issue', 'module' => 'service_requests'],
+            ['action' => 'Demo Data Generated', 'module' => 'system'],
         ];
 
         foreach ($demoLogs as $log) {
             $stmt = $pdo->prepare("
-                INSERT INTO audit_logs (property_id, timestamp, user, action, status, module)
-                VALUES (?, ?, 'System', ?, 'Success', ?)
+                INSERT INTO audit_logs (property_id, timestamp, user, action, status, module, is_demo)
+                VALUES (?, ?, 'System', ?, 'Success', ?, 1)
             ");
             $stmt->execute([$propertyId, date('Y-m-d H:i:s'), $log['action'], $log['module']]);
         }
@@ -239,41 +443,56 @@ function clearDemoData($pdo, $propertyId) {
 
         $deletedRows = 0;
 
-        // Delete demo staff users with demo usernames
-        $stmt = $pdo->prepare("DELETE FROM staff_users WHERE property_id = ? AND username LIKE 'demo_%'");
+        // Delete demo staff users
+        $stmt = $pdo->prepare("DELETE FROM staff_users WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted staff users: " . $stmt->rowCount());
 
-        // Delete ALL demo guests (current and old demo data)
-        $stmt = $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND guest_name IN ('John Smith', 'Sarah Johnson', 'Mike Wilson', 'Emma Davis', 'Oliver Brown', 'Alice Brown', 'Bob Green', 'Carol White', 'David Lee', 'Fiona Taylor', 'George Harris', 'Robert Taylor')");
+        // Delete demo guests
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted guests: " . $stmt->rowCount());
 
-        // Delete demo menu items by name
-        $stmt = $pdo->prepare("DELETE FROM menu_items WHERE property_id = ? AND name IN ('Scrambled Eggs & Toast', 'Pancakes with Syrup', 'Oatmeal with Fruits', 'Grilled Chicken Breast', 'Fish Curry', 'Vegetable Stir Fry', 'Fresh Orange Juice', 'Coffee', 'Tea', 'Samosas (4 pcs)', 'Garlic Bread', 'Chocolate Cake', 'Ice Cream')");
+        // Delete demo menu items
+        $stmt = $pdo->prepare("DELETE FROM menu_items WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted menu items: " . $stmt->rowCount());
 
         // Delete demo inventory items
-        $stmt = $pdo->prepare("DELETE FROM req_catalog WHERE property_id = ? AND item_name IN ('Chicken Breast', 'Rice', 'Eggs', 'Milk', 'Vegetables Mix', 'Cleaning Supplies')");
+        $stmt = $pdo->prepare("DELETE FROM req_catalog WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted inventory items: " . $stmt->rowCount());
 
         // Delete demo petty cash entries
-        $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE property_id = ? AND id LIKE 'EXP-%'");
+        $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted petty cash entries: " . $stmt->rowCount());
 
-        // Delete audit logs with demo actions (more selective than deleting all 'System' logs)
-        $stmt = $pdo->prepare("DELETE FROM audit_logs WHERE property_id = ? AND (action LIKE '%Demo%' OR action LIKE '%John Smith%' OR action LIKE '%Sarah Johnson%')");
+        // Delete demo service requests
+        $stmt = $pdo->prepare("DELETE FROM service_requests WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
-        error_log("[demo_data.php] Deleted audit logs: " . $stmt->rowCount());
+
+        // Delete demo KDS orders and their items
+        $stmt = $pdo->prepare("SELECT id FROM orders WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $demoOrderIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($demoOrderIds)) {
+            $in = implode(',', array_fill(0, count($demoOrderIds), '?'));
+            $stmt = $pdo->prepare("DELETE FROM order_items WHERE order_id IN ($in)");
+            $stmt->execute($demoOrderIds);
+            $deletedRows += $stmt->rowCount();
+
+            $stmt = $pdo->prepare("DELETE FROM orders WHERE property_id = ? AND is_demo = 1");
+            $stmt->execute([$propertyId]);
+            $deletedRows += $stmt->rowCount();
+        }
+
+        // Delete demo audit logs
+        $stmt = $pdo->prepare("DELETE FROM audit_logs WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
 
         $pdo->commit();
         error_log("[demo_data.php] Total rows deleted: " . $deletedRows);

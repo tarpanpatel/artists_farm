@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Database, Loader, CheckCircle, AlertCircle, BarChart3, Check, Lightbulb, Calendar, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Database, Loader2, CheckCircle, AlertCircle, BarChart3, Check, Lightbulb, Calendar, Sparkles } from 'lucide-react';
 import { useConfirm } from './ConfirmDialogContext';
 import { setTestingModeState } from '../services/api';
 import { t } from '../i18n/en';
@@ -16,6 +16,24 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [hasGeneratedDemo, setHasGeneratedDemo] = useState(false);
+  const [dummyHistoryEnabled, setDummyHistoryEnabled] = useState(false);
+  const [dummyHistoryLoading, setDummyHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !propertyId) return;
+    let cancelled = false;
+    setDummyHistoryLoading(true);
+    fetch(`/php/api/dummy_history.php?action=get_dummy_history_status&property_id=${propertyId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled && data.status === 'success') {
+          setDummyHistoryEnabled(data.data.enabled);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setDummyHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, propertyId]);
 
   const generateDemoData = async () => {
     if (!propertyId) {
@@ -25,7 +43,6 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
     setLoading(true);
     try {
-      // Activate testing mode first so cookies and headers resolve correctly on backend
       setTestingModeState(true);
 
       const response = await fetch('/php/api/demo_data.php', {
@@ -45,7 +62,6 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
         setMessage({ type: 'success', text: '✅ Demo data generated! Refreshing...' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        // Roll back testing mode if generation failed
         setTestingModeState(false);
         setMessage({ type: 'error', text: data.message || 'Failed to generate demo data' });
       }
@@ -72,7 +88,6 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
     setLoading(true);
     try {
-      console.log('[DemoDataModal] Clearing demo data for property:', propertyId);
       const response = await fetch('/php/api/demo_data.php', {
         method: 'POST',
         headers: { 
@@ -83,9 +98,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
         credentials: 'include',
       });
 
-      console.log('[DemoDataModal] API Response status:', response.status);
       const data = await response.json();
-      console.log('[DemoDataModal] API Response data:', data);
 
       if (data.status === 'success') {
         setTestingModeState(false);
@@ -98,10 +111,47 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
         setMessage({ type: 'error', text: data.message || 'Failed to exit test mode' });
       }
     } catch (err) {
-      console.error('[DemoDataModal] Error exiting test mode:', err);
       setMessage({ type: 'error', text: `Error exiting test mode: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const enableDummyHistory = async () => {
+    if (!propertyId) return;
+    setDummyHistoryLoading(true);
+    try {
+      const response = await fetch(`/php/api/dummy_history.php?action=enable_dummy_history&property_id=${propertyId}`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        setDummyHistoryEnabled(true);
+        setMessage({ type: 'success', text: '✅ Dummy history mode enabled' });
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to enable dummy history' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error enabling dummy history' });
+    } finally {
+      setDummyHistoryLoading(false);
+    }
+  };
+
+  const disableDummyHistory = async () => {
+    if (!propertyId) return;
+    setDummyHistoryLoading(true);
+    try {
+      const response = await fetch(`/php/api/dummy_history.php?action=disable_dummy_history&property_id=${propertyId}`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        setDummyHistoryEnabled(false);
+        setMessage({ type: 'success', text: '✅ Dummy history mode disabled' });
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to disable dummy history' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error disabling dummy history' });
+    } finally {
+      setDummyHistoryLoading(false);
     }
   };
 
@@ -143,6 +193,16 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Dummy History Banner */}
+          {dummyHistoryEnabled && (
+            <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+              <p className="text-sm text-purple-800 dark:text-purple-200 font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                {t('dummy_history_active_banner')}
+              </p>
+            </div>
+          )}
+
           {/* Demo Tab */}
           {activeTab === 'demo' && (
             <div className="space-y-6">
@@ -203,31 +263,56 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={generateDemoData}
-                  disabled={loading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                      {loading ? (
-                        <>
-                          <Loader className="w-4 h-4 animate-spin" />
-                          {t('generating_text')}
-                        </>
-                      ) : (
-                        <>
-                          <Database className="w-4 h-4" />
-                          {hasGeneratedDemo ? t('refresh_demo_data_button') : t('generate_demo_data_button')}
-                        </>
-                      )}
-                </button>
-                <button
-                  onClick={clearDemoData}
-                  disabled={loading}
-                  className="flex-1 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-950/50 disabled:bg-slate-300 text-red-700 dark:text-red-400 font-bold py-3 px-4 rounded-lg transition-colors"
-                >
-                  {loading ? t('exiting_text') : t('exit_test_mode_button')}
-                </button>
+              <div className="space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('dummy_history_mode_heading')}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">{t('dummy_history_mode_description')}</p>
+                  <button
+                    onClick={dummyHistoryEnabled ? disableDummyHistory : enableDummyHistory}
+                    disabled={dummyHistoryLoading || loading}
+                    className={`w-full font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                      dummyHistoryEnabled
+                        ? 'bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-950/50 text-red-700 dark:text-red-400'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {dummyHistoryLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {dummyHistoryEnabled ? t('disable_dummy_history_button') : t('enable_dummy_history_button')}
+                      </>
+                    ) : (
+                      dummyHistoryEnabled ? t('disable_dummy_history_button') : t('enable_dummy_history_button')
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={generateDemoData}
+                    disabled={loading || dummyHistoryLoading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {t('generating_text')}
+                          </>
+                        ) : (
+                          <>
+                            <Database className="w-4 h-4" />
+                            {hasGeneratedDemo ? t('refresh_demo_data_button') : t('generate_demo_data_button')}
+                          </>
+                        )}
+                  </button>
+                  <button
+                    onClick={clearDemoData}
+                    disabled={loading || dummyHistoryLoading}
+                    className="flex-1 bg-red-100 dark:bg-red-950/30 hover:bg-red-200 dark:hover:bg-red-950/50 disabled:bg-slate-300 text-red-700 dark:text-red-400 font-bold py-3 px-4 rounded-lg transition-colors"
+                  >
+                    {loading ? t('exiting_text') : t('exit_test_mode_button')}
+                  </button>
+                </div>
               </div>
             </div>
           )}

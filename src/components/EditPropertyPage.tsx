@@ -18,6 +18,7 @@ interface EditPropertyPageProps {
     whatsapp_voucher_template?: string;
     telegram_template_customization_enabled?: number | boolean;
     property_type?: string;
+    default_tariff?: number | null;
   };
 }
 

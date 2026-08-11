@@ -168,7 +168,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // here defensively since it's not property data), and the property-setup wizard (which does
 // its own tenant+property-slug ownership proof inline - see the 'update_property' case).
 // Every other action now requires an authenticated session, enforced universally below.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property'];
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -1597,6 +1597,16 @@ switch ($action) {
                 $sets[] = 'checkout_time = ?';
                 $params[] = trim($input['checkout_time']) ?: null;
             }
+            if (array_key_exists('default_tariff', $input)) {
+                $rawTariff = $input['default_tariff'];
+                if ($rawTariff !== null && $rawTariff !== '' && !is_numeric($rawTariff)) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'default_tariff must be a number']);
+                    exit;
+                }
+                $sets[] = 'default_tariff = ?';
+                $params[] = ($rawTariff !== null && $rawTariff !== '') ? (float)$rawTariff : null;
+            }
             if (array_key_exists('whatsapp_voucher_template', $input)) {
                 // Empty string means "reset to the built-in default" - stored as NULL,
                 // not an empty template, so the frontend's fallback logic kicks in.
@@ -2083,6 +2093,19 @@ switch ($action) {
         }
         $result = clearDemoData($pdo, $targetPropertyId);
         echo json_encode($result);
+        break;
+
+    case 'get_dummy_history_status':
+    case 'enable_dummy_history':
+    case 'disable_dummy_history':
+        require_once __DIR__ . '/dummy_history.php';
+        handleDummyHistory($pdo, $action, $propertyId);
+        break;
+
+    case 'list_local_llm_models':
+    case 'local_llm_chat':
+        require_once __DIR__ . '/local_llm.php';
+        handleLocalLLM($action, $propertyId);
         break;
 
     default:
