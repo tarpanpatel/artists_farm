@@ -284,9 +284,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   }, [containerKey, expandedIds, initSortable]);
 
   // ========== SAVE ==========
-  const handleSave = async () => {
+  // Shared by the main "Save Menu" button and any auto-save (e.g. rename) -
+  // sends the full current tree, so it also picks up whatever else is
+  // pending, same as a manual save would.
+  const persistItems = async (itemsToSave: NavMenuItem[]) => {
     setIsSaving(true);
-    const treeNodes = buildTree(items);
+    const treeNodes = buildTree(itemsToSave);
     const flatList = flattenAll(treeNodes).map(({ children, ...rest }: any) => rest);
     const success = await saveNavMenuDB(flatList);
     if (success) {
@@ -294,6 +297,24 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       setHasUnsaved(false);
     }
     setIsSaving(false);
+    return success;
+  };
+
+  const handleSave = async () => {
+    let currentItems = items;
+    if (editingTitleId && editTitle.trim()) {
+      const newTitle = editTitle.trim();
+      const base = slugifyForUrl(newTitle) || 'item';
+      let candidate = base;
+      let n = 2;
+      while (currentItems.some(i => i.id !== editingTitleId && (i.urlSlug || i.uniqueKey) === candidate)) {
+        candidate = `${base}_${n++}`;
+      }
+      currentItems = currentItems.map(i => i.id === editingTitleId ? { ...i, title: newTitle, urlSlug: candidate } : i);
+      setItems(currentItems);
+      setEditingTitleId(null);
+    }
+    await persistItems(currentItems);
   };
 
   // ========== ADD NEW ITEM ==========
@@ -358,22 +379,29 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '');
 
-  const handleSaveRename = (id: string) => {
+  // Renaming auto-saves right away instead of just marking the page dirty and
+  // waiting for a separate "Save Menu" click - a rename looked like it worked
+  // (the title updated on screen) but was silently lost if that second click
+  // never happened. Computed directly (not via the setItems functional
+  // updater) since the result is also needed immediately for persistItems -
+  // reading the stale `items` closure would be fine here anyway since this
+  // only runs from a direct user click/Enter, never batched with another
+  // update to `items` in the same tick.
+  const handleSaveRename = async (id: string) => {
     if (!editTitle.trim()) return;
     const newTitle = editTitle.trim();
-    setItems(prev => {
-      const base = slugifyForUrl(newTitle) || 'item';
-      // Keep the slug unique among the OTHER items - a collision would make
-      // two different pages resolve to the same URL hash.
-      let candidate = base;
-      let n = 2;
-      while (prev.some(i => i.id !== id && (i.urlSlug || i.uniqueKey) === candidate)) {
-        candidate = `${base}_${n++}`;
-      }
-      return prev.map(i => i.id === id ? { ...i, title: newTitle, urlSlug: candidate } : i);
-    });
+    const base = slugifyForUrl(newTitle) || 'item';
+    // Keep the slug unique among the OTHER items - a collision would make
+    // two different pages resolve to the same URL hash.
+    let candidate = base;
+    let n = 2;
+    while (items.some(i => i.id !== id && (i.urlSlug || i.uniqueKey) === candidate)) {
+      candidate = `${base}_${n++}`;
+    }
+    const updatedItems = items.map(i => i.id === id ? { ...i, title: newTitle, urlSlug: candidate } : i);
+    setItems(updatedItems);
     setEditingTitleId(null);
-    markDirty();
+    await persistItems(updatedItems);
   };
 
   const handleIconChange = (id: string, iconName: string) => {
