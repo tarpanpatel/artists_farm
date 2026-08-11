@@ -49,7 +49,6 @@ BILLING_*.md
 
 # Temp directories
 deploylite/
-php/database/
 
 # Tool-generated cache/logs (Playwright MCP console dumps)
 .playwright-mcp/
