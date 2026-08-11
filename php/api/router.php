@@ -37,7 +37,15 @@ require_once __DIR__ . '/../finance/ledger.php';
 require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
-require_once __DIR__ . '/../telegram/telegram.php';
+// Conditional (12 Aug 2026): this was an unconditional require - a malware
+// scanner quarantining this ONE file (a real, recurring event on the live
+// server) took down every action router.php handles, including login,
+// since a failed require_once here is fatal before $action is even read.
+// Now only Telegram-specific actions (see handleTelegramRequests below) are
+// affected if this file is ever missing again.
+if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
+    require_once __DIR__ . '/../telegram/telegram.php';
+}
 require_once __DIR__ . '/../modules/module_manager.php';
 require_once __DIR__ . '/../licenses/licenses.php';
 require_once __DIR__ . '/../theme/theme_settings.php';
@@ -172,7 +180,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // Every other action now requires an authenticated session, enforced universally below.
 // get_csrf_token added 12 Aug 2026: must be reachable before a CSRF token
 // exists at all (the token itself), and before any session/write gate below.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token'];
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'get_audit_logs'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -605,6 +613,20 @@ switch ($action) {
                     setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
+                    TelescopeLogger::log(
+                        'login',
+                        'SUCCESS',
+                        "Staff User {$user['username']} logged into system",
+                        "Login Controller [Success]",
+                        ['username' => $user['username'], 'role' => $role, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'status' => 'Success']
+                    );
+                    try {
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Success', 'login')");
+                        $stmtAudit->execute([1, "Staff User {$user['username']} logged into system", $user['username'], $ip, $ua]);
+                    } catch (Exception $ea) {}
+
                     echo json_encode([
                         'success' => true,
                         'message' => 'Login successful',
@@ -751,9 +773,30 @@ switch ($action) {
             }
 
             http_response_code(401);
+            TelescopeLogger::log(
+                'login',
+                'WARNING',
+                "Staff User {$rawIdentifier} failed login attempt",
+                "Login Controller [Failed]",
+                ['identifier' => $rawIdentifier, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', 'status' => 'Failed']
+            );
+            try {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $stmtAudit = $pdo->prepare("INSERT INTO audit_logs (property_id, action, timestamp, user, ip_address, user_agent, status, module) VALUES (?, ?, NOW(), ?, ?, ?, 'Failed', 'login')");
+                $stmtAudit->execute([1, "Staff User {$rawIdentifier} failed login attempt", $rawIdentifier, $ip, $ua]);
+            } catch (Exception $ea) {}
+
             echo json_encode(['success' => false, 'message' => 'Invalid mobile number/username or 6-digit passcode']);
         } catch (Exception $e) {
             http_response_code(500);
+            TelescopeLogger::log(
+                'login',
+                'ERROR',
+                "Login error for {$rawIdentifier}: " . $e->getMessage(),
+                "Login Controller [Exception]",
+                ['identifier' => $rawIdentifier, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
+            );
             echo json_encode(['success' => false, 'message' => 'Login error: ' . $e->getMessage()]);
         }
         exit;
@@ -2035,7 +2078,12 @@ switch ($action) {
     case 'check_pairing_status':
     case 'confirm_pairing':
     case 'send_telegram_test':
-        handleTelegramRequests($pdo, $request_method, $action, $propertyId);
+        if (function_exists('handleTelegramRequests')) {
+            handleTelegramRequests($pdo, $request_method, $action, $propertyId);
+        } else {
+            http_response_code(503);
+            echo json_encode(['status' => 'error', 'message' => 'Telegram module temporarily unavailable.']);
+        }
         break;
 
     // --- MODULES ---

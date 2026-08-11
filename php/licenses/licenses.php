@@ -228,7 +228,9 @@ function checkExpiringLicenses($pdo) {
  */
 function sendLicenseExpiryNotification($pdo, $license, $daysBeforeExpiry) {
     try {
-        require_once __DIR__ . '/../telegram/telegram.php';
+        if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
+            require_once __DIR__ . '/../telegram/telegram.php';
+        }
 
         $licenseId = $license['id'];
         $propertyId = $license['property_id'];
@@ -268,7 +270,7 @@ function sendLicenseExpiryNotification($pdo, $license, $daysBeforeExpiry) {
         ");
         $stmt->execute([$licenseId, $propertyId, $daysBeforeExpiry]);
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("License notification failed: " . $e->getMessage());
     }
 }

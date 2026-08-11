@@ -7,8 +7,17 @@
  * poller - see php/telegram/webhook_handler.php) or from the app itself.
  */
 
-require_once __DIR__ . '/../telegram/sender.php';
-require_once __DIR__ . '/../telegram/templates.php';
+// Conditional (12 Aug 2026): same reasoning as telegram.php's require in
+// router.php - this file is itself unconditionally required by router.php,
+// so a missing sender.php/templates.php here would fatal-crash every action,
+// not just service requests. The one call site below is wrapped in
+// catch (Throwable) so a missing file degrades to "notification not sent"
+// instead of crashing that specific request too.
+foreach (['../telegram/sender.php', '../telegram/templates.php'] as $telegramDep) {
+    if (file_exists(__DIR__ . '/' . $telegramDep)) {
+        require_once __DIR__ . '/' . $telegramDep;
+    }
+}
 
 if (!function_exists('convertSnakeToCamel')) {
     function convertSnakeToCamel($array) {
@@ -292,7 +301,10 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                                 $requestId,
                             ]);
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
+                    // Throwable, not just Exception - a missing sender.php/templates.php
+                    // (see the conditional require above) throws Error (undefined
+                    // class/function), which catch (Exception) does not catch.
                     error_log("Failed to send service request Telegram notification: " . $e->getMessage());
                 }
             }
