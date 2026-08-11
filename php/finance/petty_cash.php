@@ -354,37 +354,41 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'add_misc_charge_template':
+            // Writes to system_expenses now, not miscellaneous_catalog. That table
+            // is genuinely global (label UNIQUE, no property_id column at all) and
+            // is the ONLY table get_misc_catalog actually reads - it's what every
+            // property's Misc Charges page and the Root Admin Default Expenses page
+            // both display. miscellaneous_catalog is a legacy per-property-copy
+            // table nothing reads for display anymore; every add/edit here was
+            // silently writing to it while the UI kept showing system_expenses
+            // unchanged - "add" and "edit" both looked like they worked (success
+            // toast) but never actually took effect anywhere visible.
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    // Ensure table has is_system_default column
+                    $label = trim($input['label'] ?? '');
+                    $amount = $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00;
+                    $category = $input['category'] ?? 'Incidentals';
+                    $description = $input['description'] ?? '';
+                    $id = $input['id'] ?? null;
 
-                    // Add is_system_default column if it doesn't exist
-                    if (!isSchemaVerified('schema_misc_catalog_system_default')) {
-                        try {
-                            $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
-                        } catch (PDOException $e) {
-                            // Column already exists
-                        }
-                        markSchemaVerified('schema_misc_catalog_system_default');
+                    if ($id) {
+                        // Editing an existing item - match by id, not label, so
+                        // renaming an item's label doesn't insert a stray duplicate.
+                        $stmt = $pdo->prepare("
+                            UPDATE system_expenses SET label = ?, default_amount = ?, category = ?, description = ?
+                            WHERE id = ?
+                        ");
+                        $stmt->execute([$label, $amount, $category, $description, $id]);
+                    } else {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO system_expenses (label, default_amount, category, description)
+                            VALUES (?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                            default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description)
+                        ");
+                        $stmt->execute([$label, $amount, $category, $description]);
                     }
-
-                    // Custom items (not system defaults) are always editable and can be added
-                    $stmt = $pdo->prepare("
-                        INSERT INTO miscellaneous_catalog (label, default_amount, category, description, property_id, is_system_default)
-                        VALUES (?, ?, ?, ?, ?, FALSE)
-                        ON DUPLICATE KEY UPDATE
-                        default_amount = CASE WHEN is_system_default = FALSE THEN VALUES(default_amount) ELSE default_amount END,
-                        category = CASE WHEN is_system_default = FALSE THEN VALUES(category) ELSE category END,
-                        description = CASE WHEN is_system_default = FALSE THEN VALUES(description) ELSE description END
-                    ");
-                    $stmt->execute([
-                        trim($input['label']),
-                        $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00,
-                        $input['category'] ?? 'Incidentals',
-                        $input['description'] ?? '',
-                        $propertyId
-                    ]);
                     echo json_encode(['status' => 'success', 'message' => 'Charge template saved successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -393,15 +397,14 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'delete_misc_charge_template':
+            // Same fix - deletes from system_expenses (genuinely global, so no
+            // property_id filter needed or possible) instead of miscellaneous_catalog.
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("
-                        DELETE FROM miscellaneous_catalog
-                        WHERE (id = ? OR label = ?) AND property_id = ?
-                    ");
-                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
-                    echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully']);
+                    $stmt = $pdo->prepare("DELETE FROM system_expenses WHERE id = ? OR label = ?");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

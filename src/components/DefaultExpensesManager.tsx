@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search, Zap } from 'lucide-react';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -33,43 +33,10 @@ export const DefaultExpensesManager: React.FC = () => {
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null);
   const [editForm, setEditForm] = useState({ label: '', default_amount: '', selected_icon: '' });
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadExpenses();
   }, []);
-
-  const handleSyncDefaults = async () => {
-    const confirmed = await confirm({
-      title: t('sync_default_expenses_title', 'Sync Default Expenses'),
-      message: t('sync_default_expenses_message', 'This will populate all 20 default expense categories across all MultiKey properties. Continue?'),
-      confirmText: t('sync_defaults_confirm_button', 'Sync Defaults'),
-      variant: 'info',
-    });
-    if (!confirmed) return;
-
-    try {
-      setSyncing(true);
-      const response = await fetch('/php/api/router.php?action=sync_all_default_expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setSuccess('✓ All default expense categories synchronized successfully!');
-        setTimeout(() => setSuccess(null), 4000);
-        loadExpenses();
-      } else {
-        setError(data.message || 'Failed to sync defaults');
-      }
-    } catch (err) {
-      setError('Failed to sync default expenses');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const loadExpenses = async () => {
     try {
@@ -225,15 +192,6 @@ export const DefaultExpensesManager: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleSyncDefaults}
-              disabled={syncing}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-              title={t('sync_defaults_tooltip', 'Populate all 20 default categories across all MultiKey properties')}
-            >
-              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-              {t('sync_defaults_button', 'Sync Defaults')}
-            </button>
-            <button
               onClick={() => setIsAddingNew(!isAddingNew)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
@@ -293,7 +251,13 @@ export const DefaultExpensesManager: React.FC = () => {
                   onChange={(value) => setNewItem({ ...newItem, category: value })}
                   placeholder={t('select_category_placeholder', '-- Select Category --')}
                   searchable
-                  options={categories.map((cat) => ({ value: cat, label: cat }))}
+                  // `categories` is the page-search-filtered list (correct for
+                  // the item list below), so it goes empty whenever the page
+                  // search box has text that matches zero items - which then
+                  // emptied this dropdown too, even though picking a category
+                  // for a brand-new item has nothing to do with what's typed
+                  // in an unrelated search box. Always show every real category.
+                  options={allCategories.map((cat) => ({ value: cat, label: cat }))}
                 />
               </div>
             </div>
