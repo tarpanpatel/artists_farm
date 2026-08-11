@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 
 // Load default expenses seed data
 $seedFile = __DIR__ . '/../seed/default_expenses.php';
@@ -763,8 +764,8 @@ function deleteMultiKeyRoom($pdo, $propertyId = 0, $currentProperty = []) {
         $stmt->execute([$room_id]);
 
         // Clean up: delete present and future (active) bookings associated with this deleted room
-        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status IN ('Active', 'Checked In')");
-        $stmt->execute([$room_id]);
+        $stmt = $pdo->prepare("DELETE FROM guests WHERE room_id = ? AND status IN (?, ?)");
+        $stmt->execute([$room_id, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN]);
 
         echo json_encode([
             'success' => true,
@@ -1014,10 +1015,10 @@ function getRoomGroupedActiveBookings($pdo, $propertyId = 0, $currentProperty = 
         $stmt = $pdo->prepare("
             SELECT *
             FROM guests
-            WHERE property_id = ? AND status IN ('Active', 'Checked In')
+            WHERE property_id = ? AND status IN (?, ?)
             ORDER BY room_number ASC, checkin_date ASC
         ");
-        $stmt->execute([$property_id]);
+        $stmt->execute([$property_id, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN]);
         $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Group bookings by room

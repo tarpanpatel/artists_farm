@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, AlertCircle } from 'lucide-react';
+import { Building2, AlertCircle, Home } from 'lucide-react';
 import { t } from '../i18n/en';
 
 interface LoadingScreenProps {
@@ -64,8 +64,9 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             </div>
             <a
               href="/artists_farm/"
-              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors"
+              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
             >
+              <Home className="w-4 h-4" />
               {t('go_home_button')}
             </a>
           </div>

@@ -11,11 +11,20 @@ import {
   Pencil,
   LogOut,
   Bell,
-  X
+  X,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import {
+  GUEST_STATUS_CHECKED_IN,
+  GUEST_STATUS_CHECKED_OUT,
+  GUEST_STATUS_BOOKED,
+  GUEST_STATUS_ACTIVE_LEGACY,
+  GUEST_STATUS_CHECKEDOUT_LEGACY,
+} from '../constants/guestStatus';
 import { getPropertySlug, markCFormFiled } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
@@ -43,6 +52,7 @@ interface OperationalDashboardProps {
   onDeleteBooking?: (guestId: string) => Promise<void>;
   onGuestVerificationUpdated?: (guestId: string) => void;
   onCFormFiledUpdated?: (guestId: string, filedAt: string | null) => void;
+  onGuestCheckedIn?: (guestId: string) => void;
   activeMenuItemKey?: string;
   kitchenModuleEnabled?: boolean;
   propertyName?: string;
@@ -76,6 +86,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onDeleteBooking,
   onGuestVerificationUpdated,
   onCFormFiledUpdated,
+  onGuestCheckedIn,
   activeMenuItemKey: _activeMenuItemKey,
   kitchenModuleEnabled = true,
   propertyName = '',
@@ -150,7 +161,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   // Active resident profile - must be currently staying (today is between checkin and checkout)
   const checkedInGuest = guests.find((g) => {
-    if (g.status !== 'Active') return false;
+    if (g.status !== GUEST_STATUS_ACTIVE_LEGACY && (g.status as string) !== GUEST_STATUS_CHECKED_IN) return false;
     const checkinDate = new Date(g.checkinDate);
     const checkoutDate = new Date(g.expectedCheckout);
     checkinDate.setHours(0, 0, 0, 0);
@@ -184,31 +195,31 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   const todaysArrivalsCount = guests.filter((g) => (g.checkinDate || '').split(' ')[0] === todayStr).length;
   const todaysDeparturesCount = guests.filter((g) => (g.expectedCheckout || '').split(' ')[0] === todayStr).length;
-  const inHouseCount = guests.filter((g) => (g.status === 'Active' || g.status === 'Checked In') && isCurrentlyInStay(g)).length;
+  const inHouseCount = guests.filter((g) => (g.status === GUEST_STATUS_ACTIVE_LEGACY || g.status === GUEST_STATUS_CHECKED_IN) && isCurrentlyInStay(g)).length;
   const pendingRequestsCount = (serviceRequests || []).filter((r) => r.status === 'Pending').length;
 
   const overdueCheckins = guests.filter((g) => {
     const checkin = parseDateOnly(g.checkinDate);
-    return g.status === 'Booked' && checkin !== null && checkin <= today;
+    return g.status === GUEST_STATUS_BOOKED && checkin !== null && checkin <= today;
   });
   const overdueCheckouts = guests.filter((g) => {
     const checkout = parseDateOnly(g.expectedCheckout);
-    return g.status === 'Active' && checkout !== null && checkout < today;
+    return (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && checkout !== null && checkout < today;
   });
   const checkinPending = guests.filter(
-    (g) => g.status === 'Active' && isCurrentlyInStay(g) && g.idVerificationStatus !== 'Complete'
+    (g) => (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && isCurrentlyInStay(g) && g.idVerificationStatus !== 'Complete'
   );
   const idMissingAfterCheckout = guests.filter(
-    (g) => g.status === 'CheckedOut' && g.idVerificationStatus !== 'Complete'
+    (g) => (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) && g.idVerificationStatus !== 'Complete'
   );
   // Advance doesn't need to be collected at check-in, but the bill must be
   // fully settled by checkout - flag any checked-out guest still owing.
   const unsettledBills = guests.filter(
-    (g) => g.status === 'CheckedOut' && (g.totalAmount || 0) > (g.advanceAmount || 0)
+    (g) => (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) && (g.totalAmount || 0) > (g.advanceAmount || 0)
   );
   const clearedGuests = guests.filter(
     (g) =>
-      g.status === 'CheckedOut' &&
+      (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) &&
       g.idVerificationStatus === 'Complete' &&
       (g.totalAmount || 0) <= (g.advanceAmount || 0)
   );
@@ -262,7 +273,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   }, []);
   const [cFormSavingId, setCFormSavingId] = useState<string | null>(null);
   const cFormPending = guests.filter(
-    (g) => g.isForeignGuest && g.status === 'Active' && !g.cFormFiledAt
+    (g) => g.isForeignGuest && (g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN) && !g.cFormFiledAt
   );
   const formatCFormDue = (checkinDate: string): { label: string; overdue: boolean } => {
     const checkin = new Date((checkinDate || '').replace(' ', 'T'));
@@ -543,7 +554,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {t('cleared_label', 'Cleared')} ({clearedGuests.length})
-                <span className="text-slate-400 font-normal">{showCleared ? '▲' : '▼'}</span>
+                {showCleared ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
               </button>
               {showCleared && (
                 <ul className="space-y-1.5 mt-2">
@@ -556,8 +567,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         <span className="text-sm font-bold text-emerald-900">
                           {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
                         </span>
-                        <span className="text-xs font-medium text-emerald-700 whitespace-nowrap">
-                          {formatAlertDate(g.checkinDate)} → {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
+                        <span className="text-xs font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
+                          {formatAlertDate(g.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
                         </span>
                       </button>
                     </li>
@@ -660,7 +671,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         if (parts.length !== 3) return dateStr;
                         return `${parts[2]}/${parts[1]}/${parts[0]}`;
                       };
-                      return `${formatDate(checkedInGuest.checkinDate)} → ${formatDate(checkedInGuest.expectedCheckout)}`;
+                      return (
+                        <span className="inline-flex items-center gap-1">
+                          {formatDate(checkedInGuest.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatDate(checkedInGuest.expectedCheckout)}
+                        </span>
+                      );
                     })()}
                   </span>
                 </div>
@@ -698,9 +713,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             setSelectedBooking(g);
                             setShowCheckinVerification(true);
                           }}
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer"
                         >
-                          ⚠️ Verification Pending
+                          <AlertTriangle className="w-3 h-3" /> Verification Pending
                         </button>
                       )}
                     </div>
@@ -986,6 +1001,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           onOpenIdVerification={() => setShowCheckinVerification(true)}
+          onCheckedIn={onGuestCheckedIn}
         />
       )}
 

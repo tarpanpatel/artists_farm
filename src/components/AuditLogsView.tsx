@@ -761,7 +761,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             </div>
 
             {/* Scrollable Form Content */}
-            <form onSubmit={handleSaveReceiptEdit} className="space-y-6 overflow-y-auto pr-1 flex-1 text-xs">
+            <form onSubmit={handleSaveReceiptEdit} className="app-form app-form--edit-receipt space-y-6 overflow-y-auto pr-1 flex-1 text-xs">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* LEFT 2 COLUMNS: ACCOMMODATION & FOOD LOGS */}
@@ -939,7 +939,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     </div>
 
                     <div className="text-right text-xs font-bold text-slate-600 dark:text-slate-300">
-                      {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                      {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="summary-line summary-line--food-subtotal text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -1028,17 +1028,17 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                     <div className="space-y-2 text-xs font-bold border-b border-slate-200 dark:border-slate-700 pb-3">
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                         <span>{t('stay_rent_outstanding_balance_label', 'Stay Rent Outstanding Balance:')}</span>
-                        <span className="font-extrabold text-slate-900 dark:text-white">₹{calculatedStayRent.toFixed(2)}</span>
+                        <span className="summary-line summary-line--room-rate font-extrabold text-slate-900 dark:text-white">₹{calculatedStayRent.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                         <span>{t('food_extras_subtotal_label', 'Food & Extras Subtotal:')}</span>
-                        <span className="font-extrabold text-cyan-600">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                        <span className="summary-line summary-line--food-subtotal font-extrabold text-cyan-600">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-sm font-extrabold">
                       <span className="text-slate-900 dark:text-white">{t('total_outstanding_target_label', 'Total Outstanding Target:')}</span>
-                      <span className="text-emerald-600 text-base font-black">₹{calculatedGrandTotal.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-target-due text-emerald-600 text-base font-black">₹{calculatedGrandTotal.toFixed(2)}</span>
                     </div>
 
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">

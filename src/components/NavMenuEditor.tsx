@@ -5,7 +5,7 @@ import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
   Check, X, LayoutDashboard, Navigation as NavIcon,
   Layers, PanelLeftClose, PanelRightOpen,
-  ExternalLink, Loader2
+  ExternalLink, Loader2, ArrowLeft, ArrowRight
 } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { saveNavMenuDB, apiFetch } from '../services/api';
@@ -652,7 +652,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               return (
                 <button key={role} onClick={() => handleToggleRole(item.id, role)}
                   className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${has ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
-                  {has ? '✓ ' : ''}{role}
+                  {has ? <Check className="w-3 h-3 inline-block" /> : null}{role}
                 </button>
               );
             })}
@@ -777,7 +777,11 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         </div>
         <div className="flex items-center gap-3 text-[10px] text-slate-500">
           <span className="flex items-center gap-1"><GripVertical className="w-3 h-3" /> {t('nav_drag_to_reorder_label', 'Drag to reorder')}</span>
-          <span>{t('nav_arrow_indent_outdent_label', '← → to indent/outdent')}</span>
+          <span className="flex items-center gap-1">
+            <ArrowLeft className="w-3 h-3" />
+            <ArrowRight className="w-3 h-3" />
+            {t('nav_arrow_indent_outdent_label', 'to indent/outdent')}
+          </span>
           <span>{t('nav_click_title_rename_label', 'Click title to rename')}</span>
           <span>{t('nav_click_icon_change_label', 'Click icon to change')}</span>
           <span>{t('nav_click_page_badge_label', 'Click page badge to change target')}</span>
@@ -841,7 +845,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 <button key={role} onClick={() => {
                   setNewItem(p => ({ ...p, roles: p.roles.includes(role) ? p.roles.filter(r => r !== role) : [...p.roles, role] }));
                 }} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${newItem.roles.includes(role) ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400'}`}>
-                  {newItem.roles.includes(role) ? '✓ ' : ''}{role}
+                  {newItem.roles.includes(role) ? <Check className="w-3 h-3 inline-block" /> : null}{role}
                 </button>
               ))}
             </div>

@@ -14,6 +14,7 @@ function convertSnakeToCamel($array) {
 }
 
 require_once __DIR__ . '/../config/schema_cache.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../security/input_validator.php';
 
 /**
@@ -271,9 +272,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // become 'Checked In' via the explicit Check-In action/verification.
                     $incomingStatus = strtolower(trim($input['status'] ?? ''));
                     if (in_array($incomingStatus, ['checked in', 'checkedin', 'checked-in', 'active'], true)) {
-                        $status = 'Checked In';
+                        $status = GUEST_STATUS_CHECKED_IN;
                     } else {
-                        $status = 'Booked';
+                        $status = GUEST_STATUS_BOOKED;
                     }
                     $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
@@ -381,8 +382,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $previousNoOfGuests = intval($previousGuest['no_of_guests'] ?? 0);
 
                     if ($roomId !== null) {
-                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN ('Active', 'Checked In') AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
-                        $conflictStmt->execute([$roomId, $guestId, $propertyId, $newCheckout, $newCheckin]);
+                        $conflictStmt = $pdo->prepare("SELECT id FROM guests WHERE room_id = ? AND status IN (?, ?) AND id != ? AND property_id = ? AND checkin_date < ? AND expected_checkout > ? LIMIT 1");
+                        $conflictStmt->execute([$roomId, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN, $guestId, $propertyId, $newCheckout, $newCheckin]);
                         if ($conflictStmt->fetch()) {
                             http_response_code(409);
                             echo json_encode(['status' => 'error', 'message' => 'Selected room already has an active booking for these dates']);
@@ -584,11 +585,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', checkout_date = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([date('Y-m-d'), $guestId, $propertyId]);
+                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, checkout_date = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d'), $guestId, $propertyId]);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'CheckedOut', check_out = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([date('Y-m-d H:i:s'), $guestId, $propertyId]);
+                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, check_out = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([GUEST_STATUS_CHECKED_OUT, date('Y-m-d H:i:s'), $guestId, $propertyId]);
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Guest checked out successfully']);
             }
@@ -601,8 +602,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    $stmt = $pdo->prepare("UPDATE guests SET status = 'Checked In', checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?");
-                    $stmt->execute([date('Y-m-d H:i:s'), $guestId, $propertyId]);
+                    $stmt = $pdo->prepare("UPDATE guests SET status = ?, checkin_date = COALESCE(checkin_date, ?) WHERE id = ? AND property_id = ?");
+                    $stmt->execute([GUEST_STATUS_CHECKED_IN, date('Y-m-d H:i:s'), $guestId, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Guest checked in successfully']);
                 } catch (PDOException $e) {
                     http_response_code(500);

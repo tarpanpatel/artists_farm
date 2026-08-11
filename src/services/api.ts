@@ -914,6 +914,24 @@ export async function checkoutGuestInDB(guestId: string): Promise<boolean> {
   }
 }
 
+// update_guest never writes the status column (it only touches booking
+// details), so flipping a Booked guest to Checked In has to go through this
+// dedicated action instead - see checkin_guest in guests.php.
+export async function checkinGuestInDB(guestId: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=checkin_guest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: guestId }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to check in guest in DB:', err);
+    return false;
+  }
+}
+
 export async function markCFormFiled(guestId: string, filed: boolean = true): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=mark_c_form_filed`, {

@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 
 $action = $_GET['action'] ?? 'info';
 
@@ -110,8 +111,8 @@ if ($action === 'create') {
             if ($room) {
                 $stmt = $pdo->prepare("
                     INSERT INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid)
-                    VALUES (?, ?, ?, ?, ?, 'Active', 1, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE status='Active'
+                    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE status=?
                 ");
                 $stmt->execute([
                     $propertyId,
@@ -119,10 +120,12 @@ if ($action === 'create') {
                     $booking['phone'],
                     $booking['checkin'],
                     $booking['checkout'],
+                    GUEST_STATUS_CHECKED_IN,
                     $room['id'],
                     $booking['rate'],
                     $booking['total'],
-                    $booking['advance']
+                    $booking['advance'],
+                    GUEST_STATUS_CHECKED_IN
                 ]);
             }
         }

@@ -176,7 +176,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         setNewPropName('');
         setNewPropType('SINGLE');
         setNewPropRooms(1);
-        showSuccess(`✓ "${newPropName}" created successfully`);
+        showSuccess(`"${newPropName}" created successfully`);
         await loadData();
       } else {
         setAddError(data.message || 'Failed to create property');
@@ -198,7 +198,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        showSuccess(`✓ Property ${property.is_active ? 'deactivated' : 'activated'}`);
+        showSuccess(`Property ${property.is_active ? 'deactivated' : 'activated'}`);
         await loadData();
       }
     } catch {
@@ -217,7 +217,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       const data = await res.json();
       if (data.success) {
         setModal({ type: 'none' });
-        showSuccess(`✓ "${property.name}" deleted. Slots freed.`);
+        showSuccess(`"${property.name}" deleted. Slots freed.`);
         await loadData();
       }
     } catch {
@@ -247,7 +247,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       const data = await res.json();
       if (data.success) {
         setModal({ type: 'none' });
-        showSuccess('✓ Property updated');
+        showSuccess('Property updated');
         await loadData();
       }
     } catch {

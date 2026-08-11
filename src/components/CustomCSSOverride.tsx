@@ -47,21 +47,45 @@ function removeLucideGlobal() {
 }
 
 const DEFAULT_CSS = `/* Artists Farm — Custom CSS Override
-   Edit below to override any site styling.
-   
-   Examples:
-   
-   body {
-     font-family: 'Inter', sans-serif;
-   }
-   
-   .bg-white {
-     background-color: #f8fafc !important;
-   }
-   
-   .text-slate-900 {
-     color: #1e293b !important;
-   }
+   Base typography rules are defined below so they can be tuned from this page.
+   These rules are unlayered, so they already beat Tailwind utility classes;
+   no force-priority flags are needed anywhere in the site. The override style
+   block is injected after the main stylesheet, so anything here also wins the
+   cascade.
+
+   Edit the values below to restyle headings, labels and emphasis site-wide.
+*/
+
+/* Global Font Weight Mapping: caps font weights at 600 (semibold) system-wide */
+.font-bold,
+.font-extrabold,
+.font-black,
+strong,
+b,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+label {
+  font-weight: 600;
+}
+
+/* Global Font Size Constraint: no heading or text element exceeds 16px (1rem) regardless of screen size */
+h1, h2, h3, h4, h5, h6,
+.text-4xl, .text-3xl, .text-2xl, .text-xl, .text-lg,
+.md\\:text-4xl, .md\\:text-3xl, .md\\:text-2xl, .md\\:text-xl, .md\\:text-lg,
+.lg\\:text-4xl, .lg\\:text-3xl, .lg\\:text-2xl, .lg\\:text-xl, .lg\\:text-lg,
+.sm\\:text-4xl, .sm\\:text-3xl, .sm\\:text-2xl, .sm\\:text-xl, .sm\\:text-lg {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+/* Examples:
+   body { font-family: 'Inter', sans-serif; }
+   .bg-white { background-color: #f8fafc; }
+   .text-slate-900 { color: #1e293b; }
 */`;
 
 const PRESET_COLORS = [

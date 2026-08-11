@@ -476,7 +476,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const handleAppInstalled = () => {
       setShowInstallBanner(false);
       setDeferredPrompt(null);
-      showToast("✔ Artists Farm App installed successfully on your device!", { type: 'success' });
+      showToast("Artists Farm App installed successfully on your device!", { type: 'success' });
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -521,7 +521,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
           }),
           credentials: 'include',
         });
-        showToast("✔ Sandbox Test Mode exited successfully! Refreshing...", { type: 'success' });
+        showToast("Sandbox Test Mode exited successfully! Refreshing...", { type: 'success' });
       } catch (err) {
         console.error('Failed to clear demo data:', err);
       }
@@ -1054,6 +1054,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
     );
   };
 
+  const handleGuestCheckedIn = (guestId: string) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.id === guestId ? { ...g, status: 'Checked In' as any } : g))
+    );
+  };
+
   const handleCheckoutGuest = async (receipt: BillingReceipt) => {
     setReceipts((prev) => [receipt, ...prev]);
     setGuests((prev) =>
@@ -1460,6 +1466,7 @@ ${itemsStr}
                   onDeleteBooking={handleDeleteGuest}
                   onGuestVerificationUpdated={handleGuestVerificationUpdated}
                   onCFormFiledUpdated={handleCFormFiledUpdated}
+                  onGuestCheckedIn={handleGuestCheckedIn}
                   />
                 </ErrorBoundary>
               ) : null}
@@ -1516,6 +1523,7 @@ ${itemsStr}
                       onDeleteBooking={handleDeleteGuest}
                       onGuestVerificationUpdated={handleGuestVerificationUpdated}
                       onCFormFiledUpdated={handleCFormFiledUpdated}
+                  onGuestCheckedIn={handleGuestCheckedIn}
                       serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
@@ -1532,6 +1540,7 @@ ${itemsStr}
                         onDeleteBooking={handleDeleteGuest}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}
                         onCFormFiledUpdated={handleCFormFiledUpdated}
+                  onGuestCheckedIn={handleGuestCheckedIn}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}

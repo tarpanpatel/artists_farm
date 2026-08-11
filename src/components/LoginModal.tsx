@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Phone, KeyRound, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Lock, Phone, KeyRound, ShieldAlert, ArrowRight, Delete } from 'lucide-react';
 import { StaffMember } from '../types';
 import { Input } from './Input';
 import { t } from '../i18n/en';
@@ -191,7 +191,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               onClick={handleBackspace}
               className="py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
             >
-              ⌫
+              <Delete className="w-4 h-4 mx-auto" />
             </button>
           </div>
 

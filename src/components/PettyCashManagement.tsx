@@ -575,7 +575,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('capture_upload_invoice_bill_label', '📁 Capture / Upload Invoice Bill')}</label>
               <label htmlFor="invoice-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <FileText className="w-4 h-4 text-slate-400" />
-                <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', '✓ Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
+                <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', 'Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
               </label>
               <Input
                 id="invoice-upload-input"
@@ -596,7 +596,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_payment_screenshot_label', '📸 Upload Payment Screenshot')}</label>
               <label htmlFor="screenshot-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
-                <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', '✓ Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
+                <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', 'Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
               </label>
               <Input
                 id="screenshot-upload-input"

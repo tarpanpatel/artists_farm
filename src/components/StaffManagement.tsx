@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Tooltip } from './Tooltip';
 import { Button } from './Button';
 import { Input } from './Input';
 import DataTable from 'react-data-table-component';
@@ -9,12 +8,13 @@ import {
   X,
   Check,
   Trash2,
-  ArrowRight,
   Zap,
   Calendar,
   CalendarDays,
   Settings,
-  Target
+  Target,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
@@ -49,10 +49,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
-  // Mirrors the property-setup-step threshold in App.tsx (staff.length > 1) -
-  // computed here directly off the same staff context rather than threaded
-  // down as a prop, so it can't drift out of sync with the banner upstream.
-  const highlightRegisterStaffStep = activeMenuItemKey === 'staff_payees_control' && staff.length <= 1;
 
   useEffect(() => {
     if (activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries') setActiveSubTab('calendar');
@@ -98,6 +94,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [editingPayee, setEditingPayee] = useState<PayeeEntity | null>(null);
   const [userFormTab, setUserFormTab] = useState<'create' | 'update'>('create');
+  const [isTeamMemberModalOpen, setIsTeamMemberModalOpen] = useState(false);
+  const [isPayeeModalOpen, setIsPayeeModalOpen] = useState(false);
 
   // Attendance Calendar State
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -204,7 +202,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setUsers(staff.map((member) => ({
       id: member.id,
       fullName: member.name,
-      username: member.username || member.phone || '',
+      username: member.phone || member.username || '',
       role: member.role,
       passcodePin: member.passcode || '',
       isFinancialHandler: Boolean(member.isFinancialHandler),
@@ -345,6 +343,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewIsFinancialHandler(false);
     setNewAccessAllProperties(false);
     setNewDailyWage('');
+    setIsTeamMemberModalOpen(false);
   };
 
    const handleDeleteUser = async (id: string) => {
@@ -369,7 +368,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setUpdateIsFinancialHandler(user.isFinancialHandler);
      setUpdateAccessAllProperties(Boolean(user.accessAllProperties));
      setUpdateQrCodeUrl(user.qrCodeUrl || '');
+     setUpdateDailyWage(user.dailyWage ? String(user.dailyWage) : '');
      setUserFormTab('update');
+     setIsTeamMemberModalOpen(true);
    };
 
   const handleCreatePayee = async (e: React.FormEvent) => {
@@ -388,6 +389,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setPayees((previous) => [...previous, newPayee]);
     setNewPayeeName('');
     setNewPayeeQrCode('');
+    setIsPayeeModalOpen(false);
   };
 
   const handleDeletePayee = async (id: string) => {
@@ -442,6 +444,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setUpdateRole('');
     setUpdateQrCodeUrl('');
     setUpdateDailyWage('');
+    setIsTeamMemberModalOpen(false);
     showToast('User account updated successfully!', { type: 'success' });
   };
 
@@ -477,6 +480,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       newStatus = 'Absent';
     } else if (currentStatus === 'Absent') {
       newStatus = 'Half Day';
+    } else if (currentStatus === 'Half Day') {
+      newStatus = 'Paid Leave';
     } else {
       newStatus = null;
     }
@@ -576,599 +581,283 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             : t('staff_payee_subtitle', 'Manage login staff credentials, core operational suppliers, and pass-through third parties.')
         }
       >
-        {/* Bulk Select controls - only relevant on the attendance calendar sub-tab */}
-        {isAttendancePage && activeSubTab === 'calendar' && (
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {(!isAttendancePage || activeSubTab === 'control_center') && (
             <Button
               onClick={() => {
-                setIsBulkSelectEnabled(!isBulkSelectEnabled);
-                setSelectedCells(new Set());
+                setUserFormTab('create');
+                setNewFullName('');
+                setNewUsername('');
+                setNewPasscode('');
+                setNewQrCodeUrl('');
+                setNewIsFinancialHandler(false);
+                setNewAccessAllProperties(false);
+                setNewDailyWage('');
+                setIsTeamMemberModalOpen(true);
               }}
-              variant="ghost"
+              variant="primary"
               size="md"
-              className={`font-bold transition-all cursor-pointer shadow-2xs ${
-                isBulkSelectEnabled
-                  ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="font-bold shadow-2xs cursor-pointer"
             >
-              {isBulkSelectEnabled ? (<><X className="w-4 h-4" /> Exit Bulk Mode</>) : (<><Zap className="w-4 h-4" /> Enable Bulk Select</>)}
+              Create Team Member
             </Button>
+          )}
 
-            {isBulkSelectEnabled && (
-              <div className="flex items-center gap-1.5 text-xs flex-wrap sm:flex-nowrap">
-                <Button
-                  onClick={handleSelectTodayCells}
-                  variant="secondary"
-                  size="sm"
-                  className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
-                >
-                  <><Calendar className="w-4 h-4" /> Select Today ({staff.length})</>
-                </Button>
-                <Button
-                  onClick={handleSelectAllCells}
-                  variant="secondary"
-                  size="sm"
-                  className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
-                >
-                  <><CalendarDays className="w-4 h-4" /> Select Month</>
-                </Button>
-                {selectedCells.size > 0 && (
+          {/* Bulk Select controls - only relevant on the attendance calendar sub-tab */}
+          {isAttendancePage && activeSubTab === 'calendar' && (
+            <>
+              <Button
+                onClick={() => {
+                  setIsBulkSelectEnabled(!isBulkSelectEnabled);
+                  setSelectedCells(new Set());
+                }}
+                variant="ghost"
+                size="md"
+                className={`font-bold transition-all cursor-pointer shadow-2xs ${
+                  isBulkSelectEnabled
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-800'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {isBulkSelectEnabled ? (<><X className="w-4 h-4" /> Exit Bulk Mode</>) : (<><Zap className="w-4 h-4" /> Enable Bulk Select</>)}
+              </Button>
+
+              {isBulkSelectEnabled && (
+                <div className="flex items-center gap-1.5 text-xs flex-wrap sm:flex-nowrap">
                   <Button
-                    onClick={() => setSelectedCells(new Set())}
-                    variant="ghost"
-                    size="xs"
-                    className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold cursor-pointer"
+                    onClick={handleSelectTodayCells}
+                    variant="secondary"
+                    size="sm"
+                    className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
                   >
-                    Clear ({selectedCells.size})
+                    <><Calendar className="w-4 h-4" /> Select Today ({staff.length})</>
                   </Button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  <Button
+                    onClick={handleSelectAllCells}
+                    variant="secondary"
+                    size="sm"
+                    className="text-slate-800 dark:text-slate-200 font-semibold transition-all cursor-pointer"
+                  >
+                    <><CalendarDays className="w-4 h-4" /> Select Month</>
+                  </Button>
+                  {selectedCells.size > 0 && (
+                    <Button
+                      onClick={() => setSelectedCells(new Set())}
+                      variant="ghost"
+                      size="xs"
+                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 font-bold cursor-pointer"
+                    >
+                      Clear ({selectedCells.size})
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </PageHeader>
 
       {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
       {activeSubTab === 'control_center' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT COLUMN: SYSTEM TABLES (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Table 1: Active System Users & Staff */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
-                  {t('active_system_users_heading', 'Active System Users & Staff')}
-                </h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400">{users.length} {t('registered_suffix', 'Registered')}</span>
-                </div>
+        <div className="space-y-6">
+          {/* ROW 1: FULL WIDTH Active System Users & Staff */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                {t('active_system_users_heading', 'Active System Users & Staff')}
+              </h3>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400">{users.length} {t('registered_suffix', 'Registered')}</span>
               </div>
-
-              <DataTable
-                columns={[
-                  {
-                    name: t('staff_name_label', 'Staff Name'),
-                    selector: (row: any) => row.fullName,
-                    sortable: true,
-                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.fullName}</span>,
-                  },
-                  {
-                    name: t('username_column', 'Username'),
-                    selector: (row: any) => row.username,
-                    sortable: true,
-                    width: '130px',
-                    cell: (row: any) => <span className="font-mono text-slate-500 dark:text-slate-400">{row.username}</span>,
-                  },
-                  {
-                    name: t('role_group_column', 'Role Group'),
-                    selector: (row: any) => row.role,
-                    sortable: true,
-                    width: '150px',
-                    cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-bold text-[10px]">{row.role}</span>,
-                  },
-                  {
-                    name: t('cash_handling_column', 'Cash Handling'),
-                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
-                    sortable: true,
-                    center: true,
-                    width: '150px',
-                    cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
-                    ),
-                  },
-                  {
-                    name: t('upi_qr_code_column', 'UPI QR Code'),
-                    center: true,
-                    width: '130px',
-                    cell: (row: any) => row.qrCodeUrl ? (
-                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
-                    ) : (
-                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
-                    ),
-                  },
-                  {
-                    name: t('actions_column', 'Actions'),
-                    right: true,
-                    width: '160px',
-                    cell: (row: any) => {
-                      const isCurrentUser = currentUser?.id === row.id;
-                      const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
-                      const canDelete = !isCurrentUser && canEdit;
-                      return (
-                        <div className="flex items-center gap-2 justify-end">
-                          {isCurrentUser ? (
-                            <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
-                          ) : (
-                            <>
-                              {canEdit && (
-                                <Button onClick={() => handleEditUser(row)} variant="link" size="sm" className="text-blue-600 hover:text-blue-700 font-bold text-[11px]">{t('edit_button', 'Edit')}</Button>
-                              )}
-                              {canDelete && (
-                                <Button onClick={() => handleDeleteUser(row.id)} variant="link" size="sm" className="text-red-600 hover:text-red-700 font-bold text-[11px]">{t('delete_button', 'Delete')}</Button>
-                              )}
-                              {!canEdit && !canDelete && (
-                                <span className="text-slate-400 italic text-[11px]">-</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    },
-                  },
-                ]}
-                data={visibleUsers}
-                pagination
-                paginationPerPage={15}
-                paginationRowsPerPageOptions={[10, 15, 25, 50]}
-                highlightOnHover
-                subHeader={
-                  <div className="w-full flex items-center py-2">
-                    <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
-                  </div>
-                }
-                customStyles={{
-                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                  headRow: { style: { backgroundColor: '#f8fafc' } },
-                  rows: { style: { minHeight: '52px' } },
-                }}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
-                }
-              />
             </div>
 
-            {/* Table 2: Registered Payees (Vendors & Third Parties) */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <DataTable
+              columns={[
+                {
+                  name: t('staff_name_label', 'Staff Name'),
+                  selector: (row: any) => row.fullName,
+                  sortable: true,
+                  cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.fullName}</span>,
+                },
+                {
+                  name: t('username_column', 'Username'),
+                  selector: (row: any) => row.username,
+                  sortable: true,
+                  width: '150px',
+                  cell: (row: any) => {
+                    const phoneVal = (row.username || '').replace(/\D/g, '');
+                    return <span className="font-mono text-slate-500 dark:text-slate-400">{phoneVal || row.username}</span>;
+                  },
+                },
+                {
+                  name: t('role_group_column', 'Role Group'),
+                  selector: (row: any) => row.role,
+                  sortable: true,
+                  width: '160px',
+                  cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2.5 py-1 rounded font-bold text-[10px]">{row.role}</span>,
+                },
+                {
+                  name: t('cash_handling_column', 'Cash Handling'),
+                  selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
+                  sortable: true,
+                  center: true,
+                  width: '160px',
+                  cell: (row: any) => row.isFinancialHandler ? (
+                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
+                  ) : (
+                    <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
+                  ),
+                },
+                {
+                  name: t('upi_qr_code_column', 'UPI QR Code'),
+                  center: true,
+                  width: '140px',
+                  cell: (row: any) => row.qrCodeUrl ? (
+                    <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
+                  ) : (
+                    <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
+                  ),
+                },
+                {
+                  name: t('actions_column', 'Actions'),
+                  right: true,
+                  width: '170px',
+                  cell: (row: any) => {
+                    const isCurrentUser = currentUser?.id === row.id;
+                    const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                    const canDelete = !isCurrentUser && canEdit;
+                    return (
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {isCurrentUser ? (
+                          <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
+                        ) : (
+                          <>
+                            {canEdit && (
+                              <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                            )}
+                            {canDelete && (
+                              <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
+                            )}
+                            {!canEdit && !canDelete && (
+                              <span className="text-slate-400 italic text-[11px]">-</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  },
+                },
+              ]}
+              data={visibleUsers}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[10, 15, 25, 50]}
+              highlightOnHover
+              subHeader={
+                <div className="w-full flex items-center py-2">
+                  <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
+                </div>
+              }
+              customStyles={{
+                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                headRow: { style: { backgroundColor: '#f8fafc' } },
+                rows: { style: { minHeight: '52px' } },
+              }}
+              noDataComponent={
+                <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+              }
+            />
+          </div>
+
+          {/* ROW 2: Registered Payees Table (FULL WIDTH) */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
                   {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
                 </h3>
                 <span className="text-xs text-slate-400">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
               </div>
-
-              <DataTable
-                columns={[
-                  {
-                    name: t('payee_name_column', 'Payee Name'),
-                    selector: (row: any) => row.name,
-                    sortable: true,
-                    cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.name}</span>,
-                  },
-                  {
-                    name: t('classification_column', 'Classification'),
-                    selector: (row: any) => row.type,
-                    sortable: true,
-                    width: '150px',
-                    cell: (row: any) => row.type === 'Vendor' ? (
-                      <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2 py-0.5 rounded font-bold text-[10px]">{t('vendor_badge', 'Vendor')}</span>
-                    ) : (
-                      <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 rounded font-bold text-[10px]">{t('third_party_badge', 'Third Party')}</span>
-                    ),
-                  },
-                  {
-                    name: t('upi_qr_code_column', 'UPI QR Code'),
-                    center: true,
-                    width: '130px',
-                    cell: (row: any) => row.qrCodeUrl ? (
-                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
-                    ) : (
-                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
-                    ),
-                  },
-                  {
-                    name: t('actions_column', 'Actions'),
-                    right: true,
-                    width: '130px',
-                    cell: (row: any) => (
-                      <div className="flex items-center justify-end gap-2">
-                        <Button onClick={() => setEditingPayee(row)} variant="link" size="sm" className="text-sky-600 hover:text-sky-700 font-bold text-[11px]">{t('edit_button', 'Edit')}</Button>
-                        <Button onClick={() => handleDeletePayee(row.id)} variant="link" size="sm" className="text-red-600 hover:text-red-700 font-bold text-[11px]">{t('delete_button', 'Delete')}</Button>
-                      </div>
-                    ),
-                  },
-                ]}
-                data={filteredPayees}
-                pagination
-                paginationPerPage={15}
-                paginationRowsPerPageOptions={[10, 15, 25, 50]}
-                highlightOnHover
-                subHeader={
-                  <div className="w-full flex items-center py-2">
-                    <Input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs" />
-                  </div>
-                }
-                customStyles={{
-                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                  headRow: { style: { backgroundColor: '#f8fafc' } },
-                  rows: { style: { minHeight: '52px' } },
+              <Button
+                onClick={() => {
+                  setNewPayeeName('');
+                  setNewPayeeQrCode('');
+                  setIsPayeeModalOpen(true);
                 }}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No payees registered.</div>
-                }
-              />
-            </div>
-          </div>
-
-           {/* RIGHT COLUMN: MANAGERIAL ENTRY FORMS (5 cols) */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* Merged Form 1+3: Create & Update User with Tabs */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs">
-              {/* Tabs */}
-              <div className="flex border-b border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => setUserFormTab('create')}
-                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors rounded-tl-2xl ${
-                    userFormTab === 'create'
-                      ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500'
-                      : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
-                  }`}
-                >
-                  <span className="inline-flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Create Login Staff Account</span>
-                </button>
-                <button
-                  onClick={() => setUserFormTab('update')}
-                  className={`flex-1 py-3 text-xs font-bold text-center cursor-pointer transition-colors rounded-tr-2xl ${
-                    userFormTab === 'update'
-                      ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border-b-2 border-amber-500'
-                      : 'bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 hover:text-slate-700'
-                  }`}
-                >
-                  <span className="inline-flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Update Staff Account</span>
-                </button>
-              </div>
-
-              {/* Tab Content */}
-              <div className="p-5">
-                {userFormTab === 'create' ? (
-                  <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-3">
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')}</label>
-                      <Input
-                        type="text"
-                        required
-                        value={newFullName}
-                        onChange={(e) => setNewFullName(e.target.value)}
-                        placeholder="e.g. Ratan Singh"
-                        className="text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
-                        <Input
-                          type="tel"
-                          required
-                          maxLength={10}
-                          value={newUsername}
-                          onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          placeholder="10-digit mobile number"
-                          className="text-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')}</label>
-                        <Input
-                          type="password"
-                          required
-                          maxLength={6}
-                          value={newPasscode}
-                          onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="••••••"
-                          inputMode="numeric"
-                          className="text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
-                        <StyledSelect
-                          value={newRole}
-                          onChange={(val) => setNewRole(val as any)}
-                          options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
-                        <input
-                          type="checkbox"
-                          id="isFinancialHandlerCheck"
-                          checked={newIsFinancialHandler}
-                          onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
-                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                        />
-                        <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                          {t('cash_handling_user_label', 'Cash Handling User')}
-                        </label>
-                        <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {t('help_label', 'Help?')}
-                          </span>
-                        </Tooltip>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={newDailyWage}
-                        onChange={(e) => setNewDailyWage(e.target.value)}
-                        placeholder="e.g. 800"
-                        className="text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                      <input
-                        type="checkbox"
-                        id="newAccessAllPropertiesCheck"
-                        checked={newAccessAllProperties}
-                        onChange={(e) => setNewAccessAllProperties(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="newAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                        {t('access_all_properties_label', 'Access All Properties')}
-                      </label>
-                      <Tooltip content={t('access_all_properties_help_tooltip', 'This staff member can log into any property under this tenant, not just this one - they pick which property after logging in.')}>
-                        <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                          {t('help_label', 'Help?')}
-                        </span>
-                      </Tooltip>
-                    </div>
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="submit"
-                        size="md"
-                        className="flex-1 text-white font-bold shadow-xs transition-all cursor-pointer"
-                      >
-                        Register Staff Member
-                      </Button>
-                      {highlightRegisterStaffStep && <ArrowRight className="w-5 h-5 text-indigo-500 animate-bounce shrink-0" />}
-                    </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleUpdateUserSubmit} className="app-form app-form--update-user space-y-3">
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_target_account_label', 'Select Staff Target Account')}</label>
-                      <StyledSelect
-                        value={selectedUpdateUserId}
-                        onChange={(uid) => {
-                          setSelectedUpdateUserId(uid);
-                          const target = users.find((u) => u.id === uid);
-                          if (target) {
-                            setUpdateFullName(target.fullName);
-                            setUpdateUsername(target.username);
-                            setUpdateRole(target.role);
-                            setUpdateIsFinancialHandler(target.isFinancialHandler);
-                            setUpdateAccessAllProperties(Boolean(target.accessAllProperties));
-                            setUpdateDailyWage(target.dailyWage ? String(target.dailyWage) : '');
-                          }
-                        }}
-                        placeholder="-- Choose User Profile --"
-                        options={users.map((u) => ({ value: u.id, label: `${u.fullName} - ${u.username} (${u.role})` }))}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')}</label>
-                        <Input
-                          type="text"
-                          value={updateFullName}
-                          onChange={(e) => setUpdateFullName(e.target.value)}
-                          placeholder="e.g. Ratan Singh"
-                          className="text-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
-                        <Input
-                          type="tel"
-                          maxLength={10}
-                          value={updateUsername}
-                          onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          placeholder="10-digit mobile number"
-                          className="text-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Input
-                          label={t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}
-                          type="password"
-                          maxLength={6}
-                          value={updatePasscode}
-                          onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="••••••"
-                          inputMode="numeric"
-                          className="text-center font-mono font-bold tracking-widest text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                      <div>
-                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
-                        <StyledSelect
-                          value={updateRole}
-                          onChange={(val) => setUpdateRole(val as any)}
-                          placeholder="-- Keep Current Role --"
-                          options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
-                        <input
-                          type="checkbox"
-                          id="updateIsFinancialHandlerCheck"
-                          checked={updateIsFinancialHandler}
-                          onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                        />
-                        <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                          {t('cash_handling_user_label', 'Cash Handling User')}
-                        </label>
-                        <Tooltip content={t('cash_handling_help_tooltip', 'Select if this person handles cash/payments')}>
-                          <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {t('help_label', 'Help?')}
-                          </span>
-                        </Tooltip>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                      <input
-                        type="checkbox"
-                        id="updateAccessAllPropertiesCheck"
-                        checked={updateAccessAllProperties}
-                        onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="updateAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
-                        {t('access_all_properties_label', 'Access All Properties')}
-                      </label>
-                      <Tooltip content={t('access_all_properties_help_tooltip', 'This staff member can log into any property under this tenant, not just this one - they pick which property after logging in.')}>
-                        <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                          {t('help_label', 'Help?')}
-                        </span>
-                      </Tooltip>
-                    </div>
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={updateDailyWage}
-                        onChange={(e) => setUpdateDailyWage(e.target.value)}
-                        placeholder="e.g. 800"
-                        className="text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                    >
-                      Apply Account Changes
-                    </button>
-                  </form>
-                )}
-              </div>
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+                className="font-bold cursor-pointer"
+              >
+                Register Account Payee
+              </Button>
             </div>
 
-            {/* Form 2: Register Account Payee */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs text-xs">
-              <div className="p-5 space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Plus className="w-4 h-4" /> Register Account Payee
-                </h4>
-
-                <form onSubmit={handleCreatePayee} className="app-form app-form--create-payee space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Input
-                        label={t('payee_account_name_label', 'Payee Account Name')}
-                        type="text"
-                        required
-                        value={newPayeeName}
-                        onChange={(e) => setNewPayeeName(e.target.value)}
-                        placeholder="e.g. Raju Grocery / Pool Supplier"
-                      />
+            <DataTable
+              columns={[
+                {
+                  name: t('payee_name_column', 'Payee Name'),
+                  selector: (row: any) => row.name,
+                  sortable: true,
+                  cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">{row.name}</span>,
+                },
+                {
+                  name: t('classification_column', 'Classification'),
+                  selector: (row: any) => row.type,
+                  sortable: true,
+                  width: '160px',
+                  cell: (row: any) => row.type === 'Vendor' ? (
+                    <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2.5 py-1 rounded font-bold text-[10px]">{t('vendor_badge', 'Vendor')}</span>
+                  ) : (
+                    <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2.5 py-1 rounded font-bold text-[10px]">{t('third_party_badge', 'Third Party')}</span>
+                  ),
+                },
+                {
+                  name: t('upi_qr_code_column', 'UPI QR Code'),
+                  center: true,
+                  width: '140px',
+                  cell: (row: any) => row.qrCodeUrl ? (
+                    <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-bold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
+                  ) : (
+                    <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
+                  ),
+                },
+                {
+                  name: t('actions_column', 'Actions'),
+                  right: true,
+                  width: '160px',
+                  cell: (row: any) => (
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button onClick={() => setEditingPayee(row)} variant="secondary" size="xs" className="font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                      <Button onClick={() => handleDeletePayee(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
                     </div>
-
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_group_label', 'Classification Group')}</label>
-                      <StyledSelect
-                        value={newPayeeType}
-                        onChange={(val) => setNewPayeeType(val as any)}
-                        options={[
-                          { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
-                          { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot')}</label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => setNewPayeeQrCode(reader.result as string);
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="w-full text-xs text-slate-500 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                  >
-                    Save Payee to Database
-                  </button>
-                </form>
-              </div>
-            </div>
+                  ),
+                },
+              ]}
+              data={filteredPayees}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[10, 15, 25, 50]}
+              highlightOnHover
+              subHeader={
+                <div className="w-full flex items-center py-2">
+                  <Input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs" />
+                </div>
+              }
+              customStyles={{
+                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                headRow: { style: { backgroundColor: '#f8fafc' } },
+                rows: { style: { minHeight: '52px' } },
+              }}
+              noDataComponent={
+                <div className="p-8 text-center text-slate-400 font-semibold text-xs">No payees registered.</div>
+              }
+            />
           </div>
         </div>
       )}
@@ -1220,10 +909,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <button
                   disabled={selectedCells.size === 0}
                   onClick={() => applyBulkStatus('Half Day')}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
-                  <span className="w-4 h-4 rounded bg-indigo-700 flex items-center justify-center text-[10px]">L</span>
-                  <span>{t('mark_leave_halfday_label', 'Mark Leave / Half Day (L)')}</span>
+                  <span className="w-4 h-4 rounded bg-amber-700 flex items-center justify-center text-[10px]">H</span>
+                  <span>{t('mark_halfday_label', 'Mark Half Day (H)')}</span>
+                </button>
+
+                <button
+                  disabled={selectedCells.size === 0}
+                  onClick={() => applyBulkStatus('Paid Leave')}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <span className="w-4 h-4 rounded bg-purple-700 flex items-center justify-center text-[10px]">L</span>
+                  <span>{t('mark_leave_label', 'Mark Paid Leave (L)')}</span>
                 </button>
 
                 <button
@@ -1243,9 +941,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
                 else { setSelectedMonth(m => m - 1); }
               }}
-              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
             >
-              ← Prev
+              <ChevronLeft className="w-3.5 h-3.5" /> Prev
             </button>
             <div className="font-bold text-sm text-slate-800 dark:text-white">
               {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -1262,9 +960,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
                   else { setSelectedMonth(m => m + 1); }
                 }}
-                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
               >
-                Next →
+                Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -1341,7 +1039,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             )}
 
                             {status === 'Half Day' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-bold text-xs shadow-2xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold text-xs shadow-2xs">
+                                H
+                              </span>
+                            )}
+
+                            {status === 'Paid Leave' && (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold text-xs shadow-2xs">
                                 L
                               </span>
                             )}
@@ -1358,6 +1062,33 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* ATTENDANCE LEGEND BAR */}
+            <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[11px]">Attendance Legend:</span>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold flex items-center justify-center text-xs">P</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">Present (Full Day)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-bold flex items-center justify-center text-xs">A</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">Absent (0 Wage)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold flex items-center justify-center text-xs">H</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">Half Day (0.5 Wage)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold flex items-center justify-center text-xs">L</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">Paid Leave</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-400 px-1.5">-</span>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400">Unmarked</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1932,6 +1663,373 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               >
                 Confirm Advance
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TEAM MEMBER MODAL (CREATE / UPDATE) */}
+      {isTeamMemberModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                <div className={`p-2 rounded-xl ${userFormTab === 'create' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'}`}>
+                  {userFormTab === 'create' ? <Plus className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                    {userFormTab === 'create' ? 'Create Team Member' : 'Modify Team Member'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {userFormTab === 'create' ? 'Add a new staff login account & system role' : 'Update login credentials, roles, and financial privileges'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTeamMemberModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <div className="p-6">
+              {userFormTab === 'create' ? (
+                <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-4 text-xs">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
+                    <Input
+                      type="text"
+                      required
+                      value={newFullName}
+                      onChange={(e) => setNewFullName(e.target.value)}
+                      placeholder="e.g. Ratan Singh"
+                      className="text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone (Username)')} *</label>
+                      <Input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="10-digit mobile number"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
+                      <Input
+                        type="password"
+                        required
+                        maxLength={6}
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="••••••"
+                        inputMode="numeric"
+                        className="text-slate-900 dark:text-white text-center font-mono font-bold tracking-widest"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
+                      <StyledSelect
+                        value={newRole}
+                        onChange={(val) => setNewRole(val as any)}
+                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                      <input
+                        type="checkbox"
+                        id="isFinancialHandlerCheck"
+                        checked={newIsFinancialHandler}
+                        onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="isFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                        {t('cash_handling_user_label', 'Cash Handling User')}
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newDailyWage}
+                      onChange={(e) => setNewDailyWage(e.target.value)}
+                      placeholder="e.g. 800"
+                      className="text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                    <input
+                      type="checkbox"
+                      id="newAccessAllPropertiesCheck"
+                      checked={newAccessAllProperties}
+                      onChange={(e) => setNewAccessAllProperties(e.target.checked)}
+                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="newAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                      {t('access_all_properties_label', 'Access All Properties')}
+                    </label>
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setNewQrCodeUrl(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setIsTeamMemberModalOpen(false)}
+                      className="font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      className="font-bold cursor-pointer"
+                    >
+                      Register Team Member
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleUpdateUserSubmit} className="app-form app-form--update-user space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
+                      <Input
+                        type="text"
+                        required
+                        value={updateFullName}
+                        onChange={(e) => setUpdateFullName(e.target.value)}
+                        placeholder="e.g. Ratan Singh"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone (Username)')}</label>
+                      <Input
+                        type="tel"
+                        maxLength={10}
+                        value={updateUsername}
+                        onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="10-digit mobile number"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
+                    <Input
+                      type="password"
+                      maxLength={6}
+                      value={updatePasscode}
+                      onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="••••••"
+                      inputMode="numeric"
+                      className="text-center font-mono font-bold tracking-widest text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'System Role')}</label>
+                      <StyledSelect
+                        value={updateRole}
+                        onChange={(val) => setUpdateRole(val as any)}
+                        placeholder="-- Keep Current Role --"
+                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                      <input
+                        type="checkbox"
+                        id="updateIsFinancialHandlerCheck"
+                        checked={updateIsFinancialHandler}
+                        onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                      />
+                      <label htmlFor="updateIsFinancialHandlerCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                        {t('cash_handling_user_label', 'Cash Handling User')}
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                    <input
+                      type="checkbox"
+                      id="updateAccessAllPropertiesCheck"
+                      checked={updateAccessAllProperties}
+                      onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
+                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="updateAccessAllPropertiesCheck" className="font-bold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                      {t('access_all_properties_label', 'Access All Properties')}
+                    </label>
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={updateDailyWage}
+                      onChange={(e) => setUpdateDailyWage(e.target.value)}
+                      placeholder="e.g. 800"
+                      className="text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setUpdateQrCodeUrl(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setIsTeamMemberModalOpen(false)}
+                      className="font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      className="font-bold cursor-pointer"
+                    >
+                      Save Team Member
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* REGISTER ACCOUNT PAYEE MODAL */}
+      {isPayeeModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Register Account Payee</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Add operational suppliers, vendors, or third parties</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPayeeModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <form onSubmit={handleCreatePayee} className="app-form app-form--create-payee space-y-4 text-xs">
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('payee_account_name_label', 'Payee Account Name')} *</label>
+                  <Input
+                    type="text"
+                    required
+                    value={newPayeeName}
+                    onChange={(e) => setNewPayeeName(e.target.value)}
+                    placeholder="e.g. Raju Grocery / Pool Supplier"
+                    className="text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_group_label', 'Classification Group')}</label>
+                  <StyledSelect
+                    value={newPayeeType}
+                    onChange={(val) => setNewPayeeType(val as any)}
+                    options={[
+                      { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
+                      { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot (Optional)')}</label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setNewPayeeQrCode(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setIsPayeeModalOpen(false)}
+                    className="font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    className="font-bold cursor-pointer"
+                  >
+                    Save Payee
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

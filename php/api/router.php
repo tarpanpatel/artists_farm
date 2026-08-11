@@ -25,6 +25,7 @@ session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../errors/logger.php';
 require_once __DIR__ . '/../guests/guests.php';
 require_once __DIR__ . '/../billing/billing.php';
@@ -383,7 +384,18 @@ $currentProperty = getCurrentProperty($pdo, $propertyId); // Get the full proper
 // in the request got 403'd by the property gate before ever reaching their own tenant's
 // isTenantAccessAllowed() check, since getCurrentPropertyId() falls back to an unrelated default
 // property when nothing property-specific was requested.
-$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant'];
+// save_nav_menu added 11 Aug 2026: nav_menu_items is genuinely global, shared
+// across every tenant/property (see the comment on its save handler in
+// menu.php) - not scoped to any single property at all. But apiFetch()
+// auto-appends property_slug (root_dashboard, from the URL, when saving from
+// the Root Admin nav editor) to every request, and root_dashboard isn't a
+// real property - so isPropertyAccessAllowed() correctly found no such
+// property and 403'd every single save since the property-scope gate above
+// was added, even though get_nav_menu (a plain fetch() with no property_slug
+// param, so it skips this gate) always worked fine. Confirmed via the Apache
+// access log: every POST save_nav_menu request returned 403, going back to
+// the gate's original commit - this was never a frontend bug.
+$tenant_scope_actions = ['get_tenant_properties', 'get_tenant_slot_usage', 'create_property_for_tenant', 'save_nav_menu'];
 
 // SECURITY (10 Aug 2026): universal property-scope gate. Everything above only ever gated
 // *write* actions (POST/PUT/DELETE) - GET reads (guest lists, financial ledger, receipts,
@@ -1734,7 +1746,7 @@ switch ($action) {
             }
 
             // Only delete active/upcoming guests (present and future bookings)
-            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status IN ('Active', 'Checked In')")->execute([$property_id]);
+            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status IN (?, ?)")->execute([$property_id, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN]);
 
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();

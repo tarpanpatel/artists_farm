@@ -14,6 +14,15 @@ import { markCFormFiled } from '../services/api';
 import { useToast } from './ToastContext';
 import { Input } from './Input';
 import { StyledSelect } from './StyledSelect';
+import {
+  GUEST_STATUS_CHECKED_IN,
+  GUEST_STATUS_CHECKED_OUT,
+  GUEST_STATUS_BOOKED,
+  GUEST_STATUS_ACTIVE_LEGACY,
+  GUEST_STATUS_CONFIRMED_LEGACY,
+  GUEST_STATUS_CHECKEDOUT_LEGACY,
+  type GuestStatus,
+} from '../constants/guestStatus';
 
 interface GuestHistoryProps {
   guests: Guest[];
@@ -23,7 +32,7 @@ interface GuestHistoryProps {
 export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCFormFiledUpdated }) => {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'CheckedOut' | 'Booked'>('CheckedOut');
+  const [statusFilter, setStatusFilter] = useState<'All' | GuestStatus>('Checked Out');
   const [foreignFilter, setForeignFilter] = useState<'All' | 'Foreigner' | 'Indian'>('All');
   const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
 
@@ -35,7 +44,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       // Instantly mutate local object property for immediate UI feedback
       guest.cFormFiledAt = filedAt;
       onCFormFiledUpdated?.(guest.id, filedAt);
-      showToast(newFiledState ? `✔ C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
+      showToast(newFiledState ? `C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
     } else {
       showToast('Failed to update C-Form status', { type: 'error' });
     }
@@ -49,11 +58,11 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
   // one spelling each, so a guest checked out via the "other" code path
   // simply vanished from every filter but 'All'. Normalize before comparing
   // instead of relying on an exact string match.
-  const normalizeStayStatus = (status: string): 'Active' | 'CheckedOut' | 'Booked' | 'Other' => {
-    const s = (status || '').trim().toLowerCase();
-    if (s === 'active' || s === 'checked in') return 'Active';
-    if (s === 'checkedout' || s === 'checked out') return 'CheckedOut';
-    if (s === 'booked' || s === 'confirmed') return 'Booked';
+  const normalizeStayStatus = (status: string): GuestStatus | 'Other' => {
+    const s = (status || '').trim();
+    if (s === GUEST_STATUS_ACTIVE_LEGACY || s === GUEST_STATUS_CHECKED_IN) return GUEST_STATUS_CHECKED_IN;
+    if (s === GUEST_STATUS_CHECKEDOUT_LEGACY || s === GUEST_STATUS_CHECKED_OUT) return GUEST_STATUS_CHECKED_OUT;
+    if (s === GUEST_STATUS_BOOKED || s === GUEST_STATUS_CONFIRMED_LEGACY) return GUEST_STATUS_BOOKED;
     return 'Other';
   };
 
@@ -152,13 +161,13 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
         let bg = 'bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-400';
         let label: string = row.status;
         const normalized = normalizeStayStatus(row.status);
-        if (normalized === 'Active') {
+        if (normalized === GUEST_STATUS_CHECKED_IN) {
           bg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
           label = t('checked_in_badge', 'Active Stay');
-        } else if (normalized === 'CheckedOut') {
+        } else if (normalized === GUEST_STATUS_CHECKED_OUT) {
           bg = 'bg-slate-100 text-slate-800 dark:bg-slate-800/80 dark:text-slate-300';
           label = t('checked_out_badge', 'Checked Out');
-        } else if (normalized === 'Booked') {
+        } else if (normalized === GUEST_STATUS_BOOKED) {
           bg = 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300';
           label = t('reserved_badge', 'Reserved');
         }
@@ -268,9 +277,9 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
               onChange={(v) => setStatusFilter(v as any)}
               options={[
                 { value: 'All', label: t('all_stays_option', 'All Stays') },
-                { value: 'Active', label: t('active_stays_option', 'Active stays only') },
-                { value: 'CheckedOut', label: t('checked_out_stays_option', 'Checked out only') },
-                { value: 'Booked', label: t('reserved_stays_option', 'Reserved only') },
+                { value: GUEST_STATUS_CHECKED_IN, label: t('active_stays_option', 'Active stays only') },
+                { value: GUEST_STATUS_CHECKED_OUT, label: t('checked_out_stays_option', 'Checked out only') },
+                { value: GUEST_STATUS_BOOKED, label: t('reserved_stays_option', 'Reserved only') },
               ]}
             />
           </div>

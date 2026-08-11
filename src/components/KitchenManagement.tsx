@@ -19,9 +19,13 @@ import {
   Minus,
   Copy,
   Scale,
-  Bell
+  Bell,
+  Check,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
+import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
 import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
@@ -214,7 +218,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const cleanTicketId = ord.id.replace('#', '');
 
     if (servedItemKeys[key]) {
-      showToast(`⚠️ [Telegram answerCallbackQuery]: Dish "${item.name}" on Ticket #${cleanTicketId} is ALREADY marked as SERVED!`, { type: 'warning' });
+      showToast(`[Telegram answerCallbackQuery]: Dish "${item.name}" on Ticket #${cleanTicketId} is ALREADY marked as SERVED!`, { type: 'warning' });
       return;
     }
 
@@ -687,7 +691,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // New Order Form State
   const checkedInGuests = isTestingMode
     ? guests
-    : guests.filter((g) => g.status === 'Active');
+    : guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
   const [selectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
@@ -976,7 +980,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                                   title={t('click_when_served_tooltip')}
                                 >
-                                  <span>✓ Served</span>
+                                  <Check className="w-3.5 h-3.5" /> Served
                                 </button>
                               </>
                             ) : (
@@ -994,7 +998,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
                                   className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                                 >
-                                  <span>✓ {t('ready_button')}</span>
+                                  <Check className="w-3.5 h-3.5" /> {t('ready_button')}
                                 </button>
                               </>
                             )}
@@ -1156,7 +1160,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                           : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
                                       }`}
                                     >
-                                      {isRecentlyAdded ? <span className="text-[9px]">✓</span> : <span>+</span>}
+                                      {isRecentlyAdded ? <Check className="w-3 h-3" /> : <span>+</span>}
                                     </button>
                                   </div>
                                 </div>
@@ -1200,7 +1204,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                     : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
                                 }`}
                               >
-                                {isRecentlyAdded ? <span className="text-[9px]">✓</span> : <span>+</span>}
+                                {isRecentlyAdded ? <Check className="w-3 h-3" /> : <span>+</span>}
                               </button>
                             </div>
                           </div>
@@ -1321,10 +1325,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-cyan-700 dark:text-cyan-400 font-extrabold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 dark:border-cyan-700 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                   >
                     {isCartDrawerExpanded ? (
-                      <span>▼ {t('collapse_button')}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
                     ) : (
-                      <span>▲ {t('expand_cart_button')}</span>
+                      <ChevronUp className="w-3.5 h-3.5" />
                     )}
+                    {t(isCartDrawerExpanded ? 'collapse_button' : 'expand_cart_button')}
                   </button>
                 </div>
 

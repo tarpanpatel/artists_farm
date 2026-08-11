@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search, CheckCircle2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -221,8 +221,9 @@ export const DefaultExpensesManager: React.FC = () => {
       )}
 
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <p className="text-green-700 dark:text-green-300">✓ {success}</p>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex gap-2 items-center">
+          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <p className="text-green-700 dark:text-green-300">{success}</p>
         </div>
       )}
 

@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { Guest } from '../types';
+import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 import { Button } from './Button';
 import { t } from '../i18n/en';
 
@@ -81,14 +82,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   // 2. Bookings logic for MultiKey Property
   const todayGuests = guests.filter((g) => {
-    if (g.status === 'CheckedOut') return false;
+    if (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) return false;
     const checkin = g.checkinDate?.split(' ')[0] || g.checkinDate?.split('T')[0] || '';
     const checkout = g.expectedCheckout?.split(' ')[0] || g.expectedCheckout?.split('T')[0] || '';
-    return checkin === todayStr || checkout === todayStr || (g.status === 'Active');
+    return checkin === todayStr || checkout === todayStr || g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN;
   });
 
   const tomorrowGuests = guests.filter((g) => {
-    if (g.status === 'CheckedOut') return false;
+    if (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) return false;
     const checkin = g.checkinDate?.split(' ')[0] || g.checkinDate?.split('T')[0] || '';
     return checkin === tomorrowStr;
   });

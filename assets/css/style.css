@@ -55,7 +55,7 @@ body {
 }
 label {
     font-size: 12px;
-    font-weight: 400 !important;
+    font-weight: 400;
 }
 h2 { font-size: 12px; font-weight: 600; }
 h3 { font-size: 12px; font-weight: 600; }
@@ -1114,8 +1114,8 @@ div#adminSubMenuContent {
 .kitchen-btn-ready { width: 100%; padding: 10px; font-size: 12px; }
 
 .kitchen-alert-blink {
-    border: 2px solid #ef4444 !important;
-    background: #fef2f2 !important;
+    border: 2px solid #ef4444;
+    background: #fef2f2;
     animation: blink-border 1.5s infinite;
 }
 @keyframes blink-border {
@@ -1610,7 +1610,7 @@ span#sidebarTotalCount { margin-left: 10px; font-weight: bold; }
 .cal-o { background: #f1f5f9; color: #475569; } /* Weekly Off */
 .cal-empty { background: #ffffff; color: #cbd5e0; }
 
-.calendar-widget-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 3px solid #805ad5 !important; }
+.calendar-widget-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 3px solid #805ad5; }
 .calendar-grid-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -2214,7 +2214,7 @@ input[type="datetime-local"] {
     input[type="password"],
     select,
     textarea {
-        font-size: 16px !important;
+        font-size: 16px;
         height: 52px;
         line-height: 52px;
         -webkit-appearance: none;

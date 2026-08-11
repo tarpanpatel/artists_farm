@@ -59,7 +59,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       if (data.status === 'success') {
         setTestingModeState(true);
         setHasGeneratedDemo(true);
-        setMessage({ type: 'success', text: '✅ Demo data generated! Refreshing...' });
+        setMessage({ type: 'success', text: 'Demo data generated! Refreshing...' });
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setTestingModeState(false);
@@ -102,7 +102,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
 
       if (data.status === 'success') {
         setTestingModeState(false);
-        setMessage({ type: 'success', text: '✅ Test mode exited! Closing...' });
+        setMessage({ type: 'success', text: 'Test mode exited! Closing...' });
         setTimeout(() => {
           onClose();
           window.location.reload();
@@ -125,7 +125,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       const data = await response.json();
       if (data.status === 'success') {
         setDummyHistoryEnabled(true);
-        setMessage({ type: 'success', text: '✅ Dummy history mode enabled' });
+        setMessage({ type: 'success', text: 'Dummy history mode enabled' });
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to enable dummy history' });
       }
@@ -144,7 +144,7 @@ export const DemoDataModal: React.FC<DemoDataModalProps> = ({ isOpen, onClose, p
       const data = await response.json();
       if (data.status === 'success') {
         setDummyHistoryEnabled(false);
-        setMessage({ type: 'success', text: '✅ Dummy history mode disabled' });
+        setMessage({ type: 'success', text: 'Dummy history mode disabled' });
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to disable dummy history' });
       }

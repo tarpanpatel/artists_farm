@@ -11,7 +11,10 @@ import {
   Home,
   Utensils,
   Plus,
-  Flag
+  Flag,
+  AlertTriangle,
+  CheckCircle2,
+  CornerDownRight
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
@@ -20,6 +23,13 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
+import {
+  GUEST_STATUS_CHECKED_IN,
+  GUEST_STATUS_CHECKED_OUT,
+  GUEST_STATUS_BOOKED,
+  GUEST_STATUS_ACTIVE_LEGACY,
+  GUEST_STATUS_CHECKEDOUT_LEGACY,
+} from '../constants/guestStatus';
 import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
@@ -263,7 +273,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     // 2. Existing guest bookings for the currently selected room
 
     guests
-      .filter((g) => g.status === 'Active' || g.status === 'Booked')
+      .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY || g.status === GUEST_STATUS_BOOKED)
       .filter((g) => {
         const gRoomId = (g as any).roomId || (g as any).room_id;
         if (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) return true;
@@ -350,7 +360,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const checkedInGuests = guests.filter((g) => {
-    if (g.status !== 'Active') return false;
+    if (g.status !== GUEST_STATUS_ACTIVE_LEGACY && (g.status as string) !== GUEST_STATUS_CHECKED_IN) return false;
     // Also check if guest is currently staying (today is between checkin and checkout)
     const checkinDate = new Date(g.checkinDate);
     const checkoutDate = new Date(g.expectedCheckout);
@@ -825,7 +835,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             const selectedRoomId = selectedRoomObj?.id;
 
             const hasRoomConflict = guests.some((g) => {
-              if (g.status === 'CheckedOut' || (g.status as string) === 'Cancelled') return false;
+              if ((g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === 'Cancelled') return false;
               const gRoomId = (g as any).roomId || (g as any).room_id;
 
               const isSameRoom = (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
@@ -848,7 +858,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             // 2. Strict Duplicate Check: Prevent duplicate entry for same guest on same check-in date
             const isDuplicate = guests.some((g) => {
-              if (g.status === 'CheckedOut' || (g.status as string) === 'Cancelled') return false;
+              if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
               const gPhone = (g.phoneNumber || '').trim();
               const gCheckin = (g.checkinDate || '').split(' ')[0];
               return gPhone === phoneNumber.trim() && gCheckin === checkinDate;
@@ -1330,7 +1340,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 value={selectedGuestId}
                 onChange={setSelectedGuestId}
                 options={guests
-                  .filter((g) => g.status === 'Active')
+                  .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY)
                   .map((g) => ({
                     value: g.id,
                     label: `${g.guestName} (${g.roomNumber}) — Phone: ${g.phoneNumber}`,
@@ -1340,14 +1350,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             <div className="flex items-center gap-2">
               {currentGuest ? (
-                <span className={`font-bold px-2.5 py-1 rounded-full text-[11px] border ${
-                  currentGuest.status === 'Active'
+                <span className={`inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-full text-[11px] border ${
+                  currentGuest.status === GUEST_STATUS_CHECKED_IN
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                    : currentGuest.status === 'Booked'
+                    : currentGuest.status === GUEST_STATUS_BOOKED
                     ? 'bg-amber-100 text-amber-800 border-amber-300'
                     : 'bg-slate-100 text-slate-800 border-slate-300'
                 }`}>
-                  ● {currentGuest.status === 'Active' ? 'Checked In' : currentGuest.status === 'Booked' ? 'Reservation Booked' : currentGuest.status}
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    currentGuest.status === GUEST_STATUS_CHECKED_IN
+                      ? 'bg-emerald-600'
+                      : currentGuest.status === GUEST_STATUS_BOOKED
+                      ? 'bg-amber-600'
+                      : 'bg-slate-500'
+                  }`}></span>
+                  {currentGuest.status === GUEST_STATUS_CHECKED_IN ? 'Checked In' : currentGuest.status === GUEST_STATUS_BOOKED ? 'Reservation Booked' : currentGuest.status}
                 </span>
               ) : (
                 <span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
@@ -1528,7 +1545,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     </span>
                     {adjustments.map((adj) => (
                       <div key={adj.id} className="flex items-center justify-between font-semibold">
-                        <span className="text-slate-600">↳ {adj.reason}</span>
+                                <span className="text-slate-600 flex items-center gap-1">
+                          <CornerDownRight className="w-3.5 h-3.5" /> {adj.reason}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span
                             className={
@@ -1663,11 +1682,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
                     <div className="flex justify-between items-center text-slate-600 font-medium">
                       <span>Pending Lodging Due:</span>
-                      <span>₹{lodgingPendingDue.toFixed(2)}</span>
+                      <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center text-slate-600 font-medium">
                       <span>Food & Incidentals Subtotal:</span>
-                      <span>₹{foodTotal.toFixed(2)}</span>
+                      <span className="summary-line summary-line--food-subtotal">₹{foodTotal.toFixed(2)}</span>
                     </div>
                     {extraCharges > 0 && (
                       <div className="flex justify-between items-center text-red-600 font-semibold">
@@ -1729,12 +1748,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     )}
                     <div className="flex justify-between items-center font-extrabold text-slate-900 border-t border-slate-200 pt-1.5">
                       <span>Grand Target Due:</span>
-                      <span className="text-emerald-700 text-base">₹{grandTargetDue.toFixed(2)}</span>
+                      <span className="summary-line summary-line--grand-target-due text-emerald-700 text-base">₹{grandTargetDue.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-dashed border-slate-200">
                       <span>Total Stacked Entered:</span>
                       <span
-                        className={`font-bold ${
+                        className={`summary-line summary-line--total-stacked font-bold ${
                           isSplitMatching ? 'text-emerald-600' : 'text-red-600 font-extrabold'
                         }`}
                       >
@@ -1851,7 +1870,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   {/* Validation Error Alert */}
                   {!isSplitMatching && (
                     <div className="p-2.5 bg-red-50 border border-red-200 text-red-800 text-center font-bold text-[11px] rounded-lg">
-                      ❌ Error: Split sum (₹{totalSplitSum.toFixed(2)}) must equal target due (₹
+                      Split sum (₹{totalSplitSum.toFixed(2)}) must equal target due (₹
                       {grandTargetDue.toFixed(2)}) exactly.
                     </div>
                   )}
@@ -1906,13 +1925,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       artistsfarm@upi
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                    ✓ Verified Payee: {qrModalTitle}
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified Payee: {qrModalTitle}
                   </span>
                 </div>
               ) : (
-                <div className="p-4 text-amber-700 font-bold text-xs">
-                  ⚠️ No QR screenshot registered for this recipient ({qrModalTitle}).
+                <div className="p-4 text-amber-700 font-bold text-xs flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" /> No QR screenshot registered for this recipient ({qrModalTitle}).
                 </div>
               )}
             </div>
@@ -1997,11 +2016,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
                 <div className="flex justify-between text-black font-semibold">
                   <span>[-] Advance Paid:</span>
-                  <span>₹{advancePaid.toFixed(2)}</span>
+                  <span className="summary-line summary-line--advance-paid">₹{advancePaid.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
                   <span>Pending Lodging Settled:</span>
-                  <span>₹{lodgingPendingDue.toFixed(2)}</span>
+                  <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -2032,7 +2051,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <div className="space-y-1 pt-1">
                     {adjustments.map((adj) => (
                       <div key={adj.id} className="flex justify-between text-black">
-                        <span>↳ {adj.reason}</span>
+                        <span className="flex items-center gap-1">
+                          <CornerDownRight className="w-3.5 h-3.5" /> {adj.reason}
+                        </span>
                         <span className="font-semibold">
                           {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
                         </span>
@@ -2074,7 +2095,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* Grand Total */}
               <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
                 <span>Grand Total Payable:</span>
-                <span>₹{grandTargetDue.toFixed(2)}</span>
+                <span className="summary-line summary-line--grand-total-payable">₹{grandTargetDue.toFixed(2)}</span>
               </div>
             </div>
           </div>

@@ -532,15 +532,15 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      {currentState.testSent ? t('test_message_sent_again_button', 'Test Message Sent ✓ (send again)') : t('send_test_message_button', 'Send Test Message')}
+                      {currentState.testSent ? t('test_message_sent_again_button', 'Test Message Sent (send again)') : t('send_test_message_button', 'Send Test Message')}
                     </button>
                     
                     <button
                       type="button"
                       onClick={handleReSetup}
-                      className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer"
+                      className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      {t('re_setup_group_button', '🔄 Re-setup / Re-pair Group')}
+                      <RefreshCw className="w-3.5 h-3.5" /> {t('re_setup_group_button', 'Re-setup / Re-pair Group')}
                     </button>
 
                     {currentState.testSent && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRightLeft, RefreshCw, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders } from 'lucide-react';
+import { ArrowRightLeft, RefreshCw, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders, ChevronUp, ChevronDown } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary } from '../types';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
@@ -397,7 +397,9 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             {t('drawer_entry_history_heading', 'DRAWER ENTRY HISTORY')}
             <span className="text-[10px] text-slate-400 font-semibold ml-1">({drawerEntries.length} entries)</span>
           </h3>
-          <span className="text-slate-400 text-lg">{showHistory ? '▲' : '▼'}</span>
+          <span className="text-slate-400">
+            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
         </button>
 
         {showHistory && (
@@ -424,11 +426,12 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                   sortable: true,
                   width: '120px',
                   cell: (entry: CashDrawerEntry) => (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                       'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
                     }`}>
-                      {entry.type === 'handover' ? '🤝 Handover' : '⚙️ Adjustment'}
+                      {entry.type === 'handover' ? <Handshake className="w-3 h-3" /> : <Sliders className="w-3 h-3" />}
+                      <span>{entry.type === 'handover' ? 'Handover' : 'Adjustment'}</span>
                     </span>
                   ),
                 },

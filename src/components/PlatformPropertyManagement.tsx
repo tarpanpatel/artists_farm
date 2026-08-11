@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader2, AlertCircle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -523,8 +523,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       {/* Success Toast */}
       {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
-          ✓ {successMessage}
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" /> {successMessage}
         </div>
       )}
 
@@ -1345,8 +1345,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('delete_property_heading', 'Delete Property?')}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600">
-              {t('deletion_consequences_label', '⚠️ Deletion Consequences for this Property:')}
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
             </p>
             <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
               <li>All <strong>active and upcoming bookings</strong> will be permanently deleted.</li>

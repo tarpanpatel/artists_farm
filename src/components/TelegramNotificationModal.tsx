@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Loader2,
   Rocket,
+  Check,
 } from 'lucide-react';
 import { TelegramConfig, TelegramDispatchLog, PropertyTelegramConfig } from '../types';
 import { invalidateTemplateCache, getPropertySlug, fetchTelegramConfigDB, saveTelegramConfigDB, fetchTemplatesFromDB, DbTelegramTemplate } from '../services/api';
@@ -831,7 +832,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       .then((res) => res.json())
       .then((resData) => {
         if (resData.success || resData.status === 'ok') {
-          setSaveStatus('✔ Saved to Database!');
+          setSaveStatus('Saved to Database!');
           invalidateTemplateCache();
           fetchTemplatesFromDB().then(setDbTemplates);
           if (onLogAudit) {
@@ -839,12 +840,12 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             onLogAudit(`${currentUserName} updated Telegram template "${currentTpl.eventName}" (${currentTpl.dbKey}) — template content edited and saved to database`, { module: 'telegram_template', status: 'Success', user: currentUserName });
           }
         } else {
-          setSaveStatus('✔ Saved locally!');
+          setSaveStatus('Saved locally!');
         }
         setTimeout(() => setSaveStatus(null), 2500);
       })
       .catch(() => {
-        setSaveStatus('✔ Saved locally!');
+        setSaveStatus('Saved locally!');
         setTimeout(() => setSaveStatus(null), 2500);
       });
   };
@@ -1402,8 +1403,10 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 </div>
               )}
 
-              <div className="text-right text-[10px] text-slate-400 font-mono pt-1">
-                05:25 PM ✓✓
+              <div className="text-right text-[10px] text-slate-400 font-mono pt-1 flex items-center justify-end gap-1">
+                <span>05:25 PM</span>
+                <Check className="w-3 h-3 text-sky-500" />
+                <Check className="w-3 h-3 text-sky-500 -ml-2.5" />
               </div>
             </div>
           </div>

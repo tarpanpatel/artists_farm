@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -59,7 +60,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         />
         {errorMessage ? (
           <p id={`${textareaId}-error`} className="mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-            <span>⚠️</span> {errorMessage}
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
         ) : helperText ? (
           <p id={`${textareaId}-helper`} className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">

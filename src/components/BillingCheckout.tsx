@@ -7,9 +7,11 @@ import {
   AlertCircle,
   Building,
   Plus,
+  ArrowRight,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
+import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Badge } from './Badge';
@@ -92,7 +94,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // checking-out-today, even though both now share one "Today" tab.
   const getGuestDetailedStatus = (g: Guest) => {
     const statusStr = String(g.status || '');
-    if (statusStr === 'CheckedOut' || statusStr === 'Cancelled') return 'past_bookings';
+    if (statusStr === GUEST_STATUS_CHECKEDOUT_LEGACY || statusStr === GUEST_STATUS_CHECKED_OUT || statusStr === 'Cancelled') return 'past_bookings';
 
     const checkinRaw = g.checkinDate || '';
     const checkoutRaw = g.expectedCheckout || g.checkoutDate || g.checkinDate || '';
@@ -459,7 +461,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <div className="mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span>{formatDate(guest.checkinDate)} → {formatDate(guest.expectedCheckout)}</span>
+                          <span className="inline-flex items-center gap-1">{formatDate(guest.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatDate(guest.expectedCheckout)}</span>
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
                           {nightsDisplay}

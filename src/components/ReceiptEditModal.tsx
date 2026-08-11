@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2 } from 'lucide-react';
+import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
+import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { Button } from './Button';
@@ -121,7 +122,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     const roomName = guest.roomNumber;
 
     allGuests.forEach((g) => {
-      if (g.status === 'CheckedOut' || (g.status as string) === 'Cancelled') return;
+      if (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return;
       if (g.id === guest.id) return; // Skip current guest being edited!
 
       const gRoom = (g.roomNumber || '').toLowerCase().trim();
@@ -828,7 +829,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <span className="font-bold text-slate-500 uppercase text-[10px] block">{t('applied_adjustments_label', 'Applied Adjustments')}</span>
                     {adjustments.map((adj) => (
                       <div key={adj.id} className="flex items-center justify-between font-bold">
-                        <span className="text-slate-600 dark:text-slate-300">↳ {adj.reason}</span>
+                        <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                          <CornerDownRight className="w-3.5 h-3.5" /> {adj.reason}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className={adj.type === 'charge' ? 'text-red-600' : 'text-emerald-600'}>
                             {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
@@ -1352,7 +1355,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   <div className="space-y-1 pt-1">
                     {adjustments.map((adj) => (
                       <div key={adj.id} className="flex justify-between text-black">
-                        <span>↳ {adj.reason}</span>
+                        <span className="flex items-center gap-1">
+                          <CornerDownRight className="w-3.5 h-3.5" /> {adj.reason}
+                        </span>
                         <span className="font-semibold">
                           {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
                         </span>

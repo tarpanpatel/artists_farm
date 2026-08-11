@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../guests/guests.php';
 require_once __DIR__ . '/../telegram/sender.php';
 require_once __DIR__ . '/../telegram/templates.php';
@@ -46,11 +47,18 @@ try {
         FROM guests g
         LEFT JOIN properties r ON g.room_id = r.id
         WHERE g.id_verification_status = 'Pending'
-          AND g.status != 'CheckedOut'
+          AND g.status NOT IN (?, ?)
           AND g.checkin_date < CURDATE()
           AND (g.id_verification_last_reminder_at IS NULL OR DATE(g.id_verification_last_reminder_at) < CURDATE())
     ");
-    $stmt->execute();
+    // Excludes both checkout spellings - guests.php's checkout paths now always
+    // write the canonical GUEST_STATUS_CHECKED_OUT ('Checked Out'), but the
+    // legacy 'CheckedOut' (no space) spelling can still exist on older rows.
+    // Filtering on only one would either miss old rows or (worse, going
+    // forward) send a "pending ID verification" nudge for every guest who
+    // checks out today, since none of them will ever get the legacy spelling
+    // again.
+    $stmt->execute([GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY]);
     $pendingGuests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (empty($pendingGuests)) {

@@ -174,14 +174,14 @@ input[type="date"],
 input[type="datetime-local"],
 input[type="month"],
 input[type="time"] {
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="month"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
 @layer base {
@@ -211,68 +211,68 @@ html.dark {
 }
 
 html.dark body {
-  background-color: #0f172a !important;
-  color: #f1f5f9 !important;
+  background-color: #0f172a;
+  color: #f1f5f9;
 }
 
 html.dark header,
 html.dark aside,
 html.dark .bg-white {
-  background-color: #1e293b !important;
-  color: #f8fafc !important;
-  border-color: #334155 !important;
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
 }
 
 html.dark .bg-gray-50,
 html.dark .bg-slate-50 {
-  background-color: #0f172a !important;
-  color: #f1f5f9 !important;
-  border-color: #334155 !important;
+  background-color: #0f172a;
+  color: #f1f5f9;
+  border-color: #334155;
 }
 
 html.dark .bg-gray-100,
 html.dark .bg-slate-100 {
-  background-color: #334155 !important;
-  color: #f8fafc !important;
+  background-color: #334155;
+  color: #f8fafc;
 }
 
 html.dark .bg-slate-200 {
-  background-color: #475569 !important;
+  background-color: #475569;
 }
 
 html.dark .bg-slate-300 {
-  background-color: #64748b !important;
+  background-color: #64748b;
 }
 
 html.dark .bg-slate-400 {
-  background-color: #94a3b8 !important;
+  background-color: #94a3b8;
 }
 
 html.dark .text-gray-900,
 html.dark .text-slate-800,
 html.dark .text-slate-900 {
-  color: #f8fafc !important;
+  color: #f8fafc;
 }
 
 html.dark .text-gray-700,
 html.dark .text-gray-800,
 html.dark .text-slate-700 {
-  color: #cbd5e1 !important;
+  color: #cbd5e1;
 }
 
 html.dark .text-gray-500,
 html.dark .text-gray-600,
 html.dark .text-slate-400,
 html.dark .text-slate-500 {
-  color: #94a3b8 !important;
+  color: #94a3b8;
 }
 
 html.dark .text-gray-400 {
-  color: #64748b !important;
+  color: #64748b;
 }
 
 html.dark .text-slate-600 {
-  color: #cbd5e1 !important;
+  color: #cbd5e1;
 }
 
 html.dark .border-gray-100,
@@ -281,366 +281,366 @@ html.dark .border-gray-300,
 html.dark .border-slate-100,
 html.dark .border-slate-200,
 html.dark .border-slate-300 {
-  border-color: #334155 !important;
+  border-color: #334155;
 }
 
 html.dark input,
 html.dark select,
 html.dark textarea {
-  background-color: #0f172a !important;
-  color: #f8fafc !important;
-  border-color: #334155 !important;
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
 }
 
 html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #334155 !important;
+  border-color: #334155;
 }
 
 /* Hover state overrides for dark mode */
 html.dark .hover\:bg-slate-50:hover {
-  background-color: #1e293b !important;
+  background-color: #1e293b;
 }
 html.dark .hover\:bg-slate-100:hover {
-  background-color: #334155 !important;
+  background-color: #334155;
 }
 html.dark .hover\:bg-slate-200:hover {
-  background-color: #475569 !important;
+  background-color: #475569;
 }
 html.dark .hover\:border-slate-300:hover {
-  border-color: #475569 !important;
+  border-color: #475569;
 }
 html.dark .hover\:bg-gray-100:hover {
-  background-color: #334155 !important;
+  background-color: #334155;
 }
 html.dark .hover\:text-gray-900:hover {
-  color: #f8fafc !important;
+  color: #f8fafc;
 }
 
 /* Group hover overrides */
 html.dark .group:hover .group-hover\:bg-slate-200\/80 {
-  background-color: rgba(51, 65, 85, 0.8) !important;
+  background-color: rgba(51, 65, 85, 0.8);
 }
 
 /* Focus ring overrides */
 html.dark .focus\:ring-blue-500:focus {
-  --tw-ring-color: #3b82f6 !important;
+  --tw-ring-color: #3b82f6;
 }
 html.dark .focus\:ring-cyan-500:focus {
-  --tw-ring-color: #06b6d4 !important;
+  --tw-ring-color: #06b6d4;
 }
 html.dark .focus\:ring-emerald-500:focus {
-  --tw-ring-color: #10b981 !important;
+  --tw-ring-color: #10b981;
 }
 html.dark .focus\:ring-indigo-500:focus {
-  --tw-ring-color: #6366f1 !important;
+  --tw-ring-color: #6366f1;
 }
 html.dark .focus\:ring-red-500:focus {
-  --tw-ring-color: #ef4444 !important;
+  --tw-ring-color: #ef4444;
 }
 html.dark .focus\:ring-amber-500:focus {
-  --tw-ring-color: #f59e0b !important;
+  --tw-ring-color: #f59e0b;
 }
 html.dark .focus\:border-cyan-500:focus {
-  border-color: #06b6d4 !important;
+  border-color: #06b6d4;
 }
 html.dark .focus\:border-emerald-500:focus {
-  border-color: #10b981 !important;
+  border-color: #10b981;
 }
 html.dark .focus\:border-blue-500:focus {
-  border-color: #3b82f6 !important;
+  border-color: #3b82f6;
 }
 
 /* Colored background overrides for dark mode */
 html.dark .bg-emerald-50 {
-  background-color: #064e3b !important;
+  background-color: #064e3b;
 }
 html.dark .bg-emerald-100 {
-  background-color: #065f46 !important;
-  color: #a7f3d0 !important;
+  background-color: #065f46;
+  color: #a7f3d0;
 }
 html.dark .bg-amber-50 {
-  background-color: #78350f !important;
+  background-color: #78350f;
 }
 html.dark .bg-amber-100 {
-  background-color: #92400e !important;
-  color: #fde68a !important;
+  background-color: #92400e;
+  color: #fde68a;
 }
 html.dark .bg-amber-200 {
-  background-color: #b45309 !important;
+  background-color: #b45309;
 }
 html.dark .bg-blue-50 {
-  background-color: #1e3a5f !important;
+  background-color: #1e3a5f;
 }
 html.dark .bg-blue-100 {
-  background-color: #1e40af !important;
-  color: #93c5fd !important;
+  background-color: #1e40af;
+  color: #93c5fd;
 }
 html.dark .bg-cyan-50 {
-  background-color: #164e63 !important;
+  background-color: #164e63;
 }
 html.dark .bg-cyan-100 {
-  background-color: #155e75 !important;
-  color: #a5f3fc !important;
+  background-color: #155e75;
+  color: #a5f3fc;
 }
 html.dark .bg-indigo-50 {
-  background-color: #312e81 !important;
+  background-color: #312e81;
 }
 html.dark .bg-indigo-100 {
-  background-color: #3730a3 !important;
-  color: #a5b4fc !important;
+  background-color: #3730a3;
+  color: #a5b4fc;
 }
 html.dark .bg-red-50 {
-  background-color: #7f1d1d !important;
+  background-color: #7f1d1d;
 }
 html.dark .bg-red-100 {
-  background-color: #991b1b !important;
-  color: #fecaca !important;
+  background-color: #991b1b;
+  color: #fecaca;
 }
 html.dark .text-red-800 {
-  color: #fecaca !important;
+  color: #fecaca;
 }
 html.dark .border-red-200 {
-  border-color: #991b1b !important;
+  border-color: #991b1b;
 }
 html.dark .border-red-300 {
-  border-color: #b91c1c !important;
+  border-color: #b91c1c;
 }
 html.dark .hover\:bg-red-200:hover {
-  background-color: #b91c1c !important;
+  background-color: #b91c1c;
 }
 html.dark .bg-green-50 {
-  background-color: #14532d !important;
+  background-color: #14532d;
 }
 html.dark .bg-green-100 {
-  background-color: #166534 !important;
-  color: #bbf7d0 !important;
+  background-color: #166534;
+  color: #bbf7d0;
 }
 html.dark .text-green-800 {
-  color: #bbf7d0 !important;
+  color: #bbf7d0;
 }
 html.dark .border-green-200 {
-  border-color: #166534 !important;
+  border-color: #166534;
 }
 html.dark .border-green-300 {
-  border-color: #15803d !important;
+  border-color: #15803d;
 }
 html.dark .hover\:bg-green-200:hover {
-  background-color: #15803d !important;
+  background-color: #15803d;
 }
 
 /* Colored text overrides for dark mode */
 html.dark .text-emerald-600 {
-  color: #6ee7b7 !important;
+  color: #6ee7b7;
 }
 html.dark .text-emerald-700 {
-  color: #6ee7b7 !important;
+  color: #6ee7b7;
 }
 html.dark .text-emerald-800 {
-  color: #a7f3d0 !important;
+  color: #a7f3d0;
 }
 html.dark .text-amber-600 {
-  color: #fbbf24 !important;
+  color: #fbbf24;
 }
 html.dark .text-amber-700 {
-  color: #fcd34d !important;
+  color: #fcd34d;
 }
 html.dark .text-amber-800 {
-  color: #fde68a !important;
+  color: #fde68a;
 }
 html.dark .text-amber-900 {
-  color: #fef3c7 !important;
+  color: #fef3c7;
 }
 html.dark .text-blue-600 {
-  color: #93c5fd !important;
+  color: #93c5fd;
 }
 html.dark .text-blue-700 {
-  color: #93c5fd !important;
+  color: #93c5fd;
 }
 html.dark .text-blue-800 {
-  color: #a5f3fc !important;
+  color: #a5f3fc;
 }
 html.dark .text-blue-900 {
-  color: #bfdbfe !important;
+  color: #bfdbfe;
 }
 html.dark .text-cyan-600 {
-  color: #67e8f9 !important;
+  color: #67e8f9;
 }
 html.dark .text-cyan-700 {
-  color: #67e8f9 !important;
+  color: #67e8f9;
 }
 html.dark .text-cyan-800 {
-  color: #a5f3fc !important;
+  color: #a5f3fc;
 }
 html.dark .text-sky-600 {
-  color: #7dd3fc !important;
+  color: #7dd3fc;
 }
 html.dark .text-indigo-900 {
-  color: #c7d2fe !important;
+  color: #c7d2fe;
 }
 html.dark .text-red-500 {
-  color: #fca5a5 !important;
+  color: #fca5a5;
 }
 html.dark .text-red-600 {
-  color: #fca5a5 !important;
+  color: #fca5a5;
 }
 html.dark .text-red-700 {
-  color: #fca5a5 !important;
+  color: #fca5a5;
 }
 html.dark .text-green-600 {
-  color: #86efac !important;
+  color: #86efac;
 }
 html.dark .text-purple-600 {
-  color: #c4b5fd !important;
+  color: #c4b5fd;
 }
 html.dark .text-pink-600 {
-  color: #f9a8d4 !important;
+  color: #f9a8d4;
 }
 html.dark .text-yellow-600 {
-  color: #fde68a !important;
+  color: #fde68a;
 }
 
 /* Colored border overrides for dark mode */
 html.dark .border-emerald-200 {
-  border-color: #065f46 !important;
+  border-color: #065f46;
 }
 html.dark .border-emerald-300 {
-  border-color: #047857 !important;
+  border-color: #047857;
 }
 html.dark .border-amber-200 {
-  border-color: #92400e !important;
+  border-color: #92400e;
 }
 html.dark .border-amber-300 {
-  border-color: #b45309 !important;
+  border-color: #b45309;
 }
 html.dark .border-blue-200 {
-  border-color: #1e40af !important;
+  border-color: #1e40af;
 }
 html.dark .border-cyan-200 {
-  border-color: #155e75 !important;
+  border-color: #155e75;
 }
 html.dark .border-cyan-300 {
-  border-color: #0891b2 !important;
+  border-color: #0891b2;
 }
 html.dark .border-indigo-300 {
-  border-color: #4338ca !important;
+  border-color: #4338ca;
 }
 
 /* Select option overrides for dark mode */
 html.dark option {
-  background-color: #0f172a !important;
-  color: #f8fafc !important;
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 /* Additional border overrides */
 html.dark .border-slate-50 {
-  border-color: #1e293b !important;
+  border-color: #1e293b;
 }
 
 /* White element hover state */
 html.dark .hover\:bg-white:hover {
-  background-color: #1e293b !important;
+  background-color: #1e293b;
 }
 
 /* Colored hover states */
 html.dark .hover\:bg-emerald-50:hover {
-  background-color: #064e3b !important;
+  background-color: #064e3b;
 }
 html.dark .hover\:bg-emerald-100:hover {
-  background-color: #065f46 !important;
+  background-color: #065f46;
 }
 html.dark .hover\:bg-amber-50:hover {
-  background-color: #78350f !important;
+  background-color: #78350f;
 }
 html.dark .hover\:bg-blue-50:hover {
-  background-color: #1e3a5f !important;
+  background-color: #1e3a5f;
 }
 html.dark .hover\:bg-cyan-50:hover {
-  background-color: #164e63 !important;
+  background-color: #164e63;
 }
 html.dark .hover\:bg-red-50:hover {
-  background-color: #7f1d1d !important;
+  background-color: #7f1d1d;
 }
 html.dark .hover\:border-cyan-400:hover {
-  border-color: #22d3ee !important;
+  border-color: #22d3ee;
 }
 html.dark .hover\:border-emerald-400:hover {
-  border-color: #34d399 !important;
+  border-color: #34d399;
 }
 html.dark .hover\:text-emerald-700:hover {
-  color: #6ee7b7 !important;
+  color: #6ee7b7;
 }
 html.dark .hover\:text-red-500:hover {
-  color: #fca5a5 !important;
+  color: #fca5a5;
 }
 html.dark .hover\:text-red-700:hover {
-  color: #fca5a5 !important;
+  color: #fca5a5;
 }
 html.dark .hover\:text-cyan-600:hover {
-  color: #67e8f9 !important;
+  color: #67e8f9;
 }
 html.dark .hover\:text-slate-600:hover {
-  color: #cbd5e1 !important;
+  color: #cbd5e1;
 }
 
 /* Common background opacity variants */
 html.dark .bg-emerald-50\/50 {
-  background-color: rgba(6, 78, 59, 0.5) !important;
+  background-color: rgba(6, 78, 59, 0.5);
 }
 html.dark .bg-slate-50\/60 {
-  background-color: rgba(30, 41, 59, 0.6) !important;
+  background-color: rgba(30, 41, 59, 0.6);
 }
 html.dark .bg-slate-50\/90 {
-  background-color: rgba(30, 41, 59, 0.9) !important;
+  background-color: rgba(30, 41, 59, 0.9);
 }
 html.dark .bg-slate-100\/60 {
-  background-color: rgba(51, 65, 85, 0.6) !important;
+  background-color: rgba(51, 65, 85, 0.6);
 }
 html.dark .bg-blue-50\/40 {
-  background-color: rgba(30, 58, 95, 0.4) !important;
+  background-color: rgba(30, 58, 95, 0.4);
 }
 html.dark .bg-blue-50\/50 {
-  background-color: rgba(30, 58, 95, 0.5) !important;
+  background-color: rgba(30, 58, 95, 0.5);
 }
 html.dark .bg-blue-50\/80 {
-  background-color: rgba(30, 58, 95, 0.8) !important;
+  background-color: rgba(30, 58, 95, 0.8);
 }
 html.dark .bg-purple-50\/20 {
-  background-color: rgba(88, 28, 135, 0.2) !important;
+  background-color: rgba(88, 28, 135, 0.2);
 }
 html.dark .bg-purple-50 {
-  background-color: #3b0764 !important;
+  background-color: #3b0764;
 }
 html.dark .bg-purple-100 {
-  background-color: #581c87 !important;
-  color: #e9d5ff !important;
+  background-color: #581c87;
+  color: #e9d5ff;
 }
 html.dark .border-purple-500 {
-  border-color: #a855f7 !important;
+  border-color: #a855f7;
 }
 html.dark .border-purple-200 {
-  border-color: #581c87 !important;
+  border-color: #581c87;
 }
 html.dark .text-purple-500 {
-  color: #c4b5fd !important;
+  color: #c4b5fd;
 }
 html.dark .bg-amber-50\/20 {
-  background-color: rgba(120, 53, 15, 0.2) !important;
+  background-color: rgba(120, 53, 15, 0.2);
 }
 
 /* Ring overrides */
 html.dark .ring-slate-200 {
-  --tw-ring-color: #334155 !important;
+  --tw-ring-color: #334155;
 }
 
 /* Shadow overrides - ensure shadows are visible in dark mode */
 html.dark .shadow-2xs {
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3) !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
 }
 html.dark .shadow-xs {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
 }
 
 /* ==========================================================================
@@ -686,15 +686,15 @@ html.dark .attendance-staff-col {
 }
 
 .attendance-day-cell:hover {
-  background-color: rgba(59, 130, 246, 0.12) !important;
+  background-color: rgba(59, 130, 246, 0.12);
 }
 
 /* Status Badges Styling */
 .attendance-badge-present {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
   transition: transform 0.1s ease;
 }
 
@@ -703,10 +703,10 @@ html.dark .attendance-staff-col {
 }
 
 .attendance-badge-absent {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3) !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
   transition: transform 0.1s ease;
 }
 
@@ -715,10 +715,10 @@ html.dark .attendance-staff-col {
 }
 
 .attendance-badge-leave {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3) !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
   transition: transform 0.1s ease;
 }
 
@@ -766,7 +766,7 @@ html.dark .attendance-staff-col {
 .salary-ledger-table tr:hover,
 .users-registry-table tr:hover,
 .payees-registry-table tr:hover {
-  background-color: rgba(99, 102, 241, 0.04) !important;
+  background-color: rgba(99, 102, 241, 0.04);
 }
 
 html.dark .cost-logs-table tr:hover,
@@ -774,28 +774,28 @@ html.dark .inventory-master-table tr:hover,
 html.dark .salary-ledger-table tr:hover,
 html.dark .users-registry-table tr:hover,
 html.dark .payees-registry-table tr:hover {
-  background-color: rgba(99, 102, 241, 0.1) !important;
+  background-color: rgba(99, 102, 241, 0.1);
 }
 
 
 /* Sortable.js Drag States */
 .nav-sortable-ghost {
   opacity: 0.4;
-  background-color: #eff6ff !important;
-  border-color: #93c5fd !important;
+  background-color: #eff6ff;
+  border-color: #93c5fd;
 }
 
 .nav-sortable-chosen {
   box-shadow: 0 0 0 2px #3b82f6;
-  background-color: #f0f9ff !important;
+  background-color: #f0f9ff;
 }
 
 .nav-sortable-drag {
   opacity: 0.9;
-  background-color: white !important;
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-  border-radius: 0.5rem !important;
+  background-color: white;
+  border: 2px solid #3b82f6;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
   z-index: 9999;
 }
 
@@ -833,18 +833,18 @@ html.dark .payees-registry-table tr:hover {
 
 /* Telegram notification template manager overrides */
 .active-template-item {
-  background-color: #0284c7 !important; /* sky-600 */
-  color: #ffffff !important;
+  background-color: #0284c7; /* sky-600 */
+  color: #ffffff;
 }
 .active-template-item .template-category {
-  color: #e0f2fe !important; /* sky-100 */
+  color: #e0f2fe; /* sky-100 */
 }
 html.dark .active-template-item {
-  background-color: #0284c7 !important; /* sky-600 */
-  color: #ffffff !important;
+  background-color: #0284c7; /* sky-600 */
+  color: #ffffff;
 }
 html.dark .active-template-item .template-category {
-  color: #e0f2fe !important; /* sky-100 */
+  color: #e0f2fe; /* sky-100 */
 }
 
 /* Variable Chips styling in both modes */
@@ -857,22 +857,23 @@ html.dark .active-template-item .template-category {
   background-color: #e0f2fe;
 }
 html.dark .variable-chip {
-  background-color: #0c4a6e !important; /* sky-950 */
-  color: #38bdf8 !important; /* sky-400 */
-  border-color: #0369a1 !important; /* sky-700 */
+  background-color: #0c4a6e; /* sky-950 */
+  color: #38bdf8; /* sky-400 */
+  border-color: #0369a1; /* sky-700 */
 }
 html.dark .variable-chip:hover {
-  background-color: #0e5a84 !important;
+  background-color: #0e5a84;
 }
 
 /* Catalog active category tab override */
 html.dark .category-tab-active {
-  background-color: #1e293b !important;
-  color: #38bdf8 !important;
-  border-color: #38bdf8 !important;
+  background-color: #1e293b;
+  color: #38bdf8;
+  border-color: #38bdf8;
 }
 
-/* Global Font Weight Mapping: Caps font weights at 600 (semibold) system-wide */
+/* Global Font Weight Mapping: Caps font weights at 600 (semibold) system-wide.
+   Mirrored in the Custom CSS Override (Appearance page) so it can be tuned there. */
 .font-bold,
 .font-extrabold,
 .font-black,
@@ -883,8 +884,9 @@ h2,
 h3,
 h4,
 h5,
-h6 {
-  font-weight: 600 !important;
+h6,
+label {
+  font-weight: 600;
 }
 
 /* Global Font Size Constraint: No heading or text element across the application can exceed 16px (1rem) regardless of screen size */
@@ -893,7 +895,19 @@ h1, h2, h3, h4, h5, h6,
 .md\:text-4xl, .md\:text-3xl, .md\:text-2xl, .md\:text-xl, .md\:text-lg,
 .lg\:text-4xl, .lg\:text-3xl, .lg\:text-2xl, .lg\:text-xl, .lg\:text-lg,
 .sm\:text-4xl, .sm\:text-3xl, .sm\:text-2xl, .sm\:text-xl, .sm\:text-lg {
-  font-size: 16px !important;
-  line-height: 1.35 !important;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+/* Enforce Uniform Font Family Site-Wide: Ensure every element (including .font-mono, tables, inputs, codes, buttons) uses the exact same primary font family */
+*,
+*::before,
+*::after,
+.font-mono,
+code,
+kbd,
+samp,
+pre {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
 }
 

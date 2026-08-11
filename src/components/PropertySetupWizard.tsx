@@ -88,7 +88,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           {step1Done ? (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
                 <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-500" /> {t('add_property_address_heading', 'Add the property address')}
                 </h3>
@@ -145,7 +147,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           {step2Done ? (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
                 <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-emerald-500" /> {t('add_team_member_heading', 'Add at least one team member')}
                 </h3>
@@ -178,7 +182,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           {showRoomsStep && (step3Done ? (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
                 <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <DoorOpen className="w-4 h-4 text-emerald-500" /> {t('create_first_unit_heading', 'Create your first unit')}
                 </h3>

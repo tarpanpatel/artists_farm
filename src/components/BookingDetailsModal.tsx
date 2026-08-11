@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2 } from 'lucide-react';
 import { Guest } from '../types';
-import { markCFormFiled } from '../services/api';
+import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -12,6 +12,11 @@ import { DateRangePicker } from './DateRangePicker';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import {
+  GUEST_STATUS_BOOKED,
+  GUEST_STATUS_CONFIRMED_LEGACY,
+  GUEST_STATUS_CHECKED_IN,
+} from '../constants/guestStatus';
 
 interface BookingDetailsModalProps {
   guest: Guest | null;
@@ -25,6 +30,7 @@ interface BookingDetailsModalProps {
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   onOpenIdVerification?: () => void;
+  onCheckedIn?: (guestId: string) => void;
 }
 
 const formatDate = (dateStr: string) => {
@@ -56,6 +62,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyPhone = '',
   propertyWhatsappTemplate = '',
   onOpenIdVerification,
+  onCheckedIn,
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -488,7 +495,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                               if (ok) {
                                 const filedAt = isChecked ? new Date().toISOString() : null;
                                 guest.cFormFiledAt = filedAt;
-                                showToast(isChecked ? `✔ C-Form marked as filed` : `C-Form marked as pending`, { type: 'success' });
+                                showToast(isChecked ? `C-Form marked as filed` : `C-Form marked as pending`, { type: 'success' });
                               } else {
                                 showToast('Failed to update C-Form status', { type: 'error' });
                               }
@@ -522,13 +529,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           <div id="printableBookingDetailsActionsBar" className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-                {(guest.status === 'Booked' || (guest.status as string) === 'Reserved') && (
+                {(guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
                   <button
                     type="button"
                     onClick={async () => {
-                      const updated = { ...guest, status: 'Active' as const };
-                      await onSave(updated);
-                      showToast(`✔ ${guest.guestName} marked as Checked In!`, { type: 'success' });
+                      // update_guest (what onSave calls) never writes the status
+                      // column - it only touches booking details - so this used to
+                      // look like it worked (optimistic local state) and then
+                      // silently revert to Booked on the next reload. checkin_guest
+                      // is the actual endpoint that persists the status flip.
+                      const ok = await checkinGuestInDB(guest.id);
+                      if (ok) {
+                        guest.status = GUEST_STATUS_CHECKED_IN as any;
+                        onCheckedIn?.(guest.id);
+                        showToast(`${guest.guestName} marked as Checked In!`, { type: 'success' });
+                      } else {
+                        showToast('Failed to check in guest', { type: 'error' });
+                      }
                     }}
                     className="w-full h-9 px-3.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-1 sm:col-span-2"
                   >
