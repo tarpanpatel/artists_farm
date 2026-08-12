@@ -13,6 +13,8 @@ import { PettyCashManagement } from './components/PettyCashManagement';
 import { CashDrawerManager } from './components/CashDrawerManager';
 import { ExpenseItemsManagement } from './components/ExpenseItemsManagement';
 import { StaffManagement } from './components/StaffManagement';
+import { TeamOverviewDashboard } from './components/TeamOverviewDashboard';
+import { AdminControlOverviewDashboard } from './components/AdminControlOverviewDashboard';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { AuditLogsView } from './components/AuditLogsView';
 import { DataExportCenter } from './components/DataExportCenter';
@@ -131,9 +133,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },
-        staff: { tab: 'staff', key: 'staff_payees_control' },
+        team_overview: { tab: 'staff', key: 'team_overview' },
+        team: { tab: 'staff', key: 'team_overview' },
+        staff: { tab: 'staff', key: 'team_overview' },
+        admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
-        analytics: { tab: 'analytics', key: 'dashboard_analytics' },
+        analytics: { tab: 'analytics', key: 'admin_control_overview' },
         purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
@@ -322,8 +327,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
       kitchen: 'kitchen_orders',
       inventory: 'stock_requests',
       petty_cash: 'expenses',
-      staff: 'staff_payees_control',
-      analytics: 'dashboard_analytics',
+      staff: 'team_overview',
+      analytics: 'admin_control_overview',
       audit_logs: 'past_receipts_log',
       export: 'data_export_center',
       menu_manager: 'edit_food_menu',
@@ -673,8 +678,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {
-    // Dropdown section containers (don't land on a separate page view) are always allowed if logged in
-    if (key === 'admin_control_group' || key === 'edit_items_group') return true;
+    // Dropdown section containers & overview launchpads (don't gate on a
+    // specific child action, just "is this section visible at all") are
+    // always allowed if logged in. team_overview/admin_control_overview
+    // specifically: Navigation.tsx's buildTree() renames the real DB items
+    // ('custom_nav-...' / 'admin_control_group') to these keys for its own
+    // sidebar-click routing, but that rename may not have propagated back
+    // into this visibleNavItems array yet (React state timing) - so an
+    // items.find() lookup here is unreliable and the bypass is required,
+    // same as kitchen_overview already gets via its synthetic nav item.
+    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'team_overview' || key === 'admin_control_overview' || key === 'kitchen_overview') return true;
     // Preserve old bookmarked Attendance & Salaries links while the navigation uses
     // the canonical attendance calendar route.
     const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
@@ -761,9 +774,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
         attendance_calendar: { tab: 'staff', key: 'attendance_calendar' },
         staff_directory_salaries: { tab: 'staff', key: 'staff_directory_salaries' },
         staff_permissions: { tab: 'staff', key: 'staff_permissions' },
-        staff: { tab: 'staff', key: 'staff_payees_control' },
+        team_overview: { tab: 'staff', key: 'team_overview' },
+        team: { tab: 'staff', key: 'team_overview' },
+        staff: { tab: 'staff', key: 'team_overview' },
+        admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
-        analytics: { tab: 'analytics', key: 'dashboard_analytics' },
+        analytics: { tab: 'analytics', key: 'admin_control_overview' },
         purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
@@ -1392,7 +1408,7 @@ ${itemsStr}
                     showRoomsStep={!!preloadedData.isMultiKeyProperty}
                     roomCount={preloadedData.currentProperty?.rooms?.length || 0}
                     onSaveLocation={handleSavePropertyLocation}
-                    onGoToStaff={() => handleNavigateTab('staff', 'staff_payees_control')}
+                    onGoToStaff={() => handleNavigateTab('staff', 'team_overview')}
                     onAddUnit={() => handleNavigateTab('dashboard', 'dashboard')}
                   />
                 </ErrorBoundary>
@@ -1609,7 +1625,16 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'staff' && (
+              {!selectedRoomSlugOverride && activeTab === 'staff' && (activeMenuItemKey === 'team_overview' || activeMenuItemKey === 'team') && (
+                <ErrorBoundary section="Team Overview">
+                  <TeamOverviewDashboard
+                    onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'staff', uniqueKey)}
+                    navItems={visibleNavItems}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'staff' && activeMenuItemKey !== 'team_overview' && activeMenuItemKey !== 'team' && (
                 <ErrorBoundary section="Staff Management">
                   <StaffManagement
                     activeMenuItemKey={activeMenuItemKey}
@@ -1621,7 +1646,16 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'analytics' && (
+              {!selectedRoomSlugOverride && activeTab === 'analytics' && (activeMenuItemKey === 'admin_control_overview' || activeMenuItemKey === 'admin_control_group') && (
+                <ErrorBoundary section="Admin Control Overview">
+                  <AdminControlOverviewDashboard
+                    onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'analytics', uniqueKey)}
+                    navItems={visibleNavItems}
+                  />
+                </ErrorBoundary>
+              )}
+
+              {!selectedRoomSlugOverride && activeTab === 'analytics' && activeMenuItemKey !== 'admin_control_overview' && activeMenuItemKey !== 'admin_control_group' && (
                 <ErrorBoundary section="Analytics Dashboard">
                   <AnalyticsDashboard
                     receipts={receipts}

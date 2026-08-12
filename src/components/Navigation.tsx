@@ -153,7 +153,19 @@ export const Navigation: React.FC<NavigationProps> = ({
       kitchenRoot = syntheticKitchen;
     }
 
-    visible.forEach(item => map.set(item.id, { ...item, children: [] }));
+    visible.forEach(item => {
+      const lowerTitle = (item.title || '').trim().toLowerCase();
+      const uKey = item.uniqueKey || '';
+      if (lowerTitle === 'team' || uKey === 'team' || uKey === 'team_overview' || item.id === 'nav-team') {
+        item.uniqueKey = 'team_overview';
+        item.tabKey = 'staff';
+      }
+      if (lowerTitle === 'admin control' || uKey === 'admin_control' || uKey === 'admin_control_group' || uKey === 'admin_control_overview' || item.id === 'nav-admin-control') {
+        item.uniqueKey = 'admin_control_overview';
+        item.tabKey = 'analytics';
+      }
+      map.set(item.id, { ...item, children: [] });
+    });
 
     const kitchenChildKeys = new Set([
       'take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests',
@@ -191,18 +203,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   // First-tier group ids (top-level sidebar sections) - used to make expansion
   // an accordion at this level only: opening one collapses any other that's
   // open. Nested sub-groups deeper than tier 1 keep independent expand state.
-  //
-  // SECOND ATTEMPT at this fix (11 Aug 2026) - the first one (10 Aug 2026,
-  // commit dd94421) built this exact memo plus a toggleExpand() callback with
-  // the right collapse-siblings logic, but the manual click handler below
-  // never actually called it (still did a bare .add(node.id), no removal) -
-  // so the "fix" was dead code from the moment it was committed, never live.
-  // Caught this time because tsc's noUnusedLocals flagged firstTierGroupIds/
-  // toggleExpand as unused, which is what an unwired fix looks like to the
-  // compiler. This time the accordion logic is inlined directly into the
-  // click handler itself (see onClick below) instead of a separate callback,
-  // specifically so there's only one place for the wiring to silently drift
-  // apart again.
   const firstTierGroupIds = useMemo(() => new Set(tree.map(n => n.id)), [tree]);
 
   // Auto-expand active top-tier parent group and auto-collapse non-active top-tier parent groups
@@ -212,7 +212,15 @@ export const Navigation: React.FC<NavigationProps> = ({
     const findOwningTopLevelParentId = (nodes: TreeNode[]): string | null => {
       for (const parentNode of nodes) {
         if (parentNode.children.length > 0) {
-          if (parentNode.uniqueKey === activeKey || parentNode.tabKey === activeKey || parentNode.id === activeKey) {
+          const parentTitle = (parentNode.title || '').trim().toLowerCase();
+          const pKey = parentNode.uniqueKey || parentNode.tabKey || '';
+          
+          if (
+            pKey === activeKey ||
+            parentNode.id === activeKey ||
+            (activeKey === 'team_overview' && (pKey === 'team_overview' || parentTitle === 'team')) ||
+            (activeKey === 'admin_control_overview' && (pKey === 'admin_control_overview' || parentTitle === 'admin control'))
+          ) {
             return parentNode.id;
           }
           const isDescendant = (children: TreeNode[]): boolean => {
