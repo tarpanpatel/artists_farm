@@ -11,7 +11,15 @@ const _isDev = ['3000', '5173', '5174', '8080'].includes(window.location.port.to
 const _base = _isDev ? '' : (() => {
   const path = window.location.pathname.replace(/#.*$/, '');
   const match = path.match(/^(.*?\/artists_farm)(\/|$)/);
-  return match ? match[1] : '/artists_farm';
+  // This site has never actually been deployed under an /artists_farm/
+  // subfolder (see .htaccess RewriteBase, index.php, and every other place
+  // this exact assumption was already stripped out this session) - falling
+  // back to that literal string here made every API_BASE-derived call
+  // resolve to a URL that doesn't exist for any real property/tenant path
+  // (which never contains "/artists_farm/" at all), silently caught by
+  // .htaccess's catch-all rewrite and served index.php's HTML instead of
+  // JSON. Every fetch...FromDB() call in the app was affected.
+  return match ? match[1] : '';
 })();
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
@@ -571,9 +579,9 @@ export async function uploadImageDB(image: File | string, folder: 'menu' | 'cata
       // requests into (e.g. /artists_farm-ai2/php/uploads/images/...) - not
       // reachable directly from the browser, since only /php/... and
       // /artists_farm/php/... are actually proxied. Re-root it onto the same
-      // _base this frontend already uses for the upload request itself: '' in
-      // dev (matches the /php proxy rule), '/artists_farm' in production
-      // (where SCRIPT_NAME already matches _base and this is a no-op).
+      // _base this frontend already uses for the upload request itself: ''
+      // in both dev (matches the /php proxy rule) and production (this site
+      // has never actually been deployed under an /artists_farm/ subfolder).
       const uploadsPath = json.url.replace(/^.*(\/php\/uploads\/.*)$/, '$1');
       return `${API_ROOT_BASE}${uploadsPath}`;
     }
