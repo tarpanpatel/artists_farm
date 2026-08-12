@@ -199,7 +199,15 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // property (properties.is_public_demo) - the frontend then does a completely
 // normal login_user POST with them, replacing the previous auto-session-
 // injection approach (see the removed block above, and git history).
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials'];
+// get_system_settings/get_theme_settings added 12 Aug 2026: both read a
+// single global row (platform_theme_settings, system settings), never
+// anything property-scoped, and need to work on the unauthenticated login
+// page too (it needs the same custom theme/CSS as every other page) - was
+// falling through the universal property-scope gate and 403ing for any
+// session whose property didn't happen to match. The corresponding
+// save_system_settings/save_theme_settings stay out of this list (write
+// actions, root-admin-only, each with its own explicit role check).
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
