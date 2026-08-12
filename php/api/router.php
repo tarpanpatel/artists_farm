@@ -194,66 +194,32 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // universal property-scope gate below and 403ing (logged as a "Property-scope
 // violation") for every session whose resolved $propertyId wasn't the one the
 // gate defaulted to, on every single page load.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug'];
+// get_demo_login_credentials added 12 Aug 2026: returns the username/passcode
+// for the best-priority active staff account on a designated public-demo
+// property (properties.is_public_demo) - the frontend then does a completely
+// normal login_user POST with them, replacing the previous auto-session-
+// injection approach (see the removed block above, and git history).
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
-// PUBLIC DEMO MODE (12 Aug 2026): properties.is_public_demo lets anonymous
-// visitors get full real access to one specific, designated property
-// without logging in - a genuine PHP session auto-created from a real staff
-// account on that property, not a frontend-only illusion. (A prior attempt
-// at this faked the frontend's belief that the visitor was logged in, but
-// never created a real session - every actual data request still 401'd,
-// since every gate below checks $_SESSION, not frontend state.) Runs before
-// $is_authenticated_user is captured so every gate below sees a real,
-// already-authenticated session. Skipped for login_user itself so a real
-// login is never silently overridden.
+// PUBLIC DEMO MODE (12 Aug 2026, replaced with this simpler design later the
+// same day): properties.is_public_demo lets anonymous visitors get full real
+// access to one specific, designated property without logging in.
 //
-// Overrides whenever the CURRENT session doesn't actually have access to
-// the requested demo property - not just when no session exists at all.
-// Originally only fired for a blank session or one this block itself had
-// already created (is_public_demo_session), which left two real ways for a
-// visitor to get stuck on "Access Denied" on this exact property forever:
-// a session predating a staff-persona change (e.g. before the Super Admin
-// role existed - fixed 12 Aug), or - the one this fixes - ANY other
-// leftover session on the same domain/cookie (an expired real login, a
-// stale demo session from testing, etc.) that isn't scoped to this
-// property. isPropertyAccessAllowed() is the same authoritative check
-// every other endpoint uses, so "doesn't have access" here means the exact
-// same thing it means everywhere else in the app.
-if ($action !== 'login_user') {
-    $demoPropertySlug = $_GET['property_slug'] ?? '';
-    if ($demoPropertySlug) {
-        try {
-            $demoStmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
-            $demoStmt->execute([$demoPropertySlug]);
-            $demoPropertyId = $demoStmt->fetchColumn();
-            $sessionAlreadyHasAccess = $demoPropertyId && isset($_SESSION['username']) && isPropertyAccessAllowed($pdo, (int)$demoPropertyId);
-            if ($demoPropertyId && !$sessionAlreadyHasAccess) {
-                // Prefer the highest-privilege active account so demo visitors
-                // see the full tenant-admin experience (Full read-write access
-                // was the explicit decision for this feature), not whichever
-                // staff row happened to sort first. Falls back down the chain
-                // if a property's demo data predates the Super Admin persona.
-                $demoStaffStmt = $pdo->prepare("SELECT id, username, full_name, role FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Super Admin') DESC, (role = 'Admin') DESC, (role = 'Manager') DESC, id ASC LIMIT 1");
-                $demoStaffStmt->execute([$demoPropertyId]);
-                $demoStaff = $demoStaffStmt->fetch(PDO::FETCH_ASSOC);
-                if ($demoStaff) {
-                    $_SESSION['user_id'] = $demoStaff['id'];
-                    $_SESSION['username'] = $demoStaff['username'];
-                    $_SESSION['role'] = $demoStaff['role'] ?: 'Manager';
-                    $_SESSION['property_id'] = $demoPropertyId;
-                    $_SESSION['is_public_demo_session'] = true;
-                }
-            }
-        } catch (PDOException $e) {
-            // is_public_demo column may not exist yet on some environment -
-            // fail open to "not a demo property" rather than 500ing every request.
-        }
-    }
-}
+// This used to auto-create/overwrite the session server-side on arbitrary
+// GET requests (see git history) - three separate rounds of fixes there
+// still left visitors intermittently stuck on "Access Denied" for reasons
+// that never fully reproduced in direct testing, likely some interaction
+// with the browser's own session/cookie state that a scripted test doesn't
+// capture. Replaced entirely with the far simpler, far better-tested path:
+// the frontend calls get_demo_login_credentials (below) to get this
+// property's demo username/passcode, then does a completely normal
+// login_user POST with them - the exact same code path every real staff
+// login already goes through, thousands of times a day, instead of a
+// bespoke session-mutation path only demo visitors ever hit.
 
 // Require API key for write/delete actions, unless user is authenticated via session
 $is_write_action = in_array($request_method, ['POST', 'PUT', 'DELETE']);
@@ -1406,6 +1372,46 @@ switch ($action) {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // See the PUBLIC DEMO MODE comment near the top of this file - the
+    // frontend takes these credentials and does a completely normal
+    // login_user POST with them, rather than this endpoint creating a
+    // session itself. Public and unauthenticated on purpose: the whole
+    // point of a public demo is that anyone can reach it with no prior
+    // access, and the credentials returned are for a designated demo-only
+    // account, never a real tenant's real staff.
+    case 'get_demo_login_credentials':
+        $demoSlug = $_GET['property_slug'] ?? '';
+        if (!$demoSlug) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'property_slug required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
+            $stmt->execute([$demoSlug]);
+            $demoPropertyId = $stmt->fetchColumn();
+            if (!$demoPropertyId) {
+                echo json_encode(['success' => false, 'message' => 'Not a public demo property']);
+                exit;
+            }
+            // Prefer the highest-privilege active account so demo visitors see
+            // the full tenant-admin experience (Full read-write access was the
+            // explicit decision for this feature), not whichever staff row
+            // happened to sort first.
+            $staffStmt = $pdo->prepare("SELECT username, passcode FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Super Admin') DESC, (role = 'Admin') DESC, (role = 'Manager') DESC, id ASC LIMIT 1");
+            $staffStmt->execute([$demoPropertyId]);
+            $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$staff) {
+                echo json_encode(['success' => false, 'message' => 'No active demo staff configured for this property']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'username' => $staff['username'], 'passcode' => $staff['passcode']]);
+        } catch (PDOException $e) {
+            // is_public_demo column may not exist yet on some environment.
+            echo json_encode(['success' => false, 'message' => 'Not a public demo property']);
         }
         exit;
 

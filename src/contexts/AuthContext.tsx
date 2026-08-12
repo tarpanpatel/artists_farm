@@ -127,17 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Failed to parse generic session:', e);
           }
         } else {
-          // Public demo mode (12 Aug 2026): a designated property (see
-          // properties.is_public_demo) auto-authenticates anonymous visitors
-          // with a REAL PHP session, server-side (router.php, right before
-          // $is_authenticated_user is captured) - using a real staff account
-          // on that property, not a fake frontend-only user object. This
-          // check_session call is how the frontend finds out that happened,
-          // since the backend session is invisible to localStorage-based
-          // state otherwise. (A prior version of this skipped the backend
-          // entirely and fabricated a fake "Tenant Admin" user directly here -
-          // it looked like it worked but every real data request still 401'd,
-          // since nothing here can create an actual PHP session.)
           try {
             const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=check_session`);
             const data = await res.json();
@@ -160,8 +149,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setActiveRole(normalizeRole(user.role));
               return;
             }
+
+            // Public demo mode (12 Aug 2026, replaced with this simpler
+            // design later the same day): a designated property (see
+            // properties.is_public_demo) lets anonymous visitors in without
+            // a real login. The first version of this auto-created/
+            // overwrote the session server-side on arbitrary GET requests -
+            // three rounds of fixes there still left visitors intermittently
+            // stuck on "Access Denied" for reasons that never reproduced in
+            // direct testing. Replaced with a completely normal login_user
+            // POST using this property's demo credentials (fetched from a
+            // public endpoint that only ever returns a designated demo-only
+            // account, never a real tenant's) - the exact same, thousands-
+            // of-times-a-day-tested code path every real staff login uses,
+            // instead of a bespoke path only demo visitors ever hit.
+            const propertySlug = getPropertySlug();
+            const credsRes = await apiFetch(
+              `${API_ROOT_BASE}/php/api/router.php?action=get_demo_login_credentials&property_slug=${encodeURIComponent(propertySlug)}`
+            );
+            const creds = await credsRes.json();
+            if (creds?.success && creds?.username && creds?.passcode) {
+              const loginRes = await fetch(`${API_ROOT_BASE}/php/api/router.php?action=login_user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ mobile_number: creds.username, passcode: creds.passcode }),
+              });
+              const loginData = await loginRes.json();
+              if (loginData?.success && loginData?.user) {
+                localStorage.setItem(key, 'true');
+                isAuth = true;
+
+                const user: StaffMember = {
+                  id: String(loginData.user.id ?? loginData.user.username),
+                  name: loginData.user.name || loginData.user.username,
+                  username: loginData.user.username,
+                  role: loginData.user.role || 'Staff',
+                  phone: loginData.user.username,
+                  monthlySalary: 0,
+                  status: 'Active',
+                };
+                localStorage.setItem(userKey(), JSON.stringify(user));
+                setIsAuthenticated(true);
+                setCurrentUser(user);
+                setActiveRole(normalizeRole(user.role));
+                return;
+              }
+            }
           } catch (e) {
-            console.error('check_session failed:', e);
+            console.error('check_session/demo login failed:', e);
           }
         }
       }
