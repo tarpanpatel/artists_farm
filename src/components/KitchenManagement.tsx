@@ -688,7 +688,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   // New Order Form State
   const checkedInGuests = guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
-  const [selectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
+  // Derived live, not useState - there's no UI to manually pick a different
+  // guest, so this must always track the current first checked-in guest.
+  // A useState<string> initializer only runs once at mount, so if the
+  // guest list changed later (new arrival, this guest checked out), order
+  // submission below would silently keep targeting a stale/gone guest.
+  const selectedGuestId = checkedInGuests[0]?.id || '';
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
   });

@@ -272,7 +272,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setEditPhoneNumber(guest.phoneNumber || '');
       setCheckinDate(toInputDateFormat(guest.checkinDate));
       setCheckoutDate(toInputDateFormat(guest.expectedCheckout || guest.checkoutDate));
-      setRoomCharges(guest.roomRate || guest.totalAmount || 0);
+      // "Base Lodging Charges" is the TOTAL charge for the stay (it's what the
+      // GST calc below divides by nights to derive a per-night rate for slab
+      // lookup, and what gets multiplied by the GST% directly) - was
+      // roomRate-first, but roomRate is the PER-NIGHT tariff. For any guest
+      // with a roomRate set (the normal case), that silently pre-filled the
+      // form with 1 night's worth of charge instead of the full stay,
+      // understating both the base invoice and the GST collected on
+      // multi-night stays unless staff happened to notice and correct it.
+      setRoomCharges(guest.totalAmount ?? guest.roomRate ?? 0);
       setIncidentals([]);
       setAdjustments([]);
       setGstEnabled(false);
@@ -281,7 +289,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setAdvanceReceivedBy('');
       setDeskCashier(currentUser?.name || 'Root Admin');
 
-      const lodgingDue = (guest.roomRate || guest.totalAmount || 0) - (guest.advanceAmount || 0);
+      const lodgingDue = (guest.totalAmount ?? guest.roomRate ?? 0) - (guest.advanceAmount || 0);
       setSplitRows([{ id: '1', mode: 'Cash', amount: Math.max(0, lodgingDue) }]);
     }
   }, [guest, isOpen, currentUser]);

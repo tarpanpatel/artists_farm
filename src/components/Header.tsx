@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { Guest } from '../types';
-import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
+import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { t } from '../i18n/en';
 
 interface HeaderProps {
@@ -67,12 +67,17 @@ export const Header: React.FC<HeaderProps> = ({
   const isShowingServed = activeOrders.length === 0 && servedOrders.length > 0;
   const kitchenDisplayOrders = activeOrders.length > 0 ? activeOrders : servedOrders;
 
-  // 2. Bookings logic for MultiKey Property
+  // 2. Bookings logic for MultiKey Property - "Property Bookings / Today &
+  // Tomorrow" is meant to be arrivals/departures needing attention today,
+  // not the whole in-house roster. The status-based OR clause used to match
+  // ANY currently checked-in guest regardless of their actual checkin/
+  // checkout date, so a guest on night 4 of a 10-night stay would show up
+  // under "Today" for the entire stay.
   const todayGuests = guests.filter((g) => {
     if (g.status === GUEST_STATUS_CHECKEDOUT_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_OUT) return false;
     const checkin = g.checkinDate?.split(' ')[0] || g.checkinDate?.split('T')[0] || '';
     const checkout = g.expectedCheckout?.split(' ')[0] || g.expectedCheckout?.split('T')[0] || '';
-    return checkin === todayStr || checkout === todayStr || g.status === GUEST_STATUS_ACTIVE_LEGACY || (g.status as string) === GUEST_STATUS_CHECKED_IN;
+    return checkin === todayStr || checkout === todayStr;
   });
 
   const tomorrowGuests = guests.filter((g) => {
