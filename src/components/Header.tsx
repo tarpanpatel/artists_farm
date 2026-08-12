@@ -166,9 +166,17 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Notifications Popover Dropdown */}
+            {/* Notifications Popover Dropdown.
+                Mobile fix (12 Aug 2026): this was `absolute right-0` anchored
+                to the small bell-button wrapper above, not the viewport - on
+                a phone the bell sits well left of the true screen edge (play
+                button/avatar icons after it), so a ~350-384px-wide dropdown
+                bled off the LEFT edge of the screen with no way to reach the
+                cut-off content. Below sm, switch to viewport-fixed
+                positioning (pinned under the header, small side margins)
+                instead of anchor-relative. */}
             {showNotificationDropdown && (
-              <div className="notifications-popover-dropdown absolute right-0 mt-2 w-88 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />

@@ -458,13 +458,23 @@ export const Navigation: React.FC<NavigationProps> = ({
       {isSidebarOpen && (
         <div
           onClick={onCloseSidebar}
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
         />
       )}
 
+      {/* z-30 -> z-[56] (12 Aug 2026): on mobile, opening this sidebar should
+          always be the topmost thing on screen - "webapp should work like a
+          native mobile app" per explicit product direction. At z-30 it sat
+          BELOW any already-open dropdown (StyledSelect.tsx's options panel is
+          z-50), so e.g. leaving a form's "Room" select open and then tapping
+          the hamburger menu rendered that dropdown floating on top of the
+          freshly-opened sidebar instead of behind it. Placed just above every
+          z-50 popover/modal in the app but still below toasts (z-[9999]) and
+          the confirm dialog (z-[99999]), which should stay visible/actionable
+          even with the sidebar open. */}
       <aside
         id="mainSidebarNavigationContainer"
-        className={`fixed top-0 left-0 z-30 h-screen pt-16 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
+        className={`fixed top-0 left-0 z-[56] h-screen pt-16 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen

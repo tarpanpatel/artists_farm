@@ -169,6 +169,28 @@ html.dark {
   --badge-neutral-border: #475569;
 }
 
+/* Mobile: prevent iOS Safari auto-zoom-on-focus (12 Aug 2026)
+   Safari zooms the whole page in whenever a focused form control's
+   computed font-size is under 16px - there's no viewport-meta flag to
+   disable just that behavior without also disabling pinch-zoom entirely
+   (an accessibility regression Apple deliberately makes hard to do). The
+   shared Input/Textarea/StyledSelect components use Tailwind's text-sm
+   (14px), which is under the threshold - every text input, select and
+   textarea site-wide zoomed on focus on a phone, then didn't zoom back
+   out on blur, native apps never do this. !important because Tailwind's
+   own text-sm/text-xs utility classes on the same elements have equal
+   selector specificity - source order in the built bundle isn't
+   guaranteed to put this after them. Desktop is untouched (chrome/
+   Firefox/desktop Safari don't have this zoom behavior at all), so this
+   only needs to apply below the tablet breakpoint. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Global Date Input - Click Anywhere to Open Picker */
 input[type="date"],
 input[type="datetime-local"],
