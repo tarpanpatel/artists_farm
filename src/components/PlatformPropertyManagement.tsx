@@ -588,6 +588,19 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
+  // "Share via WhatsApp" - opens a wa.me click-to-chat link pre-filled with
+  // the credentials shown on this row, same api.whatsapp.com/send pattern
+  // already used for guest-facing shares (BookingDetailsModal.tsx,
+  // GuestManagement.tsx, ReceiptEditModal.tsx). No backend call at all -
+  // this just builds a URL and opens it; WhatsApp itself is the delivery
+  // channel, unlike Send via Email which goes through request_login_info.
+  const buildTenantWhatsAppShareUrl = (tenant: Tenant, creds: { username: string; passcode: string }) => {
+    const digits = (tenant.phone || '').replace(/\D/g, '');
+    const phone = digits.length === 10 ? '91' + digits : digits;
+    const message = `Hi ${tenant.name},\n\nHere are your Artists Farm login details:\n\nUsername: ${creds.username}\nPasscode: ${creds.passcode}\n\nLog in here: ${window.location.origin}/\n\nDidn't request this? You can ignore this message.`;
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  };
+
   const togglePropertyStatus = async (propertyId: number, currentStatus: string) => {
     try {
       setPropertyToggleLoading(propertyId);
@@ -1046,6 +1059,25 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       </>
                                     )}
                                   </Button>
+                                  {tenant.phone ? (
+                                    <a href={buildTenantWhatsAppShareUrl(tenant, creds)} target="_blank" rel="noopener noreferrer">
+                                      <Button variant="secondary" size="xs" className="flex items-center gap-1.5">
+                                        <svg className="w-3 h-3 text-emerald-600 fill-current shrink-0" viewBox="0 0 24 24">
+                                          <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
+                                        </svg>
+                                        {t('send_via_whatsapp_button', 'Share via WhatsApp')}
+                                      </Button>
+                                    </a>
+                                  ) : (
+                                    <span title={t('no_tenant_phone_tooltip', 'No phone on file for this tenant')}>
+                                      <Button variant="secondary" size="xs" disabled className="flex items-center gap-1.5">
+                                        <svg className="w-3 h-3 text-slate-400 fill-current shrink-0" viewBox="0 0 24 24">
+                                          <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
+                                        </svg>
+                                        {t('send_via_whatsapp_button', 'Share via WhatsApp')}
+                                      </Button>
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()

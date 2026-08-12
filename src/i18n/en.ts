@@ -297,6 +297,8 @@ export const strings: Record<string, string> = {
   no_tenant_email_tooltip: "No email on file for this tenant",
   login_info_sent_toast: "Login details emailed to the tenant",
   login_info_send_failed_toast: "Failed to send email",
+  send_via_whatsapp_button: "Share via WhatsApp",
+  no_tenant_phone_tooltip: "No phone on file for this tenant",
   passcode_label: "Passcode",
   hide_button: "Hide",
   show_button: "Show",
