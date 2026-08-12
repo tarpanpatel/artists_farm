@@ -305,12 +305,19 @@ if (typeof window !== 'undefined' && !(window as any).__csrfFetchPatched) {
     let response = await nativeFetch(input, await withToken());
 
     // Token can be stale (server restart clears sessions, or the 1h
-    // lifetime in csrf_handler.php elapsed) - refetch once and retry
-    // transparently instead of surfacing a confusing error to the user.
-    if (response.status === 403) {
+    // lifetime in csrf_handler.php elapsed) -> 403 "invalid or expired".
+    // It can also simply be MISSING if the very first fetchCsrfToken() call
+    // of the page load hit a transient network blip and cachedCsrfToken
+    // stayed null -> csrf_handler.php returns 400 "CSRF token missing" in
+    // that case, a status this block didn't retry on before, so the very
+    // first write of a session (e.g. Delete Property) could fail outright
+    // with no visible recovery. Both are the same underlying problem - no
+    // valid token was attached - so both get one silent refetch-and-retry.
+    if (response.status === 403 || response.status === 400) {
       try {
         const body = await response.clone().json();
-        if (typeof body?.error === 'string' && body.error.toLowerCase().includes('csrf')) {
+        const message = (body?.error || body?.message || '');
+        if (typeof message === 'string' && message.toLowerCase().includes('csrf')) {
           cachedCsrfToken = null;
           response = await nativeFetch(input, await withToken());
         }

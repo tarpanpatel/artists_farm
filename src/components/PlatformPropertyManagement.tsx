@@ -290,6 +290,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
   const handleDeleteProperty = async (propertyId: number) => {
     setOperationLoading(true);
+    setError(null);
     try {
       const response = await fetch('/php/api/router.php?action=delete_property', {
         method: 'POST',
@@ -1389,7 +1390,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
             </ul>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Type <span className="font-bold font-mono text-slate-900 dark:text-white">{properties.find(p => p.id === showDeletePropertyModal)?.name || ''}</span> to confirm:
+              Type <span className="font-bold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
             </p>
             <Input
               type="text"
@@ -1397,14 +1398,26 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               placeholder={t('type_here_placeholder', 'Type here...')}
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              className="mb-6 font-mono"
+              className="mb-4 font-mono"
             />
+
+            {/* Surfaced inline (23 Aug 2026): this modal is a full-screen fixed
+                overlay, so the page-level error banner further up the tree was
+                rendering behind it - a failed delete looked like nothing
+                happened at all except a console network error. */}
+            {error && (
+              <div className="mb-4 flex gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Button
                 onClick={() => {
                   setShowDeletePropertyModal(null);
                   setDeleteConfirmText('');
+                  setError(null);
                 }}
                 className="flex-1"
                 variant="secondary"
@@ -1417,7 +1430,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   handleDeleteProperty(showDeletePropertyModal);
                   setDeleteConfirmText('');
                 }}
-                disabled={operationLoading || deleteConfirmText !== (properties.find(p => p.id === showDeletePropertyModal)?.name || '')}
+                disabled={operationLoading || deleteConfirmText !== 'DELETE'}
                 className="flex-1 flex items-center justify-center gap-2"
                 variant="danger"
                 size="md"

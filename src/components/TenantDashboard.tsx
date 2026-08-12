@@ -207,21 +207,28 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   };
 
   const handleDeleteProperty = async (property: Property) => {
+    setError(null);
     try {
+      // BUG (fixed): this sent { id: property.id } - router.php's
+      // delete_property reads $input['property_id'], not 'id', so every
+      // tenant-side delete has always 400'd "property_id required" and
+      // been swallowed by the empty catch below with no feedback at all.
       const res = await fetch('/php/api/router.php?action=delete_property', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: property.id }),
+        body: JSON.stringify({ property_id: property.id }),
       });
       const data = await res.json();
       if (data.success) {
         setModal({ type: 'none' });
         showSuccess(`"${property.name}" deleted. Slots freed.`);
         await loadData();
+      } else {
+        setError(data.message || 'Failed to delete property');
       }
     } catch {
-      /* ignore */
+      setError('Failed to delete property');
     }
   };
 
@@ -781,9 +788,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </span>{' '}
                 back to your subscription.
               </p>
+              {/* This modal is a fixed full-screen overlay, so the page-level
+                  error banner further up the tree renders behind it - surface
+                  failures here too instead of the delete silently doing
+                  nothing visible. */}
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+                </div>
+              )}
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3">
-              <Button variant="tertiary" size="sm" onClick={() => setModal({ type: 'none' })}>
+              <Button variant="tertiary" size="sm" onClick={() => { setModal({ type: 'none' }); setError(null); }}>
                 {t('cancel_button', 'Cancel')}
               </Button>
               <Button
