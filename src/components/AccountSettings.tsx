@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCog, AtSign, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from 'lucide-react';
+import { UserCog, User, Phone, Mail, ShieldCheck, KeyRound, Loader2, Save } from 'lucide-react';
 import { Input } from './Input';
 import { Button } from './Button';
 import { useToast } from './ToastContext';
@@ -29,9 +29,15 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Username and phone number are the SAME value everywhere else in the app
+  // (staff, tenant users all log in with "Phone Number (Login Username)" as
+  // one field - see StaffManagement.tsx) - this screen used to treat them as
+  // two independently-editable fields, which is how a root admin account
+  // could end up with a username that didn't match its own phone number
+  // and therefore couldn't be typed into the numeric-only login field at
+  // all. One field now; phone_number is sent identical to username.
   const [profileUsername, setProfileUsername] = useState(username);
   const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [gstin, setGstin] = useState('');
 
@@ -48,7 +54,6 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
           const p: PlatformAdminProfile = json.data;
           setProfileUsername(p.username);
           setFullName(p.full_name || '');
-          setPhoneNumber(p.phone_number || '');
           setEmail(p.email || '');
           setGstin(p.gstin || '');
         } else {
@@ -67,6 +72,10 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
   const handleSave = async () => {
     if (!profileUsername.trim()) {
       showToast('Username is required', { type: 'warning' });
+      return;
+    }
+    if (!/^\d{10}$/.test(profileUsername.trim())) {
+      showToast('Username must be your 10-digit phone number - it doubles as your login (the login screen only accepts digits)', { type: 'warning' });
       return;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -97,7 +106,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
         body: JSON.stringify({
           username: profileUsername.trim(),
           full_name: fullName.trim(),
-          phone_number: phoneNumber.trim(),
+          phone_number: profileUsername.trim(),
           email: email.trim(),
           gstin: gstin.trim().toUpperCase(),
           current_passcode: currentPasscode,
@@ -123,32 +132,35 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">Loading account settings...</div>;
+    return <div className="account-settings__loading p-8 text-center text-slate-400 dark:text-slate-500 text-sm">Loading account settings...</div>;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="account-settings space-y-4">
       {/* Profile Details */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <UserCog className="w-4 h-4 text-blue-500" /> Profile Details
+      <div className="account-settings__section account-settings__section--profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="account-settings__section-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+          <UserCog className="account-settings__section-icon w-4 h-4 text-blue-500" /> Profile Details
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">
           Your platform login and contact details. GSTIN appears on the platform owner's records and can be edited anytime.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
+        <div className="account-settings__grid grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="account-settings__field">
             <Input
-              label="Username"
+              label="Phone Number (Login Username)"
+              type="tel"
+              maxLength={10}
               value={profileUsername}
-              onChange={(e) => setProfileUsername(e.target.value)}
-              placeholder="e.g. admin"
-              leftIcon={<AtSign className="w-4 h-4" />}
-              helperText="Used to log in. Changing it takes effect immediately."
+              onChange={(e) => setProfileUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="10-digit mobile number"
+              inputMode="numeric"
+              leftIcon={<Phone className="w-4 h-4" />}
+              helperText="Used to log in - same value everywhere in the app, no separate username. Changing it takes effect immediately."
             />
           </div>
-          <div>
+          <div className="account-settings__field">
             <Input
               label="Full Name"
               value={fullName}
@@ -157,17 +169,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               leftIcon={<User className="w-4 h-4" />}
             />
           </div>
-          <div>
-            <Input
-              label="Phone Number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="e.g. 9876543210"
-              inputMode="numeric"
-              leftIcon={<Phone className="w-4 h-4" />}
-            />
-          </div>
-          <div>
+          <div className="account-settings__field">
             <Input
               label="Root Admin Email"
               type="email"
@@ -177,7 +179,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               leftIcon={<Mail className="w-4 h-4" />}
             />
           </div>
-          <div className="sm:col-span-2">
+          <div className="account-settings__field account-settings__field--full sm:col-span-2">
             <Input
               label="GSTIN"
               value={gstin}
@@ -191,16 +193,16 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
       </div>
 
       {/* Passcode */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
-          <KeyRound className="w-4 h-4 text-amber-500" /> Change Passcode
+      <div className="account-settings__section account-settings__section--passcode bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="account-settings__section-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+          <KeyRound className="account-settings__section-icon w-4 h-4 text-amber-500" /> Change Passcode
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">
           Leave the passcode fields blank to keep your current passcode. The current passcode is required to set a new one.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
+        <div className="account-settings__grid grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="account-settings__field">
             <Input
               label="Current Passcode"
               type="password"
@@ -210,7 +212,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               inputMode="numeric"
             />
           </div>
-          <div>
+          <div className="account-settings__field">
             <Input
               label="New Passcode"
               type="password"
@@ -220,7 +222,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
               inputMode="numeric"
             />
           </div>
-          <div>
+          <div className="account-settings__field">
             <Input
               label="Confirm New Passcode"
               type="password"
@@ -233,7 +235,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="account-settings__actions flex flex-wrap items-center gap-3">
         <Button variant="primary" size="md" onClick={handleSave} disabled={isSaving}>
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {isSaving ? 'Saving...' : 'Save Changes'}

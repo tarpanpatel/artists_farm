@@ -56,6 +56,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [showPropertyModal, setShowPropertyModal] = useState<'add' | 'edit' | null>(null);
   const [showDeletePropertyModal, setShowDeletePropertyModal] = useState<number | null>(null);
+  const [showDeleteTenantModal, setShowDeleteTenantModal] = useState<number | null>(null);
   const [moduleToggleLoading, setModuleToggleLoading] = useState<string | null>(null);
   const [propertyModules, setPropertyModules] = useState<Record<number, { kitchen: boolean }>>({});
   const [propertyToggleLoading, setPropertyToggleLoading] = useState<number | null>(null);
@@ -311,6 +312,37 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     } catch (err) {
       console.error('Failed to delete property:', err);
       setError('Failed to delete property');
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  const handleDeleteTenant = async (tenantId: number) => {
+    setOperationLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/php/api/router.php?action=delete_tenant', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tenant_id: tenantId }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Deleting a tenant cascades to every property under it - drop both
+        // from local state, not just the tenant row.
+        setTenants((prev) => prev.filter((t) => t.id !== tenantId));
+        setProperties((prev) => prev.filter((p) => p.tenant_id !== tenantId));
+        setShowDeleteTenantModal(null);
+      } else {
+        setError(data.message || 'Failed to delete tenant');
+      }
+    } catch (err) {
+      console.error('Failed to delete tenant:', err);
+      setError('Failed to delete tenant');
     } finally {
       setOperationLoading(false);
     }
@@ -719,6 +751,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           size="xs"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDeleteTenantModal(tenant.id);
+                          }}
+                          className="text-red-600 dark:text-red-400 font-bold"
+                          title={t('delete_tenant_tooltip', 'Delete Tenant')}
+                          variant="ghost"
+                          size="xs"
+                        >
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -1442,6 +1486,80 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   </>
                 ) : (
                   t('delete_property_button', 'Delete Property')
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Tenant Confirmation */}
+      {showDeleteTenantModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+              {t('delete_tenant_heading', 'Delete Tenant?')}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
+            </p>
+            <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
+              <li><strong>Every property under this tenant</strong> (
+                {properties.filter((p) => p.tenant_id === showDeleteTenantModal).length} total) will be permanently deleted too - not just the tenant record.
+              </li>
+              <li>For each of those properties: all <strong>active and upcoming bookings</strong> will be permanently deleted.</li>
+              <li>Past bookings and financial ledger records <strong>will remain intact</strong> for historical audits.</li>
+              <li>Menus, inventory stock, staff assignments, and modules for every property will be removed.</li>
+            </ul>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+              Type <span className="font-bold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
+            </p>
+            <Input
+              type="text"
+              autoFocus
+              placeholder={t('type_here_placeholder', 'Type here...')}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="mb-4 font-mono"
+            />
+
+            {error && (
+              <div className="mb-4 flex gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowDeleteTenantModal(null);
+                  setDeleteConfirmText('');
+                  setError(null);
+                }}
+                className="flex-1"
+                variant="secondary"
+                size="md"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  handleDeleteTenant(showDeleteTenantModal);
+                  setDeleteConfirmText('');
+                }}
+                disabled={operationLoading || deleteConfirmText !== 'DELETE'}
+                className="flex-1 flex items-center justify-center gap-2"
+                variant="danger"
+                size="md"
+              >
+                {operationLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  t('delete_tenant_button', 'Delete Tenant')
                 )}
               </Button>
             </div>

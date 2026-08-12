@@ -235,7 +235,7 @@ $is_authenticated_user = isset($_SESSION['username']);
 $is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
 
 // Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
-$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'create_tenant', 'save_theme_settings'];
+$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'delete_tenant', 'create_tenant', 'save_theme_settings'];
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
 
@@ -402,6 +402,34 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
         if ($row && (int)$row['tenant_id'] === $requestedTenantId) return true;
     }
     return false;
+}
+
+// Shared by delete_property AND delete_tenant (12 Aug 2026): wipes everything
+// under one property EXCEPT the properties row itself, so delete_tenant can
+// call this per-property and then delete the tenant row - properties.tenant_id
+// has ON DELETE CASCADE, so removing the tenant removes the property rows (and
+// their own FK-linked children: ical_sync_configs, property_licenses,
+// property_modules, property_audit_log, property_shared_data,
+// license_expiry_notifications) automatically. Everything in $tables below has
+// NO foreign key to properties at all, so none of that would be cleaned up by
+// any cascade - this is the only thing that ever deletes it. Runs inside the
+// caller's own transaction (no begin/commit here) so a multi-property tenant
+// delete is all-or-nothing.
+function deletePropertyChildData(PDO $pdo, $property_id): void {
+    $tables = ['kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'misc_charges', 'telegram_settings', 'property_modules'];
+    foreach ($tables as $table) {
+        // Check if table exists before attempting delete
+        $checkStmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
+        $checkStmt->execute([$table]);
+        if ($checkStmt->fetch()) {
+            // Table exists, delete from it (will fail if deletion fails)
+            $pdo->prepare("DELETE FROM `$table` WHERE property_id = ?")->execute([$property_id]);
+        }
+    }
+
+    // Only delete active/upcoming guests (present and future bookings) -
+    // past bookings/financial ledger records stay intact for historical audits.
+    $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status IN (?, ?)")->execute([$property_id, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN]);
 }
 
 // SECURITY (10 Aug 2026, extracted 11 Aug 2026): getCurrentPropertyId() (property_resolver.php)
@@ -1035,7 +1063,6 @@ switch ($action) {
 
         $newUsername = trim($input['username'] ?? '');
         $newFullName = trim($input['full_name'] ?? '');
-        $newPhoneNumber = trim($input['phone_number'] ?? '');
         $newEmail = trim($input['email'] ?? '');
         $newGstin = strtoupper(trim($input['gstin'] ?? ''));
         $currentPasscode = trim($input['current_passcode'] ?? '');
@@ -1046,6 +1073,22 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Username is required']);
             exit;
         }
+        // SECURITY/CONSISTENCY (12 Aug 2026): username and phone_number used to
+        // be two independently-settable fields on this one endpoint, unlike
+        // every other account type in the app (staff/tenant users log in with
+        // a single "Phone Number (Login Username)" field - see
+        // StaffManagement.tsx) - a root admin could end up with a username
+        // that didn't match their own phone number and therefore couldn't be
+        // typed into the numeric-only login field at all. phone_number is no
+        // longer accepted as a separate input - it always mirrors username,
+        // enforced here rather than trusting the frontend to keep them in
+        // sync, and username must be a 10-digit number for the same reason.
+        if (!preg_match('/^\d{10}$/', $newUsername)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Username must be your 10-digit phone number']);
+            exit;
+        }
+        $newPhoneNumber = $newUsername;
         if ($newEmail && !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid email address']);
@@ -1907,21 +1950,7 @@ switch ($action) {
 
         try {
             $pdo->beginTransaction();
-            // Delete configuration, menu, staff, and setup tables - FAIL if any deletion fails
-            $tables = ['kitchen_orders', 'food_menu', 'kitchen_stock', 'stock_requests', 'stock_requisitions', 'stock_purchases', 'stock_wastage', 'stock_adjustments', 'stock_log', 'inventory_items', 'staff_users', 'staff_roles', 'misc_charges', 'telegram_settings', 'property_modules'];
-            foreach ($tables as $table) {
-                // Check if table exists before attempting delete
-                $checkStmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
-                $checkStmt->execute([$table]);
-                if ($checkStmt->fetch()) {
-                    // Table exists, delete from it (will fail if deletion fails)
-                    $pdo->prepare("DELETE FROM `$table` WHERE property_id = ?")->execute([$property_id]);
-                }
-            }
-
-            // Only delete active/upcoming guests (present and future bookings)
-            $pdo->prepare("DELETE FROM guests WHERE property_id = ? AND status IN (?, ?)")->execute([$property_id, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_IN]);
-
+            deletePropertyChildData($pdo, $property_id);
             $pdo->prepare("DELETE FROM properties WHERE id = ?")->execute([$property_id]);
             $pdo->commit();
             echo json_encode(['success' => true, 'message' => 'Property deleted successfully']);
@@ -1929,6 +1958,59 @@ switch ($action) {
             $pdo->rollBack();
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Property deletion failed: ' . $e->getMessage()]);
+        }
+        exit;
+
+    // Root-admin only (there was previously no way to do this at all - a
+    // tenant's account had to be left inactive forever, properties and all).
+    // Cascades to every property under the tenant first, running the exact
+    // same per-property cleanup delete_property uses (see
+    // deletePropertyChildData() above) for tables with no FK to properties,
+    // then deletes the tenant row itself - properties.tenant_id is
+    // ON DELETE CASCADE, so that removes the now-emptied property rows (and
+    // their own FK-linked children) automatically. All in one transaction:
+    // a tenant with 40 properties either loses all 40 or none.
+    case 'delete_tenant':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $tenant_id = $input['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("SELECT id FROM properties WHERE tenant_id = ?");
+            $stmt->execute([$tenant_id]);
+            $propertyIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($propertyIds as $propId) {
+                deletePropertyChildData($pdo, $propId);
+            }
+
+            $delStmt = $pdo->prepare("DELETE FROM tenants WHERE id = ?");
+            $delStmt->execute([$tenant_id]);
+            if ($delStmt->rowCount() === 0) {
+                // Nothing was actually deleted - tenant_id didn't exist. Roll
+                // back rather than silently reporting success for a no-op.
+                $pdo->rollBack();
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Tenant not found']);
+                exit;
+            }
+
+            $pdo->commit();
+            echo json_encode([
+                'success' => true,
+                'message' => count($propertyIds) > 0
+                    ? 'Tenant and ' . count($propertyIds) . ' propert' . (count($propertyIds) === 1 ? 'y' : 'ies') . ' deleted successfully'
+                    : 'Tenant deleted successfully',
+            ]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Tenant deletion failed: ' . $e->getMessage()]);
         }
         exit;
 
