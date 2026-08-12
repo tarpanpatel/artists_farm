@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -8,6 +8,7 @@ import { ScrollToTopButton } from './ScrollToTopButton';
 import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
+import { useToast } from './ToastContext';
 
 interface Tenant {
   id: number;
@@ -48,6 +49,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   onLogout,
 }) => {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // auto-generated one, or without a valid phone number at the time.
   const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
   const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
+  // "Send via Email" - emails the CURRENT credentials shown on this row to
+  // the tenant's own email on file, via the same request_login_info action
+  // that powers the tenant's own self-service "Forgot Password?" link on
+  // the login screen (public/unauthenticated there; calling it here with
+  // the tenant's known username works identically - it just looks the
+  // account up by username, doesn't care who's asking).
+  const [sendingLoginId, setSendingLoginId] = useState<number | null>(null);
   // "Reset Password" - the admin-side counterpart to create_tenant_login,
   // for a tenant that already HAS a login: hands them a fresh temp passcode
   // directly, without depending on the tenant's own self-service "Forgot
@@ -553,6 +562,32 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
+  const handleSendLoginInfoEmail = async (tenantId: number, tenantUsername: string, tenantEmail?: string) => {
+    if (!tenantEmail) {
+      showToast(t('no_tenant_email_toast', 'No email on file for this tenant - add one via Edit Tenant first'), { type: 'error' });
+      return;
+    }
+    setSendingLoginId(tenantId);
+    try {
+      const res = await fetch('/php/api/router.php?action=request_login_info', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: tenantUsername, login_url: window.location.origin + '/' }),
+      });
+      const data = await res.json();
+      showToast(
+        data.success ? t('login_info_sent_toast', 'Login details emailed to the tenant') : (data.message || t('login_info_send_failed_toast', 'Failed to send email')),
+        { type: data.success ? 'success' : 'error' }
+      );
+    } catch (err) {
+      console.error('Failed to send login info email:', err);
+      showToast(t('login_info_send_failed_toast', 'Failed to send email'), { type: 'error' });
+    } finally {
+      setSendingLoginId(null);
+    }
+  };
+
   const togglePropertyStatus = async (propertyId: number, currentStatus: string) => {
     try {
       setPropertyToggleLoading(propertyId);
@@ -993,6 +1028,24 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       </p>
                                     )}
                                   </div>
+                                  <Button
+                                    onClick={() => handleSendLoginInfoEmail(tenant.id, creds.username, tenant.email)}
+                                    disabled={sendingLoginId === tenant.id}
+                                    title={!tenant.email ? t('no_tenant_email_tooltip', 'No email on file for this tenant') : undefined}
+                                    variant="secondary"
+                                    size="xs"
+                                    className="flex items-center gap-1.5"
+                                  >
+                                    {sendingLoginId === tenant.id ? (
+                                      <>
+                                        <Loader2 className="w-3 h-3 animate-spin" /> {t('sending_button', 'Sending...')}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Mail className="w-3 h-3" /> {t('send_via_email_button', 'Send via Email')}
+                                      </>
+                                    )}
+                                  </Button>
                                 </div>
                               );
                             })()

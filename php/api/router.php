@@ -1024,7 +1024,7 @@ switch ($action) {
                 exit;
             }
 
-            $loginUrl = trim($input['login_url'] ?? '') ?: '/artists_farm/';
+            $loginUrl = trim($input['login_url'] ?? '') ?: '/';
             $displayName = $user['tenant_name'] ?: ($user['full_name'] ?: 'there');
             $body = "<p>Hi {$displayName},</p>"
                 . "<p>Here are your Artists Farm login details:</p>"
