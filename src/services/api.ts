@@ -185,13 +185,6 @@ export function isTestingModeActive(): boolean {
   return false;
 }
 
-export function setTestingModeState(active: boolean) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('artists_farm_testing_mode', active ? 'true' : 'false');
-    document.cookie = `artists_farm_testing_mode=${active ? '1' : '0'}; path=/; max-age=31536000`;
-  }
-}
-
 export function getTestingHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...customHeaders };
   if (isTestingModeActive()) {
@@ -383,24 +376,6 @@ export const fetchCurrentProperty = async (): Promise<any | null> => {
     return null;
   }
 };
-
-export async function resetTestDatabaseInDB(): Promise<{ success: boolean; message?: string }> {
-  try {
-    const res = await apiFetch(`${API_BASE}?action=reset_test_database`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const json = await res.json();
-    if (json.status === 'success') {
-      return { success: true, message: json.message };
-    } else {
-      return { success: false, message: json.message || 'Server returned error status' };
-    }
-  } catch (err: any) {
-    console.error('Failed to reset test database:', err);
-    return { success: false, message: err?.message || 'Network or response parse error' };
-  }
-}
 
 export interface StockRequestSheet {
   id: string;

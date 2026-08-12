@@ -49,7 +49,6 @@ interface KitchenManagementProps {
   onRequestMaterial: (req: Requisition) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
   activeMenuItemKey?: string;
-  isTestingMode?: boolean;
 }
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
@@ -59,7 +58,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   onRequestMaterial,
   onDispatchTelegram,
   activeMenuItemKey = 'kitchen_orders',
-  isTestingMode = false,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -689,9 +687,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
 
   // New Order Form State
-  const checkedInGuests = isTestingMode
-    ? guests
-    : guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
+  const checkedInGuests = guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
   const [selectedGuestId] = useState<string>(checkedInGuests[0]?.id || '');
   const [cartItems, setCartItems] = useState<{ menuItem: MenuItem; quantity: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('kitchen_cart_items') || '[]'); } catch { return []; }
@@ -1284,9 +1280,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && checkedInGuests.length === 0)}
+                    disabled={cartItems.length === 0 || !selectedGuest || checkedInGuests.length === 0}
                     title={
-                      !isTestingMode && checkedInGuests.length === 0
+                      checkedInGuests.length === 0
                         ? t('no_active_resident_tooltip')
                         : cartItems.length === 0
                         ? t('order_cart_empty_tooltip')
@@ -1376,9 +1372,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="p-3 bg-white border-t border-slate-200 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || (!isTestingMode && checkedInGuests.length === 0)}
+                    disabled={cartItems.length === 0 || !selectedGuest || checkedInGuests.length === 0}
                     title={
-                      !isTestingMode && checkedInGuests.length === 0
+                      checkedInGuests.length === 0
                         ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
                         : cartItems.length === 0
                         ? 'Order cart is empty'

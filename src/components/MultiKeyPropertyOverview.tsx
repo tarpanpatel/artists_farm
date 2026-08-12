@@ -74,7 +74,6 @@ interface MultiKeyPropertyOverviewProps {
   onCheckout?: (guestId: string) => void;
   activeMenuItemKey?: string;
   onSetActiveMenuItemKey?: (key: string) => void;
-  isTestingMode?: boolean;
   kitchenModuleEnabled?: boolean;
   hideHeader?: boolean;
   serviceRequests?: any[];
@@ -105,7 +104,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onDispatchTelegram,
   activeMenuItemKey = '',
   onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
-  isTestingMode: _isTestingMode = false,
   kitchenModuleEnabled = false,
   hideHeader = false,
   serviceRequests = [],

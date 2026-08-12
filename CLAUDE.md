@@ -91,10 +91,21 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 
 ## 🧪 Testing & Development
 
-### Test/Demo Mode Indicator
-- Test button in Header should show **visual indicator** when test mode is active
-- Use checkmark icon ✓ or different background color to show status
-- Example: "Test ✓" when enabled, "Test" when disabled
+### Test/Demo Mode Indicator (REMOVED 12 Aug 2026)
+- The Header's "Test" button and the whole Sandbox/Testing Mode system
+  (demo-data generate/clear toggle, `DemoDataModal`, `isTestingMode` state
+  threaded through App.tsx/KitchenManagement/MultiKeyPropertyOverview,
+  `setTestingModeState`/`resetTestDatabaseInDB` in `api.ts`) were removed
+  site-wide, for all tenants, at the user's request - not just hidden on
+  the public demo. Do not re-add a "Test" button or wire `isTestingMode`
+  back into business logic.
+- `php/api/demo_data.php` (`generateDemoData()`/`clearDemoData()`) still
+  exists and is still used - by the public-demo-property auto-login flow
+  and any direct/scripted calls - just no longer has a UI trigger.
+- `isTestingModeActive()`/`getTestingHeaders()` still exist in `api.ts`
+  (load-bearing for `apiFetch`'s header attachment) but are now
+  permanently inert - nothing left in the app can ever set that
+  localStorage flag to `true`.
 
 ### Telegram Group Selection (Local vs Production) — IMPORTANT
 - **Which Telegram groups receive messages depends on where the site is hosted** — there is NO automatic local/prod group swap in code; the selection is implicit:
@@ -121,7 +132,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 4. ❌ Creating multiple bookings in same room → Only 1 active booking per room
 5. ❌ Not passing callbacks as props → Always thread props down from App.tsx
 6. ❌ Forgetting dark mode support → Always add `dark:` prefix
-7. ❌ Not showing Test mode status → Add visual indicator to Test button
+7. ❌ Re-adding a "Test"/Demo Mode button or `isTestingMode` business logic → this was deliberately removed site-wide, don't reintroduce it
 8. ❌ Assuming component state without checking props → Always verify what's actually being passed
 
 ##  Power Shell commands

@@ -6,8 +6,6 @@ import {
   Menu,
   Bell,
   CheckCircle2,
-  Play,
-  Square,
   Utensils,
   Calendar,
   User
@@ -17,23 +15,17 @@ import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { Guest } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_ACTIVE_LEGACY, GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
-import { Button } from './Button';
 import { t } from '../i18n/en';
 
 interface HeaderProps {
   onLogout?: () => void;
   onOpenTelegramModal: () => void;
-  onOpenDemoModal?: () => void;
-  onToggleTestingMode?: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   isIconOnly: boolean;
   onToggleIconOnly: () => void;
   currentPropertyColorScheme: string;
   propertyName: string;
-  isTestModeActive?: boolean;
-  isTestingMode?: boolean;
-  onCloseDemoModal?: () => void;
   kitchenModuleEnabled?: boolean;
   isMultiKeyProperty?: boolean;
   guests?: Guest[];
@@ -43,17 +35,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onLogout: _onLogout,
   onOpenTelegramModal: _onOpenTelegramModal,
-  onOpenDemoModal,
-  onToggleTestingMode,
   isSidebarOpen: _isSidebarOpen,
   onToggleSidebar,
   isIconOnly,
   onToggleIconOnly,
   currentPropertyColorScheme: _currentPropertyColorScheme,
   propertyName,
-  isTestModeActive: _isTestModeActive = false,
-  isTestingMode = false,
-  onCloseDemoModal: _onCloseDemoModal,
   kitchenModuleEnabled = true,
   isMultiKeyProperty = false,
   guests = [],
@@ -336,20 +323,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
-
-          {/* Test Data Button */}
-          {onOpenDemoModal && (
-            <Button
-              variant={isTestingMode ? 'danger' : 'secondary'}
-              size="sm"
-              onClick={isTestingMode ? onToggleTestingMode : onOpenDemoModal}
-              title={isTestingMode ? t('stop_test_mode_tooltip', 'Stop Test Mode') : t('open_test_data_center_tooltip', 'Open Test Data Center')}
-              aria-label={t('test_data_center_aria', 'Test Data Center')}
-              leftIcon={isTestingMode ? <Square className="w-3.5 h-3.5 fill-current text-white" /> : <Play className="w-3.5 h-3.5 fill-current text-emerald-600" />}
-            >
-              <span className="hidden sm:inline">{isTestingMode ? t('stop_test_button', 'Stop Test') : t('test_button', 'Test')}</span>
-            </Button>
-          )}
 
           {/* User Profile */}
           {isAuthenticated ? (

@@ -21,7 +21,6 @@ import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { ServiceRequestsManagement } from './components/ServiceRequestsManagement';
 import { ICalSyncManager } from './components/ICalSyncManager';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
-import { DemoDataModal } from './components/DemoDataModal';
 import { EditPropertyPage } from './components/EditPropertyPage';
 import { GlobalModal } from './components/GlobalModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
@@ -38,11 +37,11 @@ import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
-import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, isTestingModeActive, setTestingModeState, resetTestDatabaseInDB, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB } from './services/api';
+import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fetchNavMenuFromDB, sendTelegramAlertDB, fetchGuestsFromDB, fetchAuditLogsFromDB, addAuditLogDB, saveReceiptToDB, addGuestToDB, updateGuestInDB, checkoutGuestInDB, deleteGuestFromDB, resolveTelegramTemplate, dedupMenuDB, fetchReceiptsFromDB, getPropertySlug, fetchServiceRequestsFromDB, ServiceRequest, createServiceRequestInDB } from './services/api';
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon } from 'lucide-react';
+import { Smartphone, Download, X as CloseIcon, Share } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
@@ -195,7 +194,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [currentPropertyColorScheme] = useState<string>(
     preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
   );
-  const [isTestModeActive, setIsTestModeActive] = useState(false);
 
   // MultiKey room navigation handlers
   const { propertySlug: multiKeyPropertySlug } = getPropertyAndRoomSlugs();
@@ -370,7 +368,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // NOTE: Bot token moved to backend .env file - DO NOT hardcode in frontend
 
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(
     preloadedData.telegramConfig || {
       botToken: '',
@@ -465,6 +462,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // PWA Install Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
+  // iOS Safari never fires beforeinstallprompt - Apple's WebKit has never
+  // implemented that API on any iOS browser, so the banner above can never
+  // show there. The only way to install on iPhone is manual: Safari's Share
+  // sheet -> "Add to Home Screen". Detect that case and show instructions
+  // instead, so iPhone visitors get *something* prompting them rather than
+  // silently never seeing an install option at all.
+  const [showIOSInstallBanner, setShowIOSInstallBanner] = useState<boolean>(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -482,11 +486,24 @@ function AppBody({ preloadedData }: AppBodyProps) {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isStandalone = (window.navigator as any).standalone === true
+      || window.matchMedia('(display-mode: standalone)').matches;
+    const dismissed = localStorage.getItem('ios_install_banner_dismissed') === '1';
+    if (isIOS && !isStandalone && !dismissed) {
+      setShowIOSInstallBanner(true);
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, [showToast]);
+
+  const dismissIOSInstallBanner = () => {
+    setShowIOSInstallBanner(false);
+    localStorage.setItem('ios_install_banner_dismissed', '1');
+  };
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
@@ -497,50 +514,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setShowInstallBanner(false);
   };
 
-  // Sandbox / Testing Mode State & Handlers
-  const [isTestingMode, setIsTestingMode] = useState<boolean>(isTestingModeActive());
-
-  const handleToggleTestingMode = async () => {
-    const nextState = !isTestingMode;
-
-    if (nextState) {
-      // Turning ON: Generate demo data
-      await resetTestDatabaseInDB();
-    } else {
-      // Turning OFF: Clear demo data
-      try {
-        await fetch('/php/api/demo_data.php', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Testing-Mode': '1'
-          },
-          body: JSON.stringify({
-            action: 'clear',
-            property_id: preloadedData.currentProperty?.id,
-          }),
-          credentials: 'include',
-        });
-        showToast("Sandbox Test Mode exited successfully! Refreshing...", { type: 'success' });
-      } catch (err) {
-        console.error('Failed to clear demo data:', err);
-      }
-      
-      setTestingModeState(nextState);
-      setIsTestingMode(nextState);
-      setTimeout(() => {
-        window.location.reload();
-      }, 1200);
-      return;
-    }
-
-    setTestingModeState(nextState);
-    setIsTestingMode(nextState);
-  };
-
-  // Re-fetch ALL data when testing mode changes (live DB ↔ test DB). Shares
-  // hydrationTokenRef with the property-hydration effect below so whichever
-  // fetch cycle started last wins, regardless of which effect it belongs to.
+  // Re-fetch ALL data when the property or kitchen module availability
+  // changes. Shares hydrationTokenRef with the property-hydration effect
+  // below so whichever fetch cycle started last wins, regardless of which
+  // effect it belongs to.
   useEffect(() => {
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
@@ -566,7 +543,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       if (data && data.length > 0) setReceipts(data); else setReceipts([]);
     });
-  }, [isTestingMode, isModuleEnabled, preloadedData.currentProperty?.id]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id]);
 
 
 
@@ -1346,23 +1323,12 @@ ${itemsStr}
           <Header
             onLogout={handleLogout}
             onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
-            onOpenDemoModal={() => {
-              setIsDemoModalOpen(true);
-              setIsTestModeActive(true);
-            }}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isIconOnly={isIconOnly}
             onToggleIconOnly={() => setIsIconOnly(!isIconOnly)}
             currentPropertyColorScheme={currentPropertyColorScheme}
             propertyName={propertyName}
-            isTestModeActive={isTestModeActive}
-            isTestingMode={isTestingMode}
-            onToggleTestingMode={handleToggleTestingMode}
-            onCloseDemoModal={() => {
-              setIsDemoModalOpen(false);
-              setIsTestModeActive(false);
-            }}
             kitchenModuleEnabled={kitchenEnabled}
             isMultiKeyProperty={preloadedData.isMultiKeyProperty}
             guests={guests}
@@ -1409,11 +1375,6 @@ ${itemsStr}
           templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
         />
 
-        <DemoDataModal
-          isOpen={isDemoModalOpen}
-          onClose={() => setIsDemoModalOpen(false)}
-          propertyId={preloadedData.currentProperty?.id}
-        />
 
         {/* Main Dashboard Container */}
         {isAuthenticated && (
@@ -1460,7 +1421,6 @@ ${itemsStr}
                   onDispatchTelegram={dispatchTelegramAlert}
                   activeMenuItemKey={activeMenuItemKey}
                   onSetActiveMenuItemKey={setActiveMenuItemKey}
-                  isTestingMode={isTestingMode}
                   kitchenModuleEnabled={isModuleEnabled('kitchen')}
                   onUpdateBooking={handleUpdateGuest}
                   onDeleteBooking={handleDeleteGuest}
@@ -1516,7 +1476,6 @@ ${itemsStr}
                       onDispatchTelegram={dispatchTelegramAlert}
                       activeMenuItemKey={activeMenuItemKey}
                       onSetActiveMenuItemKey={setActiveMenuItemKey}
-                      isTestingMode={isTestingMode}
                       kitchenModuleEnabled={isModuleEnabled('kitchen')}
                       hideHeader={true}
                       onUpdateBooking={handleUpdateGuest}
@@ -1610,7 +1569,6 @@ ${itemsStr}
                     onRequestMaterial={handleRequestMaterial}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
-                    isTestingMode={isTestingMode}
                   />
                 </ErrorBoundary>
               )}
@@ -1815,6 +1773,26 @@ ${itemsStr}
                 <CloseIcon className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        )}
+
+        {showIOSInstallBanner && (
+          <div className="fixed bottom-6 right-6 left-6 md:left-auto md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-50 flex items-center gap-4 transition-all duration-300 animate-slide-in">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Share className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Artists Farm App</h4>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Tap <Share className="w-3 h-3 inline -mt-0.5" /> Share, then "Add to Home Screen"
+              </p>
+            </div>
+            <button
+              onClick={dismissIOSInstallBanner}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer animate-none shrink-0"
+            >
+              <CloseIcon className="w-4 h-4" />
+            </button>
           </div>
         )}
 
