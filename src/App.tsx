@@ -43,7 +43,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon, Share } from 'lucide-react';
+import { Smartphone, Download, X as CloseIcon, Share, ChevronDown } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
@@ -490,6 +490,16 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // (manual Add to Home Screen instructions), everything else only once
   // deferredPrompt has actually been captured below.
   const [isIOSDevice, setIsIOSDevice] = useState<boolean>(false);
+  // Safari's Share button lives in a different spot on iPhone (bottom
+  // toolbar) vs iPad (top-right, next to the address bar) - the banner's
+  // step 1 wording and pointer arrow below need to match whichever one is
+  // actually true, or "tap Share" is just as vague as no instructions at
+  // all. iPadOS 13+ deliberately reports a desktop Safari user agent by
+  // default (Apple's "request desktop site by default" policy), so
+  // /iPad/.test(userAgent) alone misses most real iPads - the reliable
+  // signal is a Mac platform string that still has touch support, which no
+  // actual Mac has.
+  const [isIPadDevice, setIsIPadDevice] = useState<boolean>(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -508,7 +518,13 @@ function AppBody({ preloadedData }: AppBodyProps) {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isIPad = /iPad/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIPadDevice(isIPad);
+    // isIPad folded in here too: iPadOS 13+ reports as desktop Safari by
+    // default, so the plain /iPad/ check below would otherwise miss it and
+    // this whole manual-install flow would never show on most real iPads.
+    const isIOS = (/iPhone|iPod/.test(navigator.userAgent) || isIPad) && !(window as any).MSStream;
     setIsIOSDevice(isIOS);
 
     const standaloneQuery = window.matchMedia('(display-mode: standalone)');
@@ -1853,23 +1869,57 @@ ${itemsStr}
           </div>
         )}
 
+        {/* iOS install instructions (redesigned 12 Aug 2026): Safari gives no
+            website any API to trigger "Add to Home Screen" itself - only
+            the user tapping Share, themselves, can do it. That's an Apple
+            platform restriction, not something a button here can work
+            around. The old one-line "Tap Share, then Add to Home Screen"
+            wasn't wrong, just too thin to actually be followable - no step
+            numbers, no indication of WHERE Share is. Rebuilt as explicit
+            numbered steps plus a bouncing arrow pointing at the actual
+            toolbar (bottom on iPhone, top on iPad - see isIPadDevice). */}
         {showIOSInstallBanner && (
-          <div className="fixed bottom-6 right-6 left-6 md:left-auto md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-50 flex items-center gap-4 transition-all duration-300 animate-slide-in">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Share className="w-5 h-5" />
+          <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl z-50 transition-all duration-300 animate-slide-in overflow-hidden">
+            {isIPadDevice && (
+              <div className="flex justify-center pt-1.5 animate-bounce">
+                <ChevronDown className="w-5 h-5 text-blue-500 rotate-180" />
+              </div>
+            )}
+            <div className="p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Install Artists Farm App</h4>
+                <ol className="mt-2 space-y-1.5">
+                  <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    <span>
+                      Tap <Share className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>Share</strong> {isIPadDevice ? 'at the top of the screen' : 'in the bar below'}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">2</span>
+                    <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+                  </li>
+                  <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">3</span>
+                    <span>Tap <strong>"Add"</strong> in the top-right corner</span>
+                  </li>
+                </ol>
+              </div>
+              <button
+                onClick={dismissIOSInstallBanner}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer animate-none shrink-0"
+              >
+                <CloseIcon className="w-4 h-4" />
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Artists Farm App</h4>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Tap <Share className="w-3 h-3 inline -mt-0.5" /> Share, then "Add to Home Screen"
-              </p>
-            </div>
-            <button
-              onClick={dismissIOSInstallBanner}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer animate-none shrink-0"
-            >
-              <CloseIcon className="w-4 h-4" />
-            </button>
+            {!isIPadDevice && (
+              <div className="flex justify-center pb-1.5 animate-bounce">
+                <ChevronDown className="w-5 h-5 text-blue-500" />
+              </div>
+            )}
           </div>
         )}
 
