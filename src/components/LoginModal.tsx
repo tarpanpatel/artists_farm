@@ -57,8 +57,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
     setIsLoading(true);
     try {
-      const response = await fetch('/artists_farm/php/api/authenticate.php', {
+      // FIX (12 Aug 2026): this posted to /artists_farm/php/api/authenticate.php
+      // - the fake "/artists_farm/" subfolder assumption that broke every API
+      // call site-wide earlier this engagement (see src/services/api.ts's
+      // API_BASE fix) and was fixed everywhere else, but this component was
+      // missed. That path doesn't exist on any real property URL, so it fell
+      // through .htaccess's catch-all rewrite to index.php's HTML instead of
+      // JSON, and response.json() threw - surfacing as the generic "Network
+      // error during authentication" with no indication of the real cause.
+      // Switched to the same login_user action every other login flow in the
+      // app already uses (LoginPage.tsx) - it already returns everything this
+      // component needs, including access_all_properties/tenant_id/tenant_slug
+      // for the property-picker branch below.
+      const response = await fetch('/php/api/router.php?action=login_user', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mobile_number: mobileNumber,
