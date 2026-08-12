@@ -6,22 +6,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
-### Tailwind animations — later, first concrete target identified
-
-Noted for a future pass (11 Aug 2026, refined same day with a first real
-target): consistent `animate-spin`-based loading/processing state for
-every async action, using Tailwind's built-in animation utilities
-(`animate-spin`/`animate-ping`/`animate-pulse`/`animate-bounce` - all
-present unchanged in this app's Tailwind v4, same utilities the v1.x docs
-show). Checked current state so this isn't starting from zero when
-picked up: `animate-spin` is already used in 28 files, and there *is* a
-dominant pattern (Lucide's `Loader2` icon + `animate-spin`, used
-consistently in 8 of those) - but the other ~20 files spin something
-else (a different icon, most likely), so it's not fully unified yet.
-Design consistency sweep (`DESIGN_CONSISTENCY_SWEEP.md`) has landed, so
-this is unblocked - same "stay inside Tailwind classes, no inline styles"
-guardrail applies here too.
-
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
 Fixed and shipped, see git history for details on each: cross-tenant
@@ -114,4 +98,4 @@ What's still open:
 
 ---
 
-*Last Updated: 2026-08-11 (evening)*
+*Last Updated: 2026-08-12 (morning)*
