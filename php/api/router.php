@@ -250,7 +250,7 @@ $is_authenticated_user = isset($_SESSION['username']);
 $is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
 
 // Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
-$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'delete_tenant', 'create_tenant', 'save_theme_settings'];
+$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'delete_tenant', 'create_tenant', 'create_tenant_login', 'save_theme_settings'];
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
 
@@ -1384,6 +1384,87 @@ switch ($action) {
                 exit;
             }
             echo json_encode(['success' => true, 'data' => $user]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Root-admin-only: create a login for a tenant that doesn't have one yet
+    // (12 Aug 2026) - create_tenant already auto-creates one for brand-new
+    // tenants with a valid 10-digit phone on file, but tenants created
+    // before that logic existed, or without a valid phone at the time, were
+    // left with no way to log in at all and no way to fix it short of a
+    // direct DB insert. Same convention as create_tenant's own auto-login:
+    // username = the tenant's phone number, random 6-digit temp passcode,
+    // must_change_passcode so they're forced to set their own on first use.
+    case 'create_tenant_login':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $tenant_id = $input['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $tStmt = $pdo->prepare("SELECT id, name, phone FROM tenants WHERE id = ? LIMIT 1");
+            $tStmt->execute([$tenant_id]);
+            $tenant = $tStmt->fetch();
+            if (!$tenant) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Tenant not found']);
+                exit;
+            }
+
+            // Don't silently create a second login if one already exists -
+            // the "no login" state this button responds to should already
+            // rule this out, but re-check server-side rather than trust it.
+            $existingStmt = $pdo->prepare("
+                SELECT id FROM users WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL) LIMIT 1
+            ");
+            $existingStmt->execute([$tenant_id]);
+            if ($existingStmt->fetch()) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'message' => 'This tenant already has a login']);
+                exit;
+            }
+
+            $phoneDigits = preg_replace('/\D/', '', $tenant['phone'] ?? '');
+            $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
+            if (strlen($phoneDigits) !== 10) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'This tenant has no valid 10-digit phone number on file - add one first via Edit Tenant, then try again.']);
+                exit;
+            }
+
+            $usernameTaken = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+            $usernameTaken->execute([$phoneDigits]);
+            if ($usernameTaken->fetch()) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'message' => "A login with username {$phoneDigits} already exists on a different account - change this tenant's phone number first."]);
+                exit;
+            }
+
+            $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $pdo->prepare("
+                INSERT INTO users (username, full_name, phone_number, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode)
+                VALUES (?, ?, ?, ?, 'super_admin', 0, ?, 1)
+            ")->execute([$phoneDigits, $tenant['name'], $phoneDigits, $tempPasscode, $tenant_id]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Login created successfully',
+                'data' => [
+                    'username' => $phoneDigits,
+                    'passcode' => $tempPasscode,
+                    'must_change_passcode' => 1,
+                ],
+            ]);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);

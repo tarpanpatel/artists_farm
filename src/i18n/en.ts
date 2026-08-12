@@ -285,6 +285,8 @@ export const strings: Record<string, string> = {
   max_properties_label: "Max Properties",
   login_credentials_label: "Login Credentials",
   no_login_exists_message: "No login exists for this tenant yet.",
+  create_login_button: "Create Login",
+  creating_button: "Creating...",
   passcode_label: "Passcode",
   hide_button: "Hide",
   show_button: "Show",

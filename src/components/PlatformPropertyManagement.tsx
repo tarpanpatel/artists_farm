@@ -88,6 +88,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // it's a sensitive on-demand lookup, not something to bulk-load upfront.
   const [tenantCredsMap, setTenantCredsMap] = useState<Record<number, { username: string; passcode: string; mustChangePasscode: boolean } | 'not_found' | null>>({});
   const [credsLoadingId, setCredsLoadingId] = useState<number | null>(null);
+  // Loading state for "Create Login" - shown in place of "No login exists
+  // for this tenant yet." for tenants that were created before create_tenant
+  // auto-generated one, or without a valid phone number at the time.
+  const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
+  const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
   const [revealedPasscodeId, setRevealedPasscodeId] = useState<number | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   // Populated after a successful "Add Tenant" - keeps the modal open to show
@@ -466,6 +471,38 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
+  const handleCreateTenantLogin = async (tenantId: number) => {
+    setCreatingLoginId(tenantId);
+    setCreateLoginError(null);
+    try {
+      const res = await fetch('/php/api/router.php?action=create_tenant_login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setTenantCredsMap((prev) => ({
+          ...prev,
+          [tenantId]: {
+            username: data.data.username,
+            passcode: data.data.passcode,
+            mustChangePasscode: !!Number(data.data.must_change_passcode),
+          },
+        }));
+        setRevealedPasscodeId(tenantId); // show the fresh passcode immediately, not masked
+      } else {
+        setCreateLoginError({ tenantId, message: data.message || 'Failed to create login' });
+      }
+    } catch (err) {
+      console.error('Failed to create tenant login:', err);
+      setCreateLoginError({ tenantId, message: 'Failed to create login' });
+    } finally {
+      setCreatingLoginId(null);
+    }
+  };
+
   const togglePropertyStatus = async (propertyId: number, currentStatus: string) => {
     try {
       setPropertyToggleLoading(propertyId);
@@ -812,9 +849,33 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               <Loader2 className="w-3 h-3 animate-spin" /> Loading...
                             </p>
                           ) : tenantCredsMap[tenant.id] === 'not_found' || !tenantCredsMap[tenant.id] ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {t('no_login_exists_message', 'No login exists for this tenant yet.')}
-                            </p>
+                            <div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                                {t('no_login_exists_message', 'No login exists for this tenant yet.')}
+                              </p>
+                              <Button
+                                onClick={() => handleCreateTenantLogin(tenant.id)}
+                                disabled={creatingLoginId === tenant.id}
+                                variant="secondary"
+                                size="xs"
+                                className="flex items-center gap-1.5"
+                              >
+                                {creatingLoginId === tenant.id ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 animate-spin" /> {t('creating_button', 'Creating...')}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-3 h-3" /> {t('create_login_button', 'Create Login')}
+                                  </>
+                                )}
+                              </Button>
+                              {createLoginError?.tenantId === tenant.id && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 shrink-0" /> {createLoginError.message}
+                                </p>
+                              )}
+                            </div>
                           ) : (
                             (() => {
                               const creds = tenantCredsMap[tenant.id] as { username: string; passcode: string; mustChangePasscode: boolean };
