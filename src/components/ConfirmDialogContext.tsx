@@ -75,16 +75,16 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
       {children}
       {pendingDialog && (
         <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 confirm-dialog"
           onClick={handleCancel}
         >
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 text-left transform transition-all animate-in zoom-in-95 duration-200"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 text-left transform transition-all animate-in zoom-in-95 duration-200 confirm-dialog__dialog"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 confirm-dialog__header">
               <div
-                className={`p-3 rounded-xl shrink-0 ${
+                className={`p-3 rounded-xl shrink-0 confirm-dialog__icon-wrapper ${
                   pendingDialog.options.variant === 'danger'
                     ? 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400'
                     : pendingDialog.options.variant === 'info'
@@ -93,40 +93,40 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 }`}
               >
                 {pendingDialog.options.variant === 'danger' ? (
-                  <Trash2 className="w-6 h-6" />
+                  <Trash2 className="w-6 h-6 confirm-dialog__icon" />
                 ) : pendingDialog.options.variant === 'info' ? (
-                  <Info className="w-6 h-6" />
+                  <Info className="w-6 h-6 confirm-dialog__icon" />
                 ) : (
-                  <AlertTriangle className="w-6 h-6" />
+                  <AlertTriangle className="w-6 h-6 confirm-dialog__icon" />
                 )}
               </div>
 
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+              <div className="flex-1 min-w-0 confirm-dialog__content">
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white confirm-dialog__title">
                   {pendingDialog.options.title ||
                     (pendingDialog.options.variant === 'danger'
                       ? t('confirm_action_title')
                       : t('confirmation_title'))}
                 </h3>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line confirm-dialog__message">
                   {pendingDialog.options.message}
                 </p>
               </div>
 
               <button
                 onClick={handleCancel}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors confirm-dialog__close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <div className="mt-6 flex items-center justify-end gap-3 confirm-dialog__footer">
               {!pendingDialog.isAlert && (
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer confirm-dialog__btn confirm-dialog__btn--cancel"
                 >
                   {pendingDialog.options.cancelText || t('cancel_button')}
                 </button>
@@ -134,7 +134,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
               <button
                 type="button"
                 onClick={handleConfirm}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs text-white transition-all shadow-md cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs text-white transition-all shadow-md cursor-pointer confirm-dialog__btn confirm-dialog__btn--confirm ${
                   pendingDialog.options.variant === 'danger'
                     ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                     : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

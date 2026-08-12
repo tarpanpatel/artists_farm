@@ -409,8 +409,8 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
   // Only root admins can access this feature
   if (!isRootAdmin) {
     return (
-      <div className="space-y-6">
-        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4">
+      <div className="space-y-6 custom-css-override__root">
+        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4 custom-css-override__access-denied">
           <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-bold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
@@ -425,8 +425,8 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+      <div className="space-y-6 custom-css-override__root">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 custom-css-override__loading">
           <p className="text-slate-600 dark:text-slate-400">{t('loading_system_settings_message', 'Loading system settings...')}</p>
         </div>
       </div>
@@ -434,9 +434,9 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 custom-css-override__root">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs custom-css-override__header">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -464,9 +464,9 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       </div>
 
       {/* Editor */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden custom-css-override__editor">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 custom-css-override__toolbar">
           <div className="flex items-center gap-2">
             <Code className="w-4 h-4 text-slate-400" />
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{t('styles_css_label', 'styles.css')}</span>
@@ -507,7 +507,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         </div>
 
         {/* Textarea */}
-        <div className="relative">
+        <div className="relative custom-css-override__textarea-wrapper">
           <Textarea
             ref={textareaRef}
             value={css}
@@ -523,7 +523,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         </div>
 
         {/* Action Bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700 custom-css-override__action-bar">
           <div className="flex items-center gap-2">
             <button
               onClick={handleApply}
@@ -556,7 +556,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       </div>
 
       {/* Lucide Icon Browser */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden custom-css-override__icon-browser">
         <button
           onClick={() => setShowIconBrowser(!showIconBrowser)}
           className="w-full flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
@@ -846,7 +846,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       </div>
 
       {/* Quick Reference */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3 custom-css-override__quick-reference">
         <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-purple-100 dark:bg-purple-950 text-purple-600 px-2 py-0.5 rounded-md text-[10px]">{t('tips_badge', 'TIPS')}</span>
           {t('common_css_overrides_heading', 'Common CSS Overrides')}
@@ -873,7 +873,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg animate-toast-in">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg animate-toast-in custom-css-override__toast">
           {toast}
         </div>
       )}

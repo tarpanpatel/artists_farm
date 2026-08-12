@@ -320,7 +320,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="data-export-center space-y-6">
       <PageHeader
         title={t('data_export_center_title', 'Data Export & Backup Center')}
         subtitle={t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
@@ -334,9 +334,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
       </PageHeader>
 
       {/* Control Card & Dropdowns */}
-      <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-2xs space-y-6">
+      <div className="data-export-center__control-card bg-white p-6 rounded-lg border border-slate-200 shadow-2xs space-y-6">
         {/* Segment Tabs Selector */}
-        <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
+        <div className="data-export-center__tabs flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
           <button
             onClick={() => setExportRangeType('month')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
@@ -447,9 +447,9 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         </div>
 
         {/* Action Export Cards List */}
-        <div className="space-y-4">
+        <div className="data-export-center__cards-list space-y-4">
           {/* Card 1: Bookings */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
+          <div className="data-export-center__export-card flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
@@ -468,6 +468,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
             </button>
           </div>
+
 
           {/* Card 2: Kitchen Purchases */}
           {kitchenModuleEnabled && (

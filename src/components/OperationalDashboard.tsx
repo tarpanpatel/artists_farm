@@ -300,7 +300,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="operational-dashboard space-y-6">
       <PageHeader
         title={t('dashboard_heading', 'Dashboard')}
         subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
@@ -311,9 +311,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </PageHeader>
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
-      <div className={`grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
+      <div className={`operational-dashboard__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
         {/* Arrivals Block */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--arrivals bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
               <Calendar className="w-5 h-5" />
@@ -328,7 +328,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Bookings"
           >
             <span>Bookings</span>
@@ -337,7 +337,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
 
         {/* Departures Block */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--departures bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
               <LogOut className="w-5 h-5" />
@@ -352,7 +352,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Bookings"
           >
             <span>Bookings</span>
@@ -362,7 +362,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
         {/* Guests in-house Block (Only for multi-key property) */}
         {isMultiKeyProperty && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="operational-dashboard__metric operational-dashboard__metric--inhouse bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
                 <User className="w-5 h-5" />
@@ -387,7 +387,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         )}
 
         {/* Service Requests Block */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--service-requests bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
               <Bell className="w-5 h-5" />
@@ -402,7 +402,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('service_requests')}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Service Requests"
           >
             <span>Requests</span>
@@ -413,8 +413,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Room Info / Property Location Bar */}
       {roomName ? (
-        <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="flex-1">
+        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="operational-dashboard__room-info-content flex-1">
             {isEditingRoomName ? (
               <Input
                 value={editingRoomName}
@@ -472,12 +472,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       ) : null}
       {/* Front-desk Alerts */}
       {(totalAlerts > 0 || clearedGuests.length > 0) && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
+        <div className="operational-dashboard__alerts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+          <h3 className="operational-dashboard__alerts-title font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+            <AlertTriangle className="operational-dashboard__alerts-icon w-4 h-4 text-red-600" />
             {t('alerts_heading', 'Alerts')}
             {totalAlerts > 0 && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+              <span className="operational-dashboard__alerts-badge text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
                 {totalAlerts}
               </span>
             )}
@@ -582,11 +582,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
       {cFormPending.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+        <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
+          <h3 className="operational-dashboard__cform-title font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('cform_filing_due_heading', 'C-Form Filing Due')}
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
+            <span className="operational-dashboard__cform-badge text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
               {cFormPending.length}
             </span>
           </h3>
@@ -628,10 +628,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       )}
 
       {/* 3-Column Operational Row: Guest Staying / Check-ins | Kitchen Queue | Requisitions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: Resident Profile / Today's Check-ins & Pending Actions */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
-          <div>
+        <div className="operational-dashboard__col-profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+          <div className="operational-dashboard__col-profile-inner">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
@@ -740,8 +740,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
         {/* Column 2: Kitchen KDS Card */}
         {kitchenModuleEnabled ? (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
-            <div>
+          <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
+            <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
@@ -796,7 +796,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
+          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
             <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
             <p>{t('kitchen_module_disabled', 'Kitchen Module Disabled')}</p>
           </div>

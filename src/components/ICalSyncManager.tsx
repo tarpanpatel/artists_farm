@@ -337,7 +337,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
   if (loading) {
     return (
-      <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+      <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center gap-3 ical-sync-manager__loading">
         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
         <span className="text-sm font-semibold">{t('ical_loading_message', 'Loading iCal integration feeds...')}</span>
       </div>
@@ -345,11 +345,11 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   }
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200 ical-sync-manager__root">
       {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
         {/* Breadcrumb Navigation */}
-        <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center">
+        <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
           <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
           <span>/</span>
           <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
@@ -377,9 +377,9 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       </div>
 
       {/* Top 4 Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Active Connected Channels */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ical-sync-manager__kpi-grid">
+         {/* Card 1: Active Connected Channels */}
+         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
@@ -394,8 +394,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
           </p>
         </div>
 
-        {/* Card 2: Auto-Sync Worker Interval */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+         {/* Card 2: Auto-Sync Worker Interval */}
+         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
@@ -449,17 +449,17 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         {/* Table Filter Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3 flex-1 min-w-[240px]">
+          <div className="flex items-center gap-2.5 ical-sync-manager__filter-toolbar">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
-                className="pl-9"
-              />
+<Input
+                 type="text"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
+                 className="pl-9 ical-sync-manager__search-input"
+               />
             </div>
 
             {/* Platform Filter Dropdown */}

@@ -320,7 +320,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     if (hasChildren) {
       const itemKey = node.uniqueKey || node.tabKey;
       return (
-        <div key={node.id} className="pt-1">
+        <div key={node.id} className="pt-1 navigation__node">
           <button
             type="button"
             onClick={() => {
@@ -345,28 +345,28 @@ export const Navigation: React.FC<NavigationProps> = ({
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
                 : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
+            } navigation__node-btn`}
           >
-            <div className="flex items-center gap-2.5 truncate">
-              <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'}`} />
-              <span className="truncate">{node.title}</span>
+            <div className="flex items-center gap-2.5 truncate navigation__node-title-wrapper">
+              <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'} navigation__node-icon`} />
+              <span className="truncate navigation__node-title">{node.title}</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 navigation__node-badge-wrapper">
               {badge && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge.className}`}>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge.className} navigation__node-badge`}>
                   {badge.text}
                 </span>
               )}
               {isExpanded ? (
-                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
               ) : (
-                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
               )}
             </div>
           </button>
 
           {isExpanded && (
-            <div className={`${depth === 0 ? 'pl-3 border-l-2 border-slate-100 dark:border-slate-700 ml-3' : 'pl-3 border-l border-amber-200 dark:border-amber-800/50 ml-2'} py-1 space-y-1 my-1`}>
+            <div className={`${depth === 0 ? 'pl-3 border-l-2 border-slate-100 dark:border-slate-700 ml-3' : 'pl-3 border-l border-amber-200 dark:border-amber-800/50 ml-2'} py-1 space-y-1 my-1 navigation__node-children`}>
               {node.children.map(child => renderNode(child, depth + 1))}
             </div>
           )}
@@ -397,21 +397,21 @@ export const Navigation: React.FC<NavigationProps> = ({
           isActive
             ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
-        }`}
+        } navigation__leaf-btn`}
       >
-        <div className="flex items-center gap-2.5 truncate">
+        <div className="flex items-center gap-2.5 truncate navigation__leaf-title-wrapper">
           <ItemIcon
             className={`${iconSize} shrink-0 ${
               isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400'
-            }`}
+            } navigation__leaf-icon`}
           />
-          <span className="truncate">{node.title}</span>
+          <span className="truncate navigation__leaf-title">{node.title}</span>
         </div>
         {badge && (
           <span
             className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
               isActive ? 'bg-white/20 text-white' : badge.className
-            }`}
+            } navigation__leaf-badge`}
           >
             {badge.text}
           </span>
@@ -440,13 +440,13 @@ export const Navigation: React.FC<NavigationProps> = ({
           isActive
             ? 'bg-blue-600 text-white shadow-xs'
             : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
-        }`}
+        } navigation__icon-btn`}
       >
-        <ItemIcon className="w-4 h-4" />
+        <ItemIcon className="w-4 h-4 navigation__icon-svg" />
         {item.badge && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-slate-800" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-slate-800 navigation__icon-badge" />
         )}
-        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
+        <span className="absolute left-14 px-2.5 py-1 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap navigation__icon-tooltip">
           {item.label}
         </span>
       </a>
@@ -458,7 +458,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       {isSidebarOpen && (
         <div
           onClick={onCloseSidebar}
-          className="fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="navigation__overlay fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
         />
       )}
 
@@ -485,7 +485,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         // header". Fix: start the sidebar's box below the header (top-16) and
         // shrink its height to match, so the two elements' boxes never
         // occupy the same space - z-order between them no longer matters.
-        className={`fixed top-16 left-0 z-[56] h-[calc(100vh-4rem)] transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
+        className={`navigation fixed top-16 left-0 z-[56] h-[calc(100vh-4rem)] transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen
@@ -495,43 +495,38 @@ export const Navigation: React.FC<NavigationProps> = ({
         aria-label="Sidebar Navigation"
       >
         {isIconOnly ? (
-          <div className="h-full py-3 flex flex-col justify-between items-center bg-white dark:bg-slate-800 overflow-y-auto">
-            <div className="flex flex-col items-center w-full px-2 gap-1">
+          <div className="navigation__icon-list h-full py-3 flex flex-col justify-between items-center bg-white dark:bg-slate-800 overflow-y-auto">
+            <div className="navigation__icon-items flex flex-col items-center w-full px-2 gap-1">
               {allFlatItems
                 .filter(item => isVisible(item.roles))
                 .map((item, i) => renderIconItem(item, i))}
             </div>
 
-            <div className="flex flex-col items-center gap-2 w-full px-2 pb-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <div className="navigation__icon-actions flex flex-col items-center gap-2 w-full px-2 pb-3 pt-3 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={handleLogoutClick}
                 title="Sign Out Terminal"
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                className="navigation__logout-btn w-10 h-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
               </button>
               <button
                 onClick={onToggleIconOnly}
                 title="Expand Navigation Menu"
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="navigation__toggle-btn w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>
         ) : (
-          <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
-            <div className="space-y-1">
-              <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
-                Hello, {currentUser?.name || 'there'}
-              </div>
-
-
+          <div className="navigation__expanded h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 flex flex-col justify-between">
+            <div className="navigation__expanded-top space-y-1">
               {tree.map(node => renderNode(node, 0))}
 
               {customUrlRootItems.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
+                <div className="navigation__custom-links pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
+                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
                   {customUrlRootItems.map(item => {
                     const ItemIcon = getIconComponent(item.iconName);
                     return (
@@ -541,7 +536,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                         target={item.openInNewTab ? '_blank' : undefined}
                         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
                         onClick={() => { if (window.innerWidth < 768) onCloseSidebar(); }}
-                        className="w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+                        className="navigation__custom-link w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
                       >
                         <ItemIcon className="w-4 h-4 shrink-0 text-purple-500 dark:text-purple-400" />
                         <span className="truncate">{item.title}</span>
@@ -555,10 +550,33 @@ export const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
 
-            <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700">
+            <div className="navigation__logout-section pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
+                <img
+                  src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+                  alt="User Avatar"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                    {(() => {
+                      const nameStr = (currentUser?.name || '').trim();
+                      const isPhone = !nameStr || /^\+?\d{7,15}$/.test(nameStr.replace(/[\s-]/g, ''));
+                      if (!isPhone) return nameStr;
+                      const r = (activeRole || currentUser?.role || '').toLowerCase();
+                      if (r.includes('root') || r.includes('super')) return 'Root Admin';
+                      if (r.includes('admin')) return 'Property Admin';
+                      return 'Staff Member';
+                    })()}
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                    {activeRole}
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={handleLogoutClick}
-                className="w-full flex items-center gap-3 p-2.5 text-xs font-bold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+                className="navigation__logout-btn w-full flex items-center gap-3 p-2.5 text-xs font-bold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
                 style={{ color: '#ff5252' }}
               >
                 <LogOut className="w-4 h-4 text-red-500" />

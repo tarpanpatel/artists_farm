@@ -60,7 +60,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
   };
 
   return (
-    <div className="bg-slate-900 text-white p-4 rounded-xl space-y-4 border border-slate-700 animate-fade-in shadow-inner">
+    <div className="bg-slate-900 text-white p-4 rounded-xl space-y-4 border border-slate-700 animate-fade-in shadow-inner telegram-connection-settings">
       {/* Master toggle */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div>

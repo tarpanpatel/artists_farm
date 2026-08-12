@@ -20,53 +20,53 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-8">
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center z-50 loading-screen">
+      <div className="flex flex-col items-center gap-8 loading-screen__container">
         {/* Animated Logo */}
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl animate-pulse" />
-          <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-16 h-16 loading-screen__logo">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl animate-pulse loading-screen__logo-bg" />
+          <div className="absolute inset-0 flex items-center justify-center loading-screen__logo-icon">
             <Building2 className="w-8 h-8 text-white" />
           </div>
         </div>
 
         {/* Loading Spinner */}
-        <div className="relative w-12 h-12">
-          <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-700" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500 animate-spin" />
+        <div className="relative w-12 h-12 loading-screen__spinner">
+          <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-700 loading-screen__spinner-track" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500 animate-spin loading-screen__spinner-indicator" />
         </div>
 
         {/* Message */}
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+        <div className="text-center loading-screen__message">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2 loading-screen__title">
             {t('artists_farm_brand')}
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 loading-screen__text">
             {message}
           </p>
         </div>
 
         {/* Loading Dots */}
-        <div className="flex gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0s' }} />
-          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.4s' }} />
+        <div className="flex gap-2 loading-screen__dots">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0s' }} />
+          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0.2s' }} />
+          <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce loading-screen__dot" style={{ animationDelay: '0.4s' }} />
         </div>
 
         {/* Timeout Notice & Cancel Button */}
         {showTimeout && (
-          <div className="mt-6 pt-6 border-t border-slate-300 dark:border-slate-600">
-            <div className="flex gap-2 items-start mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800 dark:text-amber-300">
+          <div className="mt-6 pt-6 border-t border-slate-300 dark:border-slate-600 loading-screen__timeout">
+            <div className="flex gap-2 items-start mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg loading-screen__timeout-notice">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 loading-screen__timeout-icon" />
+              <p className="text-xs text-amber-800 dark:text-amber-300 loading-screen__timeout-text">
                 {t('loading_timeout_message')}
               </p>
             </div>
             <a
               href="/"
-              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 loading-screen__home-link"
             >
-              <Home className="w-4 h-4" />
+              <Home className="w-4 h-4 loading-screen__home-icon" />
               {t('go_home_button')}
             </a>
           </div>

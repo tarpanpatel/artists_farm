@@ -239,9 +239,9 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
   ];
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="guest-history space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {/* Page Title & Header */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="guest-history__header bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <History className="w-6 h-6 text-blue-600" />
@@ -254,7 +254,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       </div>
 
       {/* Filters and Search Bar */}
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col lg:flex-row items-center gap-4">
+      <div className="guest-history__filters bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col lg:flex-row items-center gap-4">
         {/* Search */}
         <div className="relative w-full lg:w-96">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -301,7 +301,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       </div>
 
       {/* Data Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+      <div className="guest-history__table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
         <DataTable
           columns={columns}
           data={filteredGuests}

@@ -51,7 +51,7 @@ export const WhatsAppEditor: React.FC<WhatsAppEditorProps> = ({
   );
 
   return (
-    <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+    <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden whatsapp-editor">
        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
          {FORMAT_BUTTONS.map((btn) => (
            <Button key={btn.title} variant="tertiary" size="xs" className="w-7 h-7 rounded-md" type="button" onClick={() => applyFormat(btn.wrap[0], btn.wrap[1])} title={btn.title}>

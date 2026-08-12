@@ -165,9 +165,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, [currentMonth, currentYear]);
 
   return (
-    <div className="space-y-6">
+    <div className="today-overview space-y-6">
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
-      <div className="flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0 flex-1">
           <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
@@ -188,7 +188,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
-      <div className={`grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
+      <div className={`today-overview__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
         {/* Arrivals Block */}
         <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -257,7 +257,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Main Calendar View Section */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+      <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header with navigation */}
         <div className="flex justify-between items-center">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>
@@ -278,7 +278,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       {/* Calendar Container with scroll */}
-      <div ref={calendarScrollRef} className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative">
+      <div ref={calendarScrollRef} className="today-overview__calendar-scroll overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative">
         <div className="min-w-max">
           {/* Date Header */}
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">

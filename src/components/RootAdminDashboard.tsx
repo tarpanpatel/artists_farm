@@ -212,7 +212,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex">
+    <div className="root-admin-dashboard min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex">
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
@@ -223,7 +223,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
+        className={`root-admin-dashboard__sidebar fixed top-0 left-0 z-30 h-screen w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-200 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -274,7 +274,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div className="px-2.5 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{t('logged_in_as_label', 'Logged in as')}</p>
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{displayUsername}</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {/^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername}
+              </p>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">{activeRole}</p>
             </div>
             <button
@@ -290,9 +292,9 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main ref={mainScrollRef} className="flex-1 md:pl-64 overflow-auto">
+      <main ref={mainScrollRef} className="root-admin-dashboard__main flex-1 md:pl-64 overflow-auto">
         {/* Top Bar */}
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
+        <header className="root-admin-dashboard__topbar bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-3 py-2.5 lg:px-8 lg:py-4 flex items-center gap-2">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -332,7 +334,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
         </header>
 
         {/* Content Area */}
-        <div className="max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <div className="root-admin-dashboard__content max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {/* Dashboard Section */}
           {activeSection === 'dashboard' && (
             <div className="space-y-6">

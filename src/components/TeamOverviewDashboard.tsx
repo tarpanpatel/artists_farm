@@ -80,19 +80,19 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-2 md:space-y-6">
+    <div className="team-overview-dashboard space-y-2 md:space-y-6">
       <PageHeader
         title={t('team_overview_title', 'Team Overview')}
         subtitle={t('team_overview_subtitle', 'Central launchpad for staff attendance, directory management, payroll, and role-based permissions.')}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
+      <div className="team-overview-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
         {visibleCards.map((card) => {
           const IconComponent = card.icon;
           return (
             <div
               key={card.uniqueKey}
-              className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group"
+              className="team-overview-dashboard__card bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group"
             >
               {/* Mobile Layout */}
               <div className="flex md:hidden items-center justify-between gap-2 w-full">

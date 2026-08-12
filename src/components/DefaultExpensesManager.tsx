@@ -177,9 +177,9 @@ export const DefaultExpensesManager: React.FC = () => {
   const categories = query ? Object.keys(filteredExpenses).sort() : allCategories;
 
   return (
-    <div className="space-y-4 p-3 sm:p-6">
+    <div className="default-expenses-manager space-y-4 p-3 sm:p-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="default-expenses-manager__header bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -304,9 +304,9 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Categories Display */}
       {categories.length > 0 && (
-      <div className="space-y-4">
+      <div className="default-expenses-manager__categories space-y-4">
         {categories.map((category) => (
-          <div key={category} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div key={category} className="default-expenses-manager__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-slate-100 dark:bg-slate-700 px-4 py-2">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
@@ -359,7 +359,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
       {/* Edit Modal */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="default-expenses-manager__edit-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('edit_expense_item_title', 'Edit Expense Item')}</h3>
             <form onSubmit={handleEditItem} className="app-form app-form--edit-expense-item space-y-4">

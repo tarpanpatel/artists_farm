@@ -125,7 +125,7 @@ export const ExpenseItemsManagement: React.FC = () => {
   const categories = Object.keys(expenses).sort();
 
   return (
-    <div className="space-y-6">
+    <div className="expense-items-management space-y-6">
       <PageHeader
         title={t('predefined_expense_items_heading', 'Predefined Expense Items')}
         subtitle={t('expense_items_description', 'System defaults cannot be edited. Add custom items or modify the defaults through Root Admin.')}
@@ -142,7 +142,7 @@ export const ExpenseItemsManagement: React.FC = () => {
 
       {/* Toolbar */}
       {allItems.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+        <div className="expense-items-management__toolbar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button
@@ -239,7 +239,7 @@ export const ExpenseItemsManagement: React.FC = () => {
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : categories.length > 0 ? (
-        <div className="space-y-6">
+        <div className="expense-items-management__categories space-y-6">
           {categories.map((category) => {
             const categoryItems = expenses[category];
             const filteredCategory = categoryItems.filter(item =>
@@ -250,7 +250,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             if (filteredCategory.length === 0 && searchQuery) return null;
 
             return (
-              <div key={category} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div key={category} className="expense-items-management__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
                   <h3 className="font-bold text-slate-900 dark:text-white">{category}</h3>
                 </div>

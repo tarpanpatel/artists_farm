@@ -172,72 +172,72 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <>
       {/* Dark Overlay Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 transition-opacity date-range-picker__backdrop"
         onClick={onClose}
       />
 
       {/* Centered Modal Popover Container */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-100 dark:border-slate-700 relative">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-100 dark:border-slate-700 relative date-range-picker__modal">
         {/* Close Button Inside Modal */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer z-10"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer z-10 date-range-picker__close"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10 date-range-picker__header">
+          <div className="date-range-picker__header-info">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight date-range-picker__heading">
               {heading ?? t('select_dates_heading', 'Select dates')}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 date-range-picker__description">
               {description ?? t('select_dates_description', 'Add your reservation dates for exact pricing & availability')}
             </p>
           </div>
 
           {/* Airbnb Dual Pill Switcher */}
-          <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-2xl p-1 bg-slate-50 dark:bg-slate-900/50 shadow-2xs">
+          <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-2xl p-1 bg-slate-50 dark:bg-slate-900/50 shadow-2xs date-range-picker__mode-switcher">
             <button
               type="button"
               onClick={() => setSelectedMode('checkin')}
-              className={`px-3 py-1.5 rounded-xl text-left transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-left transition-all date-range-picker__mode-btn ${
                 selectedMode === 'checkin'
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-slate-900 dark:ring-white'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
-              <div className="text-xs font-semibold">{formatDisplayDate(checkinDate)}</div>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
+              <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkinDate)}</div>
             </button>
 
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 date-range-picker__mode-divider" />
 
             <button
               type="button"
               onClick={() => setSelectedMode('checkout')}
-              className={`px-3 py-1.5 rounded-xl text-left transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-left transition-all date-range-picker__mode-btn ${
                 selectedMode === 'checkout'
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-slate-900 dark:ring-white'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
-              <div className="text-xs font-semibold">{formatDisplayDate(checkoutDate)}</div>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
+              <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkoutDate)}</div>
             </button>
           </div>
         </div>
 
         {/* Month Navigation Header & Side-by-Side Calendars */}
-        <div className="relative pt-2">
+        <div className="relative pt-2 date-range-picker__calendars-container">
           {/* Previous Month Arrow */}
           <button
             type="button"
             onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() - 1, 1))}
-            className="absolute left-0 top-3 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-slate-700 dark:text-slate-300"
+            className="absolute left-0 top-3 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-slate-700 dark:text-slate-300 date-range-picker__nav-btn"
             title={t('previous_month_tooltip', 'Previous month')}
           >
             <ChevronLeft className="w-5 h-5" />
@@ -247,36 +247,36 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <button
             type="button"
             onClick={() => setStartMonth(new Date(startMonth.getFullYear(), startMonth.getMonth() + 1, 1))}
-            className="absolute right-0 top-3 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-slate-700 dark:text-slate-300"
+            className="absolute right-0 top-3 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition cursor-pointer text-slate-700 dark:text-slate-300 date-range-picker__nav-btn"
             title={t('next_month_tooltip', 'Next month')}
           >
             <ChevronRight className="w-5 h-5" />
           </button>
 
           {/* 2-Month Grid View */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 px-4 date-range-picker__calendars">
             {/* Month 1 */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white">
+            <div className="space-y-3 date-range-picker__month">
+              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white date-range-picker__month-title">
                 {monthNames[month1.getMonth()]} {month1.getFullYear()}
               </h3>
-              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500">
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
                 <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
               </div>
-              <div className="grid grid-cols-7 gap-1 justify-items-center">
+              <div className="grid grid-cols-7 gap-1 justify-items-center date-range-picker__days">
                 {renderMonthCalendar(0)}
               </div>
             </div>
 
             {/* Month 2 */}
-            <div className="space-y-3 hidden sm:block">
-              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white">
+            <div className="space-y-3 hidden sm:block date-range-picker__month">
+              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white date-range-picker__month-title">
                 {monthNames[month2.getMonth()]} {month2.getFullYear()}
               </h3>
-              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500">
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
                 <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
               </div>
-              <div className="grid grid-cols-7 gap-1 justify-items-center">
+              <div className="grid grid-cols-7 gap-1 justify-items-center date-range-picker__days">
                 {renderMonthCalendar(1)}
               </div>
             </div>
@@ -284,7 +284,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700 date-range-picker__footer">
           {onClear ? (
             <button
               type="button"
@@ -292,16 +292,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 onClear();
                 setSelectedMode('checkin');
               }}
-              className="text-xs font-bold text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-white transition"
+              className="text-xs font-bold text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-white transition date-range-picker__clear-btn"
             >
               {t('clear_dates_button', 'Clear dates')}
             </button>
-          ) : <div />}
+          ) : <div className="date-range-picker__clear-placeholder" />}
 
           <button
             type="button"
             onClick={onClose}
-            className={`px-6 py-2.5 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer ${
+            className={`px-6 py-2.5 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer date-range-picker__confirm-btn ${
               checkinDate && checkoutDate
                 ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-0'
                 : 'bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900'

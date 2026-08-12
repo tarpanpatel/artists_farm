@@ -781,9 +781,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   if (activeMenuItemKey === 'guest_registration') {
     return (
-      <div className="guest-management-container w-full flex justify-center items-start">
+      <div className="guest-management w-full flex justify-center items-start">
         {/* Form Card */}
-        <div className="guest-registration-form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
+        <div className="guest-management__registration-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
             <h3 className="text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
@@ -1304,10 +1304,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   }
 
   return (
-    <div className="guest-management-container space-y-6">
+    <div className="guest-management space-y-6">
       {/* Top Banner Header for Billing */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div>
+      <div className="guest-management__banner flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="guest-management__banner-text">
           <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Receipt className="w-6 h-6 text-blue-600" />
             Guest Billing & Checkout Terminal
@@ -1322,19 +1322,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* BILLING & CHECKOUT WORKSPACE - FOR SINGLE-PROPERTY SYSTEMS                   */}
       {/* ========================================================================= */}
       {activeMenuItemKey === 'all_bookings' && (
-        <div className="space-y-6">
+        <div className="guest-management__checkout-workspace space-y-6">
           {/* BUG 5 FIX: Guard for empty Active guest list */}
           {checkedInGuests.length === 0 ? (
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-2xs text-center">
-              <Building className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-slate-700 mb-1">No Active Residents</h3>
-              <p className="text-sm text-slate-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
+            <div className="guest-management__empty-state bg-white p-8 rounded-2xl border border-slate-200 shadow-2xs text-center">
+              <Building className="guest-management__empty-state-icon w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="guest-management__empty-state-title text-lg font-bold text-slate-700 mb-1">No Active Residents</h3>
+              <p className="guest-management__empty-state-desc text-sm text-slate-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
             </div>
           ) : (<>
           {/* Active Resident Selector Bar */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-slate-700">Active Resident Account:</span>
+          <div className="guest-management__resident-selector bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="guest-management__resident-selector-left flex items-center gap-3">
+              <span className="guest-management__resident-label font-bold text-slate-700">Active Resident Account:</span>
               <StyledSelect
                 className="w-64"
                 value={selectedGuestId}
@@ -1348,16 +1348,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="guest-management__resident-status flex items-center gap-2">
               {currentGuest ? (
-                <span className={`inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-full text-[11px] border ${
+                <span className={`guest-management__status-badge inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-full text-[11px] border ${
                   currentGuest.status === GUEST_STATUS_CHECKED_IN
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     : currentGuest.status === GUEST_STATUS_BOOKED
                     ? 'bg-amber-100 text-amber-800 border-amber-300'
                     : 'bg-slate-100 text-slate-800 border-slate-300'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
+                  <span className={`guest-management__status-dot w-1.5 h-1.5 rounded-full ${
                     currentGuest.status === GUEST_STATUS_CHECKED_IN
                       ? 'bg-emerald-600'
                       : currentGuest.status === GUEST_STATUS_BOOKED
@@ -1367,7 +1367,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   {currentGuest.status === GUEST_STATUS_CHECKED_IN ? 'Checked In' : currentGuest.status === GUEST_STATUS_BOOKED ? 'Reservation Booked' : currentGuest.status}
                 </span>
               ) : (
-                <span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
+                <span className="guest-management__status-empty bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
                   No Checked-In Resident Selected
                 </span>
               )}
@@ -1375,11 +1375,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           </div>
 
           {/* 2-COLUMN SPLIT WORKSPACE PANEL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="guest-management__workspace grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* LEFT COLUMN: ACCOMMODATION + FOOD LOG (LG: 7 COLS) */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="guest-management__workspace-left lg:col-span-7 space-y-6">
               {/* CARD 1: ACCOMMODATION INVOICE BREAKDOWN */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="guest-management__accommodation-card bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                 <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                   <Home className="w-4 h-4" /> Accommodation Invoice Breakdown
                 </div>
@@ -1402,7 +1402,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               {/* CARD 2: FOOD ORDERS & INCIDENTALS LOG */}
-              <div className="receipts-log-table-card bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+              <div className="guest-management__incidentals-card receipts-log-table-card bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                   <Utensils className="w-4 h-4" /> Food Orders & Incidentals Log
                 </div>
@@ -1585,9 +1585,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             </div>
 
             {/* RIGHT COLUMN: CUSTOM ADJUSTMENTS + SPLIT CHECKOUT (LG: 5 COLS) */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="guest-management__workspace-right lg:col-span-5 space-y-6">
               {/* CARD 3: ADD CUSTOM ADJUSTMENTS */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-xs">
+              <div className="guest-management__adjustments-card bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-xs">
                 <div className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                   <Plus className="w-4 h-4" /> Add Custom Adjustments
                 </div>
@@ -1672,7 +1672,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
 
               {/* CARD 4: SPLIT PAYMENT INTEGRATED FINAL CHECKOUT SETTLEMENT BLOCK */}
-              <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500/80 shadow-md space-y-4 text-xs">
+              <div className="guest-management__checkout-card bg-white p-5 rounded-2xl border-2 border-emerald-500/80 shadow-md space-y-4 text-xs">
                 <div className="text-sm font-extrabold text-emerald-800 border-b border-emerald-100 pb-2 flex items-center gap-2">
                   <Flag className="w-4 h-4" /> Final Checkout Split Settlement
                 </div>
@@ -1910,7 +1910,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* POPUP MODAL 1: HIGH CONTRAST UPI QR LIGHTBOX                             */}
       {/* ========================================================================= */}
       {isQrModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="guest-management__qr-modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
             <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-900">
               Scan UPI QR Target: {qrModalTitle}
@@ -1951,7 +1951,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* POPUP MODAL 2: CLEAN PRINT-FRIENDLY RECEIPT                              */}
       {/* ========================================================================= */}
       {isPrintModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
+        <div className="guest-management__receipt-modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
           <div
             id="printableReceiptModalContent"
             className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs relative"
@@ -2105,7 +2105,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* POPUP MODAL 3: CLEAN PRINT-FRIENDLY BOOKING CONFIRMATION VOUCHER          */}
       {/* ========================================================================= */}
       {createdBooking && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
+        <div className="guest-management__voucher-modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-start justify-center p-4 z-50 overflow-y-auto pt-8">
           <div
             id="printableBookingVoucherContent"
             className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs relative"

@@ -97,19 +97,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // auto-generated one, or without a valid phone number at the time.
   const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
   const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
-  // "Send via Email" - emails the CURRENT credentials shown on this row to
-  // the tenant's own email on file, via the same request_login_info action
-  // that powers the tenant's own self-service "Forgot Password?" link on
-  // the login screen (public/unauthenticated there; calling it here with
-  // the tenant's known username works identically - it just looks the
-  // account up by username, doesn't care who's asking).
   const [sendingLoginId, setSendingLoginId] = useState<number | null>(null);
-  // "Reset Password" - the admin-side counterpart to create_tenant_login,
-  // for a tenant that already HAS a login: hands them a fresh temp passcode
-  // directly, without depending on the tenant's own self-service "Forgot
-  // Password?" flow (which emails the current passcode to their tenant
-  // email on file - a dead end if that's not set, or if the admin is
-  // helping them over a call and just wants to read out a new one now).
   const [resettingLoginId, setResettingLoginId] = useState<number | null>(null);
   const [resetLoginError, setResetLoginError] = useState<{ tenantId: number; message: string } | null>(null);
   const [revealedPasscodeId, setRevealedPasscodeId] = useState<number | null>(null);
@@ -194,7 +182,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
-  const handleLogout = () => {
+  const _handleLogout = () => {
     localStorage.removeItem('artists_farm_user_session');
     onLogout();
   };
@@ -550,7 +538,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             mustChangePasscode: !!Number(data.data.must_change_passcode),
           },
         }));
-        setRevealedPasscodeId(tenantId); // show the fresh passcode immediately, not masked
+        setRevealedPasscodeId(tenantId);
       } else {
         setResetLoginError({ tenantId, message: data.message || 'Failed to reset password' });
       }
@@ -588,12 +576,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
-  // "Share via WhatsApp" - opens a wa.me click-to-chat link pre-filled with
-  // the credentials shown on this row, same api.whatsapp.com/send pattern
-  // already used for guest-facing shares (BookingDetailsModal.tsx,
-  // GuestManagement.tsx, ReceiptEditModal.tsx). No backend call at all -
-  // this just builds a URL and opens it; WhatsApp itself is the delivery
-  // channel, unlike Send via Email which goes through request_login_info.
   const buildTenantWhatsAppShareUrl = (tenant: Tenant, creds: { username: string; passcode: string }) => {
     const digits = (tenant.phone || '').replace(/\D/g, '');
     const phone = digits.length === 10 ? '91' + digits : digits;
@@ -706,7 +688,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 platform-property-management">
       {/* Success Toast */}
       {successMessage && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse flex items-center gap-2">
@@ -728,21 +710,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-900 dark:text-white">{username}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">{t('platform_admin_label', 'Platform Admin')}</p>
-            </div>
-            <Button
-              onClick={handleLogout}
-              className="text-red-600 dark:text-red-400"
-              title={t('logout_tooltip', 'Logout')}
-              variant="ghost"
-              size="xs"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
         </div>
       </header>
 
@@ -757,10 +724,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('total_tenants_label', 'Total Tenants')}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  {t('total_tenants_label', 'Total Tenants')}
+                </p>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {tenants.length}
                 </p>
@@ -769,10 +738,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('total_properties_label', 'Total Properties')}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  {t('total_properties_label', 'Total Properties')}
+                </p>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {properties.length}
                 </p>
@@ -781,10 +752,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('active_tenants_label', 'Active Tenants')}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  {t('active_tenants_label', 'Active Tenants')}
+                </p>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {tenants.filter((t) => t.is_active).length}
                 </p>
@@ -809,7 +782,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             </Button>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             {tenants.map((tenant) => {
               const tenantProperties = properties.filter((p) => {
                 if (p.tenant_id !== tenant.id) return false;

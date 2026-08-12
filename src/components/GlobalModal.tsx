@@ -78,29 +78,29 @@ export const GlobalModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="p-5 flex items-start gap-4">
-          <div className="shrink-0 bg-slate-50 p-2 rounded-full border border-slate-100">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 global-modal">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200 global-modal__dialog">
+        <div className="p-5 flex items-start gap-4 global-modal__header">
+          <div className="shrink-0 bg-slate-50 p-2 rounded-full border border-slate-100 global-modal__icon-wrapper">
             {getIcon()}
           </div>
-          <div className="flex-1 pt-1">
-            <h3 className="font-extrabold text-slate-900 text-lg mb-1">{modal.title}</h3>
-            <p className="text-slate-600 text-sm font-medium leading-relaxed">{modal.message}</p>
+          <div className="flex-1 pt-1 global-modal__content">
+            <h3 className="font-extrabold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
+            <p className="text-slate-600 text-sm font-medium leading-relaxed global-modal__message">{modal.message}</p>
           </div>
         </div>
-        <div className="bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
+        <div className="bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3 global-modal__footer">
           {modal.type === 'confirm' ? (
             <>
               <button
                 onClick={handleClose}
-                className="px-4 py-2 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
+                className="px-4 py-2 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
               >
                 {t('cancel_button')}
               </button>
               <button
                 onClick={handleConfirm}
-                className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors"
+                className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
               >
                 {t('confirm_button')}
               </button>
@@ -108,7 +108,7 @@ export const GlobalModal = () => {
           ) : (
               <button
                 onClick={handleClose}
-                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors"
+                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
               >
                 {t('okay_button')}
               </button>

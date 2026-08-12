@@ -227,24 +227,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
+      <div className="booking-details-modal__overlay fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
         <div
           id="printableBookingDetailsContent"
-          className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+          className="booking-details-modal__content relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Sticky Floating Top-Right Close Cross Button */}
           <button
             type="button"
             onClick={() => { onClose(); setIsEditing(false); }}
-            className="sticky top-0 float-right z-30 p-1.5 rounded-full bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-xs -mr-2 -mt-2"
+            className="booking-details-modal__close-btn sticky top-0 float-right z-30 p-1.5 rounded-full bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-xs -mr-2 -mt-2"
             title="Close Modal"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+          <div className="booking-details-modal__header flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
+            <h2 className="booking-details-modal__title text-base font-extrabold text-slate-900 dark:text-white">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
             </h2>
           </div>
@@ -252,7 +252,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {onOpenIdVerification && !isEditing && (
             <button
               onClick={onOpenIdVerification}
-              className={`w-full mb-4 px-4 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+              className={`booking-details-modal__id-btn w-full mb-4 px-4 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
                   : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
@@ -272,7 +272,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </button>
           )}
 
-          <div className="space-y-4">
+          <div className="booking-details-modal__body space-y-4">
             {/* Row: Guest Name + Room */}
             <div className={rooms.length > 0 ? 'grid grid-cols-2 gap-4' : ''}>
               <div>
@@ -526,7 +526,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             )}
           </div>
 
-          <div id="printableBookingDetailsActionsBar" className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 {(guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (

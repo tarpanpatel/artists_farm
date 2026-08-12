@@ -496,14 +496,14 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
     const currentPage = pageOptions.find(p => p.tabKey === item.tabKey && p.uniqueKey === item.uniqueKey);
 
     return (
-      <li key={item.id} data-id={item.id} className="nav-menu-item" style={{ paddingLeft: depth > 0 ? `${depth * 24}px` : '0px' }}>
-        <div className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border border-l-[3px] transition-all text-xs group my-0.5 ${
+      <li key={item.id} data-id={item.id} className="nav-menu-item nav-menu-editor__tree-item" style={{ paddingLeft: depth > 0 ? `${depth * 24}px` : '0px' }}>
+        <div className={`nav-menu-editor__tree-row flex items-center gap-1 px-2 py-1.5 rounded-lg border border-l-[3px] transition-all text-xs group my-0.5 ${
           item.isVisible ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm' :
           'bg-slate-50 border-slate-200 opacity-60'
         } ${depthColors[Math.min(depth, 2)]} ${depthBg[Math.min(depth, 2)] || ''}`}>
 
           {/* Drag Handle */}
-          <div className="hs-handle p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
+          <div className="nav-menu-editor__drag-handle hs-handle p-0.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
             title={t('nav_drag_to_reorder_label', 'Drag to reorder')}>
             <GripVertical className="w-4 h-4" />
           </div>
@@ -513,7 +513,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             type="checkbox"
             checked={selectedIds.has(item.id)}
             onChange={() => { setSelectedIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; }); }}
-            className="w-3.5 h-3.5 rounded text-blue-600 shrink-0 cursor-pointer"
+            className="nav-menu-editor__select-checkbox w-3.5 h-3.5 rounded text-blue-600 shrink-0 cursor-pointer"
           />
 
           {/* Expand/Collapse */}
@@ -540,9 +540,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </Button>
 
           {/* Title - clickable to rename */}
-          <div className="flex-1 min-w-0">
+          <div className="nav-menu-editor__title-wrap flex-1 min-w-0">
             {isEditingTitle ? (
-              <div className="flex items-center gap-1">
+              <div className="nav-menu-editor__rename-row flex items-center gap-1">
                 <Input
                   type="text" autoFocus value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
@@ -554,7 +554,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 <Button onClick={() => setEditingTitleId(null)} size="xs" variant="ghost" className="text-slate-400 hover:bg-slate-100"><X className="w-3.5 h-3.5" /></Button>
               </div>
             ) : (
-              <span className={`font-bold text-slate-800 truncate cursor-text hover:text-blue-600 ${!item.isVisible ? 'line-through text-slate-400' : ''}`} onClick={() => handleStartRename(item)} title={t('nav_click_to_rename_tooltip', 'Click to rename')}>
+              <span className={`nav-menu-editor__title font-bold text-slate-800 truncate cursor-text hover:text-blue-600 ${!item.isVisible ? 'line-through text-slate-400' : ''}`} onClick={() => handleStartRename(item)} title={t('nav_click_to_rename_tooltip', 'Click to rename')}>
                 {item.title}
               </span>
             )}
@@ -565,24 +565,24 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             onClick={() => setShowTabPickerFor(showTabPickerFor === item.id ? null : item.id)}
             size="xs"
             variant="ghost"
-            className="text-[9px] font-bold text-slate-600 hover:text-blue-700 transition-colors shrink-0 max-w-[100px] truncate"
+            className="nav-menu-editor__page-badge text-[9px] font-bold text-slate-600 hover:text-blue-700 transition-colors shrink-0 max-w-[100px] truncate"
             title={t('nav_click_to_change_page_tooltip', 'Click to change page target')}
           >
             {item.customUrl ? <span className="flex items-center gap-0.5"><ExternalLink className="w-2.5 h-2.5" /> {t('nav_url_badge', 'URL')}</span> : (currentPage?.label || item.tabKey)}
           </Button>
 
           {/* Visibility */}
-          <Button onClick={() => handleToggleVisibility(item.id)} size="xs" variant="ghost" className={`transition-colors shrink-0 ${item.isVisible ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <Button onClick={() => handleToggleVisibility(item.id)} size="xs" variant="ghost" className={`nav-menu-editor__visibility-btn transition-colors shrink-0 ${item.isVisible ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
             {item.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
           </Button>
 
           {/* Roles badge */}
-          <Button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} size="xs" variant="ghost" className="text-[9px] font-bold text-blue-700 transition-colors shrink-0" title={t('nav_click_to_edit_roles_tooltip', 'Click to edit roles')}>
+          <Button onClick={() => setShowIconPickerFor(showIconPickerFor === `roles-${item.id}` ? null : `roles-${item.id}`)} size="xs" variant="ghost" className="nav-menu-editor__roles-badge text-[9px] font-bold text-blue-700 transition-colors shrink-0" title={t('nav_click_to_edit_roles_tooltip', 'Click to edit roles')}>
             {item.roles.length}r
           </Button>
 
           {/* Parent Picker + Indent/Outdent */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="nav-menu-editor__row-actions flex items-center gap-0.5 shrink-0">
             <Button onClick={() => setShowParentPickerFor(showParentPickerFor === item.id ? null : item.id)}
               size="xs"
               variant="ghost"
@@ -607,14 +607,14 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           </div>
 
           {/* Delete */}
-          <Button onClick={() => handleDelete(item.id)} size="xs" variant="ghost" className="text-slate-300 hover:text-red-600 transition-colors shrink-0">
+          <Button onClick={() => handleDelete(item.id)} size="xs" variant="ghost" className="nav-menu-editor__delete-btn text-slate-300 hover:text-red-600 transition-colors shrink-0">
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
 
         {/* Icon Picker Dropdown */}
         {showIconPickerFor === item.id && (
-          <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[380px]">
+          <div className="nav-menu-editor__picker nav-menu-editor__picker--icon ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[380px]">
             <div className="relative mb-2">
               <Input
                 type="text"
@@ -624,13 +624,13 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 placeholder={`Search ${ALL_LUCIDE_ICON_NAMES.length} icons...`}
               />
             </div>
-            <div className="text-[9px] text-slate-400 mb-1">{filteredIcons.length} icons</div>
-            <div className="grid grid-cols-8 gap-1 max-h-[240px] overflow-y-auto">
+            <div className="nav-menu-editor__picker-count text-[9px] text-slate-400 mb-1">{filteredIcons.length} icons</div>
+            <div className="nav-menu-editor__icon-grid grid grid-cols-8 gap-1 max-h-[240px] overflow-y-auto">
               {filteredIcons.slice(0, 120).map(name => {
                 const Ic = getIconComponent(name);
                 return (
                   <button key={name} onClick={() => handleIconChange(item.id, name)}
-                    className={`p-1.5 rounded transition-colors cursor-pointer ${item.iconName === name ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`nav-menu-editor__icon-option p-1.5 rounded transition-colors cursor-pointer ${item.iconName === name ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300' : 'text-slate-600 hover:bg-slate-100'}`}
                     title={name}>
                     <Ic className="w-4 h-4" />
                   </button>
@@ -638,31 +638,31 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               })}
             </div>
             {filteredIcons.length > 120 && (
-              <div className="text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
+              <div className="nav-menu-editor__picker-hint text-[9px] text-slate-400 text-center mt-1">Showing 120 of {filteredIcons.length} — type to narrow search</div>
             )}
-            <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
+            <button onClick={() => { setShowIconPickerFor(null); setIconSearch(''); }} className="nav-menu-editor__picker-close mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
         {/* Roles Dropdown */}
         {showIconPickerFor === `roles-${item.id}` && (
-          <div className="ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 flex flex-wrap gap-1">
+          <div className="nav-menu-editor__picker nav-menu-editor__picker--roles ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 flex flex-wrap gap-1">
             {allRoles.map(role => {
               const has = item.roles.includes(role);
               return (
                 <button key={role} onClick={() => handleToggleRole(item.id, role)}
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${has ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                  className={`nav-menu-editor__role-chip text-[10px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${has ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
                   {has ? <Check className="w-3 h-3 inline-block" /> : null}{role}
                 </button>
               );
             })}
-            <button onClick={() => setShowIconPickerFor(null)} className="text-[10px] text-slate-400 hover:text-slate-600 ml-2 cursor-pointer">{t('close_button', 'Close')}</button>
+            <button onClick={() => setShowIconPickerFor(null)} className="nav-menu-editor__picker-close text-[10px] text-slate-400 hover:text-slate-600 ml-2 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
         {/* Tab/Page Picker Dropdown */}
         {showTabPickerFor === item.id && (
-          <div className="ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[280px]">
+          <div className="nav-menu-editor__picker nav-menu-editor__picker--tab ml-12 my-1 p-2 bg-white rounded-lg border border-slate-200 shadow-lg max-w-[280px]">
             <div className="relative mb-2">
               <Input
                 type="text"
@@ -672,7 +672,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                 placeholder={t('nav_search_pages_placeholder', 'Search pages...')}
               />
             </div>
-            <div className="max-h-[200px] overflow-y-auto space-y-0.5">
+            <div className="nav-menu-editor__page-list max-h-[200px] overflow-y-auto space-y-0.5">
               {filteredTabs.map(page => (
                 <button key={`${page.tabKey}-${page.uniqueKey}`} onClick={() => {
                   if (page.tabKey === 'custom') {
@@ -682,56 +682,56 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
                   }
                   handleTabChange(item.id, page.tabKey, page.uniqueKey);
                 }}
-                  className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${item.tabKey === page.tabKey && item.uniqueKey === page.uniqueKey ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                  className={`nav-menu-editor__page-option w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${item.tabKey === page.tabKey && item.uniqueKey === page.uniqueKey ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
                   {page.label}
                 </button>
               ))}
             </div>
             {item.tabKey === 'custom' && (
-              <div className="mt-2 flex gap-1">
+              <div className="nav-menu-editor__custom-url-row mt-2 flex gap-1">
                 <Input type="url" value={customUrlInput[item.id] ?? item.customUrl ?? ''} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." className="flex-1" />
-                <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
+                <button onClick={() => handleCustomUrlSave(item.id)} className="nav-menu-editor__custom-url-set px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
               </div>
             )}
-            <button onClick={() => { setShowTabPickerFor(null); setTabSearch(''); }} className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
+            <button onClick={() => { setShowTabPickerFor(null); setTabSearch(''); }} className="nav-menu-editor__picker-close mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
         {/* Custom URL Input */}
         {customUrlInput[item.id] !== undefined && showTabPickerFor !== item.id && (
-          <div className="ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
+          <div className="nav-menu-editor__custom-url-row ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
             <Input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus className="flex-1" />
-            <button onClick={() => handleCustomUrlSave(item.id)} className="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
-            <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+            <button onClick={() => handleCustomUrlSave(item.id)} className="nav-menu-editor__custom-url-set px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
+            <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="nav-menu-editor__custom-url-cancel px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
         )}
 
         {/* Parent Picker Dropdown */}
         {showParentPickerFor === item.id && (
-          <div className="ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 max-w-[280px]">
-            <p className="text-[10px] font-bold text-blue-700 mb-1">{t('nav_set_parent_menu_item_title', 'Set Parent Menu Item')}</p>
-            <div className="space-y-0.5 max-h-[160px] overflow-y-auto">
+          <div className="nav-menu-editor__picker nav-menu-editor__picker--parent ml-12 my-1 p-2 bg-blue-50 rounded-lg border border-blue-200 max-w-[280px]">
+            <p className="nav-menu-editor__picker-title text-[10px] font-bold text-blue-700 mb-1">{t('nav_set_parent_menu_item_title', 'Set Parent Menu Item')}</p>
+            <div className="nav-menu-editor__parent-list space-y-0.5 max-h-[160px] overflow-y-auto">
               <button onClick={() => handleParentChange(item.id, null)}
-                className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${!item.parentId ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                className={`nav-menu-editor__parent-option w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${!item.parentId ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
                 {t('nav_root_level_label', 'Root Level (no parent)')}
               </button>
               {visibleItems.filter(i => i.id !== item.id).map(i => {
                 const parentLabel = i.parentId ? `\u00A0\u00A0\u21B3 ${i.title}` : i.title;
                 return (
                   <button key={i.id} onClick={() => handleParentChange(item.id, i.id)}
-                    className={`w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${item.parentId === i.id ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
+                    className={`nav-menu-editor__parent-option w-full text-left px-2 py-1 rounded text-[11px] transition-colors cursor-pointer ${item.parentId === i.id ? 'bg-blue-100 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'}`}>
                     {parentLabel}
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => setShowParentPickerFor(null)} className="mt-1 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
+            <button onClick={() => setShowParentPickerFor(null)} className="nav-menu-editor__picker-close mt-1 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
           </div>
         )}
 
         {/* Children */}
         {isExpanded && hasChildren && (
-          <ul data-sortable className="ml-2 pl-3 border-l-2 border-slate-200 my-1">
+          <ul data-sortable className="nav-menu-editor__children ml-2 pl-3 border-l-2 border-slate-200 my-1">
             {item.children!.sort((a: any, b: any) => a.order - b.order).map((child: any) => renderTreeItem(child, depth + 1))}
           </ul>
         )}
@@ -740,21 +740,21 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-h-[600px]">
+    <div className="nav-menu-editor bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-h-[600px]">
       {/* Header */}
-      <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+      <div className="nav-menu-editor__header p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <div className="nav-menu-editor__header-row flex items-center justify-between mb-2">
+          <div className="nav-menu-editor__title-block flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
-            <h3 className="font-extrabold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
-            <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
+            <h3 className="nav-menu-editor__heading font-extrabold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
+            <span className="nav-menu-editor__count-badge text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
-              <span className="text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
+              <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
                 ({hiddenItems.length} kitchen item{hiddenItems.length === 1 ? '' : 's'} hidden)
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="nav-menu-editor__header-actions flex items-center gap-2">
             <Button
               variant="primary"
               size="sm"
@@ -775,9 +775,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[10px] text-slate-500">
-          <span className="flex items-center gap-1"><GripVertical className="w-3 h-3" /> {t('nav_drag_to_reorder_label', 'Drag to reorder')}</span>
-          <span className="flex items-center gap-1">
+        <div className="nav-menu-editor__legend flex items-center gap-3 text-[10px] text-slate-500">
+          <span className="nav-menu-editor__legend-item flex items-center gap-1"><GripVertical className="w-3 h-3" /> {t('nav_drag_to_reorder_label', 'Drag to reorder')}</span>
+          <span className="nav-menu-editor__legend-item flex items-center gap-1">
             <ArrowLeft className="w-3 h-3" />
             <ArrowRight className="w-3 h-3" />
             {t('nav_arrow_indent_outdent_label', 'to indent/outdent')}
@@ -790,12 +790,12 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
       {/* Add Item Form */}
       {showAddForm && (
-        <div className="p-3 border-b border-slate-200 bg-blue-50/50">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="nav-menu-editor__add-form p-3 border-b border-slate-200 bg-blue-50/50">
+          <div className="nav-menu-editor__add-form-title flex items-center gap-2 mb-2">
             <Plus className="w-4 h-4 text-blue-600" />
             <span className="text-xs font-bold text-blue-800">{t('nav_new_menu_item_title', 'New Menu Item')}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="nav-menu-editor__add-form-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Title */}
             <Input
               type="text"
@@ -840,17 +840,17 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               />
             )}
             {/* Roles */}
-            <div className="flex flex-wrap gap-1">
+            <div className="nav-menu-editor__add-form-roles flex flex-wrap gap-1">
               {allRoles.map(role => (
                 <button key={role} onClick={() => {
                   setNewItem(p => ({ ...p, roles: p.roles.includes(role) ? p.roles.filter(r => r !== role) : [...p.roles, role] }));
-                }} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${newItem.roles.includes(role) ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400'}`}>
+                }} className={`nav-menu-editor__role-chip text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${newItem.roles.includes(role) ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-400'}`}>
                   {newItem.roles.includes(role) ? <Check className="w-3 h-3 inline-block" /> : null}{role}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="nav-menu-editor__add-form-actions flex items-center gap-2 mt-2">
             <Button
               variant="primary"
               size="sm"
@@ -871,20 +871,20 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       )}
 
       {/* Toolbar */}
-      <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+      <div className="nav-menu-editor__toolbar px-4 py-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
         {selectedIds.size > 0 ? (
           <>
-            <span className="text-[11px] font-bold text-blue-700">{selectedIds.size} selected</span>
-            <button onClick={handleBulkDelete} className="text-[11px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">{t('nav_delete_selected_button', 'Delete Selected')}</button>
-            <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1 rounded cursor-pointer">{t('clear_button', 'Clear')}</button>
+            <span className="nav-menu-editor__toolbar-count text-[11px] font-bold text-blue-700">{selectedIds.size} selected</span>
+            <button onClick={handleBulkDelete} className="nav-menu-editor__toolbar-btn nav-menu-editor__toolbar-btn--danger text-[11px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded cursor-pointer">{t('nav_delete_selected_button', 'Delete Selected')}</button>
+            <button onClick={() => setSelectedIds(new Set())} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 px-2 py-1 rounded cursor-pointer">{t('clear_button', 'Clear')}</button>
           </>
         ) : (
           <>
-            <button onClick={expandAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_expand_all_button', 'Expand All')}</button>
+            <button onClick={expandAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_expand_all_button', 'Expand All')}</button>
             <span className="text-slate-300">|</span>
-            <button onClick={collapseAll} className="text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
+            <button onClick={collapseAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
             <span className="text-slate-300">|</span>
-            <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+            <label className="nav-menu-editor__select-all flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
               <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3" />
               {t('nav_select_all_button', 'Select All')}
             </label>
@@ -893,9 +893,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       </div>
 
       {/* Menu Tree */}
-      <div ref={sortableContainerRef} className="flex-1 overflow-y-auto p-3">
+      <div ref={sortableContainerRef} className="nav-menu-editor__tree flex-1 overflow-y-auto p-3">
         {tree.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+          <div className="nav-menu-editor__empty text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
             <LayoutDashboard className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-bold text-sm mb-1">{t('nav_menu_empty_message', 'Menu is empty')}</p>
             <p className="text-slate-400 text-xs">{t('nav_menu_empty_subtitle', 'Click "Add Item" to start building your menu')}</p>
@@ -908,25 +908,25 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           // remount, React's next reconciliation still holds the pre-drag tree
           // shape and tries to removeChild a node from what it thinks is still its
           // parent, which throws "not a child of this node" once React tries.
-          <ul key={containerKey} data-sortable className="flex flex-col">
+          <ul key={containerKey} data-sortable className="nav-menu-editor__tree-list flex flex-col">
             {tree.map(item => renderTreeItem(item, 0))}
           </ul>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500">
-        <span>{visibleItems.filter(i => i.isVisible).length} visible / {visibleItems.length} total</span>
-        {hasUnsaved && <span className="text-amber-600 font-bold">{t('unsaved_changes_tooltip', 'Unsaved changes')}</span>}
+      <div className="nav-menu-editor__footer px-4 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500">
+        <span className="nav-menu-editor__footer-count">{visibleItems.filter(i => i.isVisible).length} visible / {visibleItems.length} total</span>
+        {hasUnsaved && <span className="nav-menu-editor__unsaved-hint text-amber-600 font-bold">{t('unsaved_changes_tooltip', 'Unsaved changes')}</span>}
       </div>
 
       {/* Floating Save Button */}
       {hasUnsaved && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="nav-menu-editor__floating-save fixed bottom-6 right-6 z-50">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-2xl shadow-2xl transition-all cursor-pointer disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+            className="nav-menu-editor__save-button flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-2xl shadow-2xl transition-all cursor-pointer disabled:cursor-not-allowed hover:scale-105 active:scale-95"
           >
             {isSaving ? (
               <>

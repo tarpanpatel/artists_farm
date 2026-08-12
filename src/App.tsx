@@ -2025,13 +2025,13 @@ export function App() {
 
     // Redirect based on role
     if (session.is_platform_admin) {
-      window.location.href = '/artists_farm/root_dashboard/';
+      window.location.href = '/root_dashboard/';
     } else if (session.default_tenant_id) {
       // If we are already on a valid tenant dashboard, just reload the page to refresh state
       if (resolvedTenant) {
         window.location.reload();
       } else {
-        window.location.href = '/artists_farm/tenant_dashboard/';
+        window.location.href = '/tenant_dashboard/';
       }
     }
   };
@@ -2146,7 +2146,7 @@ export function App() {
     if (userSession) {
       if (userSession.is_platform_admin) {
         // Redirect root admin to root dashboard
-        window.location.href = '/artists_farm/root_dashboard/';
+        window.location.href = '/root_dashboard/';
         return <LoadingScreen message="Redirecting to root admin dashboard..." />;
       } else if (userSession.default_tenant_id) {
         return (
@@ -2177,7 +2177,7 @@ export function App() {
     // content lived at two URLs (bare root AND /root_dashboard/), so bookmarks/links
     // to the bare root silently worked when they shouldn't have been a valid page.
     if (userSession.is_platform_admin) {
-      window.location.href = '/artists_farm/root_dashboard/';
+      window.location.href = '/root_dashboard/';
       return <LoadingScreen message="Redirecting to root admin dashboard..." />;
     }
 

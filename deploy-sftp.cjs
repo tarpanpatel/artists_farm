@@ -13,7 +13,7 @@ const config = {
 };
 
 const LOCAL_ROOT = __dirname;
-const REMOTE_ROOT = '/home/apartment/artistsfarmjaipur.com/artist_farm';
+const REMOTE_ROOT = '/home/apartment/public_html';
 
 async function uploadDir(localDir, remoteDir) {
   const entries = fs.readdirSync(localDir, { withFileTypes: true });
@@ -24,7 +24,11 @@ async function uploadDir(localDir, remoteDir) {
       try { await sftp.mkdir(remotePath, true); } catch {}
       await uploadDir(localPath, remotePath);
     } else {
-      await sftp.put(localPath, remotePath);
+      try {
+        await sftp.put(localPath, remotePath);
+      } catch (err) {
+        console.error(`  ERROR uploading ${remotePath}:`, err.message);
+      }
     }
   }
 }

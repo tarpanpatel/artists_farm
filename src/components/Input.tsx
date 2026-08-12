@@ -33,18 +33,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const errorMessage = typeof error === 'string' ? error : undefined;
 
     return (
-      <div className={`app-input-wrapper ${fullWidth ? 'w-full' : 'inline-block'}`}>
+      <div className={`app-input-wrapper ${fullWidth ? 'w-full' : 'inline-block'} input`}>
         {label && (
           <label
             htmlFor={inputId}
-            className={`app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 ${labelClassName || ''}`}
+            className={`app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 ${labelClassName || ''} input__label`}
           >
             {label}
           </label>
         )}
-        <div className="relative flex items-center">
+        <div className="input__field-wrapper relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <div className="input__icon input__icon--left absolute left-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               {leftIcon}
             </div>
           )}
@@ -70,21 +70,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               ${leftIcon ? 'pl-10' : ''}
               ${rightIcon ? 'pr-10' : ''}
               ${className}
+              input__field
             `}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <div className="input__icon input__icon--right absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               {rightIcon}
             </div>
           )}
         </div>
         {errorMessage ? (
-          <p id={`${inputId}-error`} className="app-error-text mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+          <p id={`${inputId}-error`} className="app-error-text mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 input__error">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="app-helper-text mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <p id={`${inputId}-helper`} className="app-helper-text mt-1.5 text-xs text-slate-500 dark:text-slate-400 input__helper">
             {helperText}
           </p>
         ) : null}

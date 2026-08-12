@@ -77,10 +77,10 @@ export const Button: React.FC<ButtonProps> = ({
   }
 
   return (
-    <button className={classes} disabled={disabled} {...props}>
-      {leftIcon && <span className="flex items-center">{leftIcon}</span>}
+    <button className={classes + ' button'} disabled={disabled} {...props}>
+      {leftIcon && <span className="button__icon flex items-center">{leftIcon}</span>}
       {children}
-      {rightIcon && <span className="flex items-center">{rightIcon}</span>}
+      {rightIcon && <span className="button__icon flex items-center">{rightIcon}</span>}
     </button>
   );
 };

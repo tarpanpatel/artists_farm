@@ -125,15 +125,15 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   }, [drawerEntries, searchHistory]);
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="cash-drawer space-y-6 text-xs text-slate-800 dark:text-slate-200">
       <PageHeader
         title={t('cash_drawer_manager_title', 'Cash Drawer Manager')}
         subtitle={t('cash_drawer_description', "Digital lockbox tracking who holds the farm's cash. Accountability & reconciliation at a glance.")}
       />
 
       {/* System Totals Bar */}
-      <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-4 text-white shadow-lg">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+      <div className="cash-drawer__totals bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-4 text-white shadow-lg">
+        <div className="cash-drawer__totals-grid grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
             <p className="text-2xl font-black mt-1">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
@@ -153,7 +153,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       </div>
 
       {/* Quick Action Tabs */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
+      <div className="cash-drawer__tabs bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
         {[
           { key: 'handover' as const, label: t('handover_tab', 'Handover'), icon: Handshake, desc: t('cash_given_to_owner_desc', 'Cash Given to Owner') },
           { key: 'manual_adjustment' as const, label: t('adjustment_tab', 'Adjustment'), icon: Sliders, desc: t('admin_correction_desc', 'Admin Correction') },
@@ -180,7 +180,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       </div>
 
       {/* Entry Form */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
+      <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
         <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>

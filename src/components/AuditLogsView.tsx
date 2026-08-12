@@ -244,7 +244,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="audit-logs space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {!isStandalonePage && (
         <PageHeader
           title={t('audit_trails_system_diagnostics_heading', 'Audit Trails & System Diagnostics')}
@@ -290,7 +290,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: PAST RECEIPTS LOG */}
       {activeTab === 'receipts' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <DataTable
             columns={[
               {
@@ -427,7 +427,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: STAFF ACTIVITY TRAIL */}
       {activeTab === 'activity' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-xs">
+        <div className="audit-logs__activity bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
               <ShieldAlert className="w-6 h-6 text-indigo-600" />
@@ -526,7 +526,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: LOGIN TRACE */}
       {activeTab === 'login' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+        <div className="audit-logs__login bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <Lock className="w-5 h-5 text-blue-600" />
@@ -642,7 +642,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: AUDIT TRAIL */}
       {activeTab === 'audit' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
+        <div className="audit-logs__audit bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-blue-600" />
@@ -739,8 +739,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* MODIFY BILL & AUDIT MODAL MATCHING SCREENSHOT */}
       {editingReceipt && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-6 max-h-[92vh] flex flex-col">
+        <div className="audit-logs__modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="audit-logs__modal-content bg-white dark:bg-slate-800 rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-6 max-h-[92vh] flex flex-col">
 
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-4">

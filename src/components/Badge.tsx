@@ -32,5 +32,5 @@ export const Badge: React.FC<BadgeProps> = ({
     .filter(Boolean)
     .join(' ');
 
-  return <span className={classes}>{children}</span>;
+  return <span className={classes + ' badge'}>{children}</span>;
 };

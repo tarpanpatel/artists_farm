@@ -70,8 +70,8 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
     ? options.filter((o) => (o.searchText ?? String(o.label)).toLowerCase().includes(search.toLowerCase()))
     : options;
 
-  return (
-    <div className={`app-select-wrapper relative ${className}`} ref={containerRef}>
+return (
+    <div className={`app-select-wrapper relative ${className} styled-select`} ref={containerRef}>
       <button
         type="button"
         id={id}
@@ -93,20 +93,20 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
           /(^|\s)(!?)text-/.test(buttonClassName)
             ? '' 
             : 'text-xs'
-        } ${buttonClassName}`}
+        } ${buttonClassName} styled-select__trigger`}
       >
-        <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'}`}>
+        <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'} styled-select__value`}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-[var(--input-placeholder)] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} styled-select__chevron`}
         />
       </button>
 
       {isOpen && (
-        <div className="app-select-dropdown absolute z-50 mt-1 w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm">
+        <div className="app-select-dropdown absolute z-50 mt-1 w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm styled-select__dropdown">
           {searchable && (
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)]">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)] styled-select__search">
               <Search className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -114,13 +114,13 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                  placeholder={t('searchable_select_placeholder')}
-                className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400"
+                className="w-full bg-transparent outline-none text-[var(--input-text-default)] placeholder:text-slate-400 styled-select__search-input"
               />
             </div>
           )}
-          <div className="max-h-60 overflow-auto py-1">
+          <div className="max-h-60 overflow-auto py-1 styled-select__options">
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-[var(--input-placeholder)]">{t('no_matches_text')}</div>
+              <div className="px-3 py-2 text-[var(--input-placeholder)] styled-select__empty">{t('no_matches_text')}</div>
             ) : (
               filteredOptions.map((option, idx) => {
                 const isSelected = option.value === value;
@@ -129,7 +129,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                 return (
                   <React.Fragment key={option.value}>
                     {showGroupHeader && (
-                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--input-placeholder)]">
+                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--input-placeholder)] styled-select__group-header">
                         {option.group}
                       </div>
                     )}
@@ -141,7 +141,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                         onChange(option.value);
                         setIsOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition ${
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition styled-select__option ${
                         option.disabled
                           ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
                           : isSelected
@@ -149,8 +149,8 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
                           : 'text-[var(--input-text-default)] hover:bg-[var(--select-option-hover)] cursor-pointer'
                       }`}
                     >
-                      <span className="truncate">{option.label}</span>
-                      {isSelected && <Check className="w-4 h-4 shrink-0" />}
+                      <span className="truncate styled-select__option-label">{option.label}</span>
+                      {isSelected && <Check className="w-4 h-4 shrink-0 styled-select__option-check" />}
                     </button>
                   </React.Fragment>
                 );

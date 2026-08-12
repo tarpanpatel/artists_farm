@@ -13,7 +13,7 @@ const config = {
 };
 
 const LOCAL_ROOT = process.cwd();
-const REMOTE_ROOT = '/home/apartment/artistsfarmjaipur.com/artist_farm';
+const REMOTE_ROOT = '/home/apartment/public_html';
 
 async function uploadDir(localDir, remoteDir) {
   const entries = fs.readdirSync(localDir, { withFileTypes: true });

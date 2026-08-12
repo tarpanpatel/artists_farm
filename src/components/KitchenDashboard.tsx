@@ -286,7 +286,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
   };
 
   return (
-    <div className="space-y-2 md:space-y-6">
+    <div className="kitchen-dashboard space-y-2 md:space-y-6">
       <PageHeader
         title={t('kitchen_dashboard_title', 'Kitchen & Dining Operations')}
         subtitle={t('kitchen_dashboard_subtitle', 'Central command for food orders, staff meals, ingredient stock, and inventory logs.')}
@@ -307,7 +307,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       </PageHeader>
 
       {/* Action Grid - Drag and Drop Enabled via 6-dots Handle */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
+      <div className="kitchen-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
         {orderedVisibleCards.map((card) => {
           const IconComponent = card.icon;
           const isDragging = draggedCardId === card.id;
@@ -319,7 +319,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
               onDragOver={(e) => handleDragOver(e, card.id)}
               onDrop={(e) => handleDrop(e, card.id)}
               onDragEnd={handleDragEnd}
-              className={`bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group relative select-none ${
+              className={`kitchen-dashboard__card bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group relative select-none ${
                 isDragging
                   ? 'opacity-30 scale-[0.98] border-dashed border-blue-400 shadow-none'
                   : isDragOver

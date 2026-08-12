@@ -181,24 +181,26 @@ export const EmailSettingsPanel: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_name_label', 'From Name')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('from_name_label', 'From Name')}</label>
             <Input
               type="text"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
+              className="email-settings-panel__input"
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_email_label', 'From Email')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('from_email_label', 'From Email')}</label>
             <Input
               type="email"
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
               placeholder={t('from_email_placeholder', 'noreply@example.com')}
+              className="email-settings-panel__input"
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('encryption_label', 'Encryption')}</label>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('encryption_label', 'Encryption')}</label>
             <StyledSelect
               value={encryption}
               onChange={(val) => setEncryption(val as any)}
@@ -207,37 +209,40 @@ export const EmailSettingsPanel: React.FC = () => {
                 { value: 'ssl', label: t('ssl_option', 'Implicit TLS/SSL (port 465)') },
                 { value: 'none', label: t('none_option', 'None') },
               ]}
+              className="email-settings-panel__select"
             />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-700 email-settings-panel__actions">
           <Button
             variant="primary"
             size="md"
             onClick={handleSave}
             disabled={isSaving}
+            className="email-settings-panel__save-btn"
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </Button>
           {saveStatus === 'success' && (
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 email-settings-panel__status email-settings-panel__status--success">
               <CheckCircle2 className="w-3.5 h-3.5" /> {t('saved_badge')}
             </span>
           )}
           {saveStatus === 'error' && (
-            <span className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+            <span className="text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-1 email-settings-panel__status email-settings-panel__status--error">
               <XCircle className="w-3.5 h-3.5" /> {t('failed_to_save_text')}
             </span>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto email-settings-panel__test-email-wrapper">
             <div className="w-56">
               <Input
                 type="email"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
                 placeholder={t('test_email_placeholder', 'test@example.com')}
+                className="email-settings-panel__test-input"
               />
             </div>
             <Button
@@ -246,22 +251,23 @@ export const EmailSettingsPanel: React.FC = () => {
               onClick={handleSendTest}
               disabled={isTesting || !testEmail}
               leftIcon={isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              className="email-settings-panel__test-btn"
             >
               {t('send_test_email_button', 'Send Test Email')}
             </Button>
           </div>
         </div>
         {testResult && (
-          <p className={`text-xs font-semibold mt-2 ${testResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-xs font-semibold mt-2 ${testResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} email-settings-panel__test-result`}>
             {testResult.message}
           </p>
         )}
       </div>
 
       {/* Welcome Template */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 email-settings-panel__section email-settings-panel__section--welcome">
+        <div className="flex items-center justify-between mb-1.5 email-settings-panel__welcome-header">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
           <button
             type="button"
             onClick={() => setTemplate('')}
@@ -303,7 +309,7 @@ export const EmailSettingsPanel: React.FC = () => {
           <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
             {renderTenantWelcomeTemplate(template || DEFAULT_TENANT_WELCOME_TEMPLATE, {
               tenant_name: 'Vrikshawan',
-              login_url: 'https://example.com/',
+              login_url: 'https://example.com/artists_farm/',
               username: '9876543210',
               temp_passcode: '482913',
             })}

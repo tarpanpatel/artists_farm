@@ -27,11 +27,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     const errorMessage = typeof error === 'string' ? error : undefined;
 
     return (
-      <div className={`${fullWidth ? 'w-full' : 'inline-block'}`}>
+      <div className={`${fullWidth ? 'w-full' : 'inline-block'} textarea`}>
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 textarea__label"
           >
             {label}
           </label>
@@ -55,15 +55,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                   : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
               }
               ${className}
+              textarea__field
             `}
           {...props}
         />
         {errorMessage ? (
-          <p id={`${textareaId}-error`} className="mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+          <p id={`${textareaId}-error`} className="mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 textarea__error">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${textareaId}-helper`} className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <p id={`${textareaId}-helper`} className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 textarea__helper">
             {helperText}
           </p>
         ) : null}

@@ -1810,7 +1810,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB: BETA RECIPE BUILDER */}
       {activeTab === 'beta_recipe_builder' && (
-        <div className="space-y-6">
+    <div className="space-y-6 kitchen-management">
           {/* Recipe Preset Save Modal */}
           {showPresetModal && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">

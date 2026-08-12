@@ -660,7 +660,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
       {/* SUB-TAB 1: PROPERTY PAYROLL & PAYEE CONTROL CENTER (HTML SNIPPET MATCH) */}
       {activeSubTab === 'control_center' && (
-        <div className="space-y-6">
+    <div className="space-y-6 staff-management">
           {/* ROW 1: FULL WIDTH Active System Users & Staff */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">

@@ -59,57 +59,57 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="flex items-center gap-1.5 min-w-0 text-xs text-slate-500 dark:text-slate-400">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
+      <div className="flex items-center justify-between gap-3 px-1 property-address-bar">
+        <div className="flex items-center gap-1.5 min-w-0 text-xs text-slate-500 dark:text-slate-400 property-address-bar__display">
+          <MapPin className="w-3.5 h-3.5 shrink-0 property-address-bar__icon" />
           {address.trim() ? (
-            <span className="truncate">{address}</span>
+            <span className="truncate property-address-bar__address">{address}</span>
           ) : (
-            <span className="italic">{t('no_address_label', 'No address')}</span>
+            <span className="italic property-address-bar__empty">{t('no_address_label', 'No address')}</span>
           )}
           {googleMapsLink && (
             <a
               href={googleMapsLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700"
+              className="shrink-0 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 property-address-bar__maps-link"
               title={t('open_in_google_maps_tooltip', 'Open in Google Maps')}
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3 h-3 property-address-bar__maps-icon" />
             </a>
           )}
         </div>
         {canEdit && (
           <button
             onClick={openModal}
-            className="shrink-0 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            className="shrink-0 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer property-address-bar__edit-btn"
             title={t('edit_address_tooltip', 'Edit address')}
           >
-            <Pencil className="w-3.5 h-3.5" />
+            <Pencil className="w-3.5 h-3.5 property-address-bar__edit-icon" />
           </button>
         )}
       </div>
       {instructions.trim() && (
-        <p className="mt-1 px-1 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line">{instructions}</p>
+        <p className="mt-1 px-1 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line property-address-bar__instructions">{instructions}</p>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isSaving && setIsModalOpen(false)} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 property-address-bar__modal-backdrop">
+          <div className="absolute inset-0 bg-black/50 property-address-bar__overlay" onClick={() => !isSaving && setIsModalOpen(false)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6 property-address-bar__modal">
+            <div className="flex items-center justify-between mb-4 property-address-bar__modal-header">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 property-address-bar__modal-title">
                 <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 {t('property_details_header', 'Property Details')}
               </h2>
               <button
                 onClick={() => !isSaving && setIsModalOpen(false)}
-                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer property-address-bar__modal-close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 property-address-bar__modal-body">
               <Input
                 label={t('address_label', 'Address')}
                 value={editAddress}
@@ -123,7 +123,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
                 onChange={(e) => setEditMapsLink(e.target.value)}
                 placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
               />
-              <div>
+              <div className="property-address-bar__instructions-field">
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('instructions_label', 'Instructions')}</label>
                 <Textarea
                   rows={4}
@@ -134,11 +134,11 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-5">
+            <div className="flex items-center gap-2 mt-5 property-address-bar__modal-footer">
               <button
                 onClick={handleSave}
                 disabled={isSaving || !editAddress.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__save-btn"
               >
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 {t('save_address_button', 'Save Address')}
@@ -146,7 +146,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               <button
                 onClick={() => setIsModalOpen(false)}
                 disabled={isSaving}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__cancel-btn"
               >
                 <X className="w-3.5 h-3.5" />
                 {t('cancel_button', 'Cancel')}

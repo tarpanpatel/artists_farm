@@ -217,8 +217,8 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="rooms-management space-y-4">
+      <div className="rooms-management__header flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('rooms_heading', 'Rooms')}</h3>
         <div className="flex items-center gap-3">
           {slotUsage && (
@@ -252,7 +252,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       )}
 
       {property.rooms.length === 0 ? null : (
-        <div className="space-y-3">
+        <div className="rooms-management__list space-y-3">
           {property.rooms.map((room) => {
             const roomData = overview?.rooms.find(r => r.id === room.id);
             const status = roomData?.occupied > 0 ? 'booked' : 'available';
@@ -260,7 +260,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             return (
               <div
                 key={room.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600"
+                className="rooms-management__room-item flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors border border-slate-200 dark:border-slate-600"
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-900 dark:text-white text-sm mb-1 truncate">{room.name}</p>
@@ -354,7 +354,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
 
       {/* Add Room Modal */}
       {showAddRoomModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="rooms-management__modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
 

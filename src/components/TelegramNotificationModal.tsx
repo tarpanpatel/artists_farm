@@ -1436,7 +1436,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50 telegram-notification-modal__root">
       {contentBody}
       {setupWizard}
     </div>

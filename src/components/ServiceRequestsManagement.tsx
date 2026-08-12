@@ -31,7 +31,7 @@ interface ServiceRequestsManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
 }
 
-const DEFAULT_SERVICE_REQUEST_TYPES = [
+export const DEFAULT_SERVICE_REQUEST_TYPES = [
   { type_id: 'fresh_towels', category: 'Housekeeping', label: 'Fresh Towels' },
   { type_id: 'extra_bedding', category: 'Housekeeping', label: 'Extra Bedding / Pillows' },
   { type_id: 'toiletries_refill', category: 'Housekeeping', label: 'Toiletries Refill' },
@@ -204,7 +204,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   );
 
   return (
-    <div className="space-y-6 max-w-[550px]">
+    <div className="space-y-6 max-w-[550px] service-requests-management__container">
       <PageHeader
         title={t('guest_service_requests_heading', 'Guest Service Requests')}
         subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
@@ -214,35 +214,35 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         </PageHeaderButton>
       </PageHeader>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 service-requests-management__list-card">
         {loading ? (
-          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">{t('loading_spinner_default_message', 'Loading...')}</div>
+          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
         ) : requests.length === 0 ? (
-          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
+          <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__empty-state">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 service-requests-management__sections">
             {pending.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
-                <div className="space-y-2">
+              <div className="space-y-2 service-requests-management__section">
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 service-requests-management__section-header">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
+                <div className="space-y-2 service-requests-management__request-list">
                   {pending.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 dark:text-white text-sm">{r.requestType}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl service-requests-management__request-item service-requests-management__request-item--pending">
+                      <div className="flex-1 min-w-0 service-requests-management__request-details">
+                        <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
                         </div>
-                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">{r.description}</p>}
-                        <p className="text-[11px] text-slate-400 mt-0.5">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
+                        {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 service-requests-management__request-description">{r.description}</p>}
+                        <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
                       </div>
                         <Button
                           variant="success"
                           size="sm"
                           disabled={fulfillingId === r.id}
                           onClick={() => handleFulfill(r.id, r.requestType, r.roomName)}
-                          className="shrink-0"
+                          className="shrink-0 service-requests-management__fulfill-button"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {fulfillingId === r.id ? t('updating_button', 'Updating...') : t('mark_fulfilled_button', 'Mark Fulfilled')}
@@ -254,30 +254,30 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             )}
 
             {fulfilled.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
-                <div className="space-y-2">
+              <div className="space-y-2 service-requests-management__section">
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 service-requests-management__section-header">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
+                <div className="space-y-2 service-requests-management__request-list">
                   {paginatedFulfilled.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 dark:text-white text-sm">{r.requestType}</span>
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75 service-requests-management__request-item service-requests-management__request-item--fulfilled">
+                      <div className="flex-1 min-w-0 service-requests-management__request-details">
+                        <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">
                           {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
                         </p>
                       </div>
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-bold shrink-0">
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-bold shrink-0 service-requests-management__done-badge">
                         <CheckCircle2 className="w-3.5 h-3.5" /> {t('done_badge', 'Done')}
                       </span>
                     </div>
                   ))}
                 </div>
                 {fulfilledPageCount > 1 && (
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center justify-between pt-1 service-requests-management__fulfilled-pagination">
                     <button
                       type="button"
                       onClick={() => setFulfilledPage((p) => Math.max(0, p - 1))}
@@ -306,21 +306,21 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       </div>
 
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in service-requests-management__modal-overlay">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 service-requests-management__modal">
+            <div className="flex items-center justify-between mb-4 service-requests-management__modal-header">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2 service-requests-management__modal-title">
                 <Clock className="w-5 h-5 text-indigo-500" />
                 {t('new_service_request_heading', 'New Service Request')}
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer service-requests-management__modal-close">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="app-form app-form--create-service-request space-y-4">
+            <form onSubmit={handleCreate} className="app-form app-form--create-service-request space-y-4 service-requests-management__form">
               {isMultiKeyProperty && rooms.length > 0 && (
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('room_field_label', 'Room')}</label>
+                <div className="service-requests-management__form-group">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('room_field_label', 'Room')}</label>
                   <StyledSelect
                     value={newRoomId}
                     onChange={setNewRoomId}
@@ -329,8 +329,8 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   />
                 </div>
               )}
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('request_type_label', 'Request Type')}</label>
+              <div className="service-requests-management__form-group">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('request_type_label', 'Request Type')}</label>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
@@ -338,21 +338,21 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   searchable
                 />
               </div>
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_label', 'Details')}</label>
+              <div className="service-requests-management__form-group">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('details_label', 'Details')}</label>
                 <Textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
                   rows={3}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm service-requests-management__form-textarea"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 service-requests-management__form-actions">
                 <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
                   {t('cancel_button', 'Cancel')}
                 </Button>
-                <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm">
+                <Button type="submit" variant="primary" size="md" disabled={saving} className="shadow-sm service-requests-management__submit-button">
                   {saving ? t('logging_button', 'Logging...') : t('log_request_button', 'Log Request')}
                 </Button>
               </div>

@@ -290,9 +290,9 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   }
 
   return (
-    <div className="space-y-6">
+    <div className="multi-key-property-overview space-y-6">
       {error && (
-        <div className="flex gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="multi-key-property-overview__error flex gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
@@ -300,59 +300,59 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
        {/* Header - hide on dashboard overview. Add Room now lives in the
           Rooms List section below, always visible regardless of hideHeader. */}
-      {!hideHeader && (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{property.name}</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
-        </div>
-      </div>
-      )}
+       {!hideHeader && (
+       <div className="multi-key-property-overview__header flex items-center justify-between">
+         <div className="multi-key-property-overview__header-text">
+           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{property.name}</h1>
+           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
+         </div>
+       </div>
+       )}
 
-      {/* Stats - hide on dashboard overview */}
-      {!hideHeader && overview && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-            <div className="flex items-center gap-3">
-              <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-60" />
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{t('total_rooms_label', 'Total Rooms')}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_rooms}</p>
-              </div>
-            </div>
-          </div>
+       {/* Stats - hide on dashboard overview */}
+       {!hideHeader && overview && (
+         <div className="multi-key-property-overview__stats grid grid-cols-2 md:grid-cols-4 gap-4">
+           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+             <div className="flex items-center gap-3">
+               <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-60" />
+               <div>
+                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('total_rooms_label', 'Total Rooms')}</p>
+                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_rooms}</p>
+               </div>
+             </div>
+           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400 opacity-60" />
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupied_label', 'Occupied')}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_occupied}</p>
-              </div>
-            </div>
-          </div>
+           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+             <div className="flex items-center gap-3">
+               <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400 opacity-60" />
+               <div>
+                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupied_label', 'Occupied')}</p>
+                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_occupied}</p>
+               </div>
+             </div>
+           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-60" />
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupancy_label', 'Occupancy')}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.occupancy_rate}%</p>
-              </div>
-            </div>
-          </div>
+           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+             <div className="flex items-center gap-3">
+               <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-60" />
+               <div>
+                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupancy_label', 'Occupancy')}</p>
+                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.occupancy_rate}%</p>
+               </div>
+             </div>
+           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-            <div className="flex items-center gap-3">
-              <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400 opacity-60" />
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{t('revenue_label', 'Revenue')}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+           <div className="multi-key-property-overview__stat-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+             <div className="flex items-center gap-3">
+               <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400 opacity-60" />
+               <div>
+                 <p className="text-xs text-slate-600 dark:text-slate-400">{t('revenue_label', 'Revenue')}</p>
+                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
   );
 };

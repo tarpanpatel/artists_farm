@@ -154,21 +154,21 @@ We look forward to welcoming you!`;
   };
 
   return (
-    <div className="space-y-4">
+    <div className="property-edit-form space-y-4">
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
+        <div className="property-edit-form__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
       {success && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm text-emerald-700 dark:text-emerald-300">
+        <div className="property-edit-form__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           {t('property_updated_success_message', 'Property details saved')}
         </div>
       )}
 
-      <div>
+      <div className="property-edit-form__field">
         <Input
           label={t('tenant_property_name_label', 'Property Name')}
           value={name}
@@ -176,8 +176,8 @@ We look forward to welcoming you!`;
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+      <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="property-edit-form__field">
           <Input
             type="email"
             label={t('email_label', 'Email')}
@@ -186,7 +186,7 @@ We look forward to welcoming you!`;
             placeholder={t('email_placeholder', 'info@example.com')}
           />
         </div>
-        <div>
+        <div className="property-edit-form__field">
           <Input
             type="text"
             label={t('tenant_contact_phone_label', 'Contact Phone')}
@@ -197,7 +197,7 @@ We look forward to welcoming you!`;
         </div>
       </div>
 
-      <div>
+      <div className="property-edit-form__field">
         <Input
           type="text"
           label={t('gstin_optional_label', 'GSTIN (optional)')}
@@ -208,7 +208,7 @@ We look forward to welcoming you!`;
         />
       </div>
 
-      <div>
+      <div className="property-edit-form__field">
         <Input
           type="text"
           label={t('address_label', 'Address')}
@@ -218,8 +218,8 @@ We look forward to welcoming you!`;
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+      <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="property-edit-form__field">
           <Input
             type="time"
             label={t('checkin_time_label', 'Check-in Time')}
@@ -228,7 +228,7 @@ We look forward to welcoming you!`;
             helperText={t('checkin_time_help', 'Applied to all rooms under this property.')}
           />
         </div>
-        <div>
+        <div className="property-edit-form__field">
           <Input
             type="time"
             label={t('checkout_time_label', 'Check-out Time')}
@@ -242,7 +242,7 @@ We look forward to welcoming you!`;
       {/* Multi-key parent properties aren't themselves bookable - each room has
           its own tariff, set in RoomsManagement.tsx instead. */}
       {property.property_type !== 'MULTI_KEY' && (
-        <div>
+        <div className="property-edit-form__field">
           <Input
             type="number"
             label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
@@ -254,7 +254,7 @@ We look forward to welcoming you!`;
         </div>
       )}
 
-      <div>
+      <div className="property-edit-form__field">
         <Input
           type="text"
           label={t('google_maps_link_label', 'Google Maps Link')}
@@ -264,7 +264,7 @@ We look forward to welcoming you!`;
         />
       </div>
 
-      <div>
+      <div className="property-edit-form__field">
         <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
         <WhatsAppEditor
           value={instructions}
@@ -272,27 +272,27 @@ We look forward to welcoming you!`;
           placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
           rows={4}
         />
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>
+        <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>
       </div>
 
-      <label className="flex items-start gap-2.5 cursor-pointer">
+      <label className="property-edit-form__telegram-toggle flex items-start gap-2.5 cursor-pointer">
         <input
           type="checkbox"
           checked={telegramCustomization}
           onChange={(e) => setTelegramCustomization(e.target.checked)}
-          className="w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
+          className="property-edit-form__telegram-checkbox w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
         />
-        <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</span>
+        <span className="property-edit-form__telegram-label block text-sm font-semibold text-slate-700 dark:text-slate-300">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</span>
       </label>
 
-      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
+      <div className="property-edit-form__whatsapp-section pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
         <div>
-          <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, the built-in default template is used.')}</p>
+          <p className="property-edit-form__section-heading text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
+          <p className="property-edit-form__section-help text-xs text-slate-400 dark:text-slate-500 mb-3">{t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, the built-in default template is used.')}</p>
           
           {/* Quick variable insert buttons */}
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-1">Insert Tag:</span>
+          <div className="property-edit-form__tag-row mb-2 flex flex-wrap items-center gap-1.5">
+            <span className="property-edit-form__tag-hint text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-1">Insert Tag:</span>
              {['{guest_name}', '{property_name}', '{room_number}', '{checkin_date}', '{checkout_date}', '{checkin_time}', '{checkout_time}', '{google_maps_link}', '{property_phone}', '{total_amount}'].map((tag) => (
                <Button key={tag} variant="secondary" size="xs" className="px-2 py-0.5 font-mono border dark:border-slate-700 rounded-md" type="button" onClick={() => setWhatsappTemplate((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + tag)}>
                  + {tag}

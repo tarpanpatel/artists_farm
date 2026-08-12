@@ -13,9 +13,9 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
   const [activeTab, setActiveTab] = useState<'theme' | 'css'>('theme');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 appearance-settings">
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2 appearance-settings__tabs">
         <Button
           variant={activeTab === 'theme' ? 'primary' : 'ghost'}
           size="md"
@@ -33,7 +33,7 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRo
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 appearance-settings__content">
         {activeTab === 'theme' ? (
           <ThemeManagement />
         ) : (

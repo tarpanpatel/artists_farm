@@ -29,13 +29,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-red-900 dark:text-red-200">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3 error-boundary">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 error-boundary__icon" />
+          <div className="error-boundary__content">
+            <h3 className="font-semibold text-red-900 dark:text-red-200 error-boundary__title">
               {this.props.section ? `${this.props.section} Error` : t('error_boundary_generic_heading')}
             </h3>
-            <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+            <p className="text-sm text-red-700 dark:text-red-300 mt-1 error-boundary__message">
               {this.state.error?.message || t('error_boundary_generic_message')}
             </p>
           </div>

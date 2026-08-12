@@ -113,32 +113,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="login-modal fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-in fade-in">
+      <div className="login-modal__card w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white text-center relative">
-          <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
+        <div className="login-modal__header bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white text-center relative">
+          <div className="login-modal__logo w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
             <Lock className="w-7 h-7 text-white" />
           </div>
-          <h2 className="text-xl font-black tracking-tight uppercase">{t('login_modal_brand')}</h2>
-          <p className="text-xs text-emerald-100 mt-1 font-medium">{t('terminal_authorization_subtitle')}</p>
+          <h2 className="login-modal__title text-xl font-black tracking-tight uppercase">{t('login_modal_brand')}</h2>
+          <p className="login-modal__subtitle text-xs text-emerald-100 mt-1 font-medium">{t('terminal_authorization_subtitle')}</p>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="app-form app-form--login p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="app-form app-form--login login-modal__form p-6 space-y-5">
           {errorMsg && (
-            <div className="p-3 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded-xl text-xs font-semibold text-red-600 dark:text-red-300 flex items-center gap-2">
+            <div className="login-modal__error p-3 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded-xl text-xs font-semibold text-red-600 dark:text-red-300 flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Mobile Number Field */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <div className="login-modal__field">
+            <label className="login-modal__label block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('mobile_number_label')}
             </label>
-            <div className="relative">
+            <div className="login-modal__mobile-input relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400 dark:text-slate-500 z-10">
                 <span className="text-xs font-bold border-r border-slate-300 dark:border-slate-600 pr-2">+91</span>
               </div>
@@ -154,8 +154,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           </div>
 
           {/* 6-Digit Passcode Field */}
-          <div>
-            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <div className="login-modal__field">
+            <label className="login-modal__label block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('six_digit_pin_label')}
             </label>
             <Input
@@ -174,13 +174,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           </div>
 
           {/* Touch Keypad */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="login-modal__keypad grid grid-cols-3 gap-2 pt-1">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
               <button
                 key={num}
                 type="button"
                 onClick={() => handlePasscodeKey(num)}
-                className="py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+                className="login-modal__key login-modal__key--number py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
               >
                 {num}
               </button>
@@ -188,21 +188,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
             <button
               type="button"
               onClick={handleClear}
-              className="py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
+              className="login-modal__key login-modal__key--clear py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
             >
               {t('clear_keypad_button')}
             </button>
             <button
               type="button"
               onClick={() => handlePasscodeKey('0')}
-              className="py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+              className="login-modal__key login-modal__key--number py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
             >
               0
             </button>
             <button
               type="button"
               onClick={handleBackspace}
-              className="py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
+              className="login-modal__key login-modal__key--backspace py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
             >
               <Delete className="w-4 h-4 mx-auto" />
             </button>
@@ -212,7 +212,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           <button
             type="submit"
             disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+            className="login-modal__submit w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
           >
             <span>{isLoading ? t('authenticating_text') : t('login_to_terminal_button')}</span>
             <ArrowRight className="w-4 h-4" />

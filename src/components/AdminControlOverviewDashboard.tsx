@@ -127,25 +127,25 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
   };
 
   return (
-    <div className="space-y-2 md:space-y-6">
+    <div className="admin-dashboard space-y-2 md:space-y-6">
       <PageHeader
         title={t('admin_control_title', 'Admin Control')}
         subtitle={t('admin_control_subtitle', 'Central management hub for analytics, item catalogs, billing receipts log, system alerts, and data exports.')}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 md:gap-5">
+      <div className="admin-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 md:gap-5">
         {visibleCards.map((card) => {
           const IconComponent = card.icon;
           return (
             <div
               key={card.uniqueKey}
-              className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group"
+              className="admin-dashboard__card bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group"
             >
               {/* Mobile Layout */}
-              <div className="flex md:hidden items-center justify-between gap-2 w-full">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">{card.title}</h3>
+              <div className="admin-dashboard__card-mobile flex md:hidden items-center justify-between gap-2 w-full">
+                <div className="admin-dashboard__card-mobile-header flex items-center gap-2 min-w-0 flex-1">
+                  <IconComponent className="admin-dashboard__card-mobile-icon w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
+                  <h3 className="admin-dashboard__card-mobile-title text-xs font-bold text-slate-900 dark:text-white truncate">{card.title}</h3>
                 </div>
                 <Button
                   variant="secondary"
@@ -159,19 +159,19 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
               </div>
 
               {/* Desktop Layout */}
-              <div className="hidden md:flex flex-col justify-between h-full space-y-3.5">
-                <div className="space-y-3">
-                  <div className={`p-2.5 rounded-xl border w-fit ${card.color} transition-transform group-hover:scale-105`}>
-                    <IconComponent className="w-5 h-5" />
+              <div className="admin-dashboard__card-desktop hidden md:flex flex-col justify-between h-full space-y-3.5">
+                <div className="admin-dashboard__card-desktop-content space-y-3">
+                  <div className={`admin-dashboard__card-desktop-icon-wrapper p-2.5 rounded-xl border w-fit ${card.color} transition-transform group-hover:scale-105`}>
+                    <IconComponent className="admin-dashboard__card-desktop-icon w-5 h-5" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  <div className="admin-dashboard__card-desktop-text">
+                    <h3 className="admin-dashboard__card-desktop-title text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
+                    <p className="admin-dashboard__card-desktop-desc text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                <div className="admin-dashboard__card-actions pt-2 border-t border-slate-100 dark:border-slate-700/60">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -190,8 +190,8 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       </div>
 
       {visibleCards.length === 0 && (
-        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+        <div className="admin-dashboard__empty-state text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <p className="admin-dashboard__empty-state-text text-slate-500 dark:text-slate-400 text-sm">
             {t('no_admin_modules_label', 'No administrative modules permitted for your current role.')}
           </p>
         </div>

@@ -184,18 +184,31 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 $typeId = trim($input['type_id'] ?? '');
                 $category = trim($input['category'] ?? '');
                 $label = trim($input['label'] ?? '');
-                if (!$typeId || !$category || !$label) {
+                $id = intval($input['id'] ?? 0);
+                if (!$category || !$label) {
                     http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'type_id, category and label are required']);
+                    echo json_encode(['status' => 'error', 'message' => 'category and label are required']);
                     break;
                 }
                 $targetPropertyId = $propertyId ?: 1;
-                $stmt = $pdo->prepare("
-                    INSERT INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order)
-                    VALUES (?, ?, ?, ?, FALSE, 999)
-                    ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label)
-                ");
-                $stmt->execute([$targetPropertyId, $typeId, $category, $label]);
+                if ($id > 0) {
+                    $stmt = $pdo->prepare("
+                        UPDATE service_request_types 
+                        SET category = ?, label = ? 
+                        WHERE id = ? AND property_id = ?
+                    ");
+                    $stmt->execute([$category, $label, $id, $targetPropertyId]);
+                } else {
+                    if (!$typeId) {
+                        $typeId = strtolower(preg_replace('/[^a-z0-9]+/i', '_', trim($label)));
+                    }
+                    $stmt = $pdo->prepare("
+                        INSERT INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order)
+                        VALUES (?, ?, ?, ?, FALSE, 999)
+                        ON DUPLICATE KEY UPDATE category = VALUES(category), label = VALUES(label)
+                    ");
+                    $stmt->execute([$targetPropertyId, $typeId, $category, $label]);
+                }
                 echo json_encode(['status' => 'success', 'message' => 'Service request type saved']);
             }
             break;
@@ -209,17 +222,12 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                     echo json_encode(['status' => 'error', 'message' => 'id is required']);
                     break;
                 }
-                $stmt = $pdo->prepare("SELECT is_system_default FROM service_request_types WHERE id = ? AND property_id = ?");
+                $stmt = $pdo->prepare("SELECT id FROM service_request_types WHERE id = ? AND property_id = ?");
                 $stmt->execute([$id, $propertyId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$row) {
                     http_response_code(404);
                     echo json_encode(['status' => 'error', 'message' => 'Service request type not found']);
-                    break;
-                }
-                if ($row['is_system_default']) {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'System default types cannot be deleted']);
                     break;
                 }
                 $pdo->prepare("DELETE FROM service_request_types WHERE id = ? AND property_id = ?")->execute([$id, $propertyId]);

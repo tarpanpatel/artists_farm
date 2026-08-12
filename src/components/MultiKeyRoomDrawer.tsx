@@ -62,30 +62,30 @@ export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
   };
 
   return (
-    <div className="space-y-1">
+    <div className="multi-key-room-drawer space-y-1">
       {/* MultiKey Property Header - Collapsible */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-left font-medium"
+        className="multi-key-room-drawer__toggle w-full flex items-center justify-between px-4 py-2.5 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-left font-medium"
       >
-        <div className="flex items-center gap-2">
+        <div className="multi-key-room-drawer__title flex items-center gap-2">
           <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <span className="truncate">{propertyName}</span>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-slate-600 dark:text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`multi-key-room-drawer__chevron w-4 h-4 text-slate-600 dark:text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {/* Rooms List - Always Expanded for Hash Navigation */}
       {isOpen && (
-        <div className="space-y-1 ml-2">
+        <div className="multi-key-room-drawer__list space-y-1 ml-2">
           {/* Property Overview */}
           <button
             onClick={() => {
               onNavigateToOverview?.();
             }}
-            className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-left text-sm ${
+            className={`multi-key-room-drawer__nav-item multi-key-room-drawer__nav-item--overview w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-left text-sm ${
               activeMenuItemKey === 'multikey_property_overview'
                 ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-900 dark:text-blue-300 font-medium'
                 : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
@@ -97,9 +97,9 @@ export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
 
           {/* Rooms */}
           {loading ? (
-            <div className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{t('loading_rooms_text')}</div>
+            <div className="multi-key-room-drawer__status multi-key-room-drawer__status--loading px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{t('loading_rooms_text')}</div>
           ) : rooms.length === 0 ? (
-            <div className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{t('no_rooms_yet_text')}</div>
+            <div className="multi-key-room-drawer__status multi-key-room-drawer__status--empty px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{t('no_rooms_yet_text')}</div>
           ) : (
             rooms.map((room) => {
               const isActive = activeMenuItemKey === room.slug;
@@ -107,14 +107,14 @@ export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
               <button
                 key={room.id}
                 onClick={() => onNavigateToRoom?.(room.slug)}
-                className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-left text-sm truncate cursor-pointer ${
+                className={`multi-key-room-drawer__nav-item multi-key-room-drawer__nav-item--room w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-left text-sm truncate cursor-pointer ${
                   isActive
                     ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-900 dark:text-blue-300 font-medium'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                 }`}
                 title={room.name}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 flex-shrink-0"></span>
+                <span className="multi-key-room-drawer__room-dot w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 flex-shrink-0"></span>
                 <span className="truncate">{room.name}</span>
               </button>
               );

@@ -1158,7 +1158,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     };
 
     return (
-      <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200">
+      <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200 inventory-management">
         {/* Top Form: RECORD KITCHEN PURCHASES & STOCK */}
         <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">

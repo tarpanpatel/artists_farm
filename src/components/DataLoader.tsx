@@ -221,17 +221,17 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
   if (error && !data) {
     return (
-      <div className="fixed inset-0 bg-red-50 dark:bg-red-950 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md shadow-lg border border-red-200 dark:border-red-800">
-          <h2 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">
+      <div className="fixed inset-0 bg-red-50 dark:bg-red-950 flex items-center justify-center z-50 data-loader__error">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md shadow-lg border border-red-200 dark:border-red-800 data-loader__error-container">
+          <h2 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2 data-loader__error-title">
             {t('error_loading_application_heading')}
           </h2>
-          <p className="text-sm text-slate-700 dark:text-slate-300 mb-4">
+          <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 data-loader__error-message">
             {error}
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors data-loader__error-refresh-btn"
           >
             {t('refresh_page_button')}
           </button>

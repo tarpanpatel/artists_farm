@@ -476,9 +476,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-overview space-y-6">
+          <div className="analytics-overview__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-overview__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <PieChart className="w-4 h-4 text-blue-600" /> {t('operational_financial_breakdown_heading', 'Operational Financial Breakdown & Margin Analysis')}
             </h3>
 
@@ -536,9 +536,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 2: BOOKINGS */}
       {activeTab === 'bookings' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-bookings space-y-6">
+          <div className="analytics-bookings__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-bookings__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('monthly_bookings_revenue_guests_heading', 'Monthly Bookings, Revenue & Guest Count')}</span>
             </h3>
 
@@ -631,9 +631,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 3: FOOD POS */}
       {activeTab === 'food' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-food space-y-6">
+          <div className="analytics-food__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-food__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('food_menu_performance_heading', 'Food Menu Performance & Most Popular Dish Analytics')}</span>
             </h3>
 
@@ -678,9 +678,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 4: KITCHEN */}
       {activeTab === 'kitchen' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-kitchen space-y-6">
+          <div className="analytics-kitchen__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-kitchen__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <span>{t('kitchen_sales_purchases_profit_heading', 'Kitchen Sales, Purchases & Net Profit')}</span>
             </h3>
 
@@ -745,9 +745,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 5: EXPENSES */}
       {activeTab === 'expenses' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-expenses space-y-6">
+          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-expenses__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               {t('expense_items_cost_breakdown_heading', '🛒 Expense Items - Total Cost Breakdown')}
             </h3>
 
@@ -795,10 +795,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 6: PROFIT & LOSS */}
       {activeTab === 'profit_loss' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-profit-loss space-y-6">
+          <div className="analytics-profit-loss__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="analytics-profit-loss__header flex items-center justify-between">
+              <h3 className="analytics-profit-loss__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-emerald-600" /> {t('profit_loss_statement_heading', 'Profit & Loss Statement')}
               </h3>
               <Input
@@ -861,10 +861,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 7: BALANCE SHEET */}
       {activeTab === 'balance_sheet' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-balance-sheet space-y-6">
+          <div className="analytics-balance-sheet__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="analytics-balance-sheet__header flex items-center justify-between">
+              <h3 className="analytics-balance-sheet__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Layers className="w-4 h-4 text-purple-600" /> {t('balance_sheet_heading', 'Balance Sheet')}
               </h3>
               <Input
@@ -902,10 +902,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
       {/* TAB 8: CASH FLOW */}
       {activeTab === 'cash_flow' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+        <div className="analytics-cash-flow space-y-6">
+          <div className="analytics-cash-flow__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="analytics-cash-flow__header flex items-center justify-between">
+              <h3 className="analytics-cash-flow__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('cash_flow_statement_heading', 'Cash Flow Statement')}
               </h3>
               <Input

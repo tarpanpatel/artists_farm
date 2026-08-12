@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Building2,
-  UserCheck,
   AlertTriangle,
   Menu,
   Bell,
@@ -59,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
 }) => {
-  const { activeRole, setActiveRole: _setActiveRole, currentUser, isAuthenticated } = useAuth();
+  const { activeRole: _activeRole, setActiveRole: _setActiveRole, currentUser: _currentUser, isAuthenticated: _isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
   const { pendingRequests } = useServiceRequestContext();
@@ -142,10 +141,10 @@ export const Header: React.FC<HeaderProps> = ({
     // both the scrim (z-[55]) and the sidebar (z-[56]) so the header stays
     // sharp and its toggle button stays usable to close the drawer, while
     // the scrim still dims the actual page content underneath it.
-    <header className="pos-main-header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
-      <div className="px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
+    <header className="header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
+      <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
-        <div className="flex items-center gap-2">
+        <div className="header__left flex items-center gap-2">
           {/* Menu Toggle for Collapsible Icon-Only / Expanded Sidebar */}
           <button
             onClick={() => {
@@ -163,14 +162,14 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Logo */}
-          <div className="pos-logo-container flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-bold">
+          <div className="header__logo pos-logo-container flex items-center gap-2.5">
+            <div className="header__logo-icon w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-bold">
               <Building2 className="w-5 h-5" />
             </div>
-            <div className="block">
+            <div className="header__logo-text block">
               <span className="text-sm font-bold text-slate-700 dark:text-white tracking-tight flex items-center gap-2">
                 {propertyName}
-                <span className="hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                <span className="header__pos-badge hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                   {t('pos_badge', 'POS')}
                 </span>
               </span>
@@ -179,7 +178,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Section: Notifications + Dark Mode + Profile Username */}
-        <div className="flex items-center gap-2">
+        <div className="header__right flex items-center gap-2">
           {/* Install App Button (12 Aug 2026) - persistent affordance to the
               left of the notification bell, only shown when the app isn't
               already installed (see App.tsx's isAppInstalled/
@@ -192,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onInstallIconClick}
               title={t('install_app_tooltip', 'Install App')}
               aria-label={t('install_app_aria', 'Install app on this device')}
-              className="relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+              className="header__install-app relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             >
               <span className="relative inline-flex items-center justify-center w-5 h-5">
                 <Smartphone className="w-5 h-5" />
@@ -204,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Notification Bell Button */}
-          <div className="relative">
+          <div className="header__notification relative">
             <button
               onClick={handleToggleNotifications}
               title={t('notifications_tooltip', 'Notifications')}
@@ -213,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bell className="w-5 h-5" />
               {hasUnread && (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800 animate-pulse"></span>
+                <span className="header__notification-dot absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-800 animate-pulse"></span>
               )}
             </button>
 
@@ -227,48 +226,48 @@ export const Header: React.FC<HeaderProps> = ({
                 positioning (pinned under the header, small side margins)
                 instead of anchor-relative. */}
             {showNotificationDropdown && (
-              <div className="notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                  <span className="header__dropdown-title text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
                     {t('notifications_label', 'Notifications')}
                   </span>
-                  <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
+                  <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
                     {totalCount} updates
                   </span>
                 </div>
 
-                <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
+                <div className="header__dropdown-body max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
                   {/* 1. Kitchen Module Orders */}
                   {kitchenModuleEnabled && kitchenDisplayOrders.length > 0 && (
-                    <div className="p-3 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <div className="header__section header__section--kitchen p-3 space-y-2">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <Utensils className="w-3.5 h-3.5 text-amber-600" />
                           {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                        <span className={`header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
                           {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="header__orders space-y-1.5">
                         {kitchenDisplayOrders.map((ord) => (
                           <div
                             key={ord.id}
-                            className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                            className="header__order-item p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                           >
-                            <div className="overflow-hidden">
-                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <div className="header__order-info overflow-hidden">
+                              <div className="header__order-id font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <span>{ord.id}</span>
                                 <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              <p className="header__order-items text-[11px] text-slate-500 dark:text-slate-400 truncate">
                                 {ord.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
                               </p>
                             </div>
                             <span
-                              className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                              className={`header__order-status text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                                 ord.status === 'Pending'
                                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300'
                                   : ord.status === 'Preparing'
@@ -286,18 +285,18 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* 2. MultiKey Property Bookings */}
                   {isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0) && (
-                    <div className="p-3 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <div className="header__section header__section--bookings p-3 space-y-2">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-blue-600" />
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                        <span className="header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                           {t('today_tomorrow_badge', 'Today & Tomorrow')}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="header__guests space-y-1.5">
                         {/* Today Guests */}
                         {todayGuests.map((guest) => {
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
@@ -315,19 +314,19 @@ export const Header: React.FC<HeaderProps> = ({
                           return (
                             <div
                               key={guest.id}
-                              className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                              className="header__guest-item header__guest-item--today p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                             >
-                              <div>
-                                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <div className="header__guest-info">
+                                <p className="header__guest-name font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                   <User className="w-3 h-3 text-slate-400" />
                                   <span>{guest.guestName}</span>
                                   <span className="text-slate-400 font-normal">({guest.roomNumber})</span>
                                 </p>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                <p className="header__guest-phone text-[10px] text-slate-500 dark:text-slate-400">
                                   Phone: {guest.phoneNumber}
                                 </p>
                               </div>
-                              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStyle}`}>
+                              <span className={`header__guest-badge text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${badgeStyle}`}>
                                 {badgeText}
                               </span>
                             </div>
@@ -338,19 +337,19 @@ export const Header: React.FC<HeaderProps> = ({
                         {tomorrowGuests.map((guest) => (
                           <div
                             key={guest.id}
-                            className="p-2 rounded-lg bg-purple-50/60 dark:bg-purple-950/20 flex items-center justify-between gap-2 border border-purple-100 dark:border-purple-900/30"
+                            className="header__guest-item header__guest-item--tomorrow p-2 rounded-lg bg-purple-50/60 dark:bg-purple-950/20 flex items-center justify-between gap-2 border border-purple-100 dark:border-purple-900/30"
                           >
-                            <div>
-                              <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <div className="header__guest-info">
+                              <p className="header__guest-name font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <User className="w-3 h-3 text-purple-500" />
                                 <span>{guest.guestName}</span>
                                 <span className="text-slate-400 font-normal">({guest.roomNumber})</span>
                               </p>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              <p className="header__guest-upcoming text-[10px] text-slate-500 dark:text-slate-400">
                                 {t('upcoming_tomorrow_label', 'Upcoming tomorrow')}
                               </p>
                             </div>
-                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
                               {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
                           </div>
@@ -365,31 +364,31 @@ export const Header: React.FC<HeaderProps> = ({
                       so marking one fulfilled on the Service Requests page
                       drops it from here immediately. */}
                   {recentServiceRequests.length > 0 && (
-                    <div className="p-3 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <div className="header__section header__section--service-requests p-3 space-y-2">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
                           {t('recent_service_requests_label', 'Guest Service Requests')}
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <span className="header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                           {t('pending_status_badge', 'Pending')}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="header__service-requests space-y-1.5">
                         {recentServiceRequests.map((r) => (
                           <div
                             key={r.id}
-                            className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                            className="header__service-request-item p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                           >
-                            <div className="overflow-hidden">
-                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <div className="header__service-request-info overflow-hidden">
+                              <div className="header__service-request-type font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <span>{r.requestType}</span>
                                 <span className="text-slate-400 font-normal flex items-center gap-0.5">
                                   <RoomIcon className="w-2.5 h-2.5" /> {r.roomName}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              <p className="header__service-request-meta text-[11px] text-slate-500 dark:text-slate-400 truncate">
                                 {t('requested_by_text', 'Requested by')} {r.requestedBy}
                               </p>
                             </div>
@@ -401,15 +400,15 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* Low Stock Warnings */}
                   {lowStockCount > 0 && (
-                    <div className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mt-0.5">
+                    <div className="header__low-stock p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-start gap-2.5">
+                      <div className="header__low-stock-icon p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mt-0.5">
                         <AlertTriangle className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        <p className="header__low-stock-title text-xs font-bold text-slate-900 dark:text-white">
                           {lowStockCount} Low Inventory Items
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="header__low-stock-desc text-[11px] text-slate-500 dark:text-slate-400">
                           {t('low_stock_threshold_description', 'Items reached minimum threshold limit')}
                         </p>
                       </div>
@@ -418,9 +417,9 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* Fallback Operating Normally */}
                   {totalCount === 0 && (
-                    <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                      <span className="font-semibold">{t('all_systems_normal_label', 'All systems operating normally')}</span>
+                    <div className="header__fallback p-6 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center gap-2">
+                      <CheckCircle2 className="header__fallback-icon w-6 h-6 text-emerald-500" />
+                      <span className="header__fallback-text font-semibold">{t('all_systems_normal_label', 'All systems operating normally')}</span>
                     </div>
                   )}
                 </div>
@@ -428,31 +427,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* User Profile */}
-          {isAuthenticated ? (
-            <div className="pos-user-profile-badge flex items-center gap-2.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <img
-                src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-                alt={t('user_avatar_alt', 'User Avatar')}
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30"
-              />
-              <div className="hidden sm:block text-left leading-tight">
-                <span className="block text-xs font-bold text-slate-900 dark:text-white">
-                  {currentUser?.name || t('staff_label', 'Staff')}
-                </span>
-                <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                  {activeRole}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="pos-user-profile-badge flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                <UserCheck className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-              </div>
-              <span className="hidden sm:block text-xs text-slate-400 dark:text-slate-500 font-medium">{t('not_logged_in_label', 'Not logged in')}</span>
-            </div>
-          )}
+          {/* End Top Right Actions */}
         </div>
       </div>
     </header>
