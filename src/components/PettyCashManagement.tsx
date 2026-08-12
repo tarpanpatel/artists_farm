@@ -93,15 +93,41 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   }, []);
 
-  // Sync split fields when amount/visibility changes and fields are empty
+  // Property Cash in Hand split (redesigned 12 Aug 2026): the only thing
+  // staff enters is "how much came out of your own pocket" - the property
+  // cash portion is always just the remainder (total - out of pocket),
+  // never a separate typed field, so the two can never accidentally stop
+  // adding up to the total. Unchecked = the whole amount is out of pocket
+  // (matches the original default); checking the box flips the default the
+  // other way (whole amount from property cash, 0 out of pocket) since
+  // that's what checking it is FOR - staff then only adjusts the pocket
+  // portion if part of it really did come out of their own pocket.
   useEffect(() => {
     const numAmt = formState.amount === '' ? 0 : Number(formState.amount);
     if (numAmt <= 0) return;
-    if (formState.drawerAmount === '' && formState.staffAmount === '') {
-      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: 0 });
-      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: numAmt });
+    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.showDrawerSplit ? 0 : numAmt });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState.showDrawerSplit]);
+
+  // Keep the derived property-cash amount (drawerAmount) in sync with
+  // amount/staffAmount on every change, not just the initial default above -
+  // and clamp both directions so neither figure can ever go negative or the
+  // pocket portion exceed the total (typing more into "out of pocket" than
+  // the total expense would otherwise silently push the derived drawer
+  // amount below zero).
+  useEffect(() => {
+    const numAmt = formState.amount === '' ? 0 : Number(formState.amount);
+    const rawStaff = formState.staffAmount === '' ? 0 : Number(formState.staffAmount);
+    const clampedStaff = Math.min(Math.max(rawStaff, 0), numAmt);
+    const derivedDrawer = Math.max(numAmt - clampedStaff, 0);
+    if (clampedStaff !== formState.staffAmount) {
+      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: clampedStaff });
     }
-  }, [formState.amount, formState.showDrawerSplit]);
+    if (derivedDrawer !== formState.drawerAmount) {
+      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: derivedDrawer });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState.amount, formState.staffAmount]);
 
   // Item prices map from database
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
@@ -371,14 +397,17 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {/* Add Expenses form on the left, registered expenses (filter + Cost
           Logs table) on the right on wide screens - stacks to form-then-logs
           on narrow screens since a fixed side-by-side track can't fit. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
+      <div className="petty-cash-management__layout grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
       <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>
 
         <form onSubmit={handleSubmit} className="add-expense-form app-form app-form--add-expense space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Always 2 columns, even on mobile - date and category are short
+              enough to sit side by side on any screen; the previous
+              grid-cols-1 stacked them there for no real reason. */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
               <DatePicker
                 label={t('expense_date_label', 'Expense Date')}
@@ -477,7 +506,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Always 2 columns, even on mobile - same reasoning as the
+              date/category row above. */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
               <Input
                 label={t('expense_amount_rupees_required_label', 'Amount (₹) *')}
@@ -508,65 +539,61 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 ]}
               />
             </div>
+          </div>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 font-bold">
-              <input
-                type="checkbox"
-                checked={formState.showDrawerSplit}
-                onChange={e => {
-                  dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: e.target.checked });
-                }}
-              />
-              <span className="flex items-center gap-1">
-                <Landmark size={14} className="text-slate-500" /> {t('from_cash_drawer_label', 'From Cash Drawer')}
-              </span>
-            </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 font-bold">
+            <input
+              type="checkbox"
+              checked={formState.showDrawerSplit}
+              onChange={e => {
+                dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: e.target.checked });
+              }}
+            />
+            <span className="flex items-center gap-1">
+              <Landmark size={14} className="text-slate-500" /> {t('from_property_cash_in_hand_label', 'From Property Cash in Hand')}
+            </span>
+          </label>
 
-            {formState.showDrawerSplit && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Input
-                    label={t('cash_drawer_rupees_label', 'Cash Drawer (₹)')}
-                    type="number"
-                    min="0"
-                    value={formState.drawerAmount}
-                    onChange={e => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: val });
-                      if (typeof val === 'number' && typeof formState.amount === 'number' && val <= formState.amount) {
-                        dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount - val });
-                      }
-                    }}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Input
-                    label={t('out_of_pocket_rupees_label', 'Out of Pocket (₹)')}
-                    type="number"
-                    min="0"
-                    value={formState.staffAmount}
-                    onChange={e => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
-                      if (typeof val === 'number' && typeof formState.amount === 'number' && val <= formState.amount) {
-                        dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: formState.amount - val });
-                      }
-                    }}
-                    placeholder="0"
-                  />
-                </div>
+          {/* Redesigned 12 Aug 2026: staff only ever types the out-of-pocket
+              portion - the property-cash-in-hand portion is always just the
+              remainder (total - out of pocket), computed in the useEffect
+              above, never a second free-typed field the two could drift out
+              of sync with. Shown read-only so it's still visible, just not
+              directly editable. */}
+          {formState.showDrawerSplit && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label={t('paid_from_own_pocket_rupees_label', 'If Out of Your Own Pocket? (₹)')}
+                  type="number"
+                  min="0"
+                  max={formState.amount === '' ? undefined : formState.amount}
+                  value={formState.staffAmount}
+                  onChange={e => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
+                  }}
+                  placeholder="0"
+                />
               </div>
-            )}
-
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('expense_paid_by_label', 'Paid By')}</label>
-              <StyledSelect
-                value={formState.paidBy}
-                onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
-                options={financialHandlers.map(h => ({ value: h.name, label: h.name }))}
-              />
+              <div>
+                <Input
+                  label={t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}
+                  type="number"
+                  value={formState.drawerAmount}
+                  disabled
+                />
+              </div>
             </div>
+          )}
+
+          <div>
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('expense_paid_by_label', 'Paid By')}</label>
+            <StyledSelect
+              value={formState.paidBy}
+              onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
+              options={financialHandlers.map(h => ({ value: h.name, label: h.name }))}
+            />
           </div>
 
           {/* Proof uploads */}
@@ -625,7 +652,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </form>
       </div>
 
-      <div className="space-y-6 min-w-0">
+      <div className="petty-cash-management__right-panel space-y-6 min-w-0">
       {/* Live Search & Filter Panel */}
       <div className="expenses-filter-bar bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -655,7 +682,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       </div>
 
       {/* Cost Logs DataTable */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      <div className="petty-cash-management__table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         <DataTable
           columns={[
             {
@@ -780,7 +807,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
       {/* Edit Entry Modal for Admin & Super Admin */}
       {editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="petty-cash-management__edit-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
