@@ -552,7 +552,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...newTenant, login_url: window.location.origin + '/artists_farm/' }),
+        body: JSON.stringify({ ...newTenant, login_url: window.location.origin + '/' }),
       });
 
       const data = await response.json();

@@ -151,7 +151,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         // CODE (a number), never the string 'success', so this comparison was
         // always false and every load silently fell back to the hardcoded
         // defaults below instead of whatever roles/pages the DB actually has.
-        const rolesResponse = await (await apiFetch('/artists_farm/php/api/router.php?action=get_system_roles')).json();
+        const rolesResponse = await (await apiFetch('/php/api/router.php?action=get_system_roles')).json();
         if (rolesResponse.status === 'success' && rolesResponse.data) {
           const roleNames = rolesResponse.data.map((r: any) => r.name);
           setAllRoles(roleNames);
@@ -159,7 +159,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
           setAllRoles(['Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff']);
         }
 
-        const pagesResponse = await (await apiFetch('/artists_farm/php/api/router.php?action=get_nav_page_options')).json();
+        const pagesResponse = await (await apiFetch('/php/api/router.php?action=get_nav_page_options')).json();
         if (pagesResponse.status === 'success' && pagesResponse.data) {
           setPageOptions(pagesResponse.data);
         } else {

@@ -303,7 +303,7 @@ export const EmailSettingsPanel: React.FC = () => {
           <pre className="mt-2 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-700 dark:text-slate-300">
             {renderTenantWelcomeTemplate(template || DEFAULT_TENANT_WELCOME_TEMPLATE, {
               tenant_name: 'Vrikshawan',
-              login_url: 'https://example.com/artists_farm/',
+              login_url: 'https://example.com/',
               username: '9876543210',
               temp_passcode: '482913',
             })}

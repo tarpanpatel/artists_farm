@@ -138,7 +138,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const handleLogout = () => {
     localStorage.removeItem('artists_farm_user_session');
     onLogout();
-    window.location.href = '/artists_farm/login/';
+    window.location.href = '/login/';
   };
 
   const autoSlug = (name: string) =>

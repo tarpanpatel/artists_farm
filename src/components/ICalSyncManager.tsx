@@ -107,7 +107,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       // segments for the backend to resolve the current property from. Without
       // it, every property's iCal Sync Manager silently fell back to the same
       // default property instead of showing (and scoping actions to) its own feeds.
-      const response = await fetch('/artists_farm/php/api/ical_sync.php?action=get_ical_syncs', {
+      const response = await fetch('/php/api/ical_sync.php?action=get_ical_syncs', {
         credentials: 'include',
         headers: { 'X-Property-Slug': getPropertySlug() },
       });
@@ -151,7 +151,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         ...(propertyId ? { property_id: propertyId } : {}),
       };
 
-      const response = await fetch('/artists_farm/php/api/ical_sync.php?action=create_ical_sync', {
+      const response = await fetch('/php/api/ical_sync.php?action=create_ical_sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       const formData = new FormData();
       formData.append('id', String(calId));
 
-      const response = await fetch('/artists_farm/php/api/ical_sync.php?action=sync_ical_events', {
+      const response = await fetch('/php/api/ical_sync.php?action=sync_ical_events', {
         method: 'POST',
         credentials: 'include',
         headers: { 'X-Property-Slug': getPropertySlug() },
@@ -216,7 +216,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       try {
         const formData = new FormData();
         formData.append('id', String(cal.id));
-        const res = await fetch('/artists_farm/php/api/ical_sync.php?action=sync_ical_events', {
+        const res = await fetch('/php/api/ical_sync.php?action=sync_ical_events', {
           method: 'POST',
           credentials: 'include',
           headers: { 'X-Property-Slug': getPropertySlug() },
@@ -243,7 +243,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     if (!confirmed) return;
 
     try {
-      const response = await fetch('/artists_farm/php/api/ical_sync.php?action=delete_ical_sync', {
+      const response = await fetch('/php/api/ical_sync.php?action=delete_ical_sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Property-Slug': getPropertySlug() },
         credentials: 'include',

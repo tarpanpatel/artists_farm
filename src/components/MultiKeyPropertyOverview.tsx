@@ -245,7 +245,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
-                      const response = await fetch('/artists_farm/php/api/router.php?action=update_room_name', {
+                      const response = await fetch('/php/api/router.php?action=update_room_name', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',

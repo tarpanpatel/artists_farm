@@ -4,23 +4,21 @@
 
 import { PropertyTelegramConfig } from '../types';
 
-// Dynamically resolve the API base to handle subfolder deployment (e.g. /artists_farm/)
-// On Vite dev server (ports 3000, 5173, 5174, 8080), the proxy handles /php routing, so _base must be empty.
-// On production (XAMPP, cPanel), derive _base from the URL path by going up to the app root (/artists_farm/).
-const _isDev = ['3000', '5173', '5174', '8080'].includes(window.location.port.toString());
-const _base = _isDev ? '' : (() => {
-  const path = window.location.pathname.replace(/#.*$/, '');
-  const match = path.match(/^(.*?\/artists_farm)(\/|$)/);
-  // This site has never actually been deployed under an /artists_farm/
-  // subfolder (see .htaccess RewriteBase, index.php, and every other place
-  // this exact assumption was already stripped out this session) - falling
-  // back to that literal string here made every API_BASE-derived call
-  // resolve to a URL that doesn't exist for any real property/tenant path
-  // (which never contains "/artists_farm/" at all), silently caught by
-  // .htaccess's catch-all rewrite and served index.php's HTML instead of
-  // JSON. Every fetch...FromDB() call in the app was affected.
-  return match ? match[1] : '';
-})();
+// This site has never actually been deployed under an /artists_farm/
+// subfolder (see .htaccess RewriteBase, index.php, and every other place
+// this exact assumption was already stripped out this session) - the API is
+// always at the domain root (/php/api/router.php), regardless of whatever
+// virtual frontend route the current page happens to be on. _base therefore
+// no longer derives from window.location.pathname at all: it used to
+// preserve a literal "/artists_farm" prefix whenever the CURRENT page's own
+// URL contained that segment (e.g. App.tsx's own root-admin redirects target
+// "/artists_farm/root_dashboard/") - producing API_BASE values like
+// "/artists_farm/php/api/router.php", which doesn't exist, silently caught
+// by .htaccess's catch-all rewrite and served index.html's HTML instead of
+// JSON (surfacing as "Unexpected token '<'... is not valid JSON", and, for
+// the CSRF token fetch specifically, a silently-empty token that made every
+// write from that page fail with "CSRF token missing" instead).
+const _base = '';
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
 // Shared, route-independent base path for anything under /php/ (e.g. telescopeLogger's

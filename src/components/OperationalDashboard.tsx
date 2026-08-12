@@ -127,7 +127,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const fetchBlockedDates = async () => {
       try {
         const propertySlug = getPropertySlug();
-        const response = await fetch('/artists_farm/php/api/ical_sync.php?action=get_blocked_dates', {
+        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
           headers: { 'X-Property-Slug': propertySlug },
           credentials: 'include',
         });

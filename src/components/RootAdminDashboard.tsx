@@ -116,7 +116,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   const handleLogout = () => {
     localStorage.removeItem('artists_farm_user_session');
     onLogout();
-    window.location.href = '/artists_farm/login/';
+    window.location.href = '/login/';
   };
 
   // Load nav items when Edit Main Menu section is active

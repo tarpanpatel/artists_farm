@@ -179,7 +179,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: forgotMobile,
-          login_url: window.location.origin + '/artists_farm/',
+          login_url: window.location.origin + '/',
         }),
       });
       const data = await response.json();
@@ -489,7 +489,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         {/* Back Button */}
         <div className="mt-4 text-center">
           <a
-            href="/artists_farm/"
+            href="/"
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
