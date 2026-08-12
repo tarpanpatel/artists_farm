@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, X, Home } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, X, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
-  ServiceRequest,
   ServiceRequestType,
-  fetchServiceRequestsFromDB,
   createServiceRequestInDB,
   fulfillServiceRequestInDB,
   updateServiceRequestReminderTimestamp,
@@ -13,6 +11,7 @@ import {
   getPropertySlug,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { Textarea } from './Textarea';
@@ -71,15 +70,22 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  // Shared with the notification bell (Header.tsx) - marking a request
+  // fulfilled here updates that badge immediately instead of waiting for an
+  // unrelated re-fetch.
+  const { requests, loading, refreshRequests } = useServiceRequestContext();
   const [requestTypes, setRequestTypes] = useState<ServiceRequestType[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoomId, setNewRoomId] = useState<string>('');
   const [newRequestType, setNewRequestType] = useState(DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
   const [newDescription, setNewDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
+  // Fulfilled list can grow indefinitely (every request ever fulfilled stays
+  // here) - showing all of them unconditionally made this page's height
+  // balloon over time. Paginate 5 at a time instead.
+  const [fulfilledPage, setFulfilledPage] = useState(0);
+  const FULFILLED_PAGE_SIZE = 5;
 
   const getCurrentUserName = () => {
     if (currentUser?.name) return currentUser.name;
@@ -96,20 +102,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     return 'Staff';
   };
 
-  const loadRequests = async () => {
-    setLoading(true);
-    const data = await fetchServiceRequestsFromDB();
-    setRequests(data);
-    setLoading(false);
-  };
-
   const loadTypes = async () => {
     const data = await fetchServiceRequestTypesFromDB();
     setRequestTypes(data);
   };
 
   useEffect(() => {
-    loadRequests();
     loadTypes();
   }, []);
 
@@ -148,7 +146,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       setNewRoomId('');
       setNewRequestType(typeOptions[0]?.value ?? DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
       setNewDescription('');
-      loadRequests();
+      refreshRequests();
     } else {
       showToast('Failed to log service request', { type: 'error' });
     }
@@ -160,10 +158,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     const ok = await fulfillServiceRequestInDB(id, getCurrentUserName());
     setFulfillingId(null);
     if (ok) {
-      showToast('Marked fulfilled', { type: 'success' });
+      showToast('Marking completed and removing from the queue...', { type: 'success' });
       const fulfilledMsg = `✅ <b>SERVICE REQUEST FULFILLED</b>\n━━━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${requestType}\n🚪 <b>Room:</b> ${roomName}\n👤 <b>Fulfilled by:</b> ${getCurrentUserName()}\n🕒 <b>Time:</b> ${new Date().toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━━━━━`;
       onDispatchTelegram?.('Service Request Fulfilled', fulfilledMsg, 'admin');
-      loadRequests();
+      refreshRequests();
     } else {
       showToast('Failed to update request', { type: 'error' });
     }
@@ -195,6 +193,15 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
   const pending = requests.filter((r) => r.status === 'Pending');
   const fulfilled = requests.filter((r) => r.status === 'Fulfilled');
+  const fulfilledPageCount = Math.max(1, Math.ceil(fulfilled.length / FULFILLED_PAGE_SIZE));
+  // Clamp rather than trust state directly - the fulfilled list's length can
+  // shrink out from under a page number already in state (e.g. after a
+  // reload returns fewer rows), which would otherwise render an empty page.
+  const clampedFulfilledPage = Math.min(fulfilledPage, fulfilledPageCount - 1);
+  const paginatedFulfilled = fulfilled.slice(
+    clampedFulfilledPage * FULFILLED_PAGE_SIZE,
+    (clampedFulfilledPage + 1) * FULFILLED_PAGE_SIZE
+  );
 
   return (
     <div className="space-y-6 max-w-[550px]">
@@ -250,7 +257,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
               <div className="space-y-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
                 <div className="space-y-2">
-                  {fulfilled.map((r) => (
+                  {paginatedFulfilled.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -269,6 +276,29 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                     </div>
                   ))}
                 </div>
+                {fulfilledPageCount > 1 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setFulfilledPage((p) => Math.max(0, p - 1))}
+                      disabled={clampedFulfilledPage === 0}
+                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" /> {t('previous_button', 'Previous')}
+                    </button>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {t('page_label', 'Page')} {clampedFulfilledPage + 1} {t('of_label', 'of')} {fulfilledPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setFulfilledPage((p) => Math.min(fulfilledPageCount - 1, p + 1))}
+                      disabled={clampedFulfilledPage >= fulfilledPageCount - 1}
+                      className="flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {t('next_button', 'Next')} <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

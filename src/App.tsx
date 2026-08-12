@@ -35,6 +35,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FinanceProvider } from './contexts/FinanceContext';
 import { InventoryProvider, useInventoryContext } from './contexts/InventoryContext';
 import { KitchenProvider } from './contexts/KitchenContext';
+import { ServiceRequestProvider } from './contexts/ServiceRequestContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
@@ -1936,13 +1937,15 @@ function AppWithProviders({ preloadedData }: { preloadedData: PreloadedData }) {
         <FinanceProvider>
           <InventoryProvider>
             <KitchenProvider>
-              <ConfigurationDataProvider>
-                <ToastProvider>
-                  <ConfirmDialogProvider>
-                    <AppBodyWithData preloadedData={preloadedData} />
-                  </ConfirmDialogProvider>
-                </ToastProvider>
-              </ConfigurationDataProvider>
+              <ServiceRequestProvider>
+                <ConfigurationDataProvider>
+                  <ToastProvider>
+                    <ConfirmDialogProvider>
+                      <AppBodyWithData preloadedData={preloadedData} />
+                    </ConfirmDialogProvider>
+                  </ToastProvider>
+                </ConfigurationDataProvider>
+              </ServiceRequestProvider>
             </KitchenProvider>
           </InventoryProvider>
         </FinanceProvider>

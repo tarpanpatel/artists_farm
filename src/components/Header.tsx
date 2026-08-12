@@ -10,11 +10,14 @@ import {
   Calendar,
   User,
   Smartphone,
-  Download
+  Download,
+  ClipboardList,
+  Home as RoomIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { Guest } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { t } from '../i18n/en';
@@ -59,6 +62,8 @@ export const Header: React.FC<HeaderProps> = ({
   const { activeRole, setActiveRole: _setActiveRole, currentUser, isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
+  const { pendingRequests } = useServiceRequestContext();
+  const recentServiceRequests = pendingRequests.slice(0, 5);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [lastSeenHash, setLastSeenHash] = useState<string>('');
 
@@ -102,12 +107,14 @@ export const Header: React.FC<HeaderProps> = ({
     today: todayGuests.map((g) => `${g.id}-${g.status}`),
     tomorrow: tomorrowGuests.map((g) => g.id),
     lowStock: lowStockCount,
+    serviceRequests: recentServiceRequests.map((r) => r.id),
   });
 
   const hasUnread = currentNotificationHash !== lastSeenHash && (
     (kitchenModuleEnabled && kitchenDisplayOrders.length > 0) ||
     (isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0)) ||
-    lowStockCount > 0
+    lowStockCount > 0 ||
+    recentServiceRequests.length > 0
   );
 
   const handleToggleNotifications = () => {
@@ -121,7 +128,8 @@ export const Header: React.FC<HeaderProps> = ({
   const totalCount =
     (kitchenModuleEnabled ? kitchenDisplayOrders.length : 0) +
     (isMultiKeyProperty ? todayGuests.length + tomorrowGuests.length : 0) +
-    lowStockCount;
+    lowStockCount +
+    recentServiceRequests.length;
 
   return (
     <header className="pos-main-header fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
@@ -335,6 +343,46 @@ export const Header: React.FC<HeaderProps> = ({
                             <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
                               {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Service Requests (12 Aug 2026) - last 5 pending, most
+                      recent first (get_service_requests already orders by
+                      created_at DESC server-side). Shared ServiceRequestContext
+                      so marking one fulfilled on the Service Requests page
+                      drops it from here immediately. */}
+                  {recentServiceRequests.length > 0 && (
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
+                          {t('recent_service_requests_label', 'Guest Service Requests')}
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                          {t('pending_status_badge', 'Pending')}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {recentServiceRequests.map((r) => (
+                          <div
+                            key={r.id}
+                            className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
+                          >
+                            <div className="overflow-hidden">
+                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <span>{r.requestType}</span>
+                                <span className="text-slate-400 font-normal flex items-center gap-0.5">
+                                  <RoomIcon className="w-2.5 h-2.5" /> {r.roomName}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                {t('requested_by_text', 'Requested by')} {r.requestedBy}
+                              </p>
+                            </div>
                           </div>
                         ))}
                       </div>

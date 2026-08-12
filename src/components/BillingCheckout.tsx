@@ -17,7 +17,6 @@ import { Input } from './Input';
 import { Badge } from './Badge';
 import { useToast } from './ToastContext';
 import { ReceiptEditModal } from './ReceiptEditModal';
-import { StyledSelect } from './StyledSelect';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -67,7 +66,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>('today');
-  const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
   const [isProcessing] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [showAddBookingModal, setShowAddBookingModal] = useState(false);
@@ -199,39 +197,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return res;
   }, [uniqueGuests, todayStr]);
 
-  // Room filter dropdown options
-  const roomOptions = useMemo(() => {
-    return [
-      { value: 'all', label: t('filter_room_all_label', 'Filter Room: All') },
-      ...rooms.map((r) => ({ value: r.name, label: `Room: ${r.name}` })),
-    ];
-  }, [rooms]);
-
-  // Target guests matching active tab and selected room filter
+  // Target guests matching the active tab. Room filtering used to be a
+  // separate dropdown here too - removed 12 Aug 2026 since the search box
+  // below already matches guest name, phone, OR room number, making a
+  // second room-only filter pure redundant UI.
   const targetGuests = useMemo(() => {
-    return uniqueGuests.filter((g) => {
-      // 1. Tab category match
-      const cat = getGuestTabCategory(g);
-      if (cat !== activeTab) return false;
-
-      // 2. Room filter match
-      if (selectedRoomFilter !== 'all') {
-        const roomObj = rooms.find((r) => r.name === selectedRoomFilter || r.slug === selectedRoomFilter);
-        const roomId = roomObj?.id;
-        const gRoomId = (g as any).roomId || (g as any).room_id;
-
-        if (roomId && gRoomId && Number(gRoomId) === Number(roomId)) {
-          // match
-        } else {
-          const gRoom = g.roomNumber ? g.roomNumber.toLowerCase().trim() : '';
-          const target = selectedRoomFilter.toLowerCase().trim();
-          if (gRoom !== target && !gRoom.includes(target) && !target.includes(gRoom)) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [guests, activeTab, selectedRoomFilter, rooms, todayStr]);
+    return uniqueGuests.filter((g) => getGuestTabCategory(g) === activeTab);
+  }, [guests, activeTab, todayStr]);
 
   // Search applied once, up front, so every view built from it (room-grid,
   // date-grouped) reflects the same filtered set.
@@ -255,7 +227,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
     const matchedGuestIds = new Set<string>();
     const grouped: GroupedRoomBooking[] = effectiveRooms
-      .filter((room) => selectedRoomFilter === 'all' || room.name === selectedRoomFilter || room.slug === selectedRoomFilter)
       .map((room) => {
         const roomNum = room.name.match(/\d+/)?.[0];
         const matched = guestList.filter((g) => {
@@ -287,16 +258,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       .filter((group) => group.guests.length > 0);
 
     // Group any unmatched guests under "Other / Unassigned Rooms"
-    if (selectedRoomFilter === 'all') {
-      const unmatched = guestList.filter((g) => !matchedGuestIds.has(g.id));
-      if (unmatched.length > 0) {
-        grouped.push({
-          roomId: 9999,
-          roomName: 'Other / Unassigned Rooms',
-          roomSlug: 'unassigned',
-          guests: unmatched,
-        });
-      }
+    const unmatched = guestList.filter((g) => !matchedGuestIds.has(g.id));
+    if (unmatched.length > 0) {
+      grouped.push({
+        roomId: 9999,
+        roomName: 'Other / Unassigned Rooms',
+        roomSlug: 'unassigned',
+        guests: unmatched,
+      });
     }
 
     return grouped;
@@ -305,7 +274,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // Today / Past Bookings: room-first grid, same as always.
   const filteredGroups = useMemo(
     () => buildRoomGroups(searchedGuests),
-    [searchedGuests, rooms, selectedRoomFilter]
+    [searchedGuests, rooms]
   );
 
   // Upcoming: date-first, rooms within each date - "what's happening when"
@@ -337,7 +306,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         label: dateStr === tomorrowStr ? t('tomorrow_label', 'Tomorrow') : formatDate(dateStr),
         roomGroups: buildRoomGroups(byDate.get(dateStr)!),
       }));
-  }, [activeTab, searchedGuests, rooms, selectedRoomFilter, todayStr]);
+  }, [activeTab, searchedGuests, rooms, todayStr]);
 
   // Calculate totals for a guest
   const calculateGuestTotal = (guest: Guest): number => {
@@ -603,7 +572,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           </Button>
         </div>
 
-        {/* Search Bar & Room Filter Dropdown */}
+        {/* Search Bar - covers room too (guest name, phone, OR room number),
+            so the separate "Filter Room" dropdown next to it was pure
+            redundant UI - removed 12 Aug 2026. */}
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <div className="flex-1 w-full">
             <Input
@@ -611,13 +582,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               placeholder={t('search_guest_placeholder', 'Search guest name, phone, or room...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="w-full sm:w-60 shrink-0">
-            <StyledSelect
-              value={selectedRoomFilter}
-              onChange={setSelectedRoomFilter}
-              options={roomOptions}
             />
           </div>
         </div>
