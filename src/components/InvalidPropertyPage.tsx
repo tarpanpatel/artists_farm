@@ -40,7 +40,7 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
 
         {/* Action Button */}
         <a
-          href="/artists_farm/"
+          href="/"
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           <Home className="w-4 h-4" />
