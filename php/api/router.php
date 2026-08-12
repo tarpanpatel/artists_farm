@@ -207,7 +207,22 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // session whose property didn't happen to match. The corresponding
 // save_system_settings/save_theme_settings stay out of this list (write
 // actions, root-admin-only, each with its own explicit role check).
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings'];
+// get_current_property (12 Aug 2026) added for the same reason as
+// get_system_settings/get_theme_settings above: it's the root cause of a
+// recurring "Access Denied" report. DataLoader.tsx calls it UNCONDITIONALLY
+// on every page load, before AuthContext even resolves whether there's a
+// valid session for this property - a completely logged-out visitor hitting
+// a real property's URL for the first time needs it to render the login
+// screen with that property's own name/branding, and a session that's
+// valid but scoped to a DIFFERENT property (e.g. the public-demo session
+// bleeding into an unrelated property after check_session's fix above
+// correctly starts reporting authenticated:false) still needs it to
+// render that same login screen instead of getting hard-blocked here
+// first and never reaching the login-screen fallback at all. Returns only
+// non-sensitive branding/config columns (name, slug, type, currency,
+// colors, ...) - no guest, financial, or staff data - so this is exactly
+// the same "safe to read before login" class as the settings above.
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
