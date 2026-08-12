@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRightLeft, RefreshCw, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowRightLeft, Loader2, Search, AlertTriangle, CheckCircle2, IndianRupee, Users, TrendingUp, TrendingDown, Handshake, Sliders, ChevronUp, ChevronDown } from 'lucide-react';
 import { CashDrawerEntry, CashDrawerSummary } from '../types';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
@@ -315,7 +315,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
         {isLoading ? (
           <div className="text-center p-6 text-slate-400 font-semibold flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
+            <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
           </div>
         ) : filteredSummaries.length === 0 ? (
           <div className="text-center p-6 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold">
