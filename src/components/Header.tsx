@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   Utensils,
   Calendar,
-  User
+  User,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -30,6 +32,12 @@ interface HeaderProps {
   isMultiKeyProperty?: boolean;
   guests?: Guest[];
   rooms?: any[];
+  // "Install App" icon (12 Aug 2026): App.tsx owns the actual PWA-install
+  // state (beforeinstallprompt capture, iOS detection, standalone-mode
+  // check) since that has to live above this component's remount cycle -
+  // this is just told whether to show the icon and what to do when tapped.
+  showInstallIcon?: boolean;
+  onInstallIconClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -45,6 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
   isMultiKeyProperty = false,
   guests = [],
   rooms: _rooms = [],
+  showInstallIcon = false,
+  onInstallIconClick,
 }) => {
   const { activeRole, setActiveRole: _setActiveRole, currentUser, isAuthenticated } = useAuth();
   const { lowStockCount } = useInventoryContext();
@@ -152,6 +162,29 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Section: Notifications + Dark Mode + Profile Username */}
         <div className="flex items-center gap-2">
+          {/* Install App Button (12 Aug 2026) - persistent affordance to the
+              left of the notification bell, only shown when the app isn't
+              already installed (see App.tsx's isAppInstalled/
+              canShowInstallIcon). Lucide has no single "install app" icon,
+              so this merges Smartphone (base) + a small Download badge
+              overlaid in the corner - same layered-badge technique the
+              notification dot next to it uses. */}
+          {showInstallIcon && (
+            <button
+              onClick={onInstallIconClick}
+              title={t('install_app_tooltip', 'Install App')}
+              aria-label={t('install_app_aria', 'Install app on this device')}
+              className="relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+            >
+              <span className="relative inline-flex items-center justify-center w-5 h-5">
+                <Smartphone className="w-5 h-5" />
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
+                  <Download className="w-2 h-2 text-white" strokeWidth={3} />
+                </span>
+              </span>
+            </button>
+          )}
+
           {/* Notification Bell Button */}
           <div className="relative">
             <button

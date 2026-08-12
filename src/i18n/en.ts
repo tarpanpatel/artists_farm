@@ -1365,6 +1365,8 @@ export const strings: Record<string, string> = {
   pos_badge: "POS",
   notifications_tooltip: "Notifications",
   view_notifications_aria: "View notifications",
+  install_app_tooltip: "Install App",
+  install_app_aria: "Install app on this device",
   notifications_label: "Notifications",
   recently_served_orders_label: "Recently Served Orders",
   live_kitchen_tickets_label: "Live Kitchen Tickets",

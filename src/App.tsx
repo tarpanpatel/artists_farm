@@ -474,6 +474,22 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // instead, so iPhone visitors get *something* prompting them rather than
   // silently never seeing an install option at all.
   const [showIOSInstallBanner, setShowIOSInstallBanner] = useState<boolean>(false);
+  // Whether this page is already running as the installed app rather than a
+  // regular browser tab - "standalone" is the actual spec term for it.
+  // navigator.standalone is iOS Safari's own (non-standard, pre-media-query)
+  // flag; matchMedia('(display-mode: standalone)') is what every other
+  // installed-PWA-capable browser (Chrome/Edge/desktop, Android) sets. Also
+  // listens for the media query flipping live - installing without a full
+  // reload (e.g. via the header button below) should hide the button
+  // immediately, not just on next page load.
+  const [isAppInstalled, setIsAppInstalled] = useState<boolean>(false);
+  // Persistent header icon needs to know "is this device even capable of an
+  // install flow at all" independent of whether Chrome has fired
+  // beforeinstallprompt yet (that only fires once certain PWA-installability
+  // heuristics pass, and can lag behind page load) - iOS always qualifies
+  // (manual Add to Home Screen instructions), everything else only once
+  // deferredPrompt has actually been captured below.
+  const [isIOSDevice, setIsIOSDevice] = useState<boolean>(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -485,6 +501,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const handleAppInstalled = () => {
       setShowInstallBanner(false);
       setDeferredPrompt(null);
+      setIsAppInstalled(true);
       showToast("Artists Farm App installed successfully on your device!", { type: 'success' });
     };
 
@@ -492,16 +509,23 @@ function AppBody({ preloadedData }: AppBodyProps) {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    const isStandalone = (window.navigator as any).standalone === true
-      || window.matchMedia('(display-mode: standalone)').matches;
+    setIsIOSDevice(isIOS);
+
+    const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+    const isStandaloneNow = () => (window.navigator as any).standalone === true || standaloneQuery.matches;
+    const checkStandalone = () => setIsAppInstalled(isStandaloneNow());
+    checkStandalone();
+    standaloneQuery.addEventListener('change', checkStandalone);
+
     const dismissed = localStorage.getItem('ios_install_banner_dismissed') === '1';
-    if (isIOS && !isStandalone && !dismissed) {
+    if (isIOS && !isStandaloneNow() && !dismissed) {
       setShowIOSInstallBanner(true);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      standaloneQuery.removeEventListener('change', checkStandalone);
     };
   }, [showToast]);
 
@@ -517,6 +541,23 @@ function AppBody({ preloadedData }: AppBodyProps) {
     console.log(`User response to the install prompt: ${outcome}`);
     setDeferredPrompt(null);
     setShowInstallBanner(false);
+  };
+
+  // Header "Install App" icon (12 Aug 2026): a persistent affordance next to
+  // the notification bell, rather than only the one-shot dismissible
+  // bottom-corner banners above - dismissing either banner shouldn't mean
+  // losing any way to install later. Reuses the exact same install triggers:
+  // the captured beforeinstallprompt event on Android/Desktop Chrome, or the
+  // manual-instructions banner on iOS (re-shown regardless of any earlier
+  // dismissal, since clicking this icon is explicit intent, not an
+  // unsolicited popup).
+  const canShowInstallIcon = !isAppInstalled && (!!deferredPrompt || isIOSDevice);
+  const handleHeaderInstallClick = () => {
+    if (deferredPrompt) {
+      handleInstallApp();
+    } else if (isIOSDevice) {
+      setShowIOSInstallBanner(true);
+    }
   };
 
   // Re-fetch ALL data when the property or kitchen module availability
@@ -1349,6 +1390,8 @@ ${itemsStr}
             isMultiKeyProperty={preloadedData.isMultiKeyProperty}
             guests={guests}
             rooms={preloadedData.currentProperty?.rooms || []}
+            showInstallIcon={canShowInstallIcon}
+            onInstallIconClick={handleHeaderInstallClick}
           />
         )}
 
