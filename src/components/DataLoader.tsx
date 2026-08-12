@@ -55,9 +55,15 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           return;
         }
 
-        // Create a timeout promise that resolves after 3 seconds
+        // Create a timeout promise that resolves after 6 seconds (was 3s -
+        // too tight for a cold first load right after login: several
+        // sequential+parallel requests against cold caches/connections
+        // routinely took longer than that, see the note below). This is
+        // now purely a "paint something soon" cap, not a correctness
+        // boundary - see realDataPromise below for why a slow response no
+        // longer gets stuck.
         const timeoutPromise = new Promise((resolve) => {
-          setTimeout(() => resolve(null), 3000);
+          setTimeout(() => resolve(null), 6000);
         });
 
         // First, fetch the basic property data
@@ -90,33 +96,58 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           (m.is_enabled === 1 || m.is_enabled === true || m.is_enabled === '1')
         );
 
-        // Fetch all other data in parallel with timeout fallback
+        // Fetch all other data in parallel with a timeout fallback for a snappy
+        // first paint - but keep a reference to the real fetch (realDataPromise)
+        // separate from the race, and don't let it just evaporate if the
+        // timeout wins.
+        //
+        // BUG (found 13 Aug 2026): when the real fetch took longer than the
+        // 3s timeout - routine right after a fresh login, with cold caches
+        // and several sequential+parallel requests still in flight - this
+        // used to permanently discard whatever it eventually returned. The
+        // sidebar nav (plus guests/receipts/menu/telegram config) got stuck
+        // showing the timeout's empty defaults for the rest of that page
+        // load, with no retry, only recoverable by a manual refresh (a
+        // refresh's fetches land on already-warm caches/connections and
+        // reliably beat the timeout). Reported as: full nav menu + correct
+        // "Finish Setting Up" state only appearing after a refresh, never on
+        // the first load post-login.
+        //
+        // Fix: still race for the first paint, but if the timeout won, keep
+        // awaiting the real fetch in the background and apply its result on
+        // top once it resolves - self-correcting instead of getting stuck.
+        const realDataPromise = Promise.all([
+          fetchNavMenuFromDB().catch(err => {
+            console.error('Failed to fetch nav items:', err);
+            return [];
+          }),
+          fetchTelegramConfigDB().catch(err => {
+            console.error('Failed to fetch telegram config:', err);
+            return null;
+          }),
+          fetchGuestsFromDB().catch(err => {
+            console.error('Failed to fetch preloaded guests:', err);
+            return [];
+          }),
+          fetchReceiptsFromDB().catch(err => {
+            console.error('Failed to fetch preloaded receipts:', err);
+            return [];
+          }),
+          isKitchenEnabled
+            ? fetchMenuFromDB().catch(err => {
+                console.error('Failed to fetch preloaded menu:', err);
+                return [];
+              })
+            : Promise.resolve([]),
+        ]);
+
+        let timedOut = false;
         const results = await Promise.race([
-          Promise.all([
-            fetchNavMenuFromDB().catch(err => {
-              console.error('Failed to fetch nav items:', err);
-              return [];
-            }),
-            fetchTelegramConfigDB().catch(err => {
-              console.error('Failed to fetch telegram config:', err);
-              return null;
-            }),
-            fetchGuestsFromDB().catch(err => {
-              console.error('Failed to fetch preloaded guests:', err);
-              return [];
-            }),
-            fetchReceiptsFromDB().catch(err => {
-              console.error('Failed to fetch preloaded receipts:', err);
-              return [];
-            }),
-            isKitchenEnabled
-              ? fetchMenuFromDB().catch(err => {
-                  console.error('Failed to fetch preloaded menu:', err);
-                  return [];
-                })
-              : Promise.resolve([]),
-          ]),
-          timeoutPromise.then(() => [[], null, [], [], []]), // Default values on timeout
+          realDataPromise,
+          timeoutPromise.then(() => {
+            timedOut = true;
+            return [[], null, [], [], []]; // Default values on timeout
+          }),
         ]);
 
         const [navItems, telegramConfig, initialGuests, initialReceipts, initialMenu] = results as any[];
@@ -145,6 +176,22 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialReceipts: Array.isArray(initialReceipts) ? initialReceipts : [],
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
         });
+
+        // See the note above realDataPromise: the timeout won, so the values
+        // just rendered are the empty defaults - patch in the real data on
+        // top as soon as it actually arrives instead of leaving it stuck.
+        if (timedOut) {
+          realDataPromise.then(([realNavItems, realTelegramConfig, realGuests, realReceipts, realMenu]) => {
+            setData((prev) => prev ? {
+              ...prev,
+              navItems: Array.isArray(realNavItems) ? realNavItems : prev.navItems,
+              telegramConfig: realTelegramConfig ?? prev.telegramConfig,
+              initialGuests: Array.isArray(realGuests) ? realGuests : prev.initialGuests,
+              initialReceipts: Array.isArray(realReceipts) ? realReceipts : prev.initialReceipts,
+              initialMenu: Array.isArray(realMenu) ? realMenu : prev.initialMenu,
+            } : prev);
+          });
+        }
       } catch (err) {
         console.error('Critical error loading app data:', err);
         setData({
