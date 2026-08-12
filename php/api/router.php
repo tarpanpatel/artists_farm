@@ -566,6 +566,32 @@ switch ($action) {
     // never anything the frontend's own localStorage-based auth state can see.
     case 'check_session':
         if (isset($_SESSION['username'])) {
+            // SECURITY/CORRECTNESS (12 Aug 2026): this used to report
+            // authenticated:true for ANY existing session, regardless of
+            // whether it had access to the property actually in the current
+            // URL. PHP session cookies are domain-wide, not property-scoped
+            // - e.g. the public-demo auto-login sets a demo_admin session
+            // (scoped to the demo property) that stays in the browser after
+            // navigating away; visiting a completely different property
+            // (tenant-a/property-x) still sends that same cookie, and this
+            // blindly said "yes, authenticated" - AuthContext.tsx trusted
+            // that at face value and rendered the full app shell, which then
+            // failed EVERY property-scoped call with 403s, cascading into
+            // the generic "Access Denied" page. Confusing because the
+            // session genuinely was valid, just not for this property.
+            // $propertyId is 0 on tenant-level pages with no specific
+            // property in scope (root_dashboard, a tenant's own dashboard)
+            // - that's a legitimate context with nothing to mismatch
+            // against, so only enforce this when a property actually IS in
+            // scope.
+            if ($propertyId && !isPropertyAccessAllowed($pdo, $propertyId)) {
+                echo json_encode([
+                    'status' => 'success',
+                    'authenticated' => false,
+                    'session_property_mismatch' => true,
+                ]);
+                break;
+            }
             echo json_encode([
                 'status' => 'success',
                 'authenticated' => true,
