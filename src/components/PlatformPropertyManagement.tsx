@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen } from 'lucide-react';
+import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -7,6 +7,7 @@ import { Input } from './Input';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
+import { useConfirm } from './ConfirmDialogContext';
 
 interface Tenant {
   id: number;
@@ -46,6 +47,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   username,
   onLogout,
 }) => {
+  const { confirm } = useConfirm();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // auto-generated one, or without a valid phone number at the time.
   const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
   const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
+  // "Reset Password" - the admin-side counterpart to create_tenant_login,
+  // for a tenant that already HAS a login: hands them a fresh temp passcode
+  // directly, without depending on the tenant's own self-service "Forgot
+  // Password?" flow (which emails the current passcode to their tenant
+  // email on file - a dead end if that's not set, or if the admin is
+  // helping them over a call and just wants to read out a new one now).
+  const [resettingLoginId, setResettingLoginId] = useState<number | null>(null);
+  const [resetLoginError, setResetLoginError] = useState<{ tenantId: number; message: string } | null>(null);
   const [revealedPasscodeId, setRevealedPasscodeId] = useState<number | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   // Populated after a successful "Add Tenant" - keeps the modal open to show
@@ -500,6 +510,46 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       setCreateLoginError({ tenantId, message: 'Failed to create login' });
     } finally {
       setCreatingLoginId(null);
+    }
+  };
+
+  const handleResetTenantLogin = async (tenantId: number) => {
+    const confirmed = await confirm({
+      title: t('reset_password_confirm_title', 'Reset Password?'),
+      message: t('reset_password_confirm_message', "This immediately invalidates the tenant's current passcode and replaces it with a new temporary one. They'll be asked to set their own the next time they log in."),
+      confirmText: t('reset_password_confirm_button', 'Reset Password'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setResettingLoginId(tenantId);
+    setResetLoginError(null);
+    try {
+      const res = await fetch('/php/api/router.php?action=reset_tenant_login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setTenantCredsMap((prev) => ({
+          ...prev,
+          [tenantId]: {
+            username: data.data.username,
+            passcode: data.data.passcode,
+            mustChangePasscode: !!Number(data.data.must_change_passcode),
+          },
+        }));
+        setRevealedPasscodeId(tenantId); // show the fresh passcode immediately, not masked
+      } else {
+        setResetLoginError({ tenantId, message: data.message || 'Failed to reset password' });
+      }
+    } catch (err) {
+      console.error('Failed to reset tenant login:', err);
+      setResetLoginError({ tenantId, message: 'Failed to reset password' });
+    } finally {
+      setResettingLoginId(null);
     }
   };
 
@@ -919,6 +969,30 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       {t('own_passcode_badge', 'Tenant has set their own passcode')}
                                     </span>
                                   )}
+                                  <div>
+                                    <Button
+                                      onClick={() => handleResetTenantLogin(tenant.id)}
+                                      disabled={resettingLoginId === tenant.id}
+                                      variant="secondary"
+                                      size="xs"
+                                      className="flex items-center gap-1.5"
+                                    >
+                                      {resettingLoginId === tenant.id ? (
+                                        <>
+                                          <Loader2 className="w-3 h-3 animate-spin" /> {t('resetting_button', 'Resetting...')}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <RotateCcw className="w-3 h-3" /> {t('reset_password_button', 'Reset Password')}
+                                        </>
+                                      )}
+                                    </Button>
+                                    {resetLoginError?.tenantId === tenant.id && (
+                                      <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {resetLoginError.message}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })()

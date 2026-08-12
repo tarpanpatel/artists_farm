@@ -250,7 +250,7 @@ $is_authenticated_user = isset($_SESSION['username']);
 $is_platform_admin = $_SESSION['is_platform_admin'] ?? false;
 
 // Allow write actions if: API key matches OR user is authenticated OR (root admin on platform admin actions) OR public action
-$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'delete_tenant', 'create_tenant', 'create_tenant_login', 'save_theme_settings'];
+$platform_admin_actions = ['toggle_property_module', 'edit_property', 'delete_property', 'delete_tenant', 'create_tenant', 'create_tenant_login', 'reset_tenant_login', 'save_theme_settings'];
 $is_platform_admin_action = in_array($action, $platform_admin_actions);
 $is_public_action = in_array($action, $public_actions);
 
@@ -1461,6 +1461,60 @@ switch ($action) {
                 'message' => 'Login created successfully',
                 'data' => [
                     'username' => $phoneDigits,
+                    'passcode' => $tempPasscode,
+                    'must_change_passcode' => 1,
+                ],
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Root-admin-side password reset for a tenant that already has a login -
+    // the counterpart to create_tenant_login above (which only fires for
+    // tenants with NO login yet). Covers the case the tenant's own
+    // self-service "Forgot Password?" flow (request_login_info) can't: it
+    // emails the CURRENT passcode to the tenant's email on file, so it's a
+    // dead end when that tenant has no email configured, or the admin just
+    // wants to hand them a fresh passcode directly. Same shape as
+    // create_tenant_login's success response (a temp passcode,
+    // must_change_passcode forced back on) so the frontend can reuse the
+    // exact same "reveal/copy" credentials UI for both.
+    case 'reset_tenant_login':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $tenant_id = $input['tenant_id'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        try {
+            $existingStmt = $pdo->prepare("
+                SELECT id, username FROM users WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL) LIMIT 1
+            ");
+            $existingStmt->execute([$tenant_id]);
+            $existing = $existingStmt->fetch();
+            if (!$existing) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'This tenant has no login yet - use Create Login instead']);
+                exit;
+            }
+
+            $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 1 WHERE id = ?")
+                ->execute([$tempPasscode, $existing['id']]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Passcode reset successfully',
+                'data' => [
+                    'username' => $existing['username'],
                     'passcode' => $tempPasscode,
                     'must_change_passcode' => 1,
                 ],
