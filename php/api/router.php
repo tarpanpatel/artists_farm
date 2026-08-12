@@ -181,7 +181,15 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // Every other action now requires an authenticated session, enforced universally below.
 // get_csrf_token added 12 Aug 2026: must be reachable before a CSRF token
 // exists at all (the token itself), and before any session/write gate below.
-$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session'];
+// get_tenant_by_slug added 12 Aug 2026: App.tsx calls this unconditionally on
+// every page load (before knowing whether the current URL slug is a property
+// or a tenant dashboard), for any user, and it only ever returns tenant
+// metadata (id/name/slug/plan) - never anything property-scoped. It has no
+// $propertyId to check in the first place, so it was falling through to the
+// universal property-scope gate below and 403ing (logged as a "Property-scope
+// violation") for every session whose resolved $propertyId wasn't the one the
+// gate defaulted to, on every single page load.
+$public_actions = ['login_user', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'get_tenant_by_slug'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];

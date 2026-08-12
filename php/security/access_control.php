@@ -28,9 +28,17 @@
 // coincidence let a users-table session inherit an unrelated staff
 // account's property access during testing of the original router.php fix.
 function isPropertyAccessAllowed(PDO $pdo, int $propertyId): bool {
-    if (!$propertyId) return false;
-
+    // Platform admins manage every tenant/property by design - this must be
+    // checked BEFORE the !$propertyId guard below, not after. Root-admin-only
+    // actions called from /root_dashboard/ (get_all_tenants, get_all_properties,
+    // get_tenant_credentials, reset_staff_passcodes, the admin profile actions,
+    // ...) have no real property in scope at all, so $propertyId resolves to 0 -
+    // with the old ordering that hit the early "return false" before ever
+    // reaching this bypass, 403ing every one of those actions for the actual
+    // platform admin they're root-admin-gated for in the first place.
     if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
+
+    if (!$propertyId) return false;
 
     // "Access All Properties" staff (11 Aug 2026, see router.php/authenticate.php
     // login_user): allowed into any property under their own tenant, not locked to
