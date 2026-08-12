@@ -110,6 +110,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       // Fetch tenants
       const tenantsRes = await fetch('/php/api/router.php?action=get_all_tenants', {
         credentials: 'include',
@@ -117,6 +118,20 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       const tenantsData = await tenantsRes.json();
       if (tenantsData.success) {
         setTenants(tenantsData.data || []);
+      } else if (tenantsRes.status === 401 || tenantsRes.status === 403) {
+        // A 401/403 here silently rendered as "0 tenants / 0 properties" before
+        // this check existed - indistinguishable from an actually-empty
+        // platform, and once caused a real "did we lose all our data?" scare
+        // that turned out to just be an expired session (PHP's session GC
+        // cleans up the server-side session file after enough inactivity,
+        // but the browser's login cookie and the app's own client-side auth
+        // state don't know that happened, so the UI kept rendering as
+        // logged-in Root Admin while every API call quietly 403'd).
+        setError(t('root_admin_session_expired_message', 'Your session has expired. Please sign out and log back in.'));
+        setLoading(false);
+        return;
+      } else {
+        setError(tenantsData.message || t('failed_to_load_tenants_message', 'Failed to load tenants.'));
       }
 
       // Fetch all properties

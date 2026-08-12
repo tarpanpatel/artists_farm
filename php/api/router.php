@@ -26,6 +26,11 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/guest_status.php';
+// Needed early (before the PUBLIC DEMO MODE block below, which checks
+// property access to decide whether to override the current session) -
+// was previously required much later, after that block, so it couldn't
+// be used there at all.
+require_once __DIR__ . '/../security/access_control.php';
 require_once __DIR__ . '/../errors/logger.php';
 require_once __DIR__ . '/../guests/guests.php';
 require_once __DIR__ . '/../billing/billing.php';
@@ -205,20 +210,28 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 // $is_authenticated_user is captured so every gate below sees a real,
 // already-authenticated session. Skipped for login_user itself so a real
 // login is never silently overridden.
-// Also re-resolves on every request for a session THIS block already
-// created (is_public_demo_session), not only when no username is set at
-// all - otherwise a visitor's existing session cookie pins them to
-// whichever staff row was "best" at the time they first landed (e.g.
-// Manager, before the Super Admin persona existed), and no server-side
-// code change can ever reach an already-open session.
-if ((!isset($_SESSION['username']) || !empty($_SESSION['is_public_demo_session'])) && $action !== 'login_user') {
+//
+// Overrides whenever the CURRENT session doesn't actually have access to
+// the requested demo property - not just when no session exists at all.
+// Originally only fired for a blank session or one this block itself had
+// already created (is_public_demo_session), which left two real ways for a
+// visitor to get stuck on "Access Denied" on this exact property forever:
+// a session predating a staff-persona change (e.g. before the Super Admin
+// role existed - fixed 12 Aug), or - the one this fixes - ANY other
+// leftover session on the same domain/cookie (an expired real login, a
+// stale demo session from testing, etc.) that isn't scoped to this
+// property. isPropertyAccessAllowed() is the same authoritative check
+// every other endpoint uses, so "doesn't have access" here means the exact
+// same thing it means everywhere else in the app.
+if ($action !== 'login_user') {
     $demoPropertySlug = $_GET['property_slug'] ?? '';
     if ($demoPropertySlug) {
         try {
             $demoStmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
             $demoStmt->execute([$demoPropertySlug]);
             $demoPropertyId = $demoStmt->fetchColumn();
-            if ($demoPropertyId) {
+            $sessionAlreadyHasAccess = $demoPropertyId && isset($_SESSION['username']) && isPropertyAccessAllowed($pdo, (int)$demoPropertyId);
+            if ($demoPropertyId && !$sessionAlreadyHasAccess) {
                 // Prefer the highest-privilege active account so demo visitors
                 // see the full tenant-admin experience (Full read-write access
                 // was the explicit decision for this feature), not whichever
@@ -422,8 +435,8 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
 // idea who's asking, so it can't check ownership itself. isPropertyAccessAllowed() closes that
 // gap; now lives in security/access_control.php so standalone endpoints outside this router's
 // dispatch (e.g. ical_sync.php) can require the same check instead of going unauthenticated.
-require_once __DIR__ . '/../security/access_control.php';
-
+// (require_once moved up near the top of the file - needed earlier by the
+// PUBLIC DEMO MODE block now, so it's already loaded by the time we get here.)
 
 // Log all API requests to Telescope
 $request_origin = "{$request_method} /{$action}";
