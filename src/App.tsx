@@ -145,7 +145,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
         system_health: { tab: 'audit_logs', key: 'system_health' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
-        admin_control_group: { tab: 'menu_manager', key: 'edit_main_menu' },
+        admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
         edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
         telegram: { tab: 'telegram', key: 'telegram' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
@@ -396,6 +396,25 @@ function AppBody({ preloadedData }: AppBodyProps) {
     preloadedData.navItems || []
   );
 
+  // BUG (found 13 Aug 2026): the useState initializer above only reads
+  // preloadedData.navItems ONCE, at mount. DataLoader has its own "self-
+  // correcting" fix (see DataLoader.tsx's 13 Aug 2026 note) for exactly this
+  // class of problem - a cold first-load-after-login request that misses its
+  // 6s race window comes back empty at first, then gets silently patched in
+  // once the real fetch actually resolves - but that patched-in value never
+  // reached here, because this state had already latched onto the empty `[]`
+  // at mount and nothing told it to look again. Symptom: sidebar shows only
+  // the synthetic Kitchen fallback (see Navigation.tsx's buildTree) until a
+  // full manual refresh, which reliably works only because it re-mounts
+  // everything from scratch on an already-warm connection. This effect wires
+  // DataLoader's later correction through - the exact recovery path guests/
+  // receipts/menu already get via their own re-fetch effect below.
+  useEffect(() => {
+    if (preloadedData.navItems && preloadedData.navItems.length > 0) {
+      setNavItems((prev) => (prev.length > 0 ? prev : preloadedData.navItems));
+    }
+  }, [preloadedData.navItems]);
+
   // Keeps the address bar in sync with activeMenuItemKey - shows the item's
   // current urlSlug (regenerated on rename) rather than the stable routing
   // key itself, so a renamed nav item's URL actually reflects the rename
@@ -513,7 +532,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setShowInstallBanner(false);
       setDeferredPrompt(null);
       setIsAppInstalled(true);
-      showToast("Artists Farm App installed successfully on your device!", { type: 'success' });
+      showToast("Ground Code App installed successfully on your device!", { type: 'success' });
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -610,40 +629,62 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
 
 
-  // Hydrate nav menu from DB on startup
+  // Hydrate nav menu from DB on startup.
+  //
+  // BUG (found 13 Aug 2026): fetchNavMenuFromDB() never rejects (it catches
+  // internally and resolves []), so a single cold/slow/failed request just
+  // silently no-ops here (the `data.length > 0` check skips setNavItems)
+  // with no retry and no error surfaced - navItems stays stuck at whatever
+  // it was seeded with (see the useState initializer above) for the rest of
+  // the page's life. An empty nav menu is never legitimately correct for
+  // this app (there's always at least a seeded default set), so an empty
+  // result here is reliably a transient failure, not real data - safe to
+  // retry a few times rather than accept it as final.
   useEffect(() => {
     refreshStaff();
-    fetchNavMenuFromDB().then((data) => {
-      if (data && data.length > 0) {
-        // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
-        const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
-        const filtered = data.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
+    let cancelled = false;
+    const applyNavItems = (data: any[]) => {
+      // Filter out removed nav items (Audit Logs, Staff Activity Trail, Error Logs)
+      const removedKeys = new Set(['audit_logs_main', 'staff_activity_trail', 'errors']);
+      const filtered = data.filter((dbItem: any) => !removedKeys.has(dbItem.uniqueKey));
 
-        // Use the DB as source of truth wholesale, including order - filtered
-        // is already sorted by display_order ASC (see fetchNavMenuFromDB's
-        // query), so idx reflects the DB's actual current order. This used to
-        // instead reuse prev.indexOf(initial) - the position the item
-        // happened to have in whatever loaded first - which meant a reorder
-        // in Root Admin's editor would show correctly there but a tab that
-        // had already loaded before the reorder stayed stuck on the old order
-        // for the rest of its session.
-        setNavItems(filtered.map((dbItem: any, idx: number) => ({
-          id: dbItem.id,
-          title: dbItem.title,
-          tabKey: dbItem.tabKey,
-          uniqueKey: dbItem.uniqueKey,
-          urlSlug: dbItem.urlSlug,
-          category: dbItem.category,
-          iconName: dbItem.iconName,
-          order: idx + 1,
-          roles: dbItem.roles || ['Super Admin'],
-          isVisible: dbItem.isVisible,
-          parentId: dbItem.parentId ?? null,
-          customUrl: dbItem.customUrl || undefined,
-          openInNewTab: dbItem.openInNewTab || false,
-        })));
+      // Use the DB as source of truth wholesale, including order - filtered
+      // is already sorted by display_order ASC (see fetchNavMenuFromDB's
+      // query), so idx reflects the DB's actual current order. This used to
+      // instead reuse prev.indexOf(initial) - the position the item
+      // happened to have in whatever loaded first - which meant a reorder
+      // in Root Admin's editor would show correctly there but a tab that
+      // had already loaded before the reorder stayed stuck on the old order
+      // for the rest of its session.
+      setNavItems(filtered.map((dbItem: any, idx: number) => ({
+        id: dbItem.id,
+        title: dbItem.title,
+        tabKey: dbItem.tabKey,
+        uniqueKey: dbItem.uniqueKey,
+        urlSlug: dbItem.urlSlug,
+        category: dbItem.category,
+        iconName: dbItem.iconName,
+        order: idx + 1,
+        roles: dbItem.roles || ['Super Admin'],
+        isVisible: dbItem.isVisible,
+        parentId: dbItem.parentId ?? null,
+        customUrl: dbItem.customUrl || undefined,
+        openInNewTab: dbItem.openInNewTab || false,
+      })));
+    };
+
+    const loadWithRetry = async (attemptsLeft: number) => {
+      const data = await fetchNavMenuFromDB();
+      if (cancelled) return;
+      if (data && data.length > 0) {
+        applyNavItems(data);
+      } else if (attemptsLeft > 0) {
+        setTimeout(() => { if (!cancelled) loadWithRetry(attemptsLeft - 1); }, 1500);
       }
-    });
+    };
+    loadWithRetry(3);
+
+    return () => { cancelled = true; };
   }, []);
 
   // Apply property color scheme to document.documentElement using CSS variables
@@ -845,7 +886,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
         edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
-        admin_control_group: { tab: 'menu_manager', key: 'edit_main_menu' },
+        admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
         edit_items_group: { tab: 'menu_manager', key: 'edit_main_menu' },
         menu_manager: { tab: 'menu_manager', key: 'edit_food_menu' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
@@ -1141,7 +1182,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
     const balanceDue = receipt.grandTotal - (receipt.advancePaid || 0);
 
-    const msg = `🧾 <b>FULLY ITEMIZED SETTLEMENT BILL</b>
+    const msg = `📶 <b>FULLY ITEMIZED SETTLEMENT BILL</b>
   Resident: <b>${receipt.guestName}</b> (Room ${receipt.roomNumber})
   Receipt: #${receipt.id}
   
@@ -1258,9 +1299,9 @@ ${itemsStr}
       if (item.parentId !== old.parentId) {
         const newParent = item.parentId ? (newMap.get(item.parentId)?.title || item.parentId) : 'Root';
         const oldParent = old.parentId ? (oldMap.get(old.parentId)?.title || old.parentId) : 'Root';
-        changes.push(`Moved "${item.title}" from ${oldParent} → ${newParent}`);
+        changes.push(`Moved "${item.title}" from ${oldParent} â†’ ${newParent}`);
       }
-      if (item.title !== old.title) changes.push(`Renamed "${old.title}" → "${item.title}"`);
+      if (item.title !== old.title) changes.push(`Renamed "${old.title}" â†’ "${item.title}"`);
       if (JSON.stringify(item.roles) !== JSON.stringify(old.roles)) {
         changes.push(`Updated roles for "${item.title}" from [${old.roles?.join(', ')}] to [${item.roles?.join(', ')}]`);
       }
@@ -1342,7 +1383,7 @@ ${itemsStr}
 
   const handleSendTestNotification = () => {
     const testTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Artists Farm Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
+    const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Ground Code Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
     dispatchTelegramAlert('Test Dispatch', testMsg, 'all');
   };
 
@@ -1849,7 +1890,7 @@ ${itemsStr}
               <Smartphone className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Artists Farm App</h4>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Ground Code App</h4>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Use it directly from your desktop or mobile homescreen</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1891,7 +1932,7 @@ ${itemsStr}
                 <Smartphone className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Install Artists Farm App</h4>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Install Ground Code App</h4>
                 <ol className="mt-2 space-y-1.5">
                   <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                     <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">1</span>
@@ -2220,3 +2261,4 @@ export function App() {
     </AuthProvider>
   );
 }
+

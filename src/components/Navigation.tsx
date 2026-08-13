@@ -160,7 +160,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         item.uniqueKey = 'team_overview';
         item.tabKey = 'staff';
       }
-      if (lowerTitle === 'admin control' || uKey === 'admin_control' || uKey === 'admin_control_group' || uKey === 'admin_control_overview' || item.id === 'nav-admin-control') {
+      if (lowerTitle === 'admin control' || uKey === 'admin_control' || uKey === 'admin_control_group' || uKey === 'admin_control_overview' || item.id === 'nav-admin-control' || item.id === 'nav-header-admin') {
         item.uniqueKey = 'admin_control_overview';
         item.tabKey = 'analytics';
       }
@@ -319,28 +319,45 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     if (hasChildren) {
       const itemKey = node.uniqueKey || node.tabKey;
+      const toggleExpand = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setExpandedParents(prev => {
+          const next = new Set(prev);
+          if (next.has(node.id)) {
+            next.delete(node.id);
+          } else {
+            // Opening a first-tier group collapses every other first-tier group.
+            if (firstTierGroupIds.has(node.id)) {
+              firstTierGroupIds.forEach(otherId => {
+                if (otherId !== node.id) next.delete(otherId);
+              });
+            }
+            next.add(node.id);
+          }
+          return next;
+        });
+      };
+      const handleHeaderClick = () => {
+        // Root/parent nodes with children are navigable to a dashboard tab.
+        // Clicking the header navigates and ENSURES the group is expanded
+        // (rather than toggling) - use the chevron to expand/collapse.
+        setExpandedParents(prev => {
+          const next = new Set(prev);
+          if (firstTierGroupIds.has(node.id)) {
+            firstTierGroupIds.forEach(otherId => {
+              if (otherId !== node.id) next.delete(otherId);
+            });
+          }
+          next.add(node.id);
+          return next;
+        });
+        handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
+      };
       return (
         <div key={node.id} className="pt-1 navigation__node">
           <button
             type="button"
-            onClick={() => {
-              setExpandedParents(prev => {
-                const next = new Set(prev);
-                if (next.has(node.id)) {
-                  next.delete(node.id);
-                } else {
-                  // Opening a first-tier group collapses every other first-tier group.
-                  if (firstTierGroupIds.has(node.id)) {
-                    firstTierGroupIds.forEach(otherId => {
-                      if (otherId !== node.id) next.delete(otherId);
-                    });
-                  }
-                  next.add(node.id);
-                }
-                return next;
-              });
-              handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
-            }}
+            onClick={handleHeaderClick}
             className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
@@ -357,11 +374,19 @@ export const Navigation: React.FC<NavigationProps> = ({
                   {badge.text}
                 </span>
               )}
-              {isExpanded ? (
-                <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
-              ) : (
-                <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
-              )}
+              <button
+                type="button"
+                onClick={toggleExpand}
+                className={`navigation__node-chevron-btn p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors ${isActive ? 'text-white' : 'text-slate-400'}`}
+                title={isExpanded ? "Collapse" : "Expand"}
+                aria-label={isExpanded ? "Collapse" : "Expand"}
+              >
+                {isExpanded ? (
+                  <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
+                ) : (
+                  <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
+                )}
+              </button>
             </div>
           </button>
 
@@ -526,7 +551,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
               {customUrlRootItems.length > 0 && (
                 <div className="navigation__custom-links pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
+                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
                   {customUrlRootItems.map(item => {
                     const ItemIcon = getIconComponent(item.iconName);
                     return (
