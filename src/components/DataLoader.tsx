@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { LoadingScreen } from './LoadingScreen';
 import { InvalidPropertyPage } from './InvalidPropertyPage';
 import {
@@ -40,7 +40,33 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
   const [invalidProperty, setInvalidProperty] = useState<string | null>(null);
 
+  // BUG (found 13 Aug 2026): React.StrictMode (see main.tsx) deliberately
+  // double-invokes effects in dev - mount, immediately no-op "cleanup"
+  // (this effect returns none), mount again - specifically to surface
+  // missing-cleanup bugs like this one. This effect had no cancellation
+  // guard, so both invocations independently ran the FULL loadAllData()
+  // (two complete rounds of every fetch below, in parallel) and both called
+  // setData()/setIsLoading(false) on the same component instance. Whichever
+  // invocation's setIsLoading(false) landed FIRST let AppBody mount and
+  // read preloadedData - and AppBody's own useState(preloadedData.x || [])
+  // initializers (see App.tsx) only read that value ONCE, at mount. If the
+  // two invocations' Promise.race timing differed even slightly (plausible
+  // running two full fetch rounds concurrently), whichever one mounted
+  // first could easily be the more-incomplete one, and the second
+  // invocation's better result had no effect - permanently, since nothing
+  // was watching for it. Symptom: sidebar/setup-banner showing incomplete
+  // data on first load, self-correcting on a real refresh (a full page
+  // reload only runs the effect once, no StrictMode double-invoke
+  // artifact). Same class of bug as hydrationTokenRef elsewhere in
+  // App.tsx - applied here the same way: only the LATEST invocation's
+  // results are ever committed to state.
+  const loadTokenRef = useRef(0);
+
   useEffect(() => {
+    loadTokenRef.current += 1;
+    const myToken = loadTokenRef.current;
+    const isStale = () => loadTokenRef.current !== myToken;
+
     const loadAllData = async () => {
       try {
         setIsLoading(true);
@@ -50,6 +76,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         const propertySlug = getPropertySlug();
 
         if (!propertySlug || propertySlug === 'default') {
+          if (isStale()) return;
           setInvalidProperty(propertySlug);
           setIsLoading(false);
           return;
@@ -153,10 +180,17 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         const [navItems, telegramConfig, initialGuests, initialReceipts, initialMenu] = results as any[];
 
         if (!property || (typeof property === 'object' && Object.keys(property).length === 0)) {
+          if (isStale()) return;
           setInvalidProperty(propertySlug);
           setIsLoading(false);
           return;
         }
+
+        // A newer invocation has already taken over (StrictMode's second
+        // mount, or a genuinely new load) - drop this one's result
+        // entirely rather than letting a slower/inferior fetch clobber
+        // whatever the current invocation already committed.
+        if (isStale()) return;
 
         const isMultiKeyProperty = property.property_type === 'MULTI_KEY';
         const validRoomSlugs = isMultiKeyProperty ? (property.rooms || []).map((r: any) => r.slug) : [];
@@ -182,6 +216,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // top as soon as it actually arrives instead of leaving it stuck.
         if (timedOut) {
           realDataPromise.then(([realNavItems, realTelegramConfig, realGuests, realReceipts, realMenu]) => {
+            if (isStale()) return;
             setData((prev) => prev ? {
               ...prev,
               navItems: Array.isArray(realNavItems) ? realNavItems : prev.navItems,
@@ -193,6 +228,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           });
         }
       } catch (err) {
+        if (isStale()) return;
         console.error('Critical error loading app data:', err);
         setData({
           currentProperty: null,
@@ -204,7 +240,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialMenu: [],
         });
       } finally {
-        setIsLoading(false);
+        if (!isStale()) setIsLoading(false);
       }
     };
 

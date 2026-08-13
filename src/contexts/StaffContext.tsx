@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { StaffMember, AttendanceRecord } from '../types';
 import {
   fetchStaffUsersFromDB,
@@ -57,42 +57,67 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     username: u.username || u.phone || '',
   });
 
-  const refreshStaff = useCallback(() => {
-    fetchStaffUsersFromDB().then((data) => {
-      if (data && data.length > 0) {
-        setStaff(data.map(mapStaffRow));
-      }
-      setStaffLoading(false);
-    });
-  }, []);
+  // BUG (found 13 Aug 2026, alongside the DataLoader nav-menu fix): the very
+  // first staff fetch right after a fresh login has been observed to
+  // occasionally come back empty (or missing rows) for an established
+  // property that clearly has staff - self-corrects on any later manual
+  // refresh, which lands on already-warm caches/connections. A property's
+  // own tenant row is auto-seeded on creation, so a genuinely-empty result
+  // here is itself suspicious, not just "no staff yet". Retry once, after a
+  // short delay, before accepting an empty first result as final - mirrors
+  // the same self-correcting approach used for the nav menu.
+  //
+  // loadTokenRef (found 13 Aug 2026, same investigation as DataLoader's
+  // loadTokenRef): staff gets (re)loaded from THREE independent call sites -
+  // this provider's own mount effect below, plus two explicit refreshStaff()
+  // calls in App.tsx (initial hydrate, and again whenever the active
+  // property changes) - and React.StrictMode double-invokes effects in dev
+  // on top of that. Without a shared guard, several overlapping fetch(+retry)
+  // chains could all be in flight at once, and whichever one's setStaff/
+  // setStaffLoading call landed LAST won - regardless of which one actually
+  // had the better (retried, non-empty, or for the CURRENT property) result.
+  // loadStaff() is now the one path all three call sites share, so starting
+  // a new load always invalidates any still-pending earlier one.
+  const loadTokenRef = useRef(0);
 
-  useEffect(() => {
-    // BUG (found 13 Aug 2026, alongside the DataLoader nav-menu fix): the
-    // very first staff fetch right after a fresh login has been observed to
-    // occasionally come back empty (or missing rows) for an established
-    // property that clearly has staff - self-corrects on any later manual
-    // refresh, which lands on already-warm caches/connections. A property's
-    // own tenant row is auto-seeded on creation, so a genuinely-empty result
-    // here is itself suspicious, not just "no staff yet". Retry once, after
-    // a short delay, before accepting an empty first result as final -
-    // mirrors the same self-correcting approach used for the nav menu.
+  const loadStaff = useCallback(() => {
+    loadTokenRef.current += 1;
+    const myToken = loadTokenRef.current;
+    const isStale = () => loadTokenRef.current !== myToken;
+
     fetchStaffUsersFromDB().then((data) => {
+      if (isStale()) return;
       if (data && data.length > 0) {
         setStaff(data.map(mapStaffRow));
         setStaffLoading(false);
       } else {
         setTimeout(() => {
+          if (isStale()) return;
           fetchStaffUsersFromDB().then((retryData) => {
+            if (isStale()) return;
             if (retryData && retryData.length > 0) setStaff(retryData.map(mapStaffRow));
             setStaffLoading(false);
           });
         }, 1500);
       }
     });
+  }, []);
+
+  // Public refresh callback (App.tsx calls this on mount and again whenever
+  // the active property changes) - just triggers the same guarded loader.
+  const refreshStaff = useCallback(() => {
+    loadStaff();
+  }, [loadStaff]);
+
+  useEffect(() => {
+    loadStaff();
+    let cancelled = false;
     fetchAttendanceFromDB().then((data) => {
+      if (cancelled) return;
       if (data && data.length > 0) setAttendance(data);
     });
-  }, []);
+    return () => { cancelled = true; };
+  }, [loadStaff]);
 
   const refreshAttendance = useCallback(() => {
     fetchAttendanceFromDB().then((data) => {
