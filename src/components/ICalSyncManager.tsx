@@ -37,7 +37,6 @@ interface ICalSyncManagerProps {
 
 export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) => {
   const [calendars, setCalendars] = useState<Calendar[]>([]);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
@@ -254,11 +253,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   const copyToClipboard = async (text: string, id: string | number) => {
     try {
       await navigator.clipboard.writeText(text);
-      
-      if (typeof id === 'number') {
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-      }
       
       showToast('URL copied to clipboard', { type: 'success' });
       setCopiedUrls((prev) => new Set([...prev, id]));
@@ -599,7 +593,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
             {propertyRooms.map((room) => {
               const propertySlug = getPropertySlug();
               const roomExportUrl = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}&room=${room.slug}`;
-              const isCopied = copiedUrls.has(room.id);
 
               const platform = roomImportPlatforms[room.id] || 'Airbnb';
               const customName = roomCustomNames[room.id] || '';
