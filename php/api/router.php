@@ -1,7 +1,7 @@
 <?php
 /**
  * Central API Request Router & Dispatcher
- * Artists Farm Resort & Kitchen Management Backend System
+ * Ground Code Resort & Kitchen Management Backend System
  */
 
 // PHP's default session lifetime (session.gc_maxlifetime, 1440s = 24min) is
@@ -97,38 +97,85 @@ if (!isSchemaVerified('schema_users_table_v2')) {
 }
 
 /**
- * Every property a tenant creates should immediately show the tenant
- * themselves as a Super Admin in that property's own staff directory
- * (Staff & Payees Control) - otherwise the "who's on staff" dropdown
- * looks empty even though the tenant can already log in and manage the
- * property. staff_users is scoped per-property (unlike `users`, which is
- * platform/tenant-wide), so this needs to run once per property, not
- * once per tenant. Idempotent - safe to call even if a row already
- * exists for this tenant+property (e.g. a retried request).
+ * A property's "Super Admin" staff row is not an independent staff account -
+ * it IS the tenant, and there is exactly one of them, always. This keeps
+ * that invariant true for one property, given the tenant's CURRENT identity:
+ *   - Prefers the tenant's real login (`users` table) as the source of
+ *     truth once one exists - username, passcode, and name all mirror it
+ *     exactly, kept in sync every time that login changes.
+ *   - Falls back to a placeholder built from `tenants.phone`/`name` (old
+ *     `ensureTenantOwnerStaffRow` behavior, default passcode '123456') for
+ *     the brief window before a real login has ever been created.
+ *   - Deletes any OTHER staff_users row on this property that holds
+ *     role='Super Admin' (stale seed data, a demo-data placeholder, or
+ *     anyone who got manually assigned the role before it was locked down)
+ *     - there is only ever one Super Admin per property, and it's this one.
+ * Idempotent and safe to call repeatedly (retried requests, re-syncs).
  */
-if (!function_exists('ensureTenantOwnerStaffRow')) {
-    function ensureTenantOwnerStaffRow(PDO $pdo, $tenantId, $propertyId) {
+if (!function_exists('syncTenantSuperAdminRow')) {
+    function syncTenantSuperAdminRow(PDO $pdo, $tenantId, $propertyId) {
         try {
-            $tenantStmt = $pdo->prepare("SELECT name, phone FROM tenants WHERE id = ?");
-            $tenantStmt->execute([$tenantId]);
-            $tenant = $tenantStmt->fetch();
-            if (!$tenant) return;
+            $identity = null;
 
-            $phoneDigits = preg_replace('/\D/', '', $tenant['phone'] ?? '');
-            $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
-            if (strlen($phoneDigits) !== 10) return; // no valid phone on file yet - nothing to seed
+            $uStmt = $pdo->prepare("
+                SELECT username, passcode, full_name, phone_number FROM users
+                WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL)
+                LIMIT 1
+            ");
+            $uStmt->execute([$tenantId]);
+            $u = $uStmt->fetch();
+            if ($u && !empty($u['username'])) {
+                $identity = [
+                    'username' => $u['username'],
+                    'passcode' => $u['passcode'] ?: '123456',
+                    'full_name' => $u['full_name'] ?: $u['username'],
+                    'phone' => $u['phone_number'] ?: $u['username'],
+                ];
+            } else {
+                $tenantStmt = $pdo->prepare("SELECT name, phone FROM tenants WHERE id = ?");
+                $tenantStmt->execute([$tenantId]);
+                $tenant = $tenantStmt->fetch();
+                if (!$tenant) return;
+                $phoneDigits = preg_replace('/\D/', '', $tenant['phone'] ?? '');
+                $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
+                if (strlen($phoneDigits) !== 10) return; // no valid phone/login on file yet - nothing to seed
+                $identity = ['username' => $phoneDigits, 'passcode' => '123456', 'full_name' => $tenant['name'], 'phone' => $phoneDigits];
+            }
+
+            // Only one Super Admin per property, ever - remove any other claimant.
+            $pdo->prepare("DELETE FROM staff_users WHERE property_id = ? AND role = 'Super Admin' AND username != ?")
+                ->execute([$propertyId, $identity['username']]);
 
             $existing = $pdo->prepare("SELECT id FROM staff_users WHERE property_id = ? AND username = ? LIMIT 1");
-            $existing->execute([$propertyId, $phoneDigits]);
-            if ($existing->fetch()) return;
-
-            $pdo->prepare("
-                INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, passcode)
-                VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, '123456')
-            ")->execute(["owner-{$propertyId}", $propertyId, $phoneDigits, $tenant['name'], $phoneDigits, $phoneDigits]);
+            $existing->execute([$propertyId, $identity['username']]);
+            $row = $existing->fetch();
+            if ($row) {
+                $pdo->prepare("UPDATE staff_users SET full_name = ?, phone = ?, phone_number = ?, passcode = ?, role = 'Super Admin', status = 'Active' WHERE id = ?")
+                    ->execute([$identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode'], $row['id']]);
+            } else {
+                $pdo->prepare("
+                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, passcode)
+                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, ?)
+                ")->execute(["owner-{$propertyId}", $propertyId, $identity['username'], $identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode']]);
+            }
         } catch (Exception $e) {
-            // Non-fatal - property creation itself should still succeed even
-            // if this best-effort directory seeding fails for some reason.
+            // Non-fatal - the caller's own action (property creation, login
+            // create/reset) should still succeed even if this best-effort
+            // directory sync fails for some reason.
+        }
+    }
+}
+
+if (!function_exists('syncTenantSuperAdminAcrossProperties')) {
+    function syncTenantSuperAdminAcrossProperties(PDO $pdo, $tenantId) {
+        try {
+            $stmt = $pdo->prepare("SELECT id FROM properties WHERE tenant_id = ? AND is_deleted = 0 AND property_type != 'MULTI_KEY_ROOM'");
+            $stmt->execute([$tenantId]);
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $propId) {
+                syncTenantSuperAdminRow($pdo, $tenantId, (int)$propId);
+            }
+        } catch (Exception $e) {
+            // Non-fatal, same reasoning as syncTenantSuperAdminRow.
         }
     }
 }
@@ -161,7 +208,7 @@ set_exception_handler(function($exception) {
         TelescopeLogger::log(
             'php',
             'FATAL',
-            "🔴 Exception: {$exception->getMessage()}",
+            "ðŸ”´ Exception: {$exception->getMessage()}",
             "Exception Handler [{$exception->getFile()}:{$exception->getLine()}]",
             ['message' => $exception->getMessage(), 'file' => $exception->getFile(), 'line' => $exception->getLine()]
         );
@@ -275,7 +322,7 @@ if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_a
             TelescopeLogger::log(
                 'security',
                 'WARNING',
-                "🔒 Unauthorized API call attempt: {$action} [{$reason}]",
+                "ðŸ”’ Unauthorized API call attempt: {$action} [{$reason}]",
                 "Security Middleware [Authentication Failed]",
                 ['action' => $action, 'method' => $request_method, 'reason' => $reason, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
             );
@@ -363,7 +410,7 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
     // 1. Direct session flag check
     if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
 
-    // 2. DB lookup by user_id (authoritative — handles cases where session flag wasn't written)
+    // 2. DB lookup by user_id (authoritative â€” handles cases where session flag wasn't written)
     if (isset($_SESSION['user_id'])) {
         $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
@@ -524,7 +571,7 @@ if (!in_array($action, $public_actions, true)) {
         TelescopeLogger::log(
             'security',
             'WARNING',
-            "🔒 Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
+            "ðŸ”’ Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
             "Security Middleware [Property Access Denied]",
             ['action' => $action, 'property_id' => $propertyId, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
         );
@@ -549,7 +596,7 @@ if ($action !== 'login_user') {
 // Actions that belong entirely to food service: kitchen orders, the food menu
 // & recipes, and the whole stock/requisitions/kitchen-purchases inventory
 // system (php/inventory/inventory.php has no non-food inventory concept).
-// A property with the 'kitchen' module disabled gets none of this — enforced
+// A property with the 'kitchen' module disabled gets none of this â€” enforced
 // here so disabling it actually stops the data from being created/read, not
 // just hides the nav link.
 $kitchen_module_actions = [
@@ -1027,13 +1074,13 @@ switch ($action) {
             $loginUrl = trim($input['login_url'] ?? '') ?: '/';
             $displayName = $user['tenant_name'] ?: ($user['full_name'] ?: 'there');
             $body = "<p>Hi {$displayName},</p>"
-                . "<p>Here are your Artists Farm login details:</p>"
+                . "<p>Here are your Ground Code login details:</p>"
                 . "<p><b>Mobile Number / Username:</b> {$user['username']}<br>"
                 . "<b>Passcode:</b> {$user['passcode']}</p>"
                 . "<p><a href=\"{$loginUrl}\">Log in here</a></p>"
                 . "<p style=\"color:#888;font-size:12px;\">Didn't request this? You can safely ignore this email.</p>";
 
-            $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Your Artists Farm login details', $body);
+            $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Your Ground Code login details', $body);
             echo json_encode([
                 'success' => $emailResult['success'],
                 'message' => $emailResult['success']
@@ -1272,7 +1319,7 @@ switch ($action) {
                     $response['whatsapp_phone'] = $phoneDigits;
 
                     if ($email) {
-                        $emailResult = sendSmtpEmail($pdo, $email, "Welcome to Artists Farm, {$name}!", nl2br(htmlspecialchars($renderedMessage)));
+                        $emailResult = sendSmtpEmail($pdo, $email, "Welcome to Ground Code, {$name}!", nl2br(htmlspecialchars($renderedMessage)));
                         $response['email_sent'] = $emailResult['success'];
                         $response['email_error'] = $emailResult['success'] ? null : $emailResult['error'];
                     } else {
@@ -1317,10 +1364,10 @@ switch ($action) {
             'username' => $input['smtp_username'] ?? '',
             'password' => $input['smtp_password'] ?? '',
             'from_email' => $input['smtp_from_email'] ?? '',
-            'from_name' => $input['smtp_from_name'] ?? 'Artists Farm',
+            'from_name' => $input['smtp_from_name'] ?? 'Ground Code',
             'encryption' => $input['smtp_encryption'] ?? 'tls',
         ];
-        $result = sendSmtpEmail($pdo, $to, 'Artists Farm - SMTP Test', '<p>This is a test email from your Artists Farm Root Admin dashboard. If you received this, SMTP is configured correctly.</p>', $overrideSettings);
+        $result = sendSmtpEmail($pdo, $to, 'Ground Code - SMTP Test', '<p>This is a test email from your Ground Code Root Admin dashboard. If you received this, SMTP is configured correctly.</p>', $overrideSettings);
         echo json_encode(['success' => $result['success'], 'message' => $result['success'] ? 'Test email sent successfully' : $result['error']]);
         exit;
 
@@ -1456,6 +1503,10 @@ switch ($action) {
                 VALUES (?, ?, ?, ?, 'super_admin', 0, ?, 1)
             ")->execute([$phoneDigits, $tenant['name'], $phoneDigits, $tempPasscode, $tenant_id]);
 
+            // This tenant's login now exists (or changed) - push it out as the
+            // one true Super Admin on every one of their properties.
+            syncTenantSuperAdminAcrossProperties($pdo, $tenant_id);
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Login created successfully',
@@ -1509,6 +1560,9 @@ switch ($action) {
             $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 1 WHERE id = ?")
                 ->execute([$tempPasscode, $existing['id']]);
+
+            // Keep every property's synced Super Admin row's passcode current too.
+            syncTenantSuperAdminAcrossProperties($pdo, $tenant_id);
 
             echo json_encode([
                 'success' => true,
@@ -1781,14 +1835,14 @@ switch ($action) {
                     $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, status, is_active, tailwind_color_scheme) VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, 'active', 1, 'blue')")
                         ->execute([$tenant_id, $roomName, $roomSlug, $parentId]);
                 }
-                ensureTenantOwnerStaffRow($pdo, $tenant_id, $parentId);
+                syncTenantSuperAdminRow($pdo, $tenant_id, $parentId);
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => "Multi-key property created with {$room_count} room(s)", 'property_id' => $parentId]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO properties (tenant_id, name, slug, property_type, status, is_active, tailwind_color_scheme, email, phone) VALUES (?, ?, ?, 'SINGLE', 'active', 1, 'blue', ?, ?)");
                 $stmt->execute([$tenant_id, $property_name, $property_slug, $property_email ?: null, $property_phone ?: null]);
                 $propertyId = $pdo->lastInsertId();
-                ensureTenantOwnerStaffRow($pdo, $tenant_id, $propertyId);
+                syncTenantSuperAdminRow($pdo, $tenant_id, $propertyId);
                 $pdo->commit();
                 echo json_encode(['success' => true, 'message' => 'Property created successfully', 'property_id' => $propertyId]);
             }
@@ -2518,6 +2572,31 @@ switch ($action) {
         handleExportDatabaseDump($pdo, $db_host, $db_user, $db_pass, $db_name);
         break;
 
+    // Root-admin-only lookup so the "Reset Demo Data" button on
+    // RootAdminDashboard (see .htaccess's /demo/ redirect target) can show
+    // which property it's about to touch and pass its id to generate_demo_data
+    // below, without the dashboard needing its own property picker (picking
+    // the wrong property there would wipe a real tenant's live data).
+    case 'get_public_demo_property':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->query("SELECT id, name, slug FROM properties WHERE is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
+            $demoProperty = $stmt->fetch();
+            if (!$demoProperty) {
+                echo json_encode(['success' => false, 'message' => 'No property is currently marked as the public demo - set one via Edit Property first.']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'data' => $demoProperty]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
     case 'generate_demo_data':
         require_once __DIR__ . '/demo_data.php';
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -2564,7 +2643,7 @@ switch ($action) {
         break;
 
     default:
-        $propertyName = $currentProperty['name'] ?? 'Artists Farm'; // Default if not found
+        $propertyName = $currentProperty['name'] ?? 'Ground Code'; // Default if not found
         echo json_encode([
             'status' => 'online',
             'system' => $propertyName . ' Terminal API', // Use property name here
@@ -2585,3 +2664,4 @@ switch ($action) {
         ]);
         break;
 }
+

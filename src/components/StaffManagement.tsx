@@ -60,8 +60,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [payees, setPayees] = useState<PayeeEntity[]>([]);
-  // Available roles from site architecture (independent of staff members)
-  const roleOptions = ['Admin', 'Staff', 'Staff Kitchen', 'Staff Supervisor', 'Super Admin'];
+  // Available roles from site architecture (independent of staff members).
+  // "Super Admin" deliberately excluded (13 Aug 2026): that role is not an
+  // assignable staff position - it's a single, automatically-synced row that
+  // always mirrors the tenant's own login (see syncTenantSuperAdminRow in
+  // router.php). Letting it be picked here is exactly how a property ended
+  // up with a second, unrelated "Super Admin" (a demo-data placeholder, or a
+  // real staff member manually promoted) that then drifted out of sync with
+  // the tenant's actual credentials.
+  const roleOptions = ['Admin', 'Staff', 'Staff Kitchen', 'Staff Supervisor'];
 
   // Form States
   // 1. Create User
@@ -969,10 +976,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
             <div className="overflow-x-auto relative">
-              <table className="datatable w-full text-center border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold">
-                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+              <table className="datatable w-full text-center border-collapse text-xs staff-management__table">
+                <thead className="staff-management__table-header">
+                  <tr className="bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold staff-management__table-header-row">
+                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white staff-management__table-header-cell">
                       Staff Member
                     </th>
                     {monthDays.map((d) => (

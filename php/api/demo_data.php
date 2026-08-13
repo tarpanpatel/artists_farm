@@ -103,12 +103,21 @@ function generateDemoData($pdo, $propertyId) {
         // staff.isFinancialHandler, see BookingDetailsModal.tsx) actually have
         // someone to select instead of showing "No matches" against 4 real staff
         // that all default to is_financial_handler=0.
-        // demo_admin (Super Admin) exists so the Public Demo Mode auto-login
-        // (see router.php's is_public_demo block) has an admin-tier account to
-        // pick - without it, the ORDER BY falls back to Manager, which is what
-        // demo visitors used to be logged in as instead of full tenant admin.
+        // demo_admin (Admin) exists so the Public Demo Mode auto-login (see
+        // router.php's is_public_demo block) has an admin-tier account to
+        // pick - without it, the ORDER BY falls back to Manager, which is
+        // what demo visitors used to be logged in as instead of a fuller
+        // admin view.
+        // NOT role 'Super Admin' (13 Aug 2026): that role is reserved
+        // exclusively for the tenant's own synced identity, exactly one per
+        // property, auto-maintained by syncTenantSuperAdminRow() in
+        // router.php - a demo-data placeholder holding it was exactly the
+        // kind of stale/duplicate "Super Admin" that invariant exists to
+        // prevent. 'Admin' is the highest role left in get_demo_login_credentials's
+        // priority order, so this still gets demo visitors the best available
+        // account.
         $demoUsers = [
-            ['username' => 'demo_admin', 'name' => 'Vikram Malhotra', 'phone' => '9876543214', 'role' => 'Super Admin', 'status' => 'Active', 'is_financial_handler' => 1],
+            ['username' => 'demo_admin', 'name' => 'Vikram Malhotra', 'phone' => '9876543214', 'role' => 'Admin', 'status' => 'Active', 'is_financial_handler' => 1],
             ['username' => 'demo_manager', 'name' => 'Rajesh Kumar', 'phone' => '9876543210', 'role' => 'Manager', 'status' => 'Active', 'is_financial_handler' => 1],
             ['username' => 'demo_chef', 'name' => 'Sunil Yadav', 'phone' => '9876543211', 'role' => 'Chef/Cook', 'status' => 'Active', 'is_financial_handler' => 0],
             ['username' => 'demo_house', 'name' => 'Lakshmi Devi', 'phone' => '9876543212', 'role' => 'Housekeeping', 'status' => 'Active', 'is_financial_handler' => 0],
