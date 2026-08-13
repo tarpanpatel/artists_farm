@@ -1106,7 +1106,7 @@ h6,
 .\32 xl\:text-7xl,
 .\32 xl\:text-8xl,
 .\32 xl\:text-9xl {
-  font-size: 14px !important;
+  font-size: 14px;
   line-height: 1.35;
 }
 
