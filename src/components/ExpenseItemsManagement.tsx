@@ -174,7 +174,7 @@ export const ExpenseItemsManagement: React.FC = () => {
           {/* Add New Item Form */}
           {isAddingNew && (
             <form onSubmit={handleAddItem} className="app-form app-form--add-expense-item space-y-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t('add_custom_expense_item_heading', 'Add Custom Expense Item')}</h3>
+              <h3 className="expense-items-management__subtitle font-semibold text-slate-900 dark:text-white">{t('add_custom_expense_item_heading', 'Add Custom Expense Item')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
@@ -252,7 +252,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             return (
               <div key={category} className="expense-items-management__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
-                  <h3 className="font-bold text-slate-900 dark:text-white">{category}</h3>
+                  <h3 className="expense-items-management__subtitle font-bold text-slate-900 dark:text-white">{category}</h3>
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

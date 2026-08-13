@@ -697,7 +697,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           <div className="flex items-center gap-3">
             <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h1 className="platform-property-management__page-title text-lg font-bold text-slate-900 dark:text-white">
                 {t('platform_title', 'Ground Code Platform')}
               </h1>
               <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -765,7 +765,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         {/* Tenants with Collapsible Properties */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
+            <h2 className="platform-property-management__title text-xl font-bold text-slate-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
             <Button
               onClick={() => setShowAddTenantModal(true)}
               className="flex items-center gap-2"
@@ -810,7 +810,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           )}
                         </div>
                          <div className="flex-1">
-                           <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+                           <h3 className="platform-property-management__subtitle font-bold text-lg text-slate-900 dark:text-white mb-1">
                              {tenant.name}
                            </h3>
                            <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
@@ -875,7 +875,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   {isExpanded && (
                     <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-700/30">
                       <div className="mb-6">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">
+                        <h4 className="platform-property-management__caption text-sm font-bold text-slate-900 dark:text-white mb-3">
                           {t('subscription_details_heading', 'Subscription Details')}
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -1052,7 +1052,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       {/* Properties List */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          <h4 className="platform-property-management__caption text-sm font-bold text-slate-900 dark:text-white">
                             Properties ({tenantProperties.length})
                           </h4>
                           <Button
@@ -1246,7 +1246,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showEditTenantModal && editingTenant && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('edit_tenant_heading', 'Edit Tenant')}
             </h3>
 
@@ -1380,7 +1380,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showPropertyModal && editingProperty && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
               {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
             </h3>
 
@@ -1606,7 +1606,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showDeletePropertyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('delete_property_heading', 'Delete Property?')}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
@@ -1681,7 +1681,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showDeleteTenantModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
               {t('delete_tenant_heading', 'Delete Tenant?')}
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
@@ -1759,7 +1759,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <>
                 <div className="flex items-center gap-2 mb-1">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white">
                     {t('tenant_created_heading', 'Tenant Created')}
                   </h3>
                 </div>
@@ -1825,7 +1825,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </>
             ) : (
               <>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
                   {t('add_new_tenant_heading', 'Add New Tenant')}
                 </h3>
 

@@ -225,7 +225,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
             {t('forgot_passcode_title', 'Forgot Your Passcode?')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -321,7 +321,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
             {t('set_new_passcode_title', 'Set a New Passcode')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -409,7 +409,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+        <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
           Ground Code
         </h1>
         <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 text-center mb-8 uppercase tracking-wider">

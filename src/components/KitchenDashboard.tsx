@@ -341,7 +341,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   {/* Bare Icon without square box on mobile */}
                   <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    <h3 className="kitchen-dashboard__subtitle text-xs font-bold text-slate-900 dark:text-white truncate">
                       {card.title}
                     </h3>
                     {card.badgeText && (
@@ -388,7 +388,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   </div>
 
                   <div>
-                    <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="kitchen-dashboard__subtitle text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">

@@ -399,7 +399,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           on narrow screens since a fixed side-by-side track can't fit. */}
       <div className="petty-cash-management__layout grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
       <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+        <h3 className="petty-cash-management__subtitle font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>
 
@@ -783,7 +783,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           highlightOnHover
           subHeader={
             <div className="w-full flex items-center justify-between py-2">
-              <h3 className="font-semibold text-slate-800 dark:text-white text-sm">
+              <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">
                 {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
               <span className="text-slate-400 font-bold text-xs">{filteredEntries.length} {t('entries_label', 'entries')}</span>
@@ -810,7 +810,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         <div className="petty-cash-management__edit-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <h3 className="petty-cash-management__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-blue-600" /> {t('edit_expense_record_heading', 'EDIT EXPENSE RECORD #')}{editingEntry.id}
               </h3>
               <button onClick={() => setEditingEntry(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">

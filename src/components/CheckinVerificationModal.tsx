@@ -143,7 +143,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
               <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+              <h3 className="checkin-verification-modal__subtitle text-lg font-bold text-slate-800 dark:text-slate-100">
                 {t('complete_checkin_heading_prefix')} {guest.guestName}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">

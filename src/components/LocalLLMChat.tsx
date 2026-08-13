@@ -165,7 +165,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
       {/* Header */}
       <div className="local-llm-chat__header flex items-center justify-between mb-4">
         <div className="local-llm-chat__header-left">
-          <h2 className="local-llm-chat__heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="local-llm-chat__title local-llm-chat__heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Bot className="w-6 h-6 text-purple-600" />
             {t('local_llm_chat_heading', 'Local AI Assistant')}
           </h2>

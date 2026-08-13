@@ -429,7 +429,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       {activeTab === 'activity' && (
         <div className="audit-logs__activity bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
+            <h3 className="audit-logs-view__subtitle font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
               <ShieldAlert className="w-6 h-6 text-indigo-600" />
               <span>{t('staff_activity_attendance_heading', 'Staff Activity & Attendance Trail')}</span>
             </h3>
@@ -528,7 +528,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       {activeTab === 'login' && (
         <div className="audit-logs__login bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+            <h3 className="audit-logs-view__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <Lock className="w-5 h-5 text-blue-600" />
               <span>{t('security_login_trace_heading', 'Security Login Trace & Authentication Audit')}</span>
             </h3>
@@ -644,7 +644,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       {activeTab === 'audit' && (
         <div className="audit-logs__audit bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+            <h3 className="audit-logs-view__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
               <ScrollText className="w-5 h-5 text-blue-600" />
               <span>{t('staff_activity_operational_audit_heading', 'Staff Activity & Operational Audit Trail')}</span>
             </h3>
@@ -745,7 +745,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
               <div>
-                <h3 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                <h3 className="audit-logs-view__subtitle font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
                   <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({formatDateDDMMYYYY(editingReceipt.checkoutDate) || 'Stay'})</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -769,7 +769,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 1. ACCOMMODATION INVOICE BREAKDOWN */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <Home className="w-4 h-4 text-emerald-600" />
                       <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
                     </h4>
@@ -852,7 +852,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 2. FOOD ORDERS & INCIDENTALS LOG */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-4">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <Utensils className="w-4 h-4 text-emerald-600" />
                       <span>{t('food_orders_incidentals_log_heading', 'FOOD ORDERS & INCIDENTALS LOG')}</span>
                     </h4>
@@ -950,7 +950,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 3. ADD CUSTOM ADJUSTMENTS */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <PlusCircle className="w-4 h-4 text-emerald-600" />
                       <span>{t('audit_add_custom_adjustments_heading', 'ADD CUSTOM ADJUSTMENTS')}</span>
                     </h4>
@@ -1001,7 +1001,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 4. CHECKOUT MODIFICATIONS AUDIT TRAIL */}
                   <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/50 space-y-2">
-                    <h4 className="font-extrabold text-amber-800 dark:text-amber-400 text-[10px] flex items-center gap-1.5 uppercase tracking-wide">
+                    <h4 className="audit-logs-view__caption font-extrabold text-amber-800 dark:text-amber-400 text-[10px] flex items-center gap-1.5 uppercase tracking-wide">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
                       <span>{t('checkout_modifications_audit_heading', 'CHECKOUT MODIFICATIONS AUDIT TRAIL')}</span>
                     </h4>
@@ -1020,7 +1020,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                   {/* 5. FINAL FINANCIAL POSITION */}
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
+                    <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
                       <CreditCard className="w-4 h-4 text-emerald-600" />
                       <span>{t('final_financial_position_heading', 'FINAL FINANCIAL POSITION')}</span>
                     </h4>

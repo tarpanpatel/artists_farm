@@ -98,7 +98,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
               <div className="flex md:hidden items-center justify-between gap-2 w-full">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">{card.title}</h3>
+                  <h3 className="team-overview-dashboard__subtitle text-xs font-bold text-slate-900 dark:text-white truncate">{card.title}</h3>
                 </div>
                 <Button
                   variant="secondary"
@@ -118,7 +118,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
                     <IconComponent className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="team-overview-dashboard__subtitle text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>

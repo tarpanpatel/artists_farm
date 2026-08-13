@@ -304,7 +304,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <Rocket className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
+              <h2 className="telegram-setup-wizard__title text-base font-bold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
             </div>
           </div>
@@ -515,7 +515,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">{t('successfully_connected_heading', 'Successfully Connected!')}</h4>
+                    <h4 className="telegram-setup-wizard__caption text-sm font-bold text-slate-900 dark:text-white">{t('successfully_connected_heading', 'Successfully Connected!')}</h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Your <b>{currentStep.label}</b> group chat is linked to the bot.
                     </p>

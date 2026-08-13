@@ -181,7 +181,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
       {/* Entry Form */}
       <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
-        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+        <h3 className="cash-drawer-manager__subtitle font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>
               <Handshake className="w-4 h-4" />
@@ -297,7 +297,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       {/* Staff Balance Cards */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+          <h3 className="cash-drawer-manager__subtitle font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
             <Users className="w-4 h-4 text-emerald-600" />
             {t('staff_cash_responsibility_heading', 'STAFF CASH RESPONSIBILITY')}
           </h3>
@@ -392,7 +392,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           onClick={() => setShowHistory(!showHistory)}
           className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
         >
-          <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+          <h3 className="cash-drawer-manager__subtitle font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
             <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
             {t('drawer_entry_history_heading', 'DRAWER ENTRY HISTORY')}
             <span className="text-[10px] text-slate-400 font-semibold ml-1">({drawerEntries.length} entries)</span>

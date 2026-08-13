@@ -303,7 +303,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
        {!hideHeader && (
        <div className="multi-key-property-overview__header flex items-center justify-between">
          <div className="multi-key-property-overview__header-text">
-           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{property.name}</h1>
+           <h1 className="multi-key-property-overview__page-title text-3xl font-bold text-slate-900 dark:text-white">{property.name}</h1>
            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
          </div>
        </div>

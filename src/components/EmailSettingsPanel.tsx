@@ -129,7 +129,7 @@ export const EmailSettingsPanel: React.FC = () => {
     <div className="space-y-4">
       {/* SMTP Connection */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+        <h3 className="email-settings-panel__subtitle text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
           <Mail className="w-4 h-4 text-indigo-500" /> {t('smtp_connection_heading', 'SMTP Connection')}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">

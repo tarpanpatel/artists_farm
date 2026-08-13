@@ -345,7 +345,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       {isAddModalOpen && (
         <div className="misc-charges-management__modal fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
+            <h3 className="misc-charges-management__subtitle font-bold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
             <form onSubmit={handleAdd} className="app-form app-form--add-misc-charge space-y-4">
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('service_name_label', 'Service Name')}</label>

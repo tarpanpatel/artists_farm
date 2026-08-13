@@ -71,7 +71,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden property-setup-wizard">
       <div className="px-6 py-4 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-amber-900 dark:text-amber-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
+          <h2 className="property-setup-wizard__title text-sm font-bold text-amber-900 dark:text-amber-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
         </div>
         <div className="w-32 h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
@@ -91,7 +91,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-500" /> {t('add_property_address_heading', 'Add the property address')}
                 </h3>
               </div>
@@ -101,7 +101,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">1</div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-amber-500" /> {t('add_property_address_heading', 'Add the property address')}
                 </h3>
               </div>
@@ -150,7 +150,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-emerald-500" /> {t('add_team_member_heading', 'Add at least one team member')}
                 </h3>
               </div>
@@ -160,7 +160,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">2</div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-amber-500" /> {t('add_team_member_heading', 'Add at least one team member')}
                 </h3>
               </div>
@@ -185,7 +185,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                   <DoorOpen className="w-4 h-4 text-emerald-500" /> {t('create_first_unit_heading', 'Create your first unit')}
                 </h3>
               </div>
@@ -195,7 +195,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-sm shrink-0">3</div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <h3 className="property-setup-wizard__subtitle text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <DoorOpen className="w-4 h-4 text-amber-500" /> {t('create_first_unit_heading', 'Create your first unit')}
                 </h3>
               </div>

@@ -1910,7 +1910,7 @@ ${itemsStr}
               <Smartphone className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Install Ground Code App</h4>
+              <h4 className="app__caption text-xs font-bold text-slate-900 dark:text-white truncate">Install Ground Code App</h4>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Use it directly from your desktop or mobile homescreen</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1952,7 +1952,7 @@ ${itemsStr}
                 <Smartphone className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Install Ground Code App</h4>
+                <h4 className="app__caption text-xs font-bold text-slate-900 dark:text-white">Install Ground Code App</h4>
                 <ol className="mt-2 space-y-1.5">
                   <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                     <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">1</span>

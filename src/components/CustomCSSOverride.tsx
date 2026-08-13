@@ -414,7 +414,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4 custom-css-override__access-denied">
           <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-bold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
+            <h3 className="custom-cssoverride__subtitle font-bold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
             <p className="text-sm text-red-800 dark:text-red-300">
               {t('access_restricted_description', 'Only root administrators can modify system-wide settings like custom CSS and icon configurations. These changes apply to all properties under all tenants.')}
             </p>
@@ -440,7 +440,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs custom-css-override__header">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h2 className="custom-cssoverride__title text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Paintbrush className="w-6 h-6 text-purple-600" />
               <span>{t('custom_css_override_title', 'Custom CSS Override')}</span>
             </h2>
@@ -567,7 +567,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <Palette className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
+              <h3 className="custom-cssoverride__subtitle text-sm font-bold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
               <p className="text-[11px] text-slate-500">
                 {iconsLoaded ? `${allIcons.length} icons available` : t('browse_copy_lucide_message', 'Browse, customize, and copy the complete Lucide icon library')}
               </p>
@@ -792,7 +792,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
                   {/* Details */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
+                    <h4 className="custom-cssoverride__caption text-sm font-bold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
                     <div className="space-y-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400 w-16">{t('icon_import_label', 'Import:')}</span>
@@ -848,7 +848,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Quick Reference */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3 custom-css-override__quick-reference">
-        <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="custom-cssoverride__subtitle text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-purple-100 dark:bg-purple-950 text-purple-600 px-2 py-0.5 rounded-md text-[10px]">{t('tips_badge', 'TIPS')}</span>
           {t('common_css_overrides_heading', 'Common CSS Overrides')}
         </h3>

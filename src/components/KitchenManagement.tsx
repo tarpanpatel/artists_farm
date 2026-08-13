@@ -916,7 +916,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {/* Card Header */}
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2 mb-2.5">
                     <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                      <h3 className="kitchen-management__subtitle font-bold text-slate-900 dark:text-white text-sm">
                         Order #{ord.id.replace('#', '')}
                       </h3>
                       <p className="text-slate-400 dark:text-slate-500 text-[10px] font-medium">
@@ -1099,7 +1099,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Selected Category Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
+                  <h3 className="kitchen-management__subtitle font-bold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
                     {selectedPosCategory === 'all' ? t('all_menu_items_header') : posCategories.find((category) => category.id === selectedPosCategory)?.label}
                   </h3>
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
@@ -1125,7 +1125,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }, {})
                     ).map(([category, items]) => (
                       <div key={category}>
-                        <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <h4 className="kitchen-management__caption text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
                           {category}
                           <span className="text-slate-400 dark:text-slate-500 font-bold normal-case tracking-normal">({items.length})</span>
                         </h4>
@@ -1150,7 +1150,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   </div>
                                   <div className="flex items-start justify-between gap-1">
                                     <div className="min-w-0 flex-1">
-                                      <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
+                                      <h4 className="kitchen-management__caption font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
                                       <p className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] mt-0.5">₹{item.price}</p>
                                     </div>
                                     <button
@@ -1194,7 +1194,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             </div>
                             <div className="flex items-start justify-between gap-1">
                               <div className="min-w-0 flex-1">
-                                <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
+                                <h4 className="kitchen-management__caption font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
                                 <p className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] mt-0.5">₹{item.price}</p>
                               </div>
                               <button
@@ -1222,7 +1222,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2.5">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
+                    <h3 className="kitchen-management__subtitle font-bold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
                       <ShoppingCart className="w-4 h-4 text-slate-700 dark:text-slate-400" />
                       <span>{t('order_cart_header')}</span>
                     </h3>
@@ -1240,7 +1240,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
                         >
                           <div className="flex-1 pr-1">
-                            <h4 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">
+                            <h4 className="kitchen-management__caption font-bold text-slate-900 dark:text-white text-xs leading-snug">
                               {ci.menuItem.name} <span className="text-slate-400 dark:text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                             </h4>
                           </div>
@@ -1347,7 +1347,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs text-slate-900"
                     >
                       <div className="flex-1 pr-1 truncate">
-                        <h4 className="font-bold text-slate-900 text-xs truncate">
+                        <h4 className="kitchen-management__caption font-bold text-slate-900 text-xs truncate">
                           {ci.menuItem.name} <span className="text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                         </h4>
                       </div>
@@ -1413,7 +1413,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       {activeTab === 'menu_catalog' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t('resort_food_beverage_catalog_header')}</h3>
+            <h3 className="kitchen-management__subtitle font-bold text-slate-800 dark:text-slate-200 text-sm">{t('resort_food_beverage_catalog_header')}</h3>
             <button
               onClick={() => setIsNewMenuModalOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
@@ -1428,7 +1428,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
                   {item.category}
                 </span>
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-1">{item.name}</h4>
+                <h4 className="kitchen-management__caption font-bold text-slate-900 dark:text-white text-sm mt-1">{item.name}</h4>
                 <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm mt-0.5">₹{item.price}</p>
               </div>
             ))}
@@ -1440,7 +1440,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       {activeTab === 'requisitions' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{t('kitchen_requisitions_header')}</h3>
+            <h3 className="kitchen-management__subtitle font-bold text-slate-800 dark:text-slate-200 text-sm">{t('kitchen_requisitions_header')}</h3>
             <button
               onClick={() => setIsReqModalOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1"
@@ -1601,7 +1601,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Left Panel: Record Consumption */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-6">
-<h3 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
+<h3 className="kitchen-management__subtitle font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
                 <Plus className="w-4 h-4" /> {t('record_consumption_heading')}
               </h3>
 
@@ -1700,7 +1700,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           {/* Right Panel: Monthly Tracking Log */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col h-full">
-            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
+            <h3 className="kitchen-management__subtitle font-bold text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wider flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-500" /> {t('monthly_tracking_log_heading')}
               </div>
@@ -1768,7 +1768,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
+                <h3 className="kitchen-management__subtitle font-bold text-slate-800 dark:text-slate-200 text-xs tracking-wide flex items-center gap-2">
                   <Plus className="w-4 h-4" /> {t('create_custom_meal_heading')}
                 </h3>
               </div>
@@ -1816,7 +1816,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
               <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
-<h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+<h3 className="kitchen-management__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Bookmark className="w-4 h-4 text-indigo-500" /> {t('save_recipe_preset_heading')}
                 </h3>
                   <button onClick={() => setShowPresetModal(false)} className="cursor-pointer">
@@ -1846,7 +1846,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="kitchen-management__subtitle text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <ChefHat className="w-5 h-5 text-indigo-600" /> {t('recipe_costing_heading')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -2031,7 +2031,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <h4 className="kitchen-management__caption font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                     <Boxes className="w-4 h-4 text-indigo-500" /> {t('ingredients_heading')}
                     <span className="text-[10px] font-mono text-slate-400">({recipeIngredients.length})</span>
                   </h4>
@@ -2128,7 +2128,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
             {/* Add Ingredient Form */}
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3 h-fit">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
+              <h4 className="kitchen-management__caption font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-500" /> Add Ingredient</h4>
               <form onSubmit={handleAddIngredient} className="app-form app-form--add-ingredient space-y-3">
                 <div>
                   <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('from_kitchen_stock_label')}</label>
@@ -2206,7 +2206,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-bold text-slate-800 text-sm">{t('add_new_food_menu_item_heading')}</h3>
+              <h3 className="kitchen-management__subtitle font-bold text-slate-800 text-sm">{t('add_new_food_menu_item_heading')}</h3>
               <button onClick={() => setIsNewMenuModalOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -2328,7 +2328,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-bold text-slate-800 text-sm">{t('request_raw_material_heading')}</h3>
+              <h3 className="kitchen-management__subtitle font-bold text-slate-800 text-sm">{t('request_raw_material_heading')}</h3>
               <button onClick={() => setIsReqModalOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>

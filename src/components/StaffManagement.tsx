@@ -671,7 +671,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           {/* ROW 1: FULL WIDTH Active System Users & Staff */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+              <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-sm">
                 {t('active_system_users_heading', 'Active System Users & Staff')}
               </h3>
               <div className="flex items-center gap-3">
@@ -783,7 +783,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-sm">
                   {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
                 </h3>
                 <span className="text-xs text-slate-400">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
@@ -1102,7 +1102,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           {/* MONTHLY PAYOUT CALCULATOR */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors">
             <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
+              <h3 className="staff-management__subtitle font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
                 <IndianRupee className="w-4 h-4" />
                 {t('monthly_payout_calculator_heading', 'Monthly Payout Calculator')}
               </h3>
@@ -1308,7 +1308,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {activeSubTab === 'roster' && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 transition-colors space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+            <h3 className="staff-management__subtitle font-bold text-slate-900 dark:text-white text-sm">
               {t('staff_directory_payroll_heading', 'Staff Member Directory & Payroll Breakdown')}
             </h3>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
@@ -1454,7 +1454,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
-            <h4 className="font-bold text-slate-900 text-sm">{t('registered_qr_code_heading', 'Registered QR Code')}</h4>
+            <h4 className="staff-management__caption font-bold text-slate-900 text-sm">{t('registered_qr_code_heading', 'Registered QR Code')}</h4>
             <div className="rounded-xl overflow-hidden border border-slate-200 p-2 bg-slate-50">
               <img src={lightboxUrl} alt="QR Code" className="w-full h-auto rounded-lg" />
             </div>
@@ -1466,7 +1466,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {editingPayee && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl text-xs">
-            <h3 className="font-extrabold text-slate-900 text-sm">
+            <h3 className="staff-management__subtitle font-extrabold text-slate-900 text-sm">
               {t('edit_payee_settings_heading', 'Edit Payee Account Settings')}
             </h3>
 
@@ -1537,7 +1537,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{t('add_new_staff_member_heading', 'Add New Staff Member')}</h3>
+              <h3 className="staff-management__subtitle font-bold text-slate-900 dark:text-white text-sm">{t('add_new_staff_member_heading', 'Add New Staff Member')}</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
@@ -1628,7 +1628,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</h3>
+              <h3 className="staff-management__subtitle font-semibold text-slate-900 dark:text-white text-sm">{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</h3>
               <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
@@ -1686,7 +1686,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   {userFormTab === 'create' ? <Plus className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-base">
                     {userFormTab === 'create' ? 'Create Team Member' : 'Modify Team Member'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1962,7 +1962,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Register Account Payee</h3>
+                  <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-base">Register Account Payee</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Add operational suppliers, vendors, or third parties</p>
                 </div>
               </div>

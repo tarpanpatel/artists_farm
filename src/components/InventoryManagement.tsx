@@ -831,7 +831,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         {/* Wastage Form */}
         <div className="record-wastage-card max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+          <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
             <ClipboardEdit className="w-4 h-4" /> RECORD WASTAGE / SPILLAGE INCIDENT
           </h3>
 
@@ -975,7 +975,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             highlightOnHover
             subHeader={
               <div className="w-full flex items-center justify-between py-2">
-                <h3 className="font-bold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
+                <h3 className="inventory-management__subtitle font-bold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
                 <span className="text-slate-400 font-bold text-xs">{wastageLogs.length} incidents</span>
               </div>
             }
@@ -1163,7 +1163,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
             <Search className="text-slate-400 w-4 h-4" />
-            <h3 className="font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider">
+            <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider">
               {t('record_kitchen_purchases_header', 'Record Kitchen Purchases & Stock')}
             </h3>
           </div>
@@ -1292,7 +1292,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         {/* Bottom Card: RECENT KITCHEN PURCHASE LOG */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-          <h3 className="font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-3">
+          <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-3">
             {t('recent_kitchen_purchase_log_header')}
           </h3>
 
@@ -1798,8 +1798,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         Approve
                       </button>
                     )}
-                    <button onClick={() => handleEditCatalogItem(row)} className="text-blue-600 hover:text-blue-700 font-medium text-xs cursor-pointer">
-                      Edit
+                    <button onClick={() => handleEditCatalogItem(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                      <Pencil className="w-3.5 h-3.5" />
+                      {t('edit_button')}
                     </button>
                     {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
                       <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
@@ -1926,7 +1927,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-bold text-slate-800 dark:text-white">
+                <h3 className="inventory-management__subtitle font-bold text-slate-800 dark:text-white">
                   {editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}
                 </h3>
                 <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
@@ -2162,7 +2163,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-bold text-slate-700 text-sm tracking-wide uppercase">
+                <h3 className="inventory-management__subtitle font-bold text-slate-700 text-sm tracking-wide uppercase">
                   {t('modify_stock_request_header')}
                 </h3>
                 <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
@@ -2172,7 +2173,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               
               <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                 <div className="pt-2">
-                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
+                  <h4 className="inventory-management__caption text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
                   
                   <div className="space-y-5">
                     {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
@@ -2181,7 +2182,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       
                       return (
                         <div key={idx} className="space-y-2">
-                          <h5 className="font-bold text-slate-800 text-sm">{namePart}</h5>
+                          <h5 className="inventory-management__label font-bold text-slate-800 text-sm">{namePart}</h5>
                           <div className="grid grid-cols-4 gap-3">
                             <div>
                               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label')}</label>
@@ -2308,7 +2309,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Selected Category Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-700 text-xs tracking-wider uppercase">
+              <h3 className="inventory-management__subtitle font-bold text-slate-700 text-xs tracking-wider uppercase">
                 {reqCategory === 'All Items' ? t('all_stock_catalog_items_header') : reqCategory.toUpperCase()}
               </h3>
               <span className="text-[11px] text-slate-400 font-semibold">
@@ -2342,7 +2343,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-slate-800 text-xs truncate">
+                          <h4 className="inventory-management__caption font-bold text-slate-800 text-xs truncate">
                             {item.name}
                           </h4>
                           <p className="text-slate-500 font-bold text-[11px] mt-0.5">
@@ -2377,7 +2378,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Panel 1: SUPPLY ORDER BASKET */}
             <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-4 flex-col justify-between space-y-3.5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
+                <h3 className="inventory-management__subtitle font-bold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
                   <ShoppingCart className="w-4 h-4 text-slate-700" />
                   <span>{t('supply_basket_header')}</span>
                 </h3>
@@ -2400,7 +2401,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="flex-1 truncate pr-1">
-                        <h4 className="font-bold text-slate-900 text-xs truncate">
+                        <h4 className="inventory-management__caption font-bold text-slate-900 text-xs truncate">
                           {b.name} <span className="text-slate-500 font-normal">({b.unit})</span>
                         </h4>
                       </div>
@@ -2504,7 +2505,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs text-slate-900"
                 >
                   <div className="flex-1 pr-1 truncate">
-                    <h4 className="font-bold text-slate-900 text-xs truncate">
+                    <h4 className="inventory-management__caption font-bold text-slate-900 text-xs truncate">
                       {b.name} <span className="text-slate-500 font-normal">({b.unit})</span>
                     </h4>
                   </div>
@@ -2704,7 +2705,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                       {item.category}
                     </span>
-                    <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
+                    <h4 className="inventory-management__caption font-bold text-slate-900 text-sm">{item.name}</h4>
                   </div>
                   {isLow ? (
                     <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -2740,7 +2741,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-bold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
+              <h3 className="inventory-management__subtitle font-bold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
               <button onClick={() => setIsAddModalOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>

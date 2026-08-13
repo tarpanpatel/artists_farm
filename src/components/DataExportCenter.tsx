@@ -451,7 +451,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 1: Bookings */}
           <div className="data-export-center__export-card flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
                 <span>{t('bookings_export_title', 'Accommodations Booking Spreadsheet')}</span>
               </h3>
@@ -474,7 +474,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {kitchenModuleEnabled && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-amber-600" />
                   <span>{t('kitchen_purchases_export_title', 'Kitchen Purchases Workbook')}</span>
                 </h3>
@@ -496,7 +496,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 3: Farm Upkeep & Utilities */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-purple-600" />
                 <span>{t('maintenance_utilities_export_title', 'Property Maintenance & Utilities Logs')}</span>
               </h3>
@@ -517,7 +517,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 4: Payroll & Salaries */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
                 <span>{t('payroll_salaries_export_title', 'Payroll & Salaries Registry')}</span>
               </h3>
@@ -538,7 +538,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 5: Master Ledger */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-xl gap-4 hover:border-sky-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-sky-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-bold text-sky-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-sky-700" />
                 <span>{t('master_ledger_export_title', 'Master Transaction Ledger')}</span>
               </h3>
@@ -560,7 +560,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {isRootAdmin && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-rose-900 flex items-center gap-2">
+                <h3 className="data-export-center__subtitle text-sm font-bold text-rose-900 flex items-center gap-2">
                   <Database className="w-4 h-4 text-rose-700" />
                   <span>{t('snapshot_backup_export_title', 'Full System Snapshot Backup (Root Admin)')}</span>
                 </h3>

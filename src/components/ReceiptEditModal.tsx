@@ -538,7 +538,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="receipt-edit-modal__title text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <IndianRupee className="w-5 h-5 text-blue-600" />
               {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
             </h2>
@@ -1288,7 +1288,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             {/* Receipt Content */}
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base text-black uppercase">
+                <h3 className="receipt-edit-modal__subtitle font-extrabold text-base text-black uppercase">
                   {propertyName || (guest as any).propertyName || 'Ground Code RESORT'}
                 </h3>
                 <p className="text-[11px] text-black font-medium">

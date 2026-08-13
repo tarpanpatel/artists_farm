@@ -37,8 +37,7 @@ interface ICalSyncManagerProps {
 
 export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) => {
   const [calendars, setCalendars] = useState<Calendar[]>([]);
-  const [exportUrl, setExportUrl] = useState('');
-  const [copiedExport, setCopiedExport] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
@@ -69,7 +68,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
   useEffect(() => {
     const { roomSlug } = getPropertyAndRoomSlugs();
     setCurrentRoomSlug(roomSlug || null);
-    generateExportUrl();
     loadCalendars();
 
     if (propertyId) {
@@ -89,15 +87,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     } catch (err) {
       console.error('Failed to fetch property rooms:', err);
     }
-  };
-
-  const generateExportUrl = () => {
-    const { propertySlug, roomSlug } = getPropertyAndRoomSlugs();
-    let url = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}`;
-    if (roomSlug) {
-      url += `&room=${roomSlug}`;
-    }
-    setExportUrl(url);
   };
 
   const loadCalendars = async () => {
@@ -262,20 +251,27 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
     }
   };
 
-  const copyToClipboard = (text: string, id: string | number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedUrls((prev) => new Set([...prev, id]));
-    if (id === 'main_export') {
-      setCopiedExport(true);
-      setTimeout(() => setCopiedExport(false), 2000);
+  const copyToClipboard = async (text: string, id: string | number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      
+      if (typeof id === 'number') {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+      
+      showToast('URL copied to clipboard', { type: 'success' });
+      setCopiedUrls((prev) => new Set([...prev, id]));
+      setTimeout(() => {
+        setCopiedUrls((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 2000);
+    } catch (err) {
+      showToast('Failed to copy', { type: 'error' });
     }
-    setTimeout(() => {
-      setCopiedUrls((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }, 2000);
   };
 
   // Helper function to format platform pill badges
@@ -376,8 +372,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         </PageHeader>
       </div>
 
-      {/* Top 4 Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ical-sync-manager__kpi-grid">
+      {/* Top 3 Metric KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ical-sync-manager__kpi-grid">
          {/* Card 1: Active Connected Channels */}
          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
@@ -422,26 +418,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
             100% <span className="text-xs font-semibold text-slate-500">{t('operational_unit_label', 'Operational')}</span>
           </p>
           <p className="text-[10px] text-slate-500 font-semibold">{t('zero_availability_conflicts_label', 'Zero availability conflicts')}</p>
-        </div>
-
-        {/* Card 4: Master Export Link */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('master_ical_export_label', 'Master iCal Export')}</span>
-              <div className="p-2 bg-sky-50 dark:bg-sky-950/40 rounded-lg">
-                <Share2 className="w-4 h-4 text-sky-600" />
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">{t('ota_feed_url_label', 'OTA Feed URL')}</p>
-          </div>
-          <button
-            onClick={() => copyToClipboard(exportUrl, 'main_export')}
-            className="w-full py-1.5 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 text-sky-700 dark:text-sky-300 font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer border border-sky-200 dark:border-sky-800 text-[11px]"
-          >
-            {copiedExport ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedExport ? t('feed_url_copied_button', 'Feed URL Copied!') : t('copy_feed_url_button', 'Copy Feed URL')}</span>
-          </button>
         </div>
       </div>
 
@@ -614,7 +590,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       {/* Per-Room iCal Configuration for MultiKey Properties */}
       {propertyRooms.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
             <span>{t('room_by_room_ical_sync_settings_label', 'Room-by-Room iCal Sync Settings')} ({propertyRooms.length} {t('rooms_plural_label', 'Rooms')})</span>
           </h3>
@@ -644,7 +620,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 >
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
                     <div>
-                      <h4 className="font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
+                      <h4 className="ical-sync-manager__caption font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
                       <p className="text-[10px] text-slate-400 font-mono">{t('room_slug_label', 'Room Slug:')} {room.slug}</p>
                     </div>
                     <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
@@ -777,7 +753,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
                 <span>{t('connect_new_ical_feed_heading', 'Connect New iCal Feed')}</span>
               </h3>

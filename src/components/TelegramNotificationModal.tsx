@@ -916,7 +916,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             <Send className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 m-0">
+            <h2 className="telegram-notification-modal__title text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 m-0">
               {t('telegram_template_manager_heading', 'ðŸ“¡ Telegram Template Manager')}
               <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -968,7 +968,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
         {/* Left Column: Templates Catalog (4 Cols) */}
         <div className="lg:col-span-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-0 overflow-hidden">
           <div className="p-3.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <h3 className="text-[10px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider m-0 flex items-center gap-1.5">
+            <h3 className="telegram-notification-modal__subtitle text-[10px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider m-0 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t('templates_catalog_heading', 'Templates Catalog')}
             </h3>
             <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
@@ -1038,7 +1038,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Active Template Header & Save Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">
+              <h3 className="telegram-notification-modal__subtitle text-base font-bold text-slate-900 dark:text-white m-0">
                 {currentTpl.eventName}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 m-0 pt-0.5">

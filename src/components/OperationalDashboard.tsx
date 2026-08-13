@@ -448,7 +448,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
+                    <h3 className="operational-dashboard__subtitle text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
                     <button
                       onClick={() => {
                         setIsEditingRoomName(true);
@@ -511,9 +511,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           {reasons.map((r, i) => (
                             <div
                               key={i}
-                              className={`text-xs font-medium whitespace-nowrap ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
+                              className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
                             >
-                              {r.label} — {r.detail}
+                              <div>{r.label}</div>
+                              <div className="text-[10px] opacity-80">{r.detail}</div>
                             </div>
                           ))}
                         </div>
@@ -633,7 +634,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="operational-dashboard__col-profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div className="operational-dashboard__col-profile-inner">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 {t('current_resident_profile_heading', 'Guest Currently Staying')}
               </h3>
@@ -743,7 +744,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
                 </h3>
@@ -806,7 +807,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 {t('requisitions_label', 'Requisitions')}
               </h3>
@@ -850,7 +851,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+          <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
             {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
           </h3>
@@ -1067,7 +1068,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+              <h3 className="operational-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
                 <span>All System Alerts ({combinedAlerts.length})</span>
               </h3>
@@ -1107,7 +1108,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               key={i}
                               className={`text-xs font-medium ${severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}
                             >
-                              {r.label} — {r.detail}
+                              <div>{r.label}</div>
+                              <div className="text-[10px] opacity-80">{r.detail}</div>
                             </div>
                           ))}
                         </div>

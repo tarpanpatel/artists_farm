@@ -169,7 +169,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
       <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
+          <h1 className="today-overview__page-title text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none">
@@ -260,7 +260,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header with navigation */}
         <div className="flex justify-between items-center">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>
+          <h2 className="today-overview__title text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>
           <div className="flex items-center gap-2">
           <button
             onClick={() => navigateMonth(-1)}

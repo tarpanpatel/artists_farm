@@ -785,7 +785,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         {/* Form Card */}
         <div className="guest-management__registration-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
-            <h3 className="text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
+            <h3 className="guest-management__subtitle text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
               {isMultiKeyProperty && roomNumber ? (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 normal-case">
@@ -1308,7 +1308,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* Top Banner Header for Billing */}
       <div className="guest-management__banner flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div className="guest-management__banner-text">
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <h2 className="guest-management__title text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Receipt className="w-6 h-6 text-blue-600" />
             Guest Billing & Checkout Terminal
           </h2>
@@ -1912,7 +1912,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {isQrModalOpen && (
         <div className="guest-management__qr-modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
-            <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-900">
+            <h4 className="guest-management__caption font-bold text-[10px] uppercase tracking-wider text-slate-900">
               Scan UPI QR Target: {qrModalTitle}
             </h4>
 
@@ -1992,7 +1992,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Receipt Content */}
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base text-black">Ground Code JAIPUR</h3>
+                <h3 className="guest-management__subtitle font-extrabold text-base text-black">Ground Code JAIPUR</h3>
                 <p className="text-[11px] text-black font-medium">Consolidated Stay & KOT Settlement</p>
               </div>
 
@@ -2158,7 +2158,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Receipt Content */}
             <div className="space-y-3 pt-2 font-mono">
               <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base text-black uppercase">
+                <h3 className="guest-management__subtitle font-extrabold text-base text-black uppercase">
                   {propertyName || 'Booking Confirmation'}
                 </h3>
                 <p className="text-[11px] text-black font-medium">Booking Confirmation Voucher</p>

@@ -298,7 +298,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           <div className="space-y-1">
             {/* Branding */}
             <div className="px-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-700/80">
-              <h1 className="text-sm font-bold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
+              <h1 className="root-admin-dashboard__page-title text-sm font-bold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
             </div>
 
@@ -372,7 +372,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <Menu className="w-5 h-5" />
             </button>
             <div className="min-w-0">
-              <h2 className="text-lg lg:text-2xl font-bold text-slate-900 dark:text-white truncate">
+              <h2 className="root-admin-dashboard__title text-lg lg:text-2xl font-bold text-slate-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
@@ -447,7 +447,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
+                  <h3 className="root-admin-dashboard__subtitle text-lg font-bold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
                   <button
                     type="button"
                     onClick={() => goToSection('account_settings')}
@@ -548,7 +548,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <DatabaseBackup className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="root-admin-dashboard__subtitle text-sm font-bold text-slate-900 dark:text-white">
                     {t('root_db_sync_heading', 'Download Live Database')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -579,7 +579,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <RefreshCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="root-admin-dashboard__subtitle text-sm font-bold text-slate-900 dark:text-white">
                     {t('root_demo_data_heading', 'Reset Public Demo Data')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
