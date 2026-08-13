@@ -1,76 +1,200 @@
-# Artists Farm Deploy Script
-# Uploads dist/ and php/ to production via SCP (port 88)
-# Usage: .\deploy.ps1
+<#
+.SYNOPSIS
+  Commit-and-deploy pipeline for Artists Farm Resort (multi-tenant branch).
+
+.DESCRIPTION
+  Does exactly what has been done by hand all session, in order:
+    1. Push local commits on `multi-tenant` to GitHub.
+    2. SSH into cPanel and `git pull` (syncs the PHP backend).
+    3. Stash any UNCOMMITTED local changes (so a concurrent WIP session's
+       half-finished edits never leak into the build - this is the same
+       safety net used throughout this engagement).
+    4. `npm run build` from that clean, committed state.
+    5. Restore the stash (nothing is ever lost).
+    6. Tar the fresh dist/, scp it up, swap it into public_html/dist/ on
+       the server, clean up temp files.
+    7. Verify: confirm the live site is serving the bundle that was just
+       built (compares the JS/CSS hashes in dist/index.html locally vs.
+       what artistic-sthan.com actually returns).
+
+  IMPORTANT: this script only ships what's already COMMITTED. If you (or
+  an AI session) made changes and haven't run `git add` + `git commit`
+  yet, do that first - uncommitted changes get stashed out of the way,
+  not deployed.
+
+.USAGE
+  Open PowerShell in the project root and run:
+      .\deploy.ps1
+
+  Or from anywhere:
+      powershell -File "C:\xampp\htdocs\artists_farm\deploy.ps1"
+
+  Flags:
+      -SkipPhpSync    Skip step 2 (only touch the frontend build/deploy;
+                      use this if your change was frontend-only and you
+                      want a faster run).
+      -DryRun         Do everything up through the build, but don't
+                      upload anything - useful to confirm it builds clean
+                      before actually shipping.
+#>
 
 param(
-    [switch]$SkipBuild
+    [switch]$SkipPhpSync,
+    [switch]$DryRun
 )
 
-Write-Host ""
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "  ARTISTS FARM - DEPLOY TO PRODUCTION" -ForegroundColor Cyan
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host ""
+$ErrorActionPreference = 'Stop'
 
-# Production SFTP settings
-$deployHost = "91.238.163.173"
-$deployUser = "apartment"
-$deployPort = "88"
-$deployPath = "/home/apartment/artistsfarmjaipur.com/artist_farm"
+# ---- Configuration (matches what's been used by hand all session) ----
+$SshKey    = "C:\Users\Tarpan Patel\Documents\Downloads\github_cpanel"
+$SshHost   = "artistic-sthan.com"
+$SshPort   = 88
+$SshUser   = "apartment"
+$RemoteDir = "~/public_html"
+$LiveUrl   = "https://artistic-sthan.com/dist/"
+$ProjectRoot = $PSScriptRoot
 
-Write-Host "  Host: ${deployHost}:${deployPort}" -ForegroundColor Gray
-Write-Host "  User: $deployUser" -ForegroundColor Gray
-Write-Host "  Path: $deployPath" -ForegroundColor Gray
-Write-Host ""
+function Write-Step($msg) {
+    Write-Host ""
+    Write-Host "==> $msg" -ForegroundColor Cyan
+}
+function Write-Ok($msg) {
+    Write-Host "    OK: $msg" -ForegroundColor Green
+}
+function Write-Warn($msg) {
+    Write-Host "    WARNING: $msg" -ForegroundColor Yellow
+}
+function Write-Err($msg) {
+    Write-Host "    FAILED: $msg" -ForegroundColor Red
+}
 
-# Step 1: Build (unless skipped)
-if (-not $SkipBuild) {
-    Write-Host "[1/3] Building project..." -ForegroundColor Yellow
-    npm run build
+function Invoke-Ssh([string]$Command) {
+    & ssh -p $SshPort -i $SshKey "$SshUser@$SshHost" $Command
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "BUILD FAILED. Aborting deploy." -ForegroundColor Red
+        throw "SSH command failed (exit $LASTEXITCODE): $Command"
+    }
+}
+
+Set-Location $ProjectRoot
+
+try {
+    # ---- 1. Push commits ----
+    Write-Step "Pushing commits to GitHub (multi-tenant)"
+    $ahead = git log origin/multi-tenant..HEAD --oneline 2>$null
+    if (-not $ahead) {
+        git fetch origin multi-tenant | Out-Null
+        $ahead = git log origin/multi-tenant..HEAD --oneline 2>$null
+    }
+    if ($ahead) {
+        Write-Host $ahead
+        if (-not $DryRun) {
+            git push origin multi-tenant
+            if ($LASTEXITCODE -ne 0) { throw "git push failed" }
+            Write-Ok "Pushed."
+        } else {
+            Write-Warn "(dry run - not actually pushing)"
+        }
+    } else {
+        Write-Ok "Nothing to push - already up to date with origin."
+    }
+
+    # ---- 2. Sync PHP backend on cPanel ----
+    if (-not $SkipPhpSync -and -not $DryRun) {
+        Write-Step "Syncing PHP backend on cPanel (git pull)"
+        Invoke-Ssh "cd $RemoteDir && git pull origin multi-tenant"
+        Write-Ok "cPanel PHP is in sync."
+    } elseif ($SkipPhpSync) {
+        Write-Warn "Skipped PHP sync (-SkipPhpSync)."
+    } else {
+        Write-Warn "(dry run - not syncing PHP)"
+    }
+
+    # ---- 3. Stash any uncommitted local changes ----
+    Write-Step "Checking for uncommitted local changes"
+    $dirty = git status --porcelain
+    $stashed = $false
+    if ($dirty) {
+        $stashLabel = "deploy-script-isolation-$(Get-Date -Format yyyyMMdd-HHmmss)"
+        Write-Warn "Uncommitted changes found - stashing them so they don't get built/deployed:"
+        Write-Host ($dirty | Select-Object -First 10 | Out-String)
+        if (($dirty | Measure-Object).Count -gt 10) {
+            Write-Host "    ... and $((($dirty | Measure-Object).Count) - 10) more"
+        }
+        git stash push -u -m $stashLabel | Out-Null
+        $stashed = $true
+        Write-Ok "Stashed as '$stashLabel'. Will restore after the build."
+    } else {
+        Write-Ok "Working tree is clean - nothing to stash."
+    }
+
+    # ---- 4. Build ----
+    Write-Step "Building (npm run build)"
+    npm run build
+    $buildExitCode = $LASTEXITCODE
+
+    # ---- 5. Restore stash (ALWAYS, even if build failed) ----
+    if ($stashed) {
+        Write-Step "Restoring stashed changes"
+        git stash pop
+        if ($LASTEXITCODE -ne 0) {
+            Write-Err "git stash pop reported a conflict - your changes are still safe in the stash."
+            Write-Err "Run 'git stash list' then 'git stash show -p stash@{0}' to inspect, or"
+            Write-Err "'git checkout stash@{0} -- <file>' to restore individual files."
+        } else {
+            Write-Ok "Restored."
+        }
+    }
+
+    if ($buildExitCode -ne 0) {
+        throw "npm run build failed (exit $buildExitCode) - not deploying a broken build."
+    }
+    Write-Ok "Build succeeded."
+
+    if ($DryRun) {
+        Write-Step "Dry run complete - build is clean. Nothing was uploaded."
+        exit 0
+    }
+
+    # ---- 6. Package and ship dist/ ----
+    Write-Step "Packaging dist/"
+    $tarPath = Join-Path $env:TEMP "artists_farm_dist_deploy.tar.gz"
+    if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
+    Push-Location (Join-Path $ProjectRoot "dist")
+    try {
+        & tar -czf $tarPath .
+        if ($LASTEXITCODE -ne 0) { throw "tar failed" }
+    } finally {
+        Pop-Location
+    }
+    Write-Ok "Packaged to $tarPath"
+
+    Write-Step "Uploading to server"
+    & scp -P $SshPort -i $SshKey $tarPath "${SshUser}@${SshHost}:~/deploy_dist.tar.gz"
+    if ($LASTEXITCODE -ne 0) { throw "scp upload failed" }
+    Write-Ok "Uploaded."
+
+    Write-Step "Swapping into place on the server"
+    Invoke-Ssh "cd $RemoteDir && rm -rf dist_deploy_new && mkdir dist_deploy_new && tar -xzf ~/deploy_dist.tar.gz -C dist_deploy_new && rsync -a --delete dist_deploy_new/ dist/ && rm -rf dist_deploy_new ~/deploy_dist.tar.gz"
+    Write-Ok "Live dist/ updated."
+    Remove-Item $tarPath -Force -ErrorAction SilentlyContinue
+
+    # ---- 7. Verify ----
+    Write-Step "Verifying deployment"
+    $localBundle = Select-String -Path (Join-Path $ProjectRoot "dist\index.html") -Pattern 'index-[A-Za-z0-9_]+\.(js|css)' -AllMatches |
+        ForEach-Object { $_.Matches.Value }
+    $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing
+    $liveBundle = [regex]::Matches($liveHtml.Content, 'index-[A-Za-z0-9_]+\.(js|css)') | ForEach-Object { $_.Value }
+
+    $mismatch = Compare-Object $localBundle $liveBundle
+    if ($mismatch) {
+        Write-Err "Live bundle does NOT match what was just built. Local: $($localBundle -join ', ') | Live: $($liveBundle -join ', ')"
         exit 1
     }
-    Write-Host "Build successful!" -ForegroundColor Green
-} else {
-    Write-Host "[1/3] Build skipped (-SkipBuild flag)." -ForegroundColor Yellow
+    Write-Ok "Live site confirmed serving the new bundle: $($liveBundle -join ', ')"
+    Write-Host ""
+    Write-Host "Deploy complete: $LiveUrl" -ForegroundColor Green
+
+} catch {
+    Write-Err $_.Exception.Message
+    exit 1
 }
-Write-Host ""
-
-# Step 2: Confirm
-Write-Host "[2/3] Ready to upload:" -ForegroundColor Yellow
-Write-Host "  dist/  -->  ${deployPath}/dist/" -ForegroundColor Gray
-Write-Host "  php/   -->  ${deployPath}/php/" -ForegroundColor Gray
-Write-Host "  index.php, index.html  -->  ${deployPath}/" -ForegroundColor Gray
-Write-Host ""
-$confirm = Read-Host "Proceed? (y/n)"
-if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-    Write-Host "Deploy cancelled." -ForegroundColor Red
-    exit 0
-}
-Write-Host ""
-
-# Step 3: Upload via SCP (recursive)
-Write-Host "[3/3] Uploading files (you will be prompted for password)..." -ForegroundColor Yellow
-Write-Host ""
-
-# Upload dist/ folder
-Write-Host "  Uploading dist/..." -ForegroundColor Gray
-scp -P $deployPort -r "dist\*" "$($deployUser)@$($deployHost):$($deployPath)/dist/"
-if ($LASTEXITCODE -ne 0) { Write-Host "  WARN: dist/ upload had issues" -ForegroundColor DarkYellow }
-
-# Upload php/ folder
-Write-Host "  Uploading php/..." -ForegroundColor Gray
-scp -P $deployPort -r "php\*" "$($deployUser)@$($deployHost):$($deployPath)/php/"
-if ($LASTEXITCODE -ne 0) { Write-Host "  WARN: php/ upload had issues" -ForegroundColor DarkYellow }
-
-# Upload root files
-Write-Host "  Uploading index.php + index.html..." -ForegroundColor Gray
-scp -P $deployPort "index.php" "$($deployUser)@$($deployHost):$($deployPath)/"
-scp -P $deployPort "index.html" "$($deployUser)@$($deployHost):$($deployPath)/"
-
-Write-Host ""
-Write-Host "=========================================" -ForegroundColor Green
-Write-Host "  DEPLOY COMPLETE!" -ForegroundColor Green
-Write-Host "  Live: https://artistsfarmjaipur.com/artist_farm/" -ForegroundColor Green
-Write-Host "=========================================" -ForegroundColor Green
