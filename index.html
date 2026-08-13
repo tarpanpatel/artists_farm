@@ -6,7 +6,26 @@
     <title>Artists Farm Resort Management</title>
     <link rel="icon" type="image/png" href="/icons/favicon-32x32.png" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="stylesheet" href="/assets/css/custom_css_override.css" />
+    <script>
+      // Custom CSS override, injected via runtime DOM API rather than a
+      // static <link> tag on purpose: Vite's HTML plugin treats a literal
+      // <link rel="stylesheet" href="..."> as a real CSS entry point to
+      // bundle - it silently MERGED this file's content directly into the
+      // main built CSS bundle at build time (confirmed: the custom rules
+      // ended up baked inside dist/assets/index-*.css), which defeats the
+      // entire point of writing it to a separate file - a live edit via
+      // the admin UI updates that file on disk correctly, but the site
+      // would keep serving the OLD baked-in copy until the next full
+      // rebuild+redeploy. A script tag is just a string to Vite's HTML
+      // parser, not a recognized asset reference, so it's never touched -
+      // this always fetches the file fresh from the server at page load.
+      (function () {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/assets/css/custom_css_override.css';
+        document.head.appendChild(link);
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
     <div id="root"></div>
