@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, LogOut, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail } from 'lucide-react';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -45,8 +45,8 @@ interface PlatformPropertyManagementProps {
 }
 
 export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProps> = ({
-  username,
-  onLogout,
+  username: _username,
+  onLogout: _onLogout,
 }) => {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -180,11 +180,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     } finally {
       setLoading(false);
     }
-  };
-
-  const _handleLogout = () => {
-    localStorage.removeItem('artists_farm_user_session');
-    onLogout();
   };
 
   const handleManageTenant = (tenant: Tenant) => {
