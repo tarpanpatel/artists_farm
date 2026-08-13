@@ -136,17 +136,17 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         <div className="cash-drawer__totals-grid grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
-            <p className="text-2xl font-black mt-1">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-2xl font-bold mt-1">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
             <p className="text-emerald-200 text-[10px]">{t('from_guest_checkouts_label', 'From Guest Checkouts')}</p>
           </div>
           <div>
             <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
-            <p className="text-2xl font-black mt-1">₹{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-2xl font-bold mt-1">₹{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
             <p className="text-emerald-200 text-[10px]">{t('to_owner_next_shift_label', 'To Owner / Next Shift')}</p>
           </div>
           <div>
             <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
-            <p className="text-2xl font-black mt-1">₹{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+            <p className="text-2xl font-bold mt-1">₹{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
             <p className="text-emerald-200 text-[10px]">{t('unaccounted_should_match_label', 'Unaccounted: Should Match Cash Box')}</p>
           </div>
         </div>
@@ -181,7 +181,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
       {/* Entry Form */}
       <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
-        <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>
               <Handshake className="w-4 h-4" />
@@ -297,7 +297,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       {/* Staff Balance Cards */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-extrabold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+          <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
             <Users className="w-4 h-4 text-emerald-600" />
             {t('staff_cash_responsibility_heading', 'STAFF CASH RESPONSIBILITY')}
           </h3>
@@ -336,7 +336,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-extrabold text-slate-900 dark:text-white text-sm">{s.staffName}</p>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">{s.staffName}</p>
                     <p className="text-[10px] text-slate-400 font-semibold">{s.role}</p>
                   </div>
                   {s.netBalance > 0 ? (
@@ -349,7 +349,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 </div>
 
                 {/* Net Balance - Bold */}
-                <div className={`text-2xl font-black mb-3 ${
+                <div className={`text-2xl font-bold mb-3 ${
                   s.netBalance > 0 ? 'text-emerald-700 dark:text-emerald-400' : s.netBalance < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'
                 }`}>
                   ₹{s.netBalance.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
@@ -392,7 +392,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           onClick={() => setShowHistory(!showHistory)}
           className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
         >
-          <h3 className="font-extrabold text-slate-800 dark:text-white text-sm flex items-center gap-2">
+          <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
             <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
             {t('drawer_entry_history_heading', 'DRAWER ENTRY HISTORY')}
             <span className="text-[10px] text-slate-400 font-semibold ml-1">({drawerEntries.length} entries)</span>

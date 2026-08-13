@@ -120,7 +120,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           <div className="login-modal__logo w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
             <Lock className="w-7 h-7 text-white" />
           </div>
-          <h2 className="login-modal__title text-xl font-black tracking-tight uppercase">{t('login_modal_brand')}</h2>
+          <h2 className="login-modal__title text-xl font-bold tracking-tight uppercase">{t('login_modal_brand')}</h2>
           <p className="login-modal__subtitle text-xs text-emerald-100 mt-1 font-medium">{t('terminal_authorization_subtitle')}</p>
         </div>
 
@@ -169,7 +169,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               placeholder={t('passcode_dots_placeholder')}
               maxLength={6}
               inputMode="numeric"
-              className="text-center tracking-widest text-2xl font-black py-3"
+              className="text-center tracking-widest text-2xl font-bold py-3"
             />
           </div>
 

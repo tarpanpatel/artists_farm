@@ -44,19 +44,19 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-describedby={
             errorMessage ? `${textareaId}-error` : helperText ? `${textareaId}-helper` : undefined
           }
-          className={`
-              w-full px-3.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none
-              bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-slate-400 dark:placeholder:text-slate-500
-              border ${
-                disabled
-                  ? 'border-[var(--input-border-disabled)] bg-[var(--input-bg-disabled)] text-[var(--input-text-disabled)] cursor-not-allowed opacity-60'
-                  : hasError
-                  ? 'border-[var(--input-border-error)] bg-[var(--input-bg-error)] focus:ring-4 focus:ring-[var(--input-ring-error)]'
-                  : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
-              }
-              ${className}
-              textarea__field
-            `}
+           className={`
+               w-full px-3.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none
+               bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-slate-400 dark:placeholder:text-slate-500
+               border ${
+                 disabled
+                   ? 'border-[var(--input-border-disabled)] bg-[var(--input-bg-disabled)] text-[var(--input-text-disabled)] cursor-not-allowed opacity-60'
+                   : hasError
+                   ? 'border-[var(--input-border-error)] bg-[var(--input-bg-error)] focus:ring-4 focus:ring-[var(--input-ring-error)]'
+                   : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
+               }
+               ${className}
+               textarea__field form-field__textarea
+             `}
           {...props}
         />
         {errorMessage ? (

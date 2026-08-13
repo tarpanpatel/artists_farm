@@ -486,18 +486,18 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
         {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider">
-              <tr>
-                <th className="p-4">{t('channel_platform_column', 'Channel / Platform')}</th>
-                <th className="p-4">{t('endpoint_url_column', 'Endpoint URL (.ics)')}</th>
-                <th className="p-4 text-center">{t('sync_mode_column', 'Sync Mode')}</th>
-                <th className="p-4">{t('last_synchronization_column', 'Last Synchronization')}</th>
-                <th className="p-4 text-center">{t('status_column', 'Status')}</th>
-                <th className="p-4 text-right">{t('actions_column', 'Actions')}</th>
+          <table className="w-full text-left border-collapse ical-sync-manager__table">
+            <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider ical-sync-manager__table-header">
+              <tr className="ical-sync-manager__table-header-row">
+                <th className="p-4 ical-sync-manager__table-header-cell">{t('channel_platform_column', 'Channel / Platform')}</th>
+                <th className="p-4 ical-sync-manager__table-header-cell">{t('endpoint_url_column', 'Endpoint URL (.ics)')}</th>
+                <th className="p-4 text-center ical-sync-manager__table-header-cell">{t('sync_mode_column', 'Sync Mode')}</th>
+                <th className="p-4 ical-sync-manager__table-header-cell">{t('last_synchronization_column', 'Last Synchronization')}</th>
+                <th className="p-4 text-center ical-sync-manager__table-header-cell">{t('status_column', 'Status')}</th>
+                <th className="p-4 text-right ical-sync-manager__table-header-cell">{t('actions_column', 'Actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium text-xs">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium text-xs ical-sync-manager__table-body">
               {filteredCalendars.map((cal) => {
                 const badge = getPlatformBadge(cal.service_name);
                 const isSyncing = syncingId === cal.id;

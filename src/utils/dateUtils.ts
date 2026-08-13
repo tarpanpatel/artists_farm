@@ -8,6 +8,16 @@ const normalizeMonth = (month: string): string | undefined =>
 
 const pad = (n: string | number): string => String(n).padStart(2, '0');
 
+export const formatDateDDMMYY = (dateStr?: string | null): string => {
+  const formatted = formatDateDDMMYYYY(dateStr);
+  if (!formatted) return '';
+  const parts = formatted.split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[0]}/${parts[1]}/${parts[2].slice(-2)}`;
+  }
+  return formatted;
+};
+
 export const formatDateDDMMYYYY = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   const cleaned = String(dateStr).trim();

@@ -1,21 +1,21 @@
-# Artists Farm Deployment Guide
+﻿# Ground Code Deployment Guide
 
 **Status**: Partial - FTP archive uploaded, configuration updated, ready for extraction
 
-## What's Been Done ✅
+## What's Been Done âœ…
 
 1. **Configuration Updated**
-   - ✅ `database.php` updated to use `apartment_site` database
-   - ✅ `db_pass.php` created with production credentials
-   - ✅ `sftp-config.json` corrected (Port: 21, Path: /public_html)
-   - ✅ `.sftpignore` created with proper ignore patterns
+   - âœ… `database.php` updated to use `apartment_site` database
+   - âœ… `db_pass.php` created with production credentials
+   - âœ… `sftp-config.json` corrected (Port: 21, Path: /public_html)
+   - âœ… `.sftpignore` created with proper ignore patterns
 
 2. **Files Ready**
-   - ✅ Project archive created: `deploy.tar.gz` (1.2 MB)
-   - ✅ Archive UPLOADED to server at `/public_html/deploy.tar.gz`
-   - ✅ Key files uploaded: `.htaccess`, `index.html`, `package.json`, `tsconfig.json`
+   - âœ… Project archive created: `deploy.tar.gz` (1.2 MB)
+   - âœ… Archive UPLOADED to server at `/public_html/deploy.tar.gz`
+   - âœ… Key files uploaded: `.htaccess`, `index.html`, `package.json`, `tsconfig.json`
 
-## What's Needed Next 📋
+## What's Needed Next ðŸ“‹
 
 ### Step 1: Extract Project Files (CRITICAL)
 **On the server via cPanel File Manager or SSH:**
@@ -71,3 +71,4 @@ Use the corrected `sftp-config.json`:
 
 ---
 All configuration files are ready. Main task: Extract archive & import database.
+

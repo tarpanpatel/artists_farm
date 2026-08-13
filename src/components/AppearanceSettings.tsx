@@ -10,7 +10,7 @@ interface AppearanceSettingsProps {
 }
 
 export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ activeRole = '' }) => {
-  const [activeTab, setActiveTab] = useState<'theme' | 'css'>('theme');
+  const [activeTab, setActiveTab] = useState<'theme' | 'css'>('css');
 
   return (
     <div className="space-y-6 appearance-settings">

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Server-Side Complete Database Backup Generator
  * Generates a full SQL dump of ALL tables in the database - every tenant,
@@ -20,7 +20,7 @@ header('Content-Disposition: attachment; filename="Backup_Artists_Farm_Jaipur_' 
 
 $nowStr = date('Y-m-d H:i:s');
 $output = "-- ======================================================\n";
-$output .= "-- AUTOMATED DATABASE SNAPSHOT BACKUP - ARTISTS FARM JAIPUR\n";
+$output .= "-- AUTOMATED DATABASE SNAPSHOT BACKUP - Ground Code JAIPUR\n";
 $output .= "-- Generated At: {$nowStr}\n";
 
 // Get all tables
@@ -93,3 +93,4 @@ $output .= "-- END OF BACKUP\n";
 $output .= "-- ======================================================\n";
 
 echo $output;
+

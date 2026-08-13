@@ -1,6 +1,6 @@
-<?php
+﻿<?php
 /**
- * Artists Farm Resort & Kitchen Management System
+ * Ground Code Resort & Kitchen Management System
  * Main Production Entry Point for XAMPP / Apache / cPanel PHP Hosting
  */
 
@@ -61,7 +61,7 @@ if (file_exists($dist_index)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artists Farm Resort Management</title>
+    <title>Ground Code Resort Management</title>
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; display: flex; height: 100vh; align-items: center; justify-content: center; margin: 0; }
         .card { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 520px; text-align: center; }
@@ -75,9 +75,10 @@ if (file_exists($dist_index)) {
 <body>
     <div class="card">
         <span class="badge">PHP Backend Active</span>
-        <h1>🌾 Artists Farm Resort System</h1>
+        <h1>ðŸŒ¾ Ground Code Resort System</h1>
         <p>Your PHP backend and MySQL database connection are online.</p>
         <a href="php/api/router.php" class="btn">Test API Router Endpoint &rarr;</a>
     </div>
 </body>
 </html>
+

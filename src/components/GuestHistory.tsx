@@ -9,11 +9,13 @@ import {
 } from 'lucide-react';
 import { Guest } from '../types';
 import { t } from '../i18n/en';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateDDMMYY } from '../utils/dateUtils';
+import { getFirstName } from '../utils/nameUtils';
 import { markCFormFiled } from '../services/api';
 import { useToast } from './ToastContext';
 import { Input } from './Input';
 import { StyledSelect } from './StyledSelect';
+import { PageHeader } from './PageHeader';
 import {
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_CHECKED_OUT,
@@ -108,7 +110,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       cell: (row: Guest) => (
         <div className="flex flex-col py-2">
           <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-            <span>{row.guestName}</span>
+            <span>{getFirstName(row.guestName)}</span>
             {row.isForeignGuest && (
               <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-sm">
                 {t('passport_badge', 'Passport')}
@@ -129,13 +131,13 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       grow: 2,
       cell: (row: Guest) => (
         <div className="flex flex-col py-2">
-          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+           <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <span className="text-[10px] uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1 py-0.5 rounded-sm">{t('checkin_badge', 'IN')}</span>
-            <span>{formatDateDDMMYYYY(row.checkinDate)}</span>
+            <span>{formatDateDDMMYY(row.checkinDate)}</span>
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
             <span className="text-[10px] uppercase text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1 py-0.5 rounded-sm">{t('checkout_badge', 'OUT')}</span>
-            <span>{formatDateDDMMYYYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
+            <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
           </div>
         </div>
       ),
@@ -185,7 +187,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       grow: 2,
       cell: (row: Guest) => (
         <div className="flex flex-col py-2">
-          <div className="flex items-center gap-1 font-extrabold text-slate-900 dark:text-white">
+          <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
             <span className="text-blue-600 dark:text-blue-400">₹{row.totalAmount || 0}</span>
           </div>
@@ -241,16 +243,22 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
   return (
     <div className="guest-history space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {/* Page Title & Header */}
-      <div className="guest-history__header bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <History className="w-6 h-6 text-blue-600" />
-            <span>{t('guest_registration_archive_heading', 'Guest Registration Archive')}</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('guest_history_description', 'Browse completed guest stays, registration history, C-Form compliance, and past billing ledgers.')}
-          </p>
-        </div>
+      <div className="guest-history__header bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center guest-history__breadcrumb">
+          <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
+          <span>/</span>
+          <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_guest_registration_archive_label', 'Guest Registration Archive')}</span>
+        </nav>
+        <PageHeader
+          title={
+            <span className="flex items-center gap-2">
+              <History className="w-6 h-6 text-blue-600" />
+              <span>{t('guest_registration_archive_heading', 'Guest Registration Archive')}</span>
+            </span>
+          }
+          subtitle={t('guest_history_description', 'Browse completed guest stays, registration history, C-Form compliance, and past billing ledgers.')}
+        />
       </div>
 
       {/* Filters and Search Bar */}

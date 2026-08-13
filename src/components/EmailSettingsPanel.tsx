@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Mail, Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -20,7 +20,7 @@ export const EmailSettingsPanel: React.FC = () => {
   const [port, setPort] = useState('587');
   const [smtpUsername, setSmtpUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [fromName, setFromName] = useState('Artists Farm');
+  const [fromName, setFromName] = useState('Ground Code');
   const [fromEmail, setFromEmail] = useState('');
   const [encryption, setEncryption] = useState<'tls' | 'ssl' | 'none'>('tls');
   const [template, setTemplate] = useState('');
@@ -44,7 +44,7 @@ export const EmailSettingsPanel: React.FC = () => {
           setPort(d.smtp_port || '587');
           setSmtpUsername(d.smtp_username || '');
           setPassword(d.smtp_password || '');
-          setFromName(d.smtp_from_name || 'Artists Farm');
+          setFromName(d.smtp_from_name || 'Ground Code');
           setFromEmail(d.smtp_from_email || '');
           setEncryption((d.smtp_encryption as any) || 'tls');
           setTemplate(d.tenant_welcome_template || '');
@@ -329,3 +329,4 @@ export const EmailSettingsPanel: React.FC = () => {
     </div>
   );
 };
+

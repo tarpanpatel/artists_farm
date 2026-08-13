@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2 } from 'lucide-react';
+import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -244,7 +244,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </button>
 
           <div className="booking-details-modal__header flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
-            <h2 className="booking-details-modal__title text-base font-extrabold text-slate-900 dark:text-white">
+            <h2 className="booking-details-modal__title text-base font-bold text-slate-900 dark:text-white">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
             </h2>
           </div>
@@ -464,11 +464,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {isEditing ? (
               <div className="grid grid-cols-2 gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} />
+                  <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} className="form-field__checkbox" />
                   {t('guest_notes_checkbox_label', 'Guest Notes')}
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} />
+                  <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} className="form-field__checkbox" />
                   {t('foreign_national_guest_label', 'Foreign National Guest')}
                 </label>
               </div>
@@ -559,9 +559,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     type="button"
                     className="w-full h-9 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                   >
-                    <svg className="w-4 h-4 text-emerald-600 fill-current shrink-0" viewBox="0 0 24 24">
-                      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
-                    </svg>
+                    <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Share with guest</span>
                   </button>
                 </a>

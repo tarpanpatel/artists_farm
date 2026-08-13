@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.')) {
@@ -16,7 +16,7 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
 $dbname = $live_db;
 
 $pageTitle = 'Our Menu';
-$restaurantName = 'Artists Farm Resort';
+$restaurantName = 'Ground Code Resort';
 $tagline = 'Authentic flavors crafted with care';
 
 try {
@@ -176,7 +176,7 @@ try {
                         <?php foreach ($items as $item): ?>
                             <div class="menu-row">
                                 <span class="dish-name"><?= htmlspecialchars($item['name']) ?></span>
-                                <span class="dish-price">₹<?= number_format($item['price'], 2) ?></span>
+                                <span class="dish-price">â‚¹<?= number_format($item['price'], 2) ?></span>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -191,3 +191,4 @@ try {
     </footer>
 </body>
 </html>
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -18,6 +18,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
+  const passcodeInputRef = useRef<HTMLInputElement>(null);
+  const loginFormRef = useRef<HTMLFormElement>(null);
 
   // First-login mandatory passcode change - set when the account was created
   // with a temporary passcode (e.g. new tenant welcome emails/WhatsApp
@@ -41,6 +44,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
     setMobileNumber(val);
     setError(null);
+    // Auto-focus the password field once 10 digits (or 'admin'/'root') are typed
+    if (val.length === 10 || val === 'admin' || val === 'root') {
+      passcodeInputRef.current?.focus();
+      // Move cursor to end of the password input
+      const passInput = passcodeInputRef.current;
+      if (passInput) {
+        const len = passInput.value.length;
+        passInput.setSelectionRange(len, len);
+      }
+    }
   };
 
   const handlePasscodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,6 +61,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPasscode(val);
     setError(null);
+    // Auto-submit once 6 digits are entered and the form is valid
+    if (val.length === 6 && !isLoading) {
+      const validMobile = mobileNumber.length === 10 || mobileNumber === 'admin' || mobileNumber === 'root';
+      if (validMobile) {
+        loginFormRef.current?.requestSubmit();
+      }
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -205,7 +225,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
             {t('forgot_passcode_title', 'Forgot Your Passcode?')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -301,7 +321,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
             {t('set_new_passcode_title', 'Set a New Passcode')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -389,15 +409,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white text-center tracking-tight">
-          Artists Farm
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+          Ground Code
         </h1>
         <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 text-center mb-8 uppercase tracking-wider">
           {t('login_subtitle', 'Mobile & Passcode Terminal Login')}
         </p>
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="app-form app-form--login space-y-5">
+         <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-5">
           {/* Error Message */}
           {error && (
             <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
@@ -416,15 +436,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <Phone className="w-4 h-4" />
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
               </div>
-              <Input
-                type="tel"
-                value={mobileNumber}
-                onChange={handleMobileChange}
-                placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
-                className="pl-16"
-                disabled={isLoading}
-                autoFocus
-              />
+               <Input
+                 type="tel"
+                 value={mobileNumber}
+                 onChange={handleMobileChange}
+                 placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
+                 className="pl-16"
+                 disabled={isLoading}
+                 autoFocus
+                 ref={mobileInputRef}
+               />
             </div>
           </div>
 
@@ -435,16 +456,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </label>
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <Input
-                type="password"
-                value={passcode}
-                onChange={handlePasscodeChange}
-                placeholder="• • • • • •"
-                maxLength={6}
-                inputMode="numeric"
-                className="pl-10 text-center"
-                disabled={isLoading}
-              />
+               <Input
+                 type="password"
+                 value={passcode}
+                 onChange={handlePasscodeChange}
+                 placeholder="• • • • • •"
+                 maxLength={6}
+                 inputMode="numeric"
+                 className="pl-10 text-center"
+                 disabled={isLoading}
+                 ref={passcodeInputRef}
+               />
             </div>
             <div className="text-right mt-2">
               <button
@@ -483,7 +505,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         {/* Footer */}
         <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">
-          {t('login_footer_copyright', '© 2026 Artists Farm Resort & Kitchen Management System')}
+          {t('login_footer_copyright', 'Â© 2026 Ground Code Resort & Kitchen Management System')}
         </p>
 
         {/* Back Button */}
@@ -500,3 +522,4 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
+

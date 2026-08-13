@@ -1,11 +1,11 @@
-# Artists Farm Resort - Bug Report
+﻿# Ground Code Resort - Bug Report
 
 **Generated:** 2026-08-12  
 **Total Bugs:** 26 (5 Critical, 5 High, 10 Medium, 6 Low)
 
 ---
 
-## 🔴 Critical Bugs
+## ðŸ”´ Critical Bugs
 
 ### 1. Multi-tenant guest data collision in `fetchGuestsFromDB`
 **File:** `src/services/api.ts:833`  
@@ -34,7 +34,7 @@
 
 ---
 
-## 🟠 High Severity Bugs
+## ðŸŸ  High Severity Bugs
 
 ### 6. CORS header defaults to production domain for unlisted origins
 **File:** `php/config/database.php:27`  
@@ -42,7 +42,7 @@
 
 ### 7. calculateGuestTotal uses per-night rate as full-stay fallback
 **File:** `src/components/BillingCheckout.tsx:352`  
-**Issue:** `const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;` - `roomRate` is per-night (from `per_night_charges`), `totalAmount` is full stay (`total_charge`). If `totalAmount` is 0, falls back to per-night rate → massive undercharge for multi-night stays.
+**Issue:** `const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;` - `roomRate` is per-night (from `per_night_charges`), `totalAmount` is full stay (`total_charge`). If `totalAmount` is 0, falls back to per-night rate â†’ massive undercharge for multi-night stays.
 
 ### 8. GST calculation divides by nights twice if roomCharges is already per-night
 **File:** `src/components/ReceiptEditModal.tsx:310-321`  
@@ -51,7 +51,7 @@
 
 ### 9. Check-in/out datetime concatenation misses time component
 **File:** `src/components/GuestManagement.tsx:812-813`  
-**Issue:** `const newCheckinStr = checkinTime ? \`${checkinDate} ${checkinTime}:00\` : checkinDate;` - if user doesn't select time, sends `YYYY-MM-DD` without time → backend may default to 00:00:00. `expectedCheckout` defaults to +2 days at 00:00:00.
+**Issue:** `const newCheckinStr = checkinTime ? \`${checkinDate} ${checkinTime}:00\` : checkinDate;` - if user doesn't select time, sends `YYYY-MM-DD` without time â†’ backend may default to 00:00:00. `expectedCheckout` defaults to +2 days at 00:00:00.
 
 ### 10. Room guest filtering no null check on selectedRoom
 **File:** `src/components/MultiKeyPropertyOverview.tsx:213-217`  
@@ -60,11 +60,11 @@
 
 ---
 
-## 🟡 Medium Severity Bugs
+## ðŸŸ¡ Medium Severity Bugs
 
 ### 11. SQL returns property name as roomNumber for SINGLE property type
 **File:** `php/guests/guests.php:207`  
-**Issue:** `COALESCE(r.name, IF(p.property_type = 'SINGLE', p.name, 'Unassigned'))` - for SINGLE properties, shows property name as "roomNumber". Frontend expects "Room 101" format → display mismatch.
+**Issue:** `COALESCE(r.name, IF(p.property_type = 'SINGLE', p.name, 'Unassigned'))` - for SINGLE properties, shows property name as "roomNumber". Frontend expects "Room 101" format â†’ display mismatch.
 
 ### 12. roomRate fallback logic treats "0.00" string as truthy
 **File:** `src/services/api.ts:882-883`  
@@ -85,7 +85,7 @@
 
 ### 16. API base URL resolution fails on non-standard dev ports
 **File:** `src/services/api.ts:10-15`  
-**Issue:** `_isDev` checks ports 3000/5173/5174/8080 only. Port 3001, 4000, etc. → `_isDev = false` → `_base` tries to extract from pathname. Fragile for non-standard dev ports.
+**Issue:** `_isDev` checks ports 3000/5173/5174/8080 only. Port 3001, 4000, etc. â†’ `_isDev = false` â†’ `_base` tries to extract from pathname. Fragile for non-standard dev ports.
 
 ### 17. Default room selection useEffect has no cleanup for rooms changes
 **File:** `src/components/GuestManagement.tsx:169-199`  
@@ -107,7 +107,7 @@
 
 ---
 
-## 🟢 Low Severity / Code Quality Issues
+## ðŸŸ¢ Low Severity / Code Quality Issues
 
 ### 21. FormatDateDDMMYYYY doesn't handle all input formats
 **File:** `src/utils/dateUtils.ts:11-33`  
@@ -119,7 +119,7 @@
 
 ### 23. No TypeScript types for API response shapes
 **File:** `src/services/api.ts`  
-**Issue:** Functions return `Promise<any[]>` or `Promise<any>`. No strict typing for API responses → runtime errors not caught at compile time.
+**Issue:** Functions return `Promise<any[]>` or `Promise<any>`. No strict typing for API responses â†’ runtime errors not caught at compile time.
 
 ### 24. useEffect dependencies missing in several components
 **Files:** Multiple  
@@ -131,7 +131,7 @@
 
 ### 26. No input sanitization on guest name/notes in frontend
 **Files:** `src/components/GuestManagement.tsx:892-894`  
-**Issue:** Guest name/notes inserted directly into React state and sent to API. Backend validates but frontend shows raw input in UI before save → potential XSS if rendered unsafely elsewhere.
+**Issue:** Guest name/notes inserted directly into React state and sent to API. Backend validates but frontend shows raw input in UI before save â†’ potential XSS if rendered unsafely elsewhere.
 
 ---
 

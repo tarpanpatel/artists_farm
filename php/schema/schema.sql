@@ -1,4 +1,4 @@
--- Artists Farm Jaipur Terminal Database Schema Creation
+﻿-- Ground Code Jaipur Terminal Database Schema Creation
 -- Compatible with MySQL 5.7+ / 8.0 / MariaDB
 
 CREATE DATABASE IF NOT EXISTS `artists_farm_resort` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -230,4 +230,5 @@ INSERT IGNORE INTO `platform_theme_settings` (`id`, `settings_json`, `updated_by
   }',
   'system'
 );
+
 

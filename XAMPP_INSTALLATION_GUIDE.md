@@ -1,11 +1,11 @@
-# 🐘 Complete XAMPP Installation & Setup Guide
-## Artists Farm Resort & Kitchen Management System
+﻿# ðŸ˜ Complete XAMPP Installation & Setup Guide
+## Ground Code Resort & Kitchen Management System
 
-This guide explains step-by-step how to set up and run the entire **Artists Farm Resort Management System** (React Frontend + PHP Modular Backend + MySQL Database) on **XAMPP** (Windows, macOS, or Linux).
+This guide explains step-by-step how to set up and run the entire **Ground Code Resort Management System** (React Frontend + PHP Modular Backend + MySQL Database) on **XAMPP** (Windows, macOS, or Linux).
 
 ---
 
-## 🛠️ Step 1: Start XAMPP Control Panel
+## ðŸ› ï¸ Step 1: Start XAMPP Control Panel
 
 1. Open **XAMPP Control Panel**.
 2. Click **Start** next to **Apache**.
@@ -13,7 +13,7 @@ This guide explains step-by-step how to set up and run the entire **Artists Farm
 
 ---
 
-## 📂 Step 2: Copy Project Files to `htdocs`
+## ðŸ“‚ Step 2: Copy Project Files to `htdocs`
 
 Locate your XAMPP web root directory (`htdocs`):
 - **Windows**: `C:\xampp\htdocs\`
@@ -26,24 +26,24 @@ Locate your XAMPP web root directory (`htdocs`):
    The structure inside `htdocs/artists_farm` will look like:
    ```
    htdocs/
-   └── artists_farm/
-       ├── dist/                # Production build of React app
-       ├── php/                 # PHP Backend
-       │   ├── api/router.php   # Central API Endpoint
-       │   ├── config/database.php
-       │   ├── schema/seed.sql  # Full Database Seed with 290+ Records
-       │   ├── guests/
-       │   ├── kitchen/
-       │   ├── inventory/
-       │   ├── finance/
-       │   └── staff/
-       ├── index.html
-       └── package.json
+   â””â”€â”€ artists_farm/
+       â”œâ”€â”€ dist/                # Production build of React app
+       â”œâ”€â”€ php/                 # PHP Backend
+       â”‚   â”œâ”€â”€ api/router.php   # Central API Endpoint
+       â”‚   â”œâ”€â”€ config/database.php
+       â”‚   â”œâ”€â”€ schema/seed.sql  # Full Database Seed with 290+ Records
+       â”‚   â”œâ”€â”€ guests/
+       â”‚   â”œâ”€â”€ kitchen/
+       â”‚   â”œâ”€â”€ inventory/
+       â”‚   â”œâ”€â”€ finance/
+       â”‚   â””â”€â”€ staff/
+       â”œâ”€â”€ index.html
+       â””â”€â”€ package.json
    ```
 
 ---
 
-## 🗄️ Step 3: Create & Import Database in phpMyAdmin
+## ðŸ—„ï¸ Step 3: Create & Import Database in phpMyAdmin
 
 1. Open your browser and go to: **[http://localhost/phpmyadmin/](http://localhost/phpmyadmin/)**
 2. In the left sidebar, click **New** (or go to the **Databases** tab).
@@ -51,7 +51,7 @@ Locate your XAMPP web root directory (`htdocs`):
 4. Collation: Select `utf8mb4_unicode_ci` (or default).
 5. Click **Create**.
 
-### 📥 Import Seed Data:
+### ðŸ“¥ Import Seed Data:
 1. Click on the newly created **`artists_farm_resort`** database on the left sidebar.
 2. Click on the **Import** tab at the top.
 3. Click **Choose File** and navigate to your project directory:
@@ -61,7 +61,7 @@ Locate your XAMPP web root directory (`htdocs`):
 
 ---
 
-## ⚙️ Step 4: Verify Database Connection Config
+## âš™ï¸ Step 4: Verify Database Connection Config
 
 Open `htdocs/artists_farm/php/config/database.php` in any text editor and confirm the credentials match XAMPP defaults:
 
@@ -89,7 +89,7 @@ try {
 
 ---
 
-## 🚀 Step 5: Test PHP API Endpoints in Browser
+## ðŸš€ Step 5: Test PHP API Endpoints in Browser
 
 To test that PHP + MySQL are communicating properly, open these URLs in your browser:
 
@@ -114,7 +114,7 @@ To test that PHP + MySQL are communicating properly, open these URLs in your bro
 
 ---
 
-## 🌐 Step 6: Access Application
+## ðŸŒ Step 6: Access Application
 
 - **Production Build (HTML/JS)**:
   Navigate to **`http://localhost/artists_farm/dist/`** or **`http://localhost/artists_farm/`**
@@ -128,7 +128,7 @@ To test that PHP + MySQL are communicating properly, open these URLs in your bro
 
 ---
 
-## 🔒 Default User Accounts for System Login
+## ðŸ”’ Default User Accounts for System Login
 
 | Username | Passcode PIN | Role |
 | :--- | :--- | :--- |
@@ -140,7 +140,7 @@ To test that PHP + MySQL are communicating properly, open these URLs in your bro
 
 ---
 
-## ❓ Troubleshooting Common Issues
+## â“ Troubleshooting Common Issues
 
 1. **`Database connection failed` Error**:
    - Ensure MySQL service is running in XAMPP Control Panel.
@@ -151,3 +151,4 @@ To test that PHP + MySQL are communicating properly, open these URLs in your bro
 
 3. **404 Not Found**:
    - Make sure your directory path matches `C:\xampp\htdocs\artists_farm\php\api\router.php`.
+

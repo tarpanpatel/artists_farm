@@ -486,15 +486,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('no_outstanding_issues', 'No outstanding issues.')}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
-                    <th className="pb-2 pr-3">{t('alerts_col_guest_room', 'Guest / Room')}</th>
-                    <th className="pb-2 pr-3">{t('alerts_col_issue', 'Issue')}</th>
-                    <th className="pb-2 w-36">{t('alerts_col_action', 'Action')}</th>
+              <table className="w-full text-sm border-collapse operational-dashboard__table operational-dashboard__table--checkout">
+                <thead className="operational-dashboard__table-header">
+                  <tr className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
+                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_guest_room', 'Guest / Room')}</th>
+                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_issue', 'Issue')}</th>
+                    <th className="pb-2 w-36 operational-dashboard__table-header-cell">{t('alerts_col_action', 'Action')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 operational-dashboard__table-body">
                   {combinedAlerts.slice(0, 5).map(({ guest: g, severity, reasons }) => (
                     <tr
                       key={g.id}
@@ -1080,15 +1080,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
-                    <th className="pb-2 pr-3">{t('alerts_col_guest_room', 'Guest / Room')}</th>
-                    <th className="pb-2 pr-3">{t('alerts_col_issue', 'Issue')}</th>
-                    <th className="pb-2 w-36">{t('alerts_col_action', 'Action')}</th>
+              <table className="w-full text-sm border-collapse operational-dashboard__table operational-dashboard__table--alerts">
+                <thead className="operational-dashboard__table-header">
+                  <tr className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
+                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_guest_room', 'Guest / Room')}</th>
+                    <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_issue', 'Issue')}</th>
+                    <th className="pb-2 w-36 operational-dashboard__table-header-cell">{t('alerts_col_action', 'Action')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 operational-dashboard__table-body">
                   {combinedAlerts.map(({ guest: g, severity, reasons }) => (
                     <tr
                       key={g.id}

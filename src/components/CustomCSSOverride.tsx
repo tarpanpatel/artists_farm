@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -46,7 +46,7 @@ function removeLucideGlobal() {
   if (el) el.remove();
 }
 
-const DEFAULT_CSS = `/* Artists Farm — Custom CSS Override
+const DEFAULT_CSS = `/* Ground Code â€” Custom CSS Override
    Base typography rules are defined below so they can be tuned from this page.
    These rules are unlayered, so they already beat Tailwind utility classes;
    no force-priority flags are needed anywhere in the site. The override style
@@ -58,8 +58,8 @@ const DEFAULT_CSS = `/* Artists Farm — Custom CSS Override
 
 /* Global Font Weight Mapping: caps font weights at 600 (semibold) system-wide */
 .font-bold,
-.font-extrabold,
-.font-black,
+.font-bold,
+.font-bold,
 strong,
 b,
 h1,
@@ -72,13 +72,14 @@ label {
   font-weight: 600;
 }
 
-/* Global Font Size Constraint: no heading or text element exceeds 16px (1rem) regardless of screen size */
+/* Global Font Size Constraint: no text exceeds 14px regardless of screen size */
 h1, h2, h3, h4, h5, h6,
 .text-4xl, .text-3xl, .text-2xl, .text-xl, .text-lg,
 .md\\:text-4xl, .md\\:text-3xl, .md\\:text-2xl, .md\\:text-xl, .md\\:text-lg,
 .lg\\:text-4xl, .lg\\:text-3xl, .lg\\:text-2xl, .lg\\:text-xl, .lg\\:text-lg,
-.sm\\:text-4xl, .sm\\:text-3xl, .sm\\:text-2xl, .sm\\:text-xl, .sm\\:text-lg {
-  font-size: 16px;
+.sm\\:text-4xl, .sm\\:text-3xl, .sm\\:text-2xl, .sm\\:text-xl, .sm\\:text-lg,
+.text-base {
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -439,7 +440,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs custom-css-override__header">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Paintbrush className="w-6 h-6 text-purple-600" />
               <span>{t('custom_css_override_title', 'Custom CSS Override')}</span>
             </h2>
@@ -566,7 +567,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <Palette className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
               <p className="text-[11px] text-slate-500">
                 {iconsLoaded ? `${allIcons.length} icons available` : t('browse_copy_lucide_message', 'Browse, customize, and copy the complete Lucide icon library')}
               </p>
@@ -791,7 +792,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
                   {/* Details */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
                     <div className="space-y-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400 w-16">{t('icon_import_label', 'Import:')}</span>
@@ -847,7 +848,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Quick Reference */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3 custom-css-override__quick-reference">
-        <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-purple-100 dark:bg-purple-950 text-purple-600 px-2 py-0.5 rounded-md text-[10px]">{t('tips_badge', 'TIPS')}</span>
           {t('common_css_overrides_heading', 'Common CSS Overrides')}
         </h3>
@@ -880,3 +881,4 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
     </div>
   );
 };
+

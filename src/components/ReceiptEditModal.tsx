@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
@@ -706,15 +706,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {/* Table of Incidentals */}
                   {incidentals.length > 0 ? (
                     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800">
-                      <table className="w-full text-xs text-left">
-                        <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-600">
-                          <tr>
-                            <th className="py-2 px-3">{t('description_item_column', 'Description Item')}</th>
-                            <th className="py-2 px-3 text-center">{t('qty_column', 'Qty')}</th>
-                            <th className="py-2 px-3 text-right">{t('total_column', 'Total')}</th>
+                      <table className="w-full text-xs text-left receipt-edit-modal__table">
+                        <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-600 receipt-edit-modal__table-header">
+                          <tr className="receipt-edit-modal__table-header-row">
+                            <th className="py-2 px-3 receipt-edit-modal__table-header-cell">{t('description_item_column', 'Description Item')}</th>
+                            <th className="py-2 px-3 text-center receipt-edit-modal__table-header-cell">{t('qty_column', 'Qty')}</th>
+                            <th className="py-2 px-3 text-right receipt-edit-modal__table-header-cell">{t('total_column', 'Total')}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700 receipt-edit-modal__table-body">
                           {incidentals.map((item) => (
                             <tr key={item.id}>
                               <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">
@@ -1268,7 +1268,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </button>
               <a
                 href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                  `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                  `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1289,7 +1289,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="font-extrabold text-base text-black uppercase">
-                  {propertyName || (guest as any).propertyName || 'ARTISTS FARM RESORT'}
+                  {propertyName || (guest as any).propertyName || 'Ground Code RESORT'}
                 </h3>
                 <p className="text-[11px] text-black font-medium">
                   {gstEnabled ? t('tax_invoice_label', 'Tax Invoice') : t('consolidated_settlement_label', 'Consolidated Stay & KOT Settlement')}
@@ -1375,7 +1375,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </div>
               )}
 
-              {/* GST Breakdown — item-wise */}
+              {/* GST Breakdown â€” item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
                   <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
@@ -1416,3 +1416,4 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     </div>
   );
 };
+

@@ -1,4 +1,4 @@
-export const strings: Record<string, string> = {
+﻿export const strings: Record<string, string> = {
   // Navigation / Sidebar Menu Keys (uniqueKey)
   dashboard: "Overview Dashboard",
   guest_registration: "Register New Guest",
@@ -117,13 +117,13 @@ export const strings: Record<string, string> = {
   number_of_guests_label: "Number of Guests",
   cancel_button: "Cancel",
   save_button: "Save",
-  saving_button: "Saving…",
+  saving_button: "Savingâ€¦",
   delete_button: "Delete",
   share_whatsapp_button: "Share via WhatsApp",
   share_png_button: "Share PNG",
-  preparing_button: "Preparing…",
+  preparing_button: "Preparingâ€¦",
   delete_booking_header: "Delete Booking",
-  deleting_button: "Deleting…",
+  deleting_button: "Deletingâ€¦",
 
   // Staff & Payee Management
   edit_button: "Edit",
@@ -164,7 +164,7 @@ export const strings: Record<string, string> = {
   mark_absent_label: "Mark Absent (A)",
   mark_leave_halfday_label: "Mark Leave / Half Day (L)",
   clear_status_label: "Clear Status (-)",
-  give_advance_heading: "Give Advance —",
+  give_advance_heading: "Give Advance â€”",
   username_column: "Username",
   role_group_column: "Role Group",
   cash_handling_column: "Cash Handling",
@@ -267,7 +267,7 @@ export const strings: Record<string, string> = {
   no_expenses_message: "No expense categories found.",
 
   // Platform Property Management
-  platform_title: "Artists Farm Platform",
+  platform_title: "Ground Code Platform",
   admin_dashboard_subtitle: "Administration Dashboard",
   platform_admin_label: "Platform Admin",
   logout_tooltip: "Logout",
@@ -367,7 +367,7 @@ export const strings: Record<string, string> = {
   create_button: "Create",
 
   // Telegram Notification Modal
-  telegram_template_manager_heading: "📡 Telegram Template Manager",
+  telegram_template_manager_heading: "ðŸ“¡ Telegram Template Manager",
   bot_connected_badge: "Bot Connected",
   telegram_manager_subtitle: "Customize automated Telegram notification formats, variables & live previews",
   send_test_ping_button: "Send Test Telegram Ping",
@@ -394,15 +394,15 @@ export const strings: Record<string, string> = {
   visual_editor_button: "Visual Editor",
   source_html_button: "Source HTML",
   raw_html_placeholder: "Type raw Telegram HTML tags here...",
-  inline_keyboard_buttons_heading: "🔘 Telegram Inline Keyboard Buttons",
+  inline_keyboard_buttons_heading: "ðŸ”˜ Telegram Inline Keyboard Buttons",
   add_button_button: "Add Button",
   no_buttons_message: "No interactive inline buttons attached to this template yet. Click above to add buttons like \"Mark as Served\" or \"Download Invoice\".",
   button_text_label: "Button Text:",
   action_callback_url_label: "Action Callback / URL:",
   callback_placeholder: "callback_data or https://...",
   delete_button_tooltip: "Delete Button",
-  live_preview_heading: "🤖 POS Notification Bot (Live Dark Telegram Preview)",
-  bot_name_label: "Artists Farm Bot",
+  live_preview_heading: "ðŸ¤– POS Notification Bot (Live Dark Telegram Preview)",
+  bot_name_label: "Ground Code Bot",
   bot_service_label: "bot service",
 
   // Receipt Edit Modal
@@ -645,7 +645,7 @@ export const strings: Record<string, string> = {
   room_by_room_performance_heading: "Room-by-Room Performance Comparison",
   room_column: "Room",
   occupancy_column: "Occupancy",
-  occupancy_needs_date_range_help: "Occupancy % needs a specific date range — pick Today, Week, Month, or Year above to see it.",
+  occupancy_needs_date_range_help: "Occupancy % needs a specific date range â€” pick Today, Week, Month, or Year above to see it.",
   food_menu_performance_heading: "Food Menu Performance & Most Popular Dish Analytics",
   rank_column: "Rank",
   menu_item_name_column: "Menu Item Name",
@@ -692,6 +692,7 @@ export const strings: Record<string, string> = {
   breadcrumb_dashboard_label: "Dashboard",
   breadcrumb_integrations_label: "Integrations",
   breadcrumb_ical_channel_api_label: "iCal Channel API",
+  breadcrumb_guest_registration_archive_label: "Guest Registration Archive",
   ical_ota_channel_integration_heading: "iCal & OTA Channel Integration Keys",
   ical_ota_channel_integration_subtitle: "Synchronize availability feeds across Airbnb, Booking.com, VRBO, Agoda, and custom channel endpoints.",
   syncing_all_button: "Syncing All...",
@@ -772,7 +773,7 @@ export const strings: Record<string, string> = {
   connect_feed_button: "Connect Feed",
 
   // Tenant Dashboard
-  loading_tenant_dashboard_message: "Loading tenant dashboard…",
+  loading_tenant_dashboard_message: "Loading tenant dashboardâ€¦",
   tenant_dashboard_heading: "Tenant Dashboard",
   property_control_panel_label: "Property Control Panel",
   tenant_manager_label: "Tenant Manager",
@@ -818,14 +819,14 @@ export const strings: Record<string, string> = {
   allow_telegram_template_customization_label: "Enable Telegram Template Customization",
   whatsapp_booking_confirmation_heading: "WhatsApp Booking Confirmation",
   whatsapp_voucher_template_label: "WhatsApp Voucher Template",
-  whatsapp_voucher_template_placeholder: "e.g. Welcome to {property_name}! Your booking is confirmed…",
+  whatsapp_voucher_template_placeholder: "e.g. Welcome to {property_name}! Your booking is confirmedâ€¦",
   tenant_contact_phone_label: "Contact Phone",
   contact_phone_placeholder: "99999 99999",
   google_maps_link_label: "Google Maps Link",
   google_maps_link_placeholder: "https://maps.app.goo.gl/...",
   whatsapp_share_help_text: "Included in the \"Share via WhatsApp\" message on the booking voucher. Left blank, those lines are simply omitted.",
   other_notes_label: "Other Notes",
-  other_notes_placeholder: "e.g. How to reach, check-in instructions, parking notes…",
+  other_notes_placeholder: "e.g. How to reach, check-in instructions, parking notesâ€¦",
   tenant_delete_property_heading: "Delete Property",
   permanent_irreversible_warning: "This action is permanent and irreversible.",
   deletion_consequences_for_label: "Deletion Consequences for",
@@ -833,7 +834,7 @@ export const strings: Record<string, string> = {
   not_enough_slots_heading: "Not Enough Slots",
   contact_root_admin_upgrade_message: "Please contact your Root Admin to upgrade your subscription package.",
   upgrade_managed_by_root_admin_message: "Package upgrades are managed by the Root Admin. Please contact your administrator to increase your slot limit.",
-  upgrade_portal_coming_soon_message: "Self-service upgrade portal — coming soon",
+  upgrade_portal_coming_soon_message: "Self-service upgrade portal â€” coming soon",
   got_it_button: "Got it",
 
   // Petty Cash Management
@@ -958,7 +959,7 @@ export const strings: Record<string, string> = {
   nav_indent_tooltip: "Indent (move right)",
   nav_search_pages_placeholder: "Search pages...",
   nav_set_parent_menu_item_title: "Set Parent Menu Item",
-  nav_kitchen_hidden_tooltip: "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.",
+  nav_kitchen_hidden_tooltip: "Kitchen items are hidden here because this property's kitchen module is off â€” they're untouched and will still be saved as-is.",
   nav_set_url_button: "Set",
 
   // Today Overview
@@ -1000,7 +1001,7 @@ export const strings: Record<string, string> = {
   master_ledger_export_title: "Master Transaction Ledger",
   master_ledger_export_description: "The ultimate financial sheet compiling room rent advances, final settlements, food collections, supply purchases, and operational expenses.",
   snapshot_backup_export_title: "Full System Snapshot Backup (Root Admin)",
-  snapshot_backup_export_description: "Generates an instant raw SQL dump of the entire database — every tenant and property, not just this one.",
+  snapshot_backup_export_description: "Generates an instant raw SQL dump of the entire database â€” every tenant and property, not just this one.",
   export_sheets_button: "EXPORT SHEETS",
   export_master_button: "EXPORT MASTER",
   download_backup_button: "DOWNLOAD BACKUP (.SQL)",
@@ -1013,7 +1014,7 @@ export const strings: Record<string, string> = {
   enable_telegram_notifications_description: "Toggle to enable or disable all Telegram notifications.",
   bot_api_token_label: "Bot API Token",
   bot_token_placeholder: "Enter Bot Token (Leave empty to use platform default)",
-  how_to_create_bot_heading: "🤖 How to create a Telegram Bot:",
+  how_to_create_bot_heading: "ðŸ¤– How to create a Telegram Bot:",
   hide_guide_button: "Hide Guide",
   show_botfather_guide_button: "Show BotFather setup guide",
   auto_reminder_interval_label: "Auto-Reminder Interval (Minutes)",
@@ -1026,8 +1027,8 @@ export const strings: Record<string, string> = {
   re_setup_group_button: "Re-setup / Re-pair Group",
   send_this_code_label: "Send this code as a message in the group:",
   copy_code_tooltip: "Copy code",
-  waiting_for_code_label: "Waiting for the code to arrive…",
-  code_received_connecting_label: "Code received — connecting…",
+  waiting_for_code_label: "Waiting for the code to arriveâ€¦",
+  code_received_connecting_label: "Code received â€” connectingâ€¦",
   code_expired_label: "This code expired.",
   generate_new_code_button: "Generate a new code",
   try_again_button: "Try again",
@@ -1147,7 +1148,7 @@ export const strings: Record<string, string> = {
   forgot_password_link: "Forgot Password?",
   authenticating_button: "Authenticating...",
   login_button: "Log In",
-  login_footer_copyright: "© 2026 Artists Farm Resort & Kitchen Management System",
+  login_footer_copyright: "Â© 2026 Ground Code Resort & Kitchen Management System",
   back_to_home_link: "Back to Home",
   forgot_passcode_title: "Forgot Your Passcode?",
   forgot_passcode_description: "Enter your mobile number and we'll email your login details to the address on file.",
@@ -1572,7 +1573,7 @@ export const strings: Record<string, string> = {
   invalid_property_help_text: "If you believe this is an error, please contact your administrator.",
 
   loading_screen_default_message: "Loading application...",
-  artists_farm_brand: "Artists Farm",
+  artists_farm_brand: "Ground Code",
   loading_timeout_message: "Loading is taking longer than expected. Click below to go home.",
   go_home_button: "Go Home",
   searchable_select_placeholder: "Search...",
@@ -1601,7 +1602,7 @@ export const strings: Record<string, string> = {
 
   // Service Requests Management
   guest_service_requests_heading: "Guest Service Requests",
-  service_requests_description: "Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.",
+  service_requests_description: "Housekeeping, maintenance, and other ad-hoc requests â€” logged by any staff member, nudged to Admin on Telegram.",
   new_request_button: "New Request",
   no_service_requests_label: "No service requests logged yet.",
   updating_button: "Updating...",
@@ -1619,15 +1620,15 @@ export const strings: Record<string, string> = {
   telegram_notifications_heading: "Telegram Notifications for this Property",
   telegram_toggle_description: "Turn off to stop all Telegram alerts for this property, regardless of the settings below.",
   leave_blank_platform_default_placeholder: "Leave blank to use the platform default bot",
-  group_chats_label: "Group Chats — pick which one each notification goes to from its template editor below",
+  group_chats_label: "Group Chats â€” pick which one each notification goes to from its template editor below",
   group_name_placeholder: "Group name",
   chat_id_placeholder: "Chat ID (e.g. -100123456789)",
   remove_group_tooltip: "Remove group",
-  no_groups_configured_text: "No groups configured yet — add one below.",
+  no_groups_configured_text: "No groups configured yet â€” add one below.",
   e_g_kitchen_staff_placeholder: "e.g. Kitchen Staff",
   add_group_tooltip: "Add group",
   saved_badge: "Saved",
-  saving_ellipsis_text: "Saving…",
+  saving_ellipsis_text: "Savingâ€¦",
   save_connection_settings_button: "Save Connection Settings",
   login_modal_brand: "Artists' Farm",
   terminal_authorization_subtitle: "Terminal Mobile & Passcode Authorization",
@@ -1691,7 +1692,7 @@ export const strings: Record<string, string> = {
   save_address_button: "Save Address",
   property_details_header: "Property Details",
   instructions_label: "Instructions",
-  instructions_placeholder: "e.g. How to reach, check-in instructions, parking notes…",
+  instructions_placeholder: "e.g. How to reach, check-in instructions, parking notesâ€¦",
   add_team_member_heading: "Add at least one team member",
   add_team_member_description: "You're already registered as Super Admin. Add whoever else will run the front desk, kitchen, or bookings.",
   add_staff_button: "Add Staff",
@@ -1718,7 +1719,7 @@ export const strings: Record<string, string> = {
   checkout_pill_label: "CHECKOUT",
   previous_month_tooltip: "Previous month",
   next_month_tooltip: "Next month",
-  complete_checkin_heading_prefix: "Complete Check-in —",
+  complete_checkin_heading_prefix: "Complete Check-in â€”",
   id_documents_required_text: "ID document",
   extra_photo_label: "Extra Photo",
   guest_id_label: "Guest",
@@ -1726,7 +1727,7 @@ export const strings: Record<string, string> = {
   required_uploaded_suffix: "required ID document",
   uploaded_suffix: "uploaded",
   extra_uploaded_suffix: "extra",
-  no_expense_items_loaded_text: "No expense items loaded yet. Visit Root Admin → Default Expenses (MK) → click Sync Defaults to populate all 20 categories.",
+  no_expense_items_loaded_text: "No expense items loaded yet. Visit Root Admin â†’ Default Expenses (MK) â†’ click Sync Defaults to populate all 20 categories.",
   check_in_label: "Check-in:",
   check_out_label: "Check-out:",
   port_placeholder: "587",
@@ -1752,5 +1753,6 @@ export const strings: Record<string, string> = {
 export function t(key: string, fallback?: string): string {
   return strings[key] || fallback || key;
 }
+
 
 

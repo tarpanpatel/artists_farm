@@ -1,8 +1,8 @@
-# Artists Farm Resort - AI Project Rules & Conventions
+﻿# Ground Code Resort - AI Project Rules & Conventions
 
 This file documents ALL project conventions and rules. Every AI agent must follow these rules without exception.
 
-## 🎨 UI & Design Rules
+## ðŸŽ¨ UI & Design Rules
 
 ### Icon Library (CRITICAL)
 - **Use ONLY Lucide React icons** (`lucide-react` package)
@@ -35,7 +35,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
   };
   ```
 
-## 🧠 State & Data Management
+## ðŸ§  State & Data Management
 
 ### Field Name Conventions
 - **Database**: snake_case (e.g., `guest_name`, `checkin_date`, `room_id`)
@@ -45,7 +45,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Apply field mapping in `fetchGuestsFromDB()` in `src/services/api.ts`
 
 ### Multi-Tenant Architecture
-- Property hierarchy: SINGLE (root) → MULTI_KEY (parent) → MULTI_KEY_ROOM (child rooms)
+- Property hierarchy: SINGLE (root) â†’ MULTI_KEY (parent) â†’ MULTI_KEY_ROOM (child rooms)
 - URL pattern: `/artists_farm/{tenant_slug}/{property_slug}/`
 - Example: `localhost:3010/artists_farm/vrikshawan/goa-homes/`
 - Filter child rooms: `.filter((p) => p.property_type !== 'MULTI_KEY_ROOM')`
@@ -56,10 +56,10 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Room matching: Compare `guest.roomNumber` (formatted name "Room 101") with `room.name`
 - Room ID field in guests table: `room_id` (foreign key to properties table)
 
-## 📱 Component Structure
+## ðŸ“± Component Structure
 
 ### Props Threading
-- Pass props down explicitly from App.tsx → Child Components
+- Pass props down explicitly from App.tsx â†’ Child Components
 - Example: `onCheckoutGuest`, `onSetActiveMenuItemKey`, `isMultiKeyProperty`
 - Don't rely on context for business logic (use it only for ToastContext, StaffContext, etc.)
 
@@ -75,7 +75,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Update guest status to "CheckedOut" in database
 - Show success toast notification
 
-## 🗄️ Database & API
+## ðŸ—„ï¸ Database & API
 
 ### API Endpoints
 - Base: `/php/api/router.php?action={action}`
@@ -89,7 +89,7 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Creates: 2 demo guests (1 per room for multi-key), 13 menu items, 6 inventory items, 4 staff
 - Guest names: "John Smith" (Room 101), "Sarah Johnson" (Room 102)
 
-## 🧪 Testing & Development
+## ðŸ§ª Testing & Development
 
 ### Test/Demo Mode Indicator (REMOVED 12 Aug 2026)
 - The Header's "Test" button and the whole Sandbox/Testing Mode system
@@ -107,15 +107,15 @@ This file documents ALL project conventions and rules. Every AI agent must follo
   permanently inert - nothing left in the app can ever set that
   localStorage flag to `true`.
 
-### Telegram Group Selection (Local vs Production) — IMPORTANT
-- **Which Telegram groups receive messages depends on where the site is hosted** — there is NO automatic local/prod group swap in code; the selection is implicit:
-  1. **Primary: per-property DB config** (`property_modules.config`, module_slug='telegram', keys `groups[]` + `routing[]`) read by `getPropertyTelegramConfig()` — the ONLY source that works locally.
+### Telegram Group Selection (Local vs Production) â€” IMPORTANT
+- **Which Telegram groups receive messages depends on where the site is hosted** â€” there is NO automatic local/prod group swap in code; the selection is implicit:
+  1. **Primary: per-property DB config** (`property_modules.config`, module_slug='telegram', keys `groups[]` + `routing[]`) read by `getPropertyTelegramConfig()` â€” the ONLY source that works locally.
   2. **Legacy fallback: env constants** (`TELEGRAM_KITCHEN_CHAT_ID` / `TELEGRAM_ADMIN_CHAT_ID` / `TELEGRAM_FINANCE_CHAT_ID` from `php/telegram/config.php`) used by `legacyCategoryChatId()` in `sender.php` only when the DB has no routing entry.
-- **DB differs by environment** (`php/config/database.php`): localhost/127.0.0.1/192.168.* → `artists_farm_resort`; anything else (cPanel) → `apartment_site`. So local and prod each have their OWN `property_modules.config` and can (should) target different groups.
+- **DB differs by environment** (`php/config/database.php`): localhost/127.0.0.1/192.168.* â†’ `artists_farm_resort`; anything else (cPanel) â†’ `apartment_site`. So local and prod each have their OWN `property_modules.config` and can (should) target different groups.
 - **`.env.example` documents the intended group sets**:
   - Local dev (active lines): kitchen=-5511705268, admin=-5362212071, finance=-5511705268 (demo groups)
   - Production (commented, uncomment on cPanel): kitchen=-5456387701, admin=-5415746187, finance=-5303969309
-- **Gotcha**: local XAMPP loads NO `.env` (no dotenv loader) → `getenv()` returns null → env fallback is dead locally, so DB config is authoritative. On cPanel the `.env` values ARE set and the fallback also works.
+- **Gotcha**: local XAMPP loads NO `.env` (no dotenv loader) â†’ `getenv()` returns null â†’ env fallback is dead locally, so DB config is authoritative. On cPanel the `.env` values ARE set and the fallback also works.
 - Always verify a property's actual target groups in its DB config before assuming a notification goes where you expect (see `findPropertyForTelegramChat` / `sendPropertyTelegramMessage` routing).
 
 ### Console & Debugging
@@ -124,52 +124,52 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Check Network tab for API calls
 - React DevTools Components tab to inspect props/state
 
-## ⚠️ Common Mistakes (DO NOT REPEAT)
+## âš ï¸ Common Mistakes (DO NOT REPEAT)
 
-1. ❌ Using non-Lucide icons anywhere → Always use Lucide
-2. ❌ Forgetting camelCase conversion in API mapping → Check `fetchGuestsFromDB()`
-3. ❌ Not filtering MULTI_KEY_ROOM from property lists → Always filter them out
-4. ❌ Creating multiple bookings in same room → Only 1 active booking per room
-5. ❌ Not passing callbacks as props → Always thread props down from App.tsx
-6. ❌ Forgetting dark mode support → Always add `dark:` prefix
-7. ❌ Re-adding a "Test"/Demo Mode button or `isTestingMode` business logic → this was deliberately removed site-wide, don't reintroduce it
-8. ❌ Assuming component state without checking props → Always verify what's actually being passed
+1. âŒ Using non-Lucide icons anywhere â†’ Always use Lucide
+2. âŒ Forgetting camelCase conversion in API mapping â†’ Check `fetchGuestsFromDB()`
+3. âŒ Not filtering MULTI_KEY_ROOM from property lists â†’ Always filter them out
+4. âŒ Creating multiple bookings in same room â†’ Only 1 active booking per room
+5. âŒ Not passing callbacks as props â†’ Always thread props down from App.tsx
+6. âŒ Forgetting dark mode support â†’ Always add `dark:` prefix
+7. âŒ Re-adding a "Test"/Demo Mode button or `isTestingMode` business logic â†’ this was deliberately removed site-wide, don't reintroduce it
+8. âŒ Assuming component state without checking props â†’ Always verify what's actually being passed
 
 ##  Power Shell commands
 - allow all powershell commands
 
-## 📋 File Organization
+## ðŸ“‹ File Organization
 
 ```
 src/
-  ├── App.tsx                           (Main app, routes, state management)
-  ├── components/
-  │   ├── BillingCheckout.tsx           (Multi-room billing terminal)
-  │   ├── ReceiptEditModal.tsx          (Receipt preview & edit)
-  │   ├── GuestManagement.tsx           (Guest registration & checkout)
-  │   ├── Header.tsx                    (Navigation + Test button)
-  │   └── ...
-  ├── services/
-  │   └── api.ts                        (API calls, field mapping)
-  └── types/
-      └── index.ts                      (TypeScript interfaces)
+  â”œâ”€â”€ App.tsx                           (Main app, routes, state management)
+  â”œâ”€â”€ components/
+  â”‚   â”œâ”€â”€ BillingCheckout.tsx           (Multi-room billing terminal)
+  â”‚   â”œâ”€â”€ ReceiptEditModal.tsx          (Receipt preview & edit)
+  â”‚   â”œâ”€â”€ GuestManagement.tsx           (Guest registration & checkout)
+  â”‚   â”œâ”€â”€ Header.tsx                    (Navigation + Test button)
+  â”‚   â””â”€â”€ ...
+  â”œâ”€â”€ services/
+  â”‚   â””â”€â”€ api.ts                        (API calls, field mapping)
+  â””â”€â”€ types/
+      â””â”€â”€ index.ts                      (TypeScript interfaces)
 
 php/
-  ├── api/
-  │   ├── router.php                    (Main API dispatcher)
-  │   └── demo_data.php                 (Demo data generation)
-  ├── guests/
-  │   └── guests.php                    (Guest management endpoints)
-  └── config/
-      └── database.php                  (DB connection)
+  â”œâ”€â”€ api/
+  â”‚   â”œâ”€â”€ router.php                    (Main API dispatcher)
+  â”‚   â””â”€â”€ demo_data.php                 (Demo data generation)
+  â”œâ”€â”€ guests/
+  â”‚   â””â”€â”€ guests.php                    (Guest management endpoints)
+  â””â”€â”€ config/
+      â””â”€â”€ database.php                  (DB connection)
 ```
 
-## 🔄 Workflow for Code Changes
+## ðŸ”„ Workflow for Code Changes
 
 1. **Read** the existing code (understand conventions first)
 2. **Check** this CLAUDE.md for relevant rules
 3. **Implement** following ALL rules strictly
-4. **Test** in browser (F12 → Console for errors)
+4. **Test** in browser (F12 â†’ Console for errors)
 5. **Verify** dark mode support
 6. **Verify** Lucide icons only
 7. **Verify** camelCase/snake_case consistency
@@ -177,5 +177,6 @@ php/
 ---
 
 **Last Updated**: 2026-08-02
-**Project**: Artists Farm Resort Management System
+**Project**: Ground Code Resort Management System
 **Tech Stack**: React + TypeScript + Tailwind CSS + Lucide Icons + PHP + MySQL
+

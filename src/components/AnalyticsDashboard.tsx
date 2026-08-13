@@ -555,16 +555,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="datatable w-full text-left border-collapse">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3">{t('month_column', 'Month')}</th>
-                    <th className="p-3 text-center">{t('bookings_column', 'Bookings')}</th>
-                    <th className="p-3 text-right">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
-                    <th className="p-3 text-center">{t('guests_column', 'Guests')}</th>
+              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--overview">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                  <tr className="analytics-dashboard__table-header-row">
+                    <th className="p-3 analytics-dashboard__table-header-cell">{t('month_column', 'Month')}</th>
+                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
+                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
+                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('guests_column', 'Guests')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                   {sortedBookingsByMonth.map(([month, data]) => (
                     <tr key={month} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="p-3 font-bold text-slate-900 dark:text-white">{month}</td>
@@ -597,16 +597,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="datatable w-full text-left border-collapse">
-                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                      <tr>
-                        <th className="p-3">{t('room_column', 'Room')}</th>
-                        <th className="p-3 text-center">{t('bookings_column', 'Bookings')}</th>
-                        <th className="p-3 text-right">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
-                        <th className="p-3 text-right">{t('occupancy_column', 'Occupancy')}</th>
+                  <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--bookings">
+                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                      <tr className="analytics-dashboard__table-header-row">
+                        <th className="p-3 analytics-dashboard__table-header-cell">{t('room_column', 'Room')}</th>
+                        <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
+                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
+                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('occupancy_column', 'Occupancy')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                       {roomPerformance.map((room) => (
                         <tr key={room.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                           <td className="p-3 font-bold text-slate-900 dark:text-white">{room.name}</td>
@@ -643,16 +643,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
 
               <div className="overflow-x-auto">
-                <table className="datatable w-full text-left border-collapse">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">{t('rank_column', 'Rank')}</th>
-                      <th className="p-3">{t('menu_item_name_column', 'Menu Item Name')}</th>
-                      <th className="p-3 text-center">{t('total_quantity_sold_column', 'Total Quantity Sold')}</th>
-                      <th className="p-3 text-right">{t('total_generated_revenue_column', 'Total Generated Revenue')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--room-performance">
+                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                      <tr className="analytics-dashboard__table-header-row">
+                        <th className="p-3 analytics-dashboard__table-header-cell">{t('rank_column', 'Rank')}</th>
+                        <th className="p-3 analytics-dashboard__table-header-cell">{t('menu_item_name_column', 'Menu Item Name')}</th>
+                        <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('total_quantity_sold_column', 'Total Quantity Sold')}</th>
+                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_generated_revenue_column', 'Total Generated Revenue')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                     {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
                       <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="p-3 font-bold text-slate-400">#{index + 1}</td>
@@ -713,15 +713,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="datatable w-full text-left border-collapse">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3">{t('dish_name_column', 'Dish Name')}</th>
-                    <th className="p-3 text-center">{t('times_ordered_column', 'Times Ordered')}</th>
-                    <th className="p-3 text-right">{t('total_revenue_rupees_column', 'Total Revenue (₹)')}</th>
+              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--food">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                  <tr className="analytics-dashboard__table-header-row">
+                    <th className="p-3 analytics-dashboard__table-header-cell">{t('dish_name_column', 'Dish Name')}</th>
+                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('times_ordered_column', 'Times Ordered')}</th>
+                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_revenue_rupees_column', 'Total Revenue (₹)')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                   {sortedMenuItems.slice(0, 10).map(([itemName, data]) => (
                     <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                       <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
@@ -757,16 +757,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
 
               <div className="overflow-x-auto">
-                <table className="datatable w-full text-left border-collapse">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">#</th>
-                      <th className="p-3">{t('item_description_column', 'Item Description')}</th>
-                      <th className="p-3 text-center">{t('category_column', 'Category')}</th>
-                      <th className="p-3 text-right">{t('total_cost_rupees_column', 'Total Cost (₹)')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--kitchen">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                  <tr className="analytics-dashboard__table-header-row">
+                    <th className="p-3 analytics-dashboard__table-header-cell">#</th>
+                    <th className="p-3 analytics-dashboard__table-header-cell">{t('item_description_column', 'Item Description')}</th>
+                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
+                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_cost_rupees_column', 'Total Cost (₹)')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                     {sortedExpenseItems.map(([name, data], idx) => {
                       const itemData = data as { count: number; category: string; totalCost: number };
                       return (
@@ -830,14 +830,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400">{t('category_column', 'Category')}</th>
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right">{t('amount_rupees_column', 'Amount (₹)')}</th>
+                    <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--profit-loss">
+                      <thead className="analytics-dashboard__table-header">
+                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                         {ledgerData.map((l, i) => (
                           <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                             <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
@@ -937,14 +937,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400">{t('entry_column', 'Entry')}</th>
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right">{t('amount_rupees_column', 'Amount (₹)')}</th>
+                    <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--balance-sheet">
+                      <thead className="analytics-dashboard__table-header">
+                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('entry_column', 'Entry')}</th>
+                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                         {ledgerData.map((l, i) => (
                           <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                             <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>

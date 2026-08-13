@@ -916,7 +916,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {/* Card Header */}
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2 mb-2.5">
                     <div>
-                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                         Order #{ord.id.replace('#', '')}
                       </h3>
                       <p className="text-slate-400 dark:text-slate-500 text-[10px] font-medium">
@@ -953,7 +953,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 )}
                               </>
                             ) : (
-                              <span className="font-extrabold text-rose-600 text-xs">
+                              <span className="font-bold text-rose-600 text-xs">
                                 {item.quantity}x {item.name}
                               </span>
                             )}
@@ -962,7 +962,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           {/* Mobile-Friendly Touch Ready Buttons */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isServed ? (
-                              <span className="text-[11px] font-extrabold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <span className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
                                 {t('served_badge')}
                               </span>
                             ) : isReady ? (
@@ -978,7 +978,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                                   title={t('click_when_served_tooltip')}
                                 >
                                   <Check className="w-3.5 h-3.5" /> Served
@@ -997,7 +997,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
-                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
                                 >
                                   <Check className="w-3.5 h-3.5" /> {t('ready_button')}
                                 </button>
@@ -1099,7 +1099,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Selected Category Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-                  <h3 className="font-extrabold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
                     {selectedPosCategory === 'all' ? t('all_menu_items_header') : posCategories.find((category) => category.id === selectedPosCategory)?.label}
                   </h3>
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
@@ -1125,7 +1125,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }, {})
                     ).map(([category, items]) => (
                       <div key={category}>
-                        <h4 className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
                           {category}
                           <span className="text-slate-400 dark:text-slate-500 font-bold normal-case tracking-normal">({items.length})</span>
                         </h4>
@@ -1151,11 +1151,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   <div className="flex items-start justify-between gap-1">
                                     <div className="min-w-0 flex-1">
                                       <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
-                                      <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                                      <p className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] mt-0.5">₹{item.price}</p>
                                     </div>
                                     <button
                                       onClick={() => handleAddToCartWithFeedback(item)}
-                                      className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-extrabold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
+                                      className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-bold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
                                         isRecentlyAdded
                                           ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
                                           : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
@@ -1195,11 +1195,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             <div className="flex items-start justify-between gap-1">
                               <div className="min-w-0 flex-1">
                                 <h4 className="font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
-                                <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[10px] mt-0.5">₹{item.price}</p>
+                                <p className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] mt-0.5">₹{item.price}</p>
                               </div>
                               <button
                                 onClick={() => handleAddToCartWithFeedback(item)}
-                                className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-extrabold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
+                                className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-bold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
                                   isRecentlyAdded
                                     ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
                                     : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
@@ -1222,11 +1222,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2.5">
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-xs tracking-wider flex items-center gap-1.5">
                       <ShoppingCart className="w-4 h-4 text-slate-700 dark:text-slate-400" />
                       <span>{t('order_cart_header')}</span>
                     </h3>
-                    <span className="text-[10px] font-extrabold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
+                    <span className="text-[10px] font-bold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
                       {totalCartCount} Items
                     </span>
                   </div>
@@ -1248,16 +1248,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 overflow-hidden shrink-0">
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
                               -
                             </button>
-                            <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
+                            <span className="w-6 text-center font-bold text-slate-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
                               +
                             </button>
@@ -1277,8 +1277,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Cart Total & Submit Button */}
                 <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-[10px]">{t('total_label')}</span>
-                    <span className="font-black text-emerald-600 text-base">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-[10px]">{t('total_label')}</span>
+                    <span className="font-bold text-emerald-600 text-base">
                       ₹{totalCartSum.toFixed(2)}
                     </span>
                   </div>
@@ -1293,7 +1293,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         ? t('order_cart_empty_tooltip')
                         : t('send_order_to_kitchen_button')
                     }
-                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
+                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
                   >
                     <span>{t('send_order_to_kitchen_button')}</span>
                   </button>
@@ -1311,19 +1311,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Header Bar */}
                 <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-t-2xl border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-extrabold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
+                    <div className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-bold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
                       <ShoppingCart className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-500" />
                       <span>{totalCartCount} Items</span>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">TOTAL: </span>
-                      <span className="text-emerald-600 font-black text-sm">₹{totalCartSum.toFixed(2)}</span>
+                      <span className="text-emerald-600 font-bold text-sm">₹{totalCartSum.toFixed(2)}</span>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                    className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-cyan-700 dark:text-cyan-400 font-extrabold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 dark:border-cyan-700 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                    className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-cyan-700 dark:text-cyan-400 font-bold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 dark:border-cyan-700 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
                   >
                     {isCartDrawerExpanded ? (
                       <ChevronDown className="w-3.5 h-3.5" />
@@ -1337,7 +1337,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
                 <div className="pos-cart-items-list p-3 flex-1 overflow-y-auto space-y-2">
                   {!isCartDrawerExpanded && cartItems.length > 3 && (
-                    <p className="text-[10px] text-cyan-700 font-extrabold tracking-wide uppercase text-center pb-1">
+                    <p className="text-[10px] text-cyan-700 font-bold tracking-wide uppercase text-center pb-1">
                       {t('showing_last_3_items_prefix')} {cartItems.length} {t('showing_last_3_items_suffix')}
                     </p>
                   )}
@@ -1355,16 +1355,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-minus w-8 h-8 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           -
                         </button>
-                        <span className="w-6 text-center font-extrabold text-slate-900 text-xs">
+                        <span className="w-6 text-center font-bold text-slate-900 text-xs">
                           {ci.quantity}
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus w-8 h-8 hover:bg-slate-100 font-black text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus w-8 h-8 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           +
                         </button>
@@ -1385,7 +1385,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         ? 'Order cart is empty'
                         : 'Send Order to Kitchen'
                     }
-                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
+                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
                   >
                     <span>Send Order to Kitchen</span>
                   </button>
@@ -1953,32 +1953,32 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('cost_per_portion_label')}</p>
-              <p className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">₹{costPerPortion.toFixed(2)}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">₹{costPerPortion.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('single_serving_cost_text')}</span>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('batch_cost_label')} ({servings}x)</p>
-              <p className="text-lg font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalBatchCost.toFixed(2)}</p>
+              <p className="text-lg font-bold text-amber-700 dark:text-amber-400 mt-1">₹{totalBatchCost.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{servings} {t('portions_total_text')}</span>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('selling_price_label')}</p>
-              <p className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">₹{dishSellingPrice}</p>
               <span className="text-[10px] text-slate-400">{t('batch_total_text')} ₹{scaledSellingPrice.toLocaleString()}</span>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('food_cost_percent_label')}</p>
-              <p className={`text-lg font-extrabold mt-1 ${foodCostPercentage > 30 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{foodCostPercentage.toFixed(1)}%</p>
+              <p className={`text-lg font-bold mt-1 ${foodCostPercentage > 30 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{foodCostPercentage.toFixed(1)}%</p>
               <span className={`text-[10px] ${foodCostPercentage > 30 ? 'text-red-500' : 'text-blue-500'}`}>{foodCostPercentage > 30 ? t('above_30_target_text') : t('within_target_text')}</span>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('profit_per_portion_label')}</p>
-              <p className={`text-lg font-extrabold mt-1 ${profitPerPortion >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{profitPerPortion.toFixed(2)}</p>
+              <p className={`text-lg font-bold mt-1 ${profitPerPortion >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{profitPerPortion.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('margin_text')} {grossProfitMargin.toFixed(1)}%</span>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px]">{t('total_profit_label')} ({servings}x)</p>
-              <p className={`text-lg font-extrabold mt-1 ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{totalProfit.toFixed(2)}</p>
+              <p className={`text-lg font-bold mt-1 ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>₹{totalProfit.toFixed(2)}</p>
               <span className="text-[10px] text-slate-400">{t('yield_text')} {yieldFactor} portion{yieldFactor !== 1 ? 's' : ''}</span>
             </div>
           </div>

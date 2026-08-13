@@ -1,5 +1,5 @@
-/**
- * API service helper for Artists Farm Resort PHP/MySQL backend.
+﻿/**
+ * API service helper for Ground Code Resort PHP/MySQL backend.
  */
 
 import { PropertyTelegramConfig } from '../types';
@@ -172,7 +172,7 @@ export function getRoomSlugFromHash(validRoomSlugs?: string[]): string | null {
 
 /**
  * Navigate to a room in the current MultiKey property using hash routing
- * Usage: navigateToRoomHash('room-101') → sets URL hash to #room-101
+ * Usage: navigateToRoomHash('room-101') â†’ sets URL hash to #room-101
  */
 export function navigateToRoomHash(roomSlug: string | null): void {
   if (typeof window === 'undefined') return;
@@ -1578,7 +1578,7 @@ export async function fetchPropertyModulesFromDB(): Promise<{ slug: string; is_e
     const res = await apiFetch(`${API_BASE}?action=get_property_modules`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
-      // Map API response to expected format (module_slug → slug, convert is_enabled to boolean)
+      // Map API response to expected format (module_slug â†’ slug, convert is_enabled to boolean)
       return json.data.map((mod: any) => ({
         slug: mod.module_slug || mod.slug,
         is_enabled: Boolean(mod.is_enabled),
@@ -1927,7 +1927,7 @@ export async function addAuditLogDB(log: {
   }
 }
 
-// Telegram template resolver — fetches from DB via manager.php and caches
+// Telegram template resolver â€” fetches from DB via manager.php and caches
 let _templateCache: Record<string, string> | null = null;
 
 export async function resolveTelegramTemplate(dbKey: string, variables: Record<string, string>): Promise<string | null> {
@@ -2340,4 +2340,5 @@ export async function addStaffMealLogToDB(staffNames: string, foodDescription: s
     return false;
   }
 }
+
 

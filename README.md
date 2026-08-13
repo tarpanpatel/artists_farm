@@ -1,6 +1,6 @@
-# Artists Farm — Hospitality Operations Platform
+﻿# Ground Code â€” Hospitality Operations Platform
 
-Artists Farm is a multi-tenant hospitality operations platform for vacation rentals, boutique stays, and B&B properties. It supports both single-key properties (one active booking at a time) and multi-key properties with independently managed rooms.
+Ground Code is a multi-tenant hospitality operations platform for vacation rentals, boutique stays, and B&B properties. It supports both single-key properties (one active booking at a time) and multi-key properties with independently managed rooms.
 
 The application combines front-desk operations, food service, finance, staff coordination, property administration, and operational reporting in one web dashboard.
 
@@ -18,12 +18,12 @@ The application combines front-desk operations, food service, finance, staff coo
 
 ```
 Browser
-  └─ React + TypeScript application (src/)
-       └─ PHP API client (src/services/api.ts)
-            └─ PHP API router (php/api/router.php)
-                 ├─ Domain modules: guests, kitchen, inventory, finance, staff, billing
-                 ├─ Platform modules: tenants, properties, licences, themes, configuration
-                 └─ MySQL database
+  â””â”€ React + TypeScript application (src/)
+       â””â”€ PHP API client (src/services/api.ts)
+            â””â”€ PHP API router (php/api/router.php)
+                 â”œâ”€ Domain modules: guests, kitchen, inventory, finance, staff, billing
+                 â”œâ”€ Platform modules: tenants, properties, licences, themes, configuration
+                 â””â”€ MySQL database
 ```
 
 ### Frontend
@@ -36,10 +36,10 @@ Browser
 
 The primary frontend entry points are:
 
-- `src/main.tsx` — browser bootstrap and global client-side error capture.
-- `src/App.tsx` — application composition, screen state, and feature orchestration.
-- `src/services/api.ts` — API calls, property resolution, and client-side data mapping.
-- `src/components/DataLoader.tsx` — loads property, enabled modules, navigation, and Telegram configuration before rendering the app.
+- `src/main.tsx` â€” browser bootstrap and global client-side error capture.
+- `src/App.tsx` â€” application composition, screen state, and feature orchestration.
+- `src/services/api.ts` â€” API calls, property resolution, and client-side data mapping.
+- `src/components/DataLoader.tsx` â€” loads property, enabled modules, navigation, and Telegram configuration before rendering the app.
 
 ### Backend
 
@@ -51,11 +51,11 @@ The PHP backend is organised by domain. `php/api/router.php` is the central acti
 
 Major backend directories:
 
-- `php/config/` — database connection, property resolution, testing sandbox, and system configuration.
-- `php/guests/`, `php/billing/`, `php/kitchen/`, `php/inventory/`, `php/finance/`, `php/staff/` — operational modules.
-- `php/modules/`, `php/licenses/`, `php/theme/`, `php/service_requests/` — platform and property configuration.
-- `php/telegram/`, `php/cron/` — Telegram integration and scheduled tasks.
-- `php/database/`, `php/schema/` — migrations, schema utilities, and configuration seeding.
+- `php/config/` â€” database connection, property resolution, testing sandbox, and system configuration.
+- `php/guests/`, `php/billing/`, `php/kitchen/`, `php/inventory/`, `php/finance/`, `php/staff/` â€” operational modules.
+- `php/modules/`, `php/licenses/`, `php/theme/`, `php/service_requests/` â€” platform and property configuration.
+- `php/telegram/`, `php/cron/` â€” Telegram integration and scheduled tasks.
+- `php/database/`, `php/schema/` â€” migrations, schema utilities, and configuration seeding.
 
 ## Multi-tenant and multi-key routing
 
@@ -164,7 +164,8 @@ C:\xampp\php\php.exe -l php\api\router.php
 
 ## Documentation
 
-- `CLAUDE.md` — implementation rules and project conventions.
-- `DEPLOYMENT.md`, `DEPLOYMENT_GUIDE.md`, `DEPLOY_TO_PRODUCTION.md` — deployment guidance.
-- `MONITORING.md`, `USER_PROBLEM_DETECTION.md` — monitoring and diagnostics.
-- `ROADMAP.md` — current roadmap status.
+- `CLAUDE.md` â€” implementation rules and project conventions.
+- `DEPLOYMENT.md`, `DEPLOYMENT_GUIDE.md`, `DEPLOY_TO_PRODUCTION.md` â€” deployment guidance.
+- `MONITORING.md`, `USER_PROBLEM_DETECTION.md` â€” monitoring and diagnostics.
+- `ROADMAP.md` â€” current roadmap status.
+

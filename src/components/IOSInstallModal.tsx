@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { X as CloseIcon, Share, Plus, ArrowLeft, ArrowRight, BookOpen, Copy, Printer, Bookmark } from 'lucide-react';
 
 interface IOSInstallModalProps {
@@ -27,7 +27,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 ios-install-modal__dialog">
         <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-5 pb-4 flex items-start justify-between gap-3 ios-install-modal__header">
           <div>
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">Install Artists Farm App</h3>
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg">Install Ground Code App</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               iPhone/iPad's browser doesn't let a website install itself - only you tapping these steps can. Takes about 10 seconds.
             </p>
@@ -113,7 +113,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
                 <div className="flex items-center gap-2.5 px-3 py-3">
                   <div className="w-9 h-9 rounded-xl bg-[var(--app-primary-600,#2563eb)] text-white flex items-center justify-center text-xs font-bold shrink-0">AF</div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Artists Farm App</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Ground Code App</p>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">artistic-sthan.com</p>
                   </div>
                 </div>
@@ -134,3 +134,4 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
     </div>
   );
 };
+

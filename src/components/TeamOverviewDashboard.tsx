@@ -118,7 +118,7 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
                     <IconComponent className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>

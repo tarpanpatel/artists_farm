@@ -1,4 +1,4 @@
-# 🚀 Deployment Guide - Artists Farm
+﻿# ðŸš€ Deployment Guide - Ground Code
 
 **Last Updated:** 2026-07-31  
 **Status:** Ready for Production Deploy
@@ -7,7 +7,7 @@
 
 ## Pre-Deployment Checklist
 
-### 1. Environment Configuration ✅ REQUIRED
+### 1. Environment Configuration âœ… REQUIRED
 ```bash
 # Copy the example file
 cp .env.example .env
@@ -110,7 +110,7 @@ tail -f /var/log/nginx/error.log
 
 ## Post-Deployment Verification
 
-### ✅ Security Checks
+### âœ… Security Checks
 ```bash
 # 1. Verify no hardcoded secrets in deployed files
 grep -r "artists-farm-secure-key\|8999394059" dist/ php/
@@ -124,15 +124,15 @@ git status | grep ".env"
 # Check server logs for any "undefined API_KEY" errors
 ```
 
-### ✅ Functional Tests
+### âœ… Functional Tests
 1. **Login Flow**
    - Root admin can login
    - Tenant can login
    - Failed login shows error
 
 2. **Property Management**
-   - Create new property → has no prefilled data
-   - Delete property → shows confirmation modal
+   - Create new property â†’ has no prefilled data
+   - Delete property â†’ shows confirmation modal
    - Must type property name to confirm deletion
 
 3. **Telegram Notifications**
@@ -146,7 +146,7 @@ git status | grep ".env"
    - Invalid API_KEY returns 401 Unauthorized
 
 5. **Console Verification**
-   - Open browser DevTools (F12 → Console)
+   - Open browser DevTools (F12 â†’ Console)
    - No red errors
    - No sensitive data visible
    - No debug logs
@@ -184,28 +184,28 @@ sudo systemctl restart php-fpm nginx
 
 ### "Unauthorized API key" errors
 ```
-✓ Check .env file exists and is readable by PHP
-✓ Verify API_KEY environment variable is set
-✓ Restart PHP-FPM: sudo systemctl restart php-fpm
-✓ Check error logs: tail -f /var/log/php-fpm.log
+âœ“ Check .env file exists and is readable by PHP
+âœ“ Verify API_KEY environment variable is set
+âœ“ Restart PHP-FPM: sudo systemctl restart php-fpm
+âœ“ Check error logs: tail -f /var/log/php-fpm.log
 ```
 
 ### "Telegram bot token not working"
 ```
-✓ Verify bot token copied correctly from @BotFather
-✓ Confirm bot is added to all three groups
-✓ Check bot hasn't been revoked or deleted
-✓ Test with curl:
+âœ“ Verify bot token copied correctly from @BotFather
+âœ“ Confirm bot is added to all three groups
+âœ“ Check bot hasn't been revoked or deleted
+âœ“ Test with curl:
    curl -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
      -d "chat_id=<GROUP_ID>&text=Test"
 ```
 
 ### "Property deletion fails silently"
 ```
-✓ Check database permissions
-✓ Verify all related tables exist (guests, orders, inventory, etc.)
-✓ Check database error logs
-✓ Increase PHP max_execution_time if dataset is large
+âœ“ Check database permissions
+âœ“ Verify all related tables exist (guests, orders, inventory, etc.)
+âœ“ Check database error logs
+âœ“ Increase PHP max_execution_time if dataset is large
 ```
 
 ### Build fails with "out of memory"
@@ -240,19 +240,19 @@ npm run build
 
 ## Security Reminders
 
-🔒 **Never commit .env file to git**
+ðŸ”’ **Never commit .env file to git**
 ```bash
 # Make sure .gitignore includes .env
 echo ".env" >> .gitignore
 git rm --cached .env
 ```
 
-🔒 **Rotate secrets periodically**
+ðŸ”’ **Rotate secrets periodically**
 - API_KEY: Every 6 months
 - Telegram Bot Token: Every 6-12 months
 - Database Password: Every 3 months
 
-🔒 **Monitor for unauthorized access**
+ðŸ”’ **Monitor for unauthorized access**
 - Check API logs for suspicious patterns
 - Watch for failed login attempts
 - Monitor database queries for injection attempts
@@ -270,5 +270,6 @@ git rm --cached .env
 
 **Deployment Date:** _______________  
 **Deployed By:** _______________  
-**Environment:** ☐ Local ☐ Staging ☐ Production  
+**Environment:** â˜ Local â˜ Staging â˜ Production  
 **Backup File:** _______________  
+

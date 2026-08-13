@@ -25,12 +25,12 @@ if (!function_exists('getSmtpSettings')) {
                 'username'   => $rows['smtp_username'] ?? '',
                 'password'   => $rows['smtp_password'] ?? '',
                 'from_email' => $rows['smtp_from_email'] ?? '',
-                'from_name'  => $rows['smtp_from_name'] ?? 'Artists Farm',
+                'from_name'  => $rows['smtp_from_name'] ?? 'Ground Code',
                 // 'tls' (STARTTLS, typically port 587), 'ssl' (implicit TLS, typically port 465), or 'none'
                 'encryption' => $rows['smtp_encryption'] ?? 'tls',
             ];
         } catch (PDOException $e) {
-            return ['host' => '', 'port' => 587, 'username' => '', 'password' => '', 'from_email' => '', 'from_name' => 'Artists Farm', 'encryption' => 'tls'];
+            return ['host' => '', 'port' => 587, 'username' => '', 'password' => '', 'from_email' => '', 'from_name' => 'Ground Code', 'encryption' => 'tls'];
         }
     }
 }
@@ -179,3 +179,4 @@ if (!function_exists('sendSmtpEmail')) {
         }
     }
 }
+

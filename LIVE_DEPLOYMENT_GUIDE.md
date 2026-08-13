@@ -1,49 +1,49 @@
-# 🌐 Complete Deployment Guide: Making Your Site Live on PHP Web Hosting
+﻿# ðŸŒ Complete Deployment Guide: Making Your Site Live on PHP Web Hosting
 
-This guide explains how to upload and launch the **Artists Farm Resort Management System** on any standard PHP web hosting service (cPanel, Hostinger, GoDaddy, Namecheap, Bluehost, AWS Apache/Nginx, or VPS) **without needing Node.js or background application servers**.
+This guide explains how to upload and launch the **Ground Code Resort Management System** on any standard PHP web hosting service (cPanel, Hostinger, GoDaddy, Namecheap, Bluehost, AWS Apache/Nginx, or VPS) **without needing Node.js or background application servers**.
 
 ---
 
-## 📋 What You Need To Upload
+## ðŸ“‹ What You Need To Upload
 
 Since the frontend is pre-built into standard HTML/CSS/JS (`dist/` folder) and the backend is written in native **PHP PDO + MySQL**, your production web directory only requires these folders and files:
 
 ```text
 public_html/ (or artists_farm/)
-├── dist/                   # Built static frontend (HTML, CSS, JS)
-├── php/                    # Modular PHP Backend
-│   ├── api/
-│   │   └── router.php      # Central API Controller Endpoint
-│   ├── config/
-│   │   └── database.php    # MySQL Database Connection Settings
-│   ├── schema/
-│   │   ├── schema.sql      # Database Structure SQL
-│   │   └── seed.sql        # Seed Data & Initial Records SQL
-│   ├── guests/
-│   ├── kitchen/
-│   ├── inventory/
-│   ├── finance/
-│   ├── staff/
-│   └── audit/
-├── index.php               # Root PHP web loader
-└── .htaccess               # Apache Rewrite & CORS Rules
+â”œâ”€â”€ dist/                   # Built static frontend (HTML, CSS, JS)
+â”œâ”€â”€ php/                    # Modular PHP Backend
+â”‚   â”œâ”€â”€ api/
+â”‚   â”‚   â””â”€â”€ router.php      # Central API Controller Endpoint
+â”‚   â”œâ”€â”€ config/
+â”‚   â”‚   â””â”€â”€ database.php    # MySQL Database Connection Settings
+â”‚   â”œâ”€â”€ schema/
+â”‚   â”‚   â”œâ”€â”€ schema.sql      # Database Structure SQL
+â”‚   â”‚   â””â”€â”€ seed.sql        # Seed Data & Initial Records SQL
+â”‚   â”œâ”€â”€ guests/
+â”‚   â”œâ”€â”€ kitchen/
+â”‚   â”œâ”€â”€ inventory/
+â”‚   â”œâ”€â”€ finance/
+â”‚   â”œâ”€â”€ staff/
+â”‚   â””â”€â”€ audit/
+â”œâ”€â”€ index.php               # Root PHP web loader
+â””â”€â”€ .htaccess               # Apache Rewrite & CORS Rules
 ```
 
 ---
 
-## 🚀 Step-by-Step Live Deployment Process
+## ðŸš€ Step-by-Step Live Deployment Process
 
-### 1️⃣ Create MySQL Database in your Web Hosting Control Panel (cPanel / Hostinger hPanel)
+### 1ï¸âƒ£ Create MySQL Database in your Web Hosting Control Panel (cPanel / Hostinger hPanel)
 
 1. Log into your web hosting panel (e.g., **cPanel** or **Hostinger hPanel**).
-2. Go to **MySQL® Databases** (or **Databases**).
+2. Go to **MySQLÂ® Databases** (or **Databases**).
 3. Create a new database, e.g., `u123456789_artists_farm`.
 4. Create a MySQL user, e.g., `u123456789_farm_user`, with a strong password.
 5. Add the user to the database and grant **ALL PRIVILEGES**.
 
 ---
 
-### 2️⃣ Import Database Tables & Seed Data
+### 2ï¸âƒ£ Import Database Tables & Seed Data
 
 1. Open **phpMyAdmin** from your web hosting dashboard.
 2. Select your newly created database on the left sidebar.
@@ -53,7 +53,7 @@ public_html/ (or artists_farm/)
 
 ---
 
-### 3️⃣ Configure Database Credentials
+### 3ï¸âƒ£ Configure Database Credentials
 
 Open `php/config/database.php` in your hosting file manager or local code editor and update the credentials to match your live database:
 
@@ -80,7 +80,7 @@ try {
 
 ---
 
-### 4️⃣ Upload Files to Web Hosting (`public_html`)
+### 4ï¸âƒ£ Upload Files to Web Hosting (`public_html`)
 
 1. Open **File Manager** in cPanel or connect via **FTP/SFTP** (using FileZilla or Cyberduck).
 2. Go to your web root folder (usually `public_html/` or a subdomain folder like `public_html/resort/`).
@@ -92,7 +92,7 @@ try {
 
 ---
 
-### 5️⃣ Access Your Live Website!
+### 5ï¸âƒ£ Access Your Live Website!
 
 Open your website domain in any web browser:
 - **Main App**: `https://yourdomain.com/`
@@ -100,7 +100,7 @@ Open your website domain in any web browser:
 
 ---
 
-## 🔐 System Login Credentials
+## ðŸ” System Login Credentials
 
 Once your site is live, log in using these default credentials:
 
@@ -114,9 +114,10 @@ Once your site is live, log in using these default credentials:
 
 ---
 
-## 🛠️ Testing Local XAMPP vs. Live Hosting
+## ðŸ› ï¸ Testing Local XAMPP vs. Live Hosting
 
 | Environment | URL to Open Frontend | URL to Test PHP API |
 | :--- | :--- | :--- |
 | **Local XAMPP** | `http://localhost/artists_farm/` | `http://localhost/artists_farm/php/api/router.php` |
 | **Live Web Host** | `https://yourdomain.com/` | `https://yourdomain.com/php/api/router.php` |
+

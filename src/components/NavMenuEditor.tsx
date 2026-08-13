@@ -746,7 +746,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
         <div className="nav-menu-editor__header-row flex items-center justify-between mb-2">
           <div className="nav-menu-editor__title-block flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-600" />
-            <h3 className="nav-menu-editor__heading font-extrabold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
+            <h3 className="nav-menu-editor__heading font-bold text-slate-900 text-sm">{t('nav_menu_structure_title', 'Menu Structure')}</h3>
             <span className="nav-menu-editor__count-badge text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{visibleItems.length} items</span>
             {hiddenItems.length > 0 && (
               <span className="nav-menu-editor__hidden-hint text-[10px] font-medium text-slate-400" title={t('nav_kitchen_hidden_tooltip', "Kitchen items are hidden here because this property's kitchen module is off — they're untouched and will still be saved as-is.")}>
@@ -885,7 +885,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
             <button onClick={collapseAll} className="nav-menu-editor__toolbar-btn text-[11px] text-slate-500 hover:text-slate-700 cursor-pointer font-medium">{t('nav_collapse_all_button', 'Collapse All')}</button>
             <span className="text-slate-300">|</span>
             <label className="nav-menu-editor__select-all flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
-              <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3" />
+              <input type="checkbox" checked={selectedIds.size === visibleItems.length && visibleItems.length > 0} onChange={() => { if (selectedIds.size === visibleItems.length) setSelectedIds(new Set()); else setSelectedIds(new Set(visibleItems.map(i => i.id))); }} className="w-3 h-3 form-field__checkbox" />
               {t('nav_select_all_button', 'Select All')}
             </label>
           </>

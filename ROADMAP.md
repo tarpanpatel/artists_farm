@@ -1,10 +1,10 @@
-# 🗺️ Artists Farm — Project Roadmap & TODO List
+﻿# ðŸ—ºï¸ Ground Code â€” Project Roadmap & TODO List
 
-This document tracks identified bugs, pending backend API integrations, and upcoming feature enhancements across the **Artists Farm** SaaS Resort Management System. Completed items are removed once shipped — see git history (`git log -p ROADMAP.md`) for what's already been done and how.
+This document tracks identified bugs, pending backend API integrations, and upcoming feature enhancements across the **Ground Code** SaaS Resort Management System. Completed items are removed once shipped â€” see git history (`git log -p ROADMAP.md`) for what's already been done and how.
 
 ---
 
-## 🟢 Open Items
+## ðŸŸ¢ Open Items
 
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
@@ -52,7 +52,7 @@ What's still open:
   `isPropertyAccessAllowed()` check (see Security section above) was
   verified thoroughly via curl against every login type (root admin, tenant
   admin, staff, staff with no property/tenant) and the property-setup
-  wizard's pre-auth path, all behaving as expected — but not yet exercised
+  wizard's pre-auth path, all behaving as expected â€” but not yet exercised
   through the actual React app in a browser (no Playwright this session, per
   standing instruction). Do one full normal session end-to-end: log in as
   each role you actually use day-to-day and click through a few pages,
@@ -99,3 +99,4 @@ What's still open:
 ---
 
 *Last Updated: 2026-08-12 (morning)*
+

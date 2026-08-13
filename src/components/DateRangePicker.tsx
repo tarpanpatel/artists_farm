@@ -191,7 +191,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10 date-range-picker__header">
           <div className="date-range-picker__header-info">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight date-range-picker__heading">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight date-range-picker__heading">
               {heading ?? t('select_dates_heading', 'Select dates')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 date-range-picker__description">
@@ -210,7 +210,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
               <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkinDate)}</div>
             </button>
 
@@ -225,7 +225,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
               <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkoutDate)}</div>
             </button>
           </div>

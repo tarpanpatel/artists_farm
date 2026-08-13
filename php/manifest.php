@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Dynamic PWA manifest.
  *
@@ -30,9 +30,9 @@ if ($tenantSlug !== '' && $propertySlug !== '') {
 }
 
 $manifest = [
-    'name' => 'Artists Farm POS',
+    'name' => 'Ground Code POS',
     'short_name' => 'AF POS',
-    'description' => 'Artists Farm POS & Owner Operations System',
+    'description' => 'Ground Code POS & Owner Operations System',
     'start_url' => $startUrl,
     // Kept broad (not narrowed to $startUrl) so navigating to other routes
     // (root_dashboard, other properties a staff member has access to, etc.)
@@ -60,3 +60,4 @@ $manifest = [
 ];
 
 echo json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+

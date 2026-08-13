@@ -1,7 +1,7 @@
 <?php
 /**
  * Database & Environment Configuration
- * Artists Farm Resort & Kitchen Management System
+ * Ground Code Resort & Kitchen Management System
  */
 
 // Automatically load Telescope error logger globally for all database-connected endpoints
@@ -121,8 +121,8 @@ try {
     // per server lifetime rather than firing 15 redundant queries on every API request.
     if (!isSchemaVerified('db_connection_init_' . $db_name)) {
         $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
-          ('Artists Farm Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
-          ('Artists Farm Goa', 'goa', 'goa.artistsfarmjaipur.com')");
+          ('Ground Code Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
+          ('Ground Code Goa', 'goa', 'goa.artistsfarmjaipur.com')");
 
         $propertyWhatsAppCols = [
             "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",
@@ -197,3 +197,4 @@ try {
         exit();
     }
 }
+

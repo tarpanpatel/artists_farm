@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Fixed SaaS Platform Schema
  * Creates proper SaaS architecture
@@ -30,9 +30,9 @@ try {
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    echo "✓ Created/verified tenants table\n";
+    echo "âœ“ Created/verified tenants table\n";
 } catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
+    echo "âœ— Error: " . $e->getMessage() . "\n";
 }
 
 // 2. Check users table and fix if needed
@@ -41,7 +41,7 @@ try {
     // First, check if users table exists
     $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
     if ($stmt->fetch()) {
-        echo "✓ users table exists\n";
+        echo "âœ“ users table exists\n";
         
         // Check columns
         $stmt = $pdo->query("SHOW COLUMNS FROM users");
@@ -53,22 +53,22 @@ try {
         // Add missing columns
         if (!isset($columns['is_platform_admin'])) {
             $pdo->exec("ALTER TABLE users ADD COLUMN `is_platform_admin` TINYINT(1) DEFAULT 0");
-            echo "✓ Added is_platform_admin column\n";
+            echo "âœ“ Added is_platform_admin column\n";
         }
         
         if (!isset($columns['default_tenant_id'])) {
             $pdo->exec("ALTER TABLE users ADD COLUMN `default_tenant_id` INT DEFAULT NULL");
-            echo "✓ Added default_tenant_id column\n";
+            echo "âœ“ Added default_tenant_id column\n";
         }
         
         // NOTE: Platform admin user must be created via manual installation process, not auto-generated
         // DO NOT create admin with hardcoded credentials for security reasons
-        echo "⚠️ Platform admin must be manually created by deployment process\n";
+        echo "âš ï¸ Platform admin must be manually created by deployment process\n";
     } else {
-        echo "⚠️ users table doesn't exist - will be created by system\n";
+        echo "âš ï¸ users table doesn't exist - will be created by system\n";
     }
 } catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
+    echo "âœ— Error: " . $e->getMessage() . "\n";
 }
 
 // 3. Fix tenant_users table (remove comment from SQL)
@@ -89,9 +89,9 @@ try {
         FOREIGN KEY (`tenant_id`) REFERENCES `tenants`(`id`) ON DELETE CASCADE,
         FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    echo "✓ Created tenant_users table\n";
+    echo "âœ“ Created tenant_users table\n";
 } catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
+    echo "âœ— Error: " . $e->getMessage() . "\n";
 }
 
 // 4. Create default SaaS provider tenant
@@ -99,22 +99,22 @@ echo "\n4. Creating default tenant...\n";
 try {
     $stmt = $pdo->prepare("INSERT IGNORE INTO tenants (id, name, slug, owner_name, owner_email, subscription_plan, subscription_status, max_properties) 
                           VALUES (1, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute(['Artists Farm Platform', 'artists-farm-platform', 'System Admin', 'admin@artistsfarm.com', 'enterprise', 'active', 999]);
+    $stmt->execute(['Ground Code Platform', 'artists-farm-platform', 'System Admin', 'admin@artistsfarm.com', 'enterprise', 'active', 999]);
     
     $defaultTenantId = 1;
-    echo "✓ Created default tenant 'Artists Farm Platform' (ID: $defaultTenantId)\n";
+    echo "âœ“ Created default tenant 'Ground Code Platform' (ID: $defaultTenantId)\n";
     
     // Update existing properties to belong to default tenant
     $pdo->exec("UPDATE properties SET tenant_id = $defaultTenantId WHERE tenant_id IS NULL");
-    echo "✓ Assigned existing properties to default tenant\n";
+    echo "âœ“ Assigned existing properties to default tenant\n";
     
     // Assign platform admin to default tenant
     $stmt = $pdo->prepare("INSERT IGNORE INTO tenant_users (tenant_id, user_id, role, can_create_properties, can_manage_users, can_manage_billing) 
                           SELECT ?, id, 'owner', 1, 1, 1 FROM users WHERE username = 'platform_admin'");
     $stmt->execute([$defaultTenantId]);
-    echo "✓ Assigned platform_admin as tenant owner\n";
+    echo "âœ“ Assigned platform_admin as tenant owner\n";
 } catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
+    echo "âœ— Error: " . $e->getMessage() . "\n";
 }
 
 // 5. Enable modules for existing properties
@@ -136,9 +136,9 @@ try {
             } catch (Exception $e) {}
         }
     }
-    echo "✓ Enabled modules for " . count($properties) . " properties ($enabledCount module assignments)\n";
+    echo "âœ“ Enabled modules for " . count($properties) . " properties ($enabledCount module assignments)\n";
 } catch (Exception $e) {
-    echo "✗ Error: " . $e->getMessage() . "\n";
+    echo "âœ— Error: " . $e->getMessage() . "\n";
 }
 
 echo "\n=== SaaS Platform Ready ===\n";

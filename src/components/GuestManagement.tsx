@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   Receipt,
   Building,
@@ -377,7 +377,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   }, [guests]);
 
-  // Lodging Breakdown Data — initialized from guest data (BUG 6 FIX)
+  // Lodging Breakdown Data â€” initialized from guest data (BUG 6 FIX)
   const [baseLodging, setBaseLodging] = useState(0);
   const [advancePaid, setAdvancePaid] = useState(0);
   const [advancePayer] = useState('');
@@ -416,7 +416,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [qrModalTitle, setQrModalTitle] = useState('');
   const [qrModalHasCode, setQrModalHasCode] = useState(false);
 
-  // Track which order-items the cashier manually removed — persisted to localStorage so page refresh doesn't restore them
+  // Track which order-items the cashier manually removed â€” persisted to localStorage so page refresh doesn't restore them
   const getRemovedKey = (guestId: string) => `billing_removed_${guestId}`;
 
   const getRemovedIds = (guestId: string): Set<string> => {
@@ -432,7 +432,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     localStorage.setItem(getRemovedKey(guestId), JSON.stringify([...set]));
   };
 
-  // GST optional toggle — rate auto-detected from room tariff slab
+  // GST optional toggle â€” rate auto-detected from room tariff slab
   const [gstEnabled, setGstEnabled] = useState(false);
   const getGstSlab = (rate: number): number => {
     if (rate <= 1000) return 5;
@@ -446,7 +446,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
-  // Active Guest Object — BUG 3 FIX: fallback to first Active guest, not guests[0]
+  // Active Guest Object â€” BUG 3 FIX: fallback to first Active guest, not guests[0]
   const currentGuest = guests.find((g) => g.id === selectedGuestId) || checkedInGuests[0];
 
   // Whenever selected guest changes, auto-load their fulfilled orders into incidentals
@@ -706,7 +706,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
         if (onDispatchTelegram) {
           const modes = splitRows.map(r => `${r.mode}: ₹${r.amount.toLocaleString('en-IN')}`).join(', ');
-          const msg = `<b>🧾 GUEST CHECKOUT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> ${receipt.guestName}\n🏠 <b>Room:</b> ${receipt.roomNumber}\n🏨 <b>Lodging:</b> ₹${(receipt.roomTotal || 0).toLocaleString('en-IN')}\n🍽 <b>Food:</b> ₹${(receipt.kitchenTotal || 0).toLocaleString('en-IN')}\n📋 <b>Misc:</b> ₹${(receipt.miscTotal || 0).toLocaleString('en-IN')}\n💳 <b>Payment:</b> ${modes}\n💰 <b>Grand Total:</b> ₹${receipt.grandTotal.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+          const msg = `<b>📶 GUEST CHECKOUT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> ${receipt.guestName}\n🏠 <b>Room:</b> ${receipt.roomNumber}\n🏨 <b>Lodging:</b> ₹${(receipt.roomTotal || 0).toLocaleString('en-IN')}\n🍽 <b>Food:</b> ₹${(receipt.kitchenTotal || 0).toLocaleString('en-IN')}\n📋 <b>Misc:</b> ₹${(receipt.miscTotal || 0).toLocaleString('en-IN')}\n💳 <b>Payment:</b> ${modes}\n💰 <b>Grand Total:</b> ₹${receipt.grandTotal.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
           onDispatchTelegram('Guest Checkout Settlement', msg, 'finance');
         }
 
@@ -1343,7 +1343,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY)
                   .map((g) => ({
                     value: g.id,
-                    label: `${g.guestName} (${g.roomNumber}) — Phone: ${g.phoneNumber}`,
+                    label: `${g.guestName} (${g.roomNumber}) â€” Phone: ${g.phoneNumber}`,
                   }))}
               />
             </div>
@@ -1495,15 +1495,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {/* FOOD LOG TABLE */}
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="datatable w-full text-left text-xs text-slate-800">
-                    <thead className="bg-slate-100 font-bold border-b border-slate-200 text-slate-600 uppercase text-[10px]">
-                      <tr>
-                        <th className="py-2.5 px-3">Description Item</th>
-                        <th className="py-2.5 px-3 text-center w-[130px]">Quantity</th>
-                        <th className="py-2.5 px-3 text-right">Total</th>
+                  <table className="datatable w-full text-left text-xs text-slate-800 guest-management__table">
+                    <thead className="bg-slate-100 font-bold border-b border-slate-200 text-slate-600 uppercase text-[10px] guest-management__table-header">
+                      <tr className="guest-management__table-header-row">
+                        <th className="py-2.5 px-3 guest-management__table-header-cell">Description Item</th>
+                        <th className="py-2.5 px-3 text-center w-[130px] guest-management__table-header-cell">Quantity</th>
+                        <th className="py-2.5 px-3 text-right guest-management__table-header-cell">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 guest-management__table-body">
                       {incidentals.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50">
                           <td className="py-2.5 px-3 font-semibold text-slate-900">{item.name}</td>
@@ -1700,7 +1700,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <span>-₹{discounts.toFixed(2)}</span>
                       </div>
                     )}
-                    {/* GST Toggle — rate auto-detected from room tariff slab */}
+                    {/* GST Toggle â€” rate auto-detected from room tariff slab */}
                     <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-1.5">
                       <div className="flex items-center gap-2">
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -1971,7 +1971,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {currentGuest && (
                 <a
                   href={`https://api.whatsapp.com/send?phone=${currentGuest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + currentGuest.phoneNumber.replace(/\D/g, '') : currentGuest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                    `🧾 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Artists Farm Resort! We hope to see you again soon.`
+                    `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1992,7 +1992,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Receipt Content */}
             <div className="space-y-3 pt-2">
               <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base text-black">ARTISTS FARM JAIPUR</h3>
+                <h3 className="font-extrabold text-base text-black">Ground Code JAIPUR</h3>
                 <p className="text-[11px] text-black font-medium">Consolidated Stay & KOT Settlement</p>
               </div>
 
@@ -2063,7 +2063,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
               )}
 
-              {/* GST Breakdown — item-wise */}
+              {/* GST Breakdown â€” item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
                   <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
@@ -2231,7 +2231,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               {/* Welcome Message */}
               <div className="border-t-2 border-black pt-3 text-center text-[10px] text-black font-semibold">
-                <p>Thank you for choosing Artists Farm Resort!</p>
+                <p>Thank you for choosing Ground Code Resort!</p>
                 <p>For support, contact us at 8888888888</p>
               </div>
             </div>
@@ -2256,5 +2256,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     </div>
   );
 };
+
 
 

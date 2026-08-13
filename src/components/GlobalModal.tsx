@@ -85,7 +85,7 @@ export const GlobalModal = () => {
             {getIcon()}
           </div>
           <div className="flex-1 pt-1 global-modal__content">
-            <h3 className="font-extrabold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
+            <h3 className="font-bold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
             <p className="text-slate-600 text-sm font-medium leading-relaxed global-modal__message">{modal.message}</p>
           </div>
         </div>

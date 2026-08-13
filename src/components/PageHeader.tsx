@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   // Right-side content - typically one <PageHeaderButton>, but any custom
   // action(s) can go here (e.g. multiple buttons, a status pill) and still
@@ -20,9 +20,9 @@ interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
   <div className="gen_page_head flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800 page-header">
     <div className="min-w-0 flex-1 page-header__left">
-      <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate page-header__title">
-        {title}
-      </h1>
+       <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate page-header__title flex items-center gap-2">
+         {title}
+       </h1>
       {subtitle && (
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none page-header__subtitle">
           {subtitle}

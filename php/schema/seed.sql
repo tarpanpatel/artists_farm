@@ -1,5 +1,5 @@
--- --------------------------------------------------------
--- Artists Farm Resort & Kitchen Management System Database Seed
+﻿-- --------------------------------------------------------
+-- Ground Code Resort & Kitchen Management System Database Seed
 -- Database: apartment_blue / artists_farm_resort
 -- Host: 91.238.163.173
 -- Server version: 10.6.27-MariaDB
@@ -351,4 +351,5 @@ REPLACE INTO `audit_logs` (`id`, `timestamp`, `user_id`, `action`) VALUES
 	(1, '2026-07-23 10:15:00', 7, 'System initialized and database seeded'),
 	(2, '2026-07-23 11:20:00', 8, 'KOT order #32 dispatched to kitchen'),
 	(3, '2026-07-23 14:05:00', 7, 'Guest check-in settlement logged');
+
 

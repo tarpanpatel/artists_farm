@@ -1,6 +1,11 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "./theme-overrides.css";
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Global: base font size 14px so 1rem = 14px */
+html {
+  font-size: 14px;
+}
 
 /* ==========================================================================
    Design System Tokens (Buttons & Form Controls)
@@ -169,25 +174,17 @@ html.dark {
   --badge-neutral-border: #475569;
 }
 
-/* Mobile: prevent iOS Safari auto-zoom-on-focus (12 Aug 2026)
-   Safari zooms the whole page in whenever a focused form control's
-   computed font-size is under 16px - there's no viewport-meta flag to
-   disable just that behavior without also disabling pinch-zoom entirely
-   (an accessibility regression Apple deliberately makes hard to do). The
-   shared Input/Textarea/StyledSelect components use Tailwind's text-sm
-   (14px), which is under the threshold - every text input, select and
-   textarea site-wide zoomed on focus on a phone, then didn't zoom back
-   out on blur, native apps never do this. !important because Tailwind's
-   own text-sm/text-xs utility classes on the same elements have equal
-   selector specificity - source order in the built bundle isn't
-   guaranteed to put this after them. Desktop is untouched (chrome/
-   Firefox/desktop Safari don't have this zoom behavior at all), so this
-   only needs to apply below the tablet breakpoint. */
+/* Mobile: inputs also capped at 14px to match global max.
+   Trade-off: iOS Safari will auto-zoom on input focus because
+   the computed font-size is under 16px. This is the only way to
+   enforce 14px everywhere; Apple does not expose a flag to disable
+   just the zoom without also disabling pinch-zoom. */
 @media (max-width: 767px) {
+
   input,
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: 14px !important;
   }
 }
 
@@ -221,6 +218,7 @@ input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -314,10 +312,10 @@ html.dark textarea {
   border-color: #334155;
 }
 
-html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+html.dark .divide-gray-100> :not([hidden])~ :not([hidden]),
+html.dark .divide-gray-200> :not([hidden])~ :not([hidden]),
+html.dark .divide-slate-100> :not([hidden])~ :not([hidden]),
+html.dark .divide-slate-200> :not([hidden])~ :not([hidden]) {
   border-color: #334155;
 }
 
@@ -325,18 +323,23 @@ html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
 html.dark .hover\:bg-slate-50:hover {
   background-color: #1e293b;
 }
+
 html.dark .hover\:bg-slate-100:hover {
   background-color: #334155;
 }
+
 html.dark .hover\:bg-slate-200:hover {
   background-color: #475569;
 }
+
 html.dark .hover\:border-slate-300:hover {
   border-color: #475569;
 }
+
 html.dark .hover\:bg-gray-100:hover {
   background-color: #334155;
 }
+
 html.dark .hover\:text-gray-900:hover {
   color: #f8fafc;
 }
@@ -350,27 +353,35 @@ html.dark .group:hover .group-hover\:bg-slate-200\/80 {
 html.dark .focus\:ring-blue-500:focus {
   --tw-ring-color: #3b82f6;
 }
+
 html.dark .focus\:ring-cyan-500:focus {
   --tw-ring-color: #06b6d4;
 }
+
 html.dark .focus\:ring-emerald-500:focus {
   --tw-ring-color: #10b981;
 }
+
 html.dark .focus\:ring-indigo-500:focus {
   --tw-ring-color: #6366f1;
 }
+
 html.dark .focus\:ring-red-500:focus {
   --tw-ring-color: #ef4444;
 }
+
 html.dark .focus\:ring-amber-500:focus {
   --tw-ring-color: #f59e0b;
 }
+
 html.dark .focus\:border-cyan-500:focus {
   border-color: #06b6d4;
 }
+
 html.dark .focus\:border-emerald-500:focus {
   border-color: #10b981;
 }
+
 html.dark .focus\:border-blue-500:focus {
   border-color: #3b82f6;
 }
@@ -379,76 +390,98 @@ html.dark .focus\:border-blue-500:focus {
 html.dark .bg-emerald-50 {
   background-color: #064e3b;
 }
+
 html.dark .bg-emerald-100 {
   background-color: #065f46;
   color: #a7f3d0;
 }
+
 html.dark .bg-amber-50 {
   background-color: #78350f;
 }
+
 html.dark .bg-amber-100 {
   background-color: #92400e;
   color: #fde68a;
 }
+
 html.dark .bg-amber-200 {
   background-color: #b45309;
 }
+
 html.dark .bg-blue-50 {
   background-color: #1e3a5f;
 }
+
 html.dark .bg-blue-100 {
   background-color: #1e40af;
   color: #93c5fd;
 }
+
 html.dark .bg-cyan-50 {
   background-color: #164e63;
 }
+
 html.dark .bg-cyan-100 {
   background-color: #155e75;
   color: #a5f3fc;
 }
+
 html.dark .bg-indigo-50 {
   background-color: #312e81;
 }
+
 html.dark .bg-indigo-100 {
   background-color: #3730a3;
   color: #a5b4fc;
 }
+
 html.dark .bg-red-50 {
   background-color: #7f1d1d;
 }
+
 html.dark .bg-red-100 {
   background-color: #991b1b;
   color: #fecaca;
 }
+
 html.dark .text-red-800 {
   color: #fecaca;
 }
+
 html.dark .border-red-200 {
   border-color: #991b1b;
 }
+
 html.dark .border-red-300 {
   border-color: #b91c1c;
 }
+
 html.dark .hover\:bg-red-200:hover {
   background-color: #b91c1c;
 }
+
 html.dark .bg-green-50 {
   background-color: #14532d;
 }
+
 html.dark .bg-green-100 {
   background-color: #166534;
   color: #bbf7d0;
 }
+
 html.dark .text-green-800 {
   color: #bbf7d0;
 }
+
 html.dark .border-green-200 {
   border-color: #166534;
 }
+
 html.dark .border-green-300 {
   border-color: #15803d;
 }
+
 html.dark .hover\:bg-green-200:hover {
   background-color: #15803d;
 }
@@ -457,69 +490,91 @@ html.dark .hover\:bg-green-200:hover {
 html.dark .text-emerald-600 {
   color: #6ee7b7;
 }
+
 html.dark .text-emerald-700 {
   color: #6ee7b7;
 }
+
 html.dark .text-emerald-800 {
   color: #a7f3d0;
 }
+
 html.dark .text-amber-600 {
   color: #fbbf24;
 }
+
 html.dark .text-amber-700 {
   color: #fcd34d;
 }
+
 html.dark .text-amber-800 {
   color: #fde68a;
 }
+
 html.dark .text-amber-900 {
   color: #fef3c7;
 }
+
 html.dark .text-blue-600 {
   color: #93c5fd;
 }
+
 html.dark .text-blue-700 {
   color: #93c5fd;
 }
+
 html.dark .text-blue-800 {
   color: #a5f3fc;
 }
+
 html.dark .text-blue-900 {
   color: #bfdbfe;
 }
+
 html.dark .text-cyan-600 {
   color: #67e8f9;
 }
+
 html.dark .text-cyan-700 {
   color: #67e8f9;
 }
+
 html.dark .text-cyan-800 {
   color: #a5f3fc;
 }
+
 html.dark .text-sky-600 {
   color: #7dd3fc;
 }
+
 html.dark .text-indigo-900 {
   color: #c7d2fe;
 }
+
 html.dark .text-red-500 {
   color: #fca5a5;
 }
+
 html.dark .text-red-600 {
   color: #fca5a5;
 }
+
 html.dark .text-red-700 {
   color: #fca5a5;
 }
+
 html.dark .text-green-600 {
   color: #86efac;
 }
+
 html.dark .text-purple-600 {
   color: #c4b5fd;
 }
+
 html.dark .text-pink-600 {
   color: #f9a8d4;
 }
+
 html.dark .text-yellow-600 {
   color: #fde68a;
 }
@@ -528,24 +583,31 @@ html.dark .text-yellow-600 {
 html.dark .border-emerald-200 {
   border-color: #065f46;
 }
+
 html.dark .border-emerald-300 {
   border-color: #047857;
 }
+
 html.dark .border-amber-200 {
   border-color: #92400e;
 }
+
 html.dark .border-amber-300 {
   border-color: #b45309;
 }
+
 html.dark .border-blue-200 {
   border-color: #1e40af;
 }
+
 html.dark .border-cyan-200 {
   border-color: #155e75;
 }
+
 html.dark .border-cyan-300 {
   border-color: #0891b2;
 }
+
 html.dark .border-indigo-300 {
   border-color: #4338ca;
 }
@@ -570,39 +632,51 @@ html.dark .hover\:bg-white:hover {
 html.dark .hover\:bg-emerald-50:hover {
   background-color: #064e3b;
 }
+
 html.dark .hover\:bg-emerald-100:hover {
   background-color: #065f46;
 }
+
 html.dark .hover\:bg-amber-50:hover {
   background-color: #78350f;
 }
+
 html.dark .hover\:bg-blue-50:hover {
   background-color: #1e3a5f;
 }
+
 html.dark .hover\:bg-cyan-50:hover {
   background-color: #164e63;
 }
+
 html.dark .hover\:bg-red-50:hover {
   background-color: #7f1d1d;
 }
+
 html.dark .hover\:border-cyan-400:hover {
   border-color: #22d3ee;
 }
+
 html.dark .hover\:border-emerald-400:hover {
   border-color: #34d399;
 }
+
 html.dark .hover\:text-emerald-700:hover {
   color: #6ee7b7;
 }
+
 html.dark .hover\:text-red-500:hover {
   color: #fca5a5;
 }
+
 html.dark .hover\:text-red-700:hover {
   color: #fca5a5;
 }
+
 html.dark .hover\:text-cyan-600:hover {
   color: #67e8f9;
 }
+
 html.dark .hover\:text-slate-600:hover {
   color: #cbd5e1;
 }
@@ -611,43 +685,56 @@ html.dark .hover\:text-slate-600:hover {
 html.dark .bg-emerald-50\/50 {
   background-color: rgba(6, 78, 59, 0.5);
 }
+
 html.dark .bg-slate-50\/60 {
   background-color: rgba(30, 41, 59, 0.6);
 }
+
 html.dark .bg-slate-50\/90 {
   background-color: rgba(30, 41, 59, 0.9);
 }
+
 html.dark .bg-slate-100\/60 {
   background-color: rgba(51, 65, 85, 0.6);
 }
+
 html.dark .bg-blue-50\/40 {
   background-color: rgba(30, 58, 95, 0.4);
 }
+
 html.dark .bg-blue-50\/50 {
   background-color: rgba(30, 58, 95, 0.5);
 }
+
 html.dark .bg-blue-50\/80 {
   background-color: rgba(30, 58, 95, 0.8);
 }
+
 html.dark .bg-purple-50\/20 {
   background-color: rgba(88, 28, 135, 0.2);
 }
+
 html.dark .bg-purple-50 {
   background-color: #3b0764;
 }
+
 html.dark .bg-purple-100 {
   background-color: #581c87;
   color: #e9d5ff;
 }
+
 html.dark .border-purple-500 {
   border-color: #a855f7;
 }
+
 html.dark .border-purple-200 {
   border-color: #581c87;
 }
+
 html.dark .text-purple-500 {
   color: #c4b5fd;
 }
+
 html.dark .bg-amber-50\/20 {
   background-color: rgba(120, 53, 15, 0.2);
 }
@@ -661,12 +748,13 @@ html.dark .ring-slate-200 {
 html.dark .shadow-2xs {
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
 }
+
 html.dark .shadow-xs {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
 }
 
 /* ==========================================================================
-   ARTISTS FARM CUSTOM SEMANTIC CSS STYLING & ACCENTS
+   Ground Code CUSTOM SEMANTIC CSS STYLING & ACCENTS
    ========================================================================== */
 
 /* Custom Scrollbar for Matrix Tables & Containers */
@@ -674,17 +762,21 @@ html.dark .shadow-xs {
   height: 6px;
   width: 6px;
 }
+
 .overflow-x-auto::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
+
 html.dark .overflow-x-auto::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
 }
+
 .overflow-x-auto::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.4);
   border-radius: 4px;
 }
+
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.7);
 }
@@ -699,6 +791,7 @@ html.dark .overflow-x-auto::-webkit-scrollbar-track {
   box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
   font-weight: 700;
 }
+
 html.dark .attendance-staff-col {
   box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.5);
 }
@@ -838,35 +931,58 @@ html.dark .payees-registry-table tr:hover {
 }
 
 @keyframes toast-in {
-  0% { opacity: 0; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
+
 .animate-toast-in {
   animation: toast-in 0.2s ease-out;
 }
 
 @keyframes slide-in {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-slide-in {
   animation: slide-in 0.25s ease-out;
 }
 
 /* Telegram notification template manager overrides */
 .active-template-item {
-  background-color: #0284c7; /* sky-600 */
+  background-color: #0284c7;
+  /* sky-600 */
   color: #ffffff;
 }
+
 .active-template-item .template-category {
-  color: #e0f2fe; /* sky-100 */
+  color: #e0f2fe;
+  /* sky-100 */
 }
+
 html.dark .active-template-item {
-  background-color: #0284c7; /* sky-600 */
+  background-color: #0284c7;
+  /* sky-600 */
   color: #ffffff;
 }
+
 html.dark .active-template-item .template-category {
-  color: #e0f2fe; /* sky-100 */
+  color: #e0f2fe;
+  /* sky-100 */
 }
 
 /* Variable Chips styling in both modes */
@@ -875,14 +991,20 @@ html.dark .active-template-item .template-category {
   color: #0369a1;
   border-color: #bae6fd;
 }
+
 .variable-chip:hover {
   background-color: #e0f2fe;
 }
+
 html.dark .variable-chip {
-  background-color: #0c4a6e; /* sky-950 */
-  color: #38bdf8; /* sky-400 */
-  border-color: #0369a1; /* sky-700 */
+  background-color: #0c4a6e;
+  /* sky-950 */
+  color: #38bdf8;
+  /* sky-400 */
+  border-color: #0369a1;
+  /* sky-700 */
 }
+
 html.dark .variable-chip:hover {
   background-color: #0e5a84;
 }
@@ -911,13 +1033,80 @@ label {
   font-weight: 600;
 }
 
-/* Global Font Size Constraint: No heading or text element across the application can exceed 16px (1rem) regardless of screen size */
-h1, h2, h3, h4, h5, h6,
-.text-4xl, .text-3xl, .text-2xl, .text-xl, .text-lg,
-.md\:text-4xl, .md\:text-3xl, .md\:text-2xl, .md\:text-xl, .md\:text-lg,
-.lg\:text-4xl, .lg\:text-3xl, .lg\:text-2xl, .lg\:text-xl, .lg\:text-lg,
-.sm\:text-4xl, .sm\:text-3xl, .sm\:text-2xl, .sm\:text-xl, .sm\:text-lg {
-  font-size: 16px;
+/* Global Font Size Constraint: No heading or text element across the application can exceed 14px regardless of screen size */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.text-base,
+.text-lg,
+.text-xl,
+.text-2xl,
+.text-3xl,
+.text-4xl,
+.text-5xl,
+.text-6xl,
+.text-7xl,
+.text-8xl,
+.text-9xl,
+.sm\:text-base,
+.sm\:text-lg,
+.sm\:text-xl,
+.sm\:text-2xl,
+.sm\:text-3xl,
+.sm\:text-4xl,
+.sm\:text-5xl,
+.sm\:text-6xl,
+.sm\:text-7xl,
+.sm\:text-8xl,
+.sm\:text-9xl,
+.md\:text-base,
+.md\:text-lg,
+.md\:text-xl,
+.md\:text-2xl,
+.md\:text-3xl,
+.md\:text-4xl,
+.md\:text-5xl,
+.md\:text-6xl,
+.md\:text-7xl,
+.md\:text-8xl,
+.md\:text-9xl,
+.lg\:text-base,
+.lg\:text-lg,
+.lg\:text-xl,
+.lg\:text-2xl,
+.lg\:text-3xl,
+.lg\:text-4xl,
+.lg\:text-5xl,
+.lg\:text-6xl,
+.lg\:text-7xl,
+.lg\:text-8xl,
+.lg\:text-9xl,
+.xl\:text-base,
+.xl\:text-lg,
+.xl\:text-xl,
+.xl\:text-2xl,
+.xl\:text-3xl,
+.xl\:text-4xl,
+.xl\:text-5xl,
+.xl\:text-6xl,
+.xl\:text-7xl,
+.xl\:text-8xl,
+.xl\:text-9xl,
+.\32 xl\:text-base,
+.\32 xl\:text-lg,
+.\32 xl\:text-xl,
+.\32 xl\:text-2xl,
+.\32 xl\:text-3xl,
+.\32 xl\:text-4xl,
+.\32 xl\:text-5xl,
+.\32 xl\:text-6xl,
+.\32 xl\:text-7xl,
+.\32 xl\:text-8xl,
+.\32 xl\:text-9xl {
+  font-size: 14px !important;
   line-height: 1.35;
 }
 
@@ -932,4 +1121,3 @@ samp,
 pre {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
 }
-

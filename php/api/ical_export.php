@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * iCal Export API
  * Generates iCal feed for property availability
@@ -53,7 +53,7 @@ try {
     // Generate iCal format
     $ical = "BEGIN:VCALENDAR\r\n";
     $ical .= "VERSION:2.0\r\n";
-    $ical .= "PRODID:-//Artists Farm//iCal Sync//EN\r\n";
+    $ical .= "PRODID:-//Ground Code//iCal Sync//EN\r\n";
     $ical .= "CALSCALE:GREGORIAN\r\n";
     $ical .= "METHOD:PUBLISH\r\n";
     $ical .= "X-WR-CALNAME:$propertyName Availability\r\n";
@@ -103,3 +103,4 @@ try {
     http_response_code(500);
     echo 'Error generating calendar: ' . $e->getMessage();
 }
+

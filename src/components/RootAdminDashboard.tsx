@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2 } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -38,9 +38,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -66,6 +66,55 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   const handleUsernameChange = (newUsername: string) => setDisplayUsername(newUsername);
   const [isExportingDb, setIsExportingDb] = useState(false);
   const { showToast } = useToast();
+
+  // Reset Demo Data: intentionally re-adds a way to regenerate demo data -
+  // unlike the removed site-wide "Test Mode" toggle (see CLAUDE.md), this is
+  // root-admin-only and hardcoded to whichever single property is flagged
+  // is_public_demo (no property picker), so there's no way to accidentally
+  // point it at a real tenant's live property.
+  const [demoProperty, setDemoProperty] = useState<{ id: number; name: string; slug: string } | null>(null);
+  const [isLoadingDemoProperty, setIsLoadingDemoProperty] = useState(false);
+  const [demoPropertyError, setDemoPropertyError] = useState('');
+  const [isResettingDemo, setIsResettingDemo] = useState(false);
+
+  useEffect(() => {
+    if (activeSection !== 'demo_data' || demoProperty || isLoadingDemoProperty) return;
+    setIsLoadingDemoProperty(true);
+    setDemoPropertyError('');
+    apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_public_demo_property`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setDemoProperty(data.data);
+        } else {
+          setDemoPropertyError(data.message || 'No public demo property is configured.');
+        }
+      })
+      .catch(() => setDemoPropertyError('Failed to check for a public demo property.'))
+      .finally(() => setIsLoadingDemoProperty(false));
+  }, [activeSection, demoProperty, isLoadingDemoProperty]);
+
+  const handleResetDemoData = async () => {
+    if (!demoProperty) return;
+    setIsResettingDemo(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=generate_demo_data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: demoProperty.id }),
+      });
+      const data = await res.json();
+      if (data.status === 'success' || data.success) {
+        showToast(`Demo data reset for "${demoProperty.name}"`, { type: 'success' });
+      } else {
+        throw new Error(data.message || 'Reset failed');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to reset demo data', { type: 'error' });
+    } finally {
+      setIsResettingDemo(false);
+    }
+  };
 
   const handleDownloadLiveDb = async () => {
     setIsExportingDb(true);
@@ -200,6 +249,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       icon: DatabaseBackup,
       section: 'db_sync' as SectionType,
     },
+    {
+      id: 'demo_data',
+      label: t('root_demo_data_label', 'Reset Demo Data'),
+      icon: RefreshCw,
+      section: 'demo_data' as SectionType,
+    },
   ];
 
   const handleTelescopeOpen = () => {
@@ -316,6 +371,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'email_settings' && t('root_email_settings_label', 'Email Settings')}
                 {activeSection === 'account_settings' && t('root_account_settings_label', 'Account Settings')}
                 {activeSection === 'db_sync' && t('root_db_sync_label', 'Sync to Local')}
+                {activeSection === 'demo_data' && t('root_demo_data_label', 'Reset Demo Data')}
               </h2>
               <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400 mt-1 truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_subtitle', 'System overview and analytics')}
@@ -328,6 +384,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'email_settings' && t('root_email_settings_subtitle', 'SMTP connection and the tenant welcome email/WhatsApp message template')}
                 {activeSection === 'account_settings' && t('root_account_settings_subtitle', 'Edit your root admin username, passcode, email, phone and GSTIN')}
                 {activeSection === 'db_sync' && t('root_db_sync_subtitle', 'Download a full copy of the live database to keep local dev in sync')}
+                {activeSection === 'demo_data' && t('root_demo_data_subtitle', 'Regenerate sample guests, menu, inventory and staff on the public demo property')}
               </p>
             </div>
           </div>
@@ -499,6 +556,56 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
                 {t('root_db_sync_import_hint', 'After downloading, import it into your local MySQL (e.g. via phpMyAdmin\'s Import tab, or `mysql -u root artists_farm_resort < file.sql`).')}
               </p>
+            </div>
+          )}
+
+          {/* Reset Demo Data Section */}
+          {activeSection === 'demo_data' && (
+            <div className="max-w-2xl bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/50 rounded-xl flex items-center justify-center shrink-0">
+                  <RefreshCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {t('root_demo_data_heading', 'Reset Public Demo Data')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {t('root_demo_data_description', "Wipes and regenerates the public demo property's guests, bookings, menu, inventory, staff and expenses with fresh sample data. Only ever affects the one property flagged as the public demo - never a real tenant.")}
+                  </p>
+                </div>
+              </div>
+
+              {isLoadingDemoProperty && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('root_demo_data_checking', 'Checking for a public demo property...')}
+                </p>
+              )}
+
+              {!isLoadingDemoProperty && demoPropertyError && (
+                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-3">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{demoPropertyError}</span>
+                </div>
+              )}
+
+              {!isLoadingDemoProperty && demoProperty && (
+                <>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    {t('root_demo_data_target_label', 'Target property:')} <span className="font-bold text-slate-900 dark:text-white">{demoProperty.name}</span>
+                    <span className="text-slate-400 dark:text-slate-500"> ({demoProperty.slug})</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResetDemoData}
+                    disabled={isResettingDemo}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                  >
+                    {isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data')}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

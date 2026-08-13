@@ -376,7 +376,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             {/* Room Header */}
             <div className="billing-checkout__room-card-header bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
               <div className="min-w-0 flex-1">
-                <h3 className="billing-checkout__room-card-title text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                <h3 className="billing-checkout__room-card-title text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
                   <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                   {group.roomName}
                 </h3>
@@ -389,7 +389,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 // Same "Refund Due" relabeling as the per-guest card below -
                 // a raw negative number here read as a bug, not a refund.
                 return (
-                  <span className="summary-line summary-line--group-total text-[11px] font-extrabold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                  <span className="summary-line summary-line--group-total text-[11px] font-bold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
                     {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
                   </span>
                 );
@@ -414,7 +414,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {guest.guestName}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -458,7 +458,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           <span className="summary-line summary-line--advance-paid font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center text-xs font-extrabold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
+                      <div className="flex justify-between items-center text-xs font-bold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
                         <span className="text-slate-700 dark:text-slate-300">
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
@@ -593,7 +593,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="space-y-8">
           {upcomingByDate.map((dateGroup) => (
             <div key={dateGroup.dateStr}>
-              <h3 className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 {dateGroup.label}
               </h3>

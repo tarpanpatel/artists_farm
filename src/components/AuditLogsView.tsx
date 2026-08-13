@@ -890,15 +890,15 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
                     {/* Food Items Table */}
                     <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                          <tr>
-                            <th className="p-2.5">{t('description_item_column', 'Description Item')}</th>
-                            <th className="p-2.5 text-center">{t('quantity_label', 'Quantity')}</th>
-                            <th className="p-2.5 text-right">{t('total_column', 'Total')}</th>
+                      <table className="w-full text-left text-xs audit-logs-view__table">
+                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 audit-logs-view__table-header">
+                          <tr className="audit-logs-view__table-header-row">
+                            <th className="p-2.5 audit-logs-view__table-header-cell">{t('description_item_column', 'Description Item')}</th>
+                            <th className="p-2.5 text-center audit-logs-view__table-header-cell">{t('quantity_label', 'Quantity')}</th>
+                            <th className="p-2.5 text-right audit-logs-view__table-header-cell">{t('total_column', 'Total')}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium audit-logs-view__table-body">
                           {foodItemList.length > 0 ? (
                             foodItemList.map((item, idx) => (
                               <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">

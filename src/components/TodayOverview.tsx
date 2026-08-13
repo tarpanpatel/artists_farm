@@ -169,7 +169,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
       <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
+          <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none">
@@ -198,7 +198,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Arrivals:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysArrivals}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{todaysArrivals}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
               </div>
             </div>
@@ -214,7 +214,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Departures:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysDepartures}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{todaysDepartures}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
               </div>
             </div>
@@ -231,7 +231,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Guests In-House:</span>
-                  <span className="text-sm font-extrabold text-slate-900 dark:text-white">{inHouseCount}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">{inHouseCount}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
                 </div>
               </div>
@@ -248,7 +248,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Service Requests:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{pendingRequests}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{pendingRequests}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
               </div>
             </div>

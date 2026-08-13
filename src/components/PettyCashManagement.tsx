@@ -399,7 +399,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           on narrow screens since a fixed side-by-side track can't fit. */}
       <div className="petty-cash-management__layout grid grid-cols-1 lg:grid-cols-[550px_1fr] gap-6 items-start">
       <div className="add-expenses-container w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-        <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
           {t('add_expenses_heading', 'ADD EXPENSES')}
         </h3>
 

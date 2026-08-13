@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
@@ -574,7 +574,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const buildTenantWhatsAppShareUrl = (tenant: Tenant, creds: { username: string; passcode: string }) => {
     const digits = (tenant.phone || '').replace(/\D/g, '');
     const phone = digits.length === 10 ? '91' + digits : digits;
-    const message = `Hi ${tenant.name},\n\nHere are your Artists Farm login details:\n\nUsername: ${creds.username}\nPasscode: ${creds.passcode}\n\nLog in here: ${window.location.origin}/\n\nDidn't request this? You can ignore this message.`;
+    const message = `Hi ${tenant.name},\n\nHere are your Ground Code login details:\n\nUsername: ${creds.username}\nPasscode: ${creds.passcode}\n\nLog in here: ${window.location.origin}/\n\nDidn't request this? You can ignore this message.`;
     return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   };
 
@@ -698,7 +698,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
             <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <div>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-                {t('platform_title', 'Artists Farm Platform')}
+                {t('platform_title', 'Ground Code Platform')}
               </h1>
               <p className="text-xs text-slate-600 dark:text-slate-400">
                 {t('admin_dashboard_subtitle', 'Administration Dashboard')}
@@ -956,7 +956,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                     <p className="text-slate-600 dark:text-slate-400 text-xs">{t('passcode_label', 'Passcode')}</p>
                                     <div className="flex items-center gap-2">
                                       <p className="font-mono font-bold text-slate-900 dark:text-white tracking-widest">
-                                        {isRevealed ? creds.passcode : '•'.repeat(creds.passcode.length || 6)}
+                                        {isRevealed ? creds.passcode : '\u2022'.repeat(creds.passcode.length || 6)}
                                       </p>
                                       <Button
                                         onClick={() => setRevealedPasscodeId(isRevealed ? null : tenant.id)}
@@ -1030,18 +1030,14 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                   {tenant.phone ? (
                                     <a href={buildTenantWhatsAppShareUrl(tenant, creds)} target="_blank" rel="noopener noreferrer">
                                       <Button variant="secondary" size="xs" className="flex items-center gap-1.5">
-                                        <svg className="w-3 h-3 text-emerald-600 fill-current shrink-0" viewBox="0 0 24 24">
-                                          <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
-                                        </svg>
+                                        <MessageCircle className="w-3 h-3 text-emerald-600 shrink-0" />
                                         {t('send_via_whatsapp_button', 'Share via WhatsApp')}
                                       </Button>
                                     </a>
                                   ) : (
                                     <span title={t('no_tenant_phone_tooltip', 'No phone on file for this tenant')}>
                                       <Button variant="secondary" size="xs" disabled className="flex items-center gap-1.5">
-                                        <svg className="w-3 h-3 text-slate-400 fill-current shrink-0" viewBox="0 0 24 24">
-                                          <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.764.459 3.487 1.333 5.006L2 22l5.127-1.343a9.96 9.96 0 004.881 1.272h.004c5.506 0 9.988-4.478 9.99-9.985A9.988 9.988 0 0012.012 2zm0 16.513h-.003a8.28 8.28 0 01-4.223-1.157l-.303-.18-3.138.822.836-3.057-.197-.315a8.27 8.27 0 01-1.268-4.387c.002-4.57 3.719-8.286 8.293-8.286 2.215.001 4.297.863 5.862 2.43 1.565 1.568 2.426 3.65 2.425 5.866-.002 4.57-3.719 8.285-8.284 8.285z" />
-                                        </svg>
+                                        <MessageCircle className="w-3 h-3 text-slate-400 shrink-0" />
                                         {t('send_via_whatsapp_button', 'Share via WhatsApp')}
                                       </Button>
                                     </span>
@@ -1943,3 +1939,4 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     </div>
   );
 };
+

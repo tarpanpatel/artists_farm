@@ -1,4 +1,4 @@
--- MySQL Database Schema for Artists Farm Resort & Kitchen Management System
+﻿-- MySQL Database Schema for Ground Code Resort & Kitchen Management System
 
 CREATE DATABASE IF NOT EXISTS `artists_farm_resort` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `artists_farm_resort`;
@@ -111,3 +111,4 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
     `updated_by` VARCHAR(255) DEFAULT NULL,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
