@@ -4,11 +4,13 @@
 
 .DESCRIPTION
   Does exactly what has been done by hand all session, in order:
+    0. If assets/css/custom_css_override.css has uncommitted changes,
+       auto-commit just that one file (see note below) - nothing else.
     1. Push local commits on `multi-tenant` to GitHub.
     2. SSH into cPanel and `git pull` (syncs the PHP backend).
-    3. Stash any UNCOMMITTED local changes (so a concurrent WIP session's
-       half-finished edits never leak into the build - this is the same
-       safety net used throughout this engagement).
+    3. Stash any OTHER UNCOMMITTED local changes (so a concurrent WIP
+       session's half-finished edits never leak into the build - this is
+       the same safety net used throughout this engagement).
     4. `npm run build` from that clean, committed state.
     5. Restore the stash (nothing is ever lost).
     6. Tar the fresh dist/, scp it up, swap it into public_html/dist/ on
@@ -20,7 +22,11 @@
   IMPORTANT: this script only ships what's already COMMITTED. If you (or
   an AI session) made changes and haven't run `git add` + `git commit`
   yet, do that first - uncommitted changes get stashed out of the way,
-  not deployed.
+  not deployed. The ONE exception is assets/css/custom_css_override.css
+  (step 0 above) - that file is deliberately auto-committed on your
+  behalf every run, since its whole purpose is instant no-deploy edits
+  from the Appearance Settings admin UI, and requiring a manual commit
+  for every CSS tweak would defeat that. Nothing else gets this treatment.
 
 .USAGE
   Open PowerShell in the project root and run:
@@ -87,7 +93,31 @@ function Invoke-Ssh([string]$Command) {
 
 Set-Location $ProjectRoot
 
+# The one deliberate, narrow exception to "only ships what's already
+# committed": the live-editable Custom CSS override file. Its whole point
+# is instant, no-deploy edits from the Appearance Settings admin UI - but
+# for local's and live's copies (and their two Appearance Settings
+# dashboards, which both read this exact file) to ever converge, SOME
+# deploy has to carry a local edit over. Requiring a manual git add/commit
+# for every CSS tweak defeats that, so this one specific file is
+# auto-committed here, before anything else runs - never anything else in
+# the working tree, which stays protected by the stash step below exactly
+# as before.
+$CustomCssFile = "assets/css/custom_css_override.css"
+
 try {
+    # ---- 0. Auto-commit the Custom CSS override, if it changed ----
+    $cssChanged = git status --porcelain -- $CustomCssFile
+    if ($cssChanged -and -not $DryRun) {
+        Write-Step "Custom CSS override changed - committing it"
+        git add -- $CustomCssFile
+        git commit -m "chore: sync custom CSS override" -- $CustomCssFile | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "git commit failed for $CustomCssFile" }
+        Write-Ok "Committed."
+    } elseif ($cssChanged) {
+        Write-Warn "(dry run - not committing the changed Custom CSS override)"
+    }
+
     # ---- 1. Push commits ----
     Write-Step "Pushing commits to GitHub (multi-tenant)"
     $ahead = git log origin/multi-tenant..HEAD --oneline 2>$null
