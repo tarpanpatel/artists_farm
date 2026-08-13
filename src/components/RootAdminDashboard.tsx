@@ -58,6 +58,18 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     const saved = localStorage.getItem('root_dashboard_section');
     return (saved as SectionType) || 'dashboard';
   });
+
+  // Auto-scroll section container to top whenever activeSection changes
+  useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [activeSection]);
   const [navItems, setNavItems] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // Kept in local state so a username change in Account Settings reflects

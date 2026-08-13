@@ -223,6 +223,26 @@ function AppBody({ preloadedData }: AppBodyProps) {
     sessionStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
   }, [activeTab, activeMenuItemKey]);
 
+  // Auto-scroll page & container to top whenever user hops between tabs, menu items, rooms, or properties
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    const mainElements = document.querySelectorAll('main, [class*="overflow-auto"], [class*="overflow-y-auto"]');
+    mainElements.forEach((el) => {
+      el.scrollTop = 0;
+    });
+  }, [
+    activeTab,
+    activeMenuItemKey,
+    selectedRoomSlugOverride,
+    preloadedData.currentProperty?.id,
+    preloadedData.currentProperty?.slug,
+  ]);
+
   // The rest of what this effect used to do - writing activeMenuItemKey to the
   // address bar - lives further down, right after navItems is declared, since
   // it needs to look up the current item's urlSlug.
