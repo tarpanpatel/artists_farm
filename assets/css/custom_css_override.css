@@ -1,4 +1,4 @@
-/* Artists Farm — Custom CSS Override
+﻿/* Ground Code â€” Custom CSS Override
    Base typography rules are defined below so they can be tuned from this page.
    These rules are unlayered, so they already beat Tailwind utility classes;
    no force-priority flags are needed anywhere in the site. The override style
@@ -12,7 +12,8 @@ h2 {
   font-weight: 400;
 }
 @media screen and (max-width: 640px) {
-.gen_page_head {
+.gen_page_head, .today-overview__page-header {
     padding: 20px;
 }
 }
+
