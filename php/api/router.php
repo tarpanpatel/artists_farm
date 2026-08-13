@@ -1671,17 +1671,36 @@ switch ($action) {
             exit;
         }
         try {
-            $stmt = $pdo->prepare("SELECT id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
+            $stmt = $pdo->prepare("SELECT id, tenant_id FROM properties WHERE slug = ? AND is_public_demo = 1 AND is_deleted = 0 LIMIT 1");
             $stmt->execute([$demoSlug]);
-            $demoPropertyId = $stmt->fetchColumn();
-            if (!$demoPropertyId) {
+            $demoProperty = $stmt->fetch();
+            if (!$demoProperty) {
                 echo json_encode(['success' => false, 'message' => 'Not a public demo property']);
                 exit;
             }
-            // Prefer the highest-privilege active account so demo visitors see
-            // the full tenant-admin experience (Full read-write access was the
-            // explicit decision for this feature), not whichever staff row
-            // happened to sort first.
+            $demoPropertyId = $demoProperty['id'];
+
+            // Prefer logging the demo visitor in AS THE TENANT (13 Aug 2026):
+            // that's the one true Super Admin (see syncTenantSuperAdminRow) and
+            // some nav items are gated to 'Super Admin' specifically, not just
+            // any high-privilege role (iCal Sync, Data Export Center, Telegram
+            // Bot config, Past Receipts Log, ...) - a prospective client viewing
+            // the demo needs to see everything, so nothing less than the real
+            // tenant identity actually shows the full product. Falls back to
+            // the best available staff row only if this demo tenant somehow
+            // has no login yet.
+            $tenantStmt = $pdo->prepare("
+                SELECT username, passcode FROM users
+                WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL)
+                LIMIT 1
+            ");
+            $tenantStmt->execute([$demoProperty['tenant_id']]);
+            $tenantLogin = $tenantStmt->fetch();
+            if ($tenantLogin) {
+                echo json_encode(['success' => true, 'username' => $tenantLogin['username'], 'passcode' => $tenantLogin['passcode']]);
+                exit;
+            }
+
             $staffStmt = $pdo->prepare("SELECT username, passcode FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Super Admin') DESC, (role = 'Admin') DESC, (role = 'Manager') DESC, id ASC LIMIT 1");
             $staffStmt->execute([$demoPropertyId]);
             $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
