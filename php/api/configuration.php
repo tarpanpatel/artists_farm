@@ -224,8 +224,6 @@ function getNavPageOptions($pdo) {
  */
 function getSystemSettings($pdo) {
     try {
-        // Ensure table exists
-
         $stmt = $pdo->query("
             SELECT setting_key, setting_value
             FROM system_settings
@@ -236,6 +234,15 @@ function getSystemSettings($pdo) {
 
         foreach ($results as $row) {
             $settings[$row['setting_key']] = $row['setting_value'];
+        }
+
+        // Override custom_css from static file if it exists
+        $cssFilePath = __DIR__ . '/../../assets/css/custom_css_override.css';
+        if (file_exists($cssFilePath)) {
+            $fileCss = file_get_contents($cssFilePath);
+            if ($fileCss !== false) {
+                $settings['custom_css'] = $fileCss;
+            }
         }
 
         echo json_encode(['status' => 'success', 'data' => $settings]);
@@ -268,8 +275,6 @@ function saveSystemSettings($pdo) {
             return;
         }
 
-        // Ensure table exists
-
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($input['setting_key']) || !isset($input['setting_value'])) {
@@ -282,7 +287,16 @@ function saveSystemSettings($pdo) {
         $setting_value = $input['setting_value'];
         $updated_by = $_SESSION['username'] ?? 'root_admin';
 
-        // Use INSERT ... ON DUPLICATE KEY UPDATE to create or update
+        // Write custom_css directly to assets/css/custom_css_override.css file on disk
+        if ($setting_key === 'custom_css') {
+            $cssDir = __DIR__ . '/../../assets/css';
+            if (!is_dir($cssDir)) {
+                @mkdir($cssDir, 0755, true);
+            }
+            file_put_contents($cssDir . '/custom_css_override.css', $setting_value);
+        }
+
+        // Use INSERT ... ON DUPLICATE KEY UPDATE to create or update in DB as backup/sync
         $stmt = $pdo->prepare("
             INSERT INTO system_settings (setting_key, setting_value, updated_by)
             VALUES (?, ?, ?)
