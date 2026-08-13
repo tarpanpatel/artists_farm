@@ -50,6 +50,13 @@ BILLING_*.md
 # Temp directories
 deploylite/
 
+# CRITICAL: local-only deploy dashboard (deploy-panel/) - triggers real
+# git/npm/ssh commands on this machine via deploy.ps1. Its localhost-only
+# guard (REMOTE_ADDR check) can be defeated by a hosting reverse proxy
+# that makes every request look like it came from 127.0.0.1 - this must
+# NEVER reach the production server via git pull. Never remove this line.
+deploy-panel/
+
 # Tool-generated cache/logs (Playwright MCP console dumps)
 .playwright-mcp/
 
