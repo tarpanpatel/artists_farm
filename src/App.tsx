@@ -1568,11 +1568,11 @@ ${itemsStr}
                 </ErrorBoundary>
               ) : null}
 
-              {/* Dashboard - Multi-Key Property Overview or Operational Dashboard */}
-              {!selectedRoomSlugOverride && activeTab === 'dashboard' ? (
+              {/* Merged Dashboard & Bookings View */}
+              {!selectedRoomSlugOverride && (activeTab === 'dashboard' || activeTab === 'guests') ? (
                 preloadedData.isMultiKeyProperty ? (
                   <div className="space-y-6">
-                    <ErrorBoundary section="Booking Calendar">
+                    <ErrorBoundary section="Booking Calendar & Metrics">
                       <TodayOverview
                         guests={guests}
                         rooms={preloadedData.currentProperty?.rooms}
@@ -1592,35 +1592,30 @@ ${itemsStr}
                         serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
-                    <ErrorBoundary section="Multi-Key Property Overview">
-                      <MultiKeyPropertyOverview
-                      propertyId={preloadedData.currentProperty?.id}
-                      propertySlug={multiKeyPropertySlug}
-                      selectedRoomSlug={null}
-                      onNavigateToRoom={handleNavigateToRoom}
-                      onBackToOverview={handleNavigateToMultiKeyOverview}
-                      activeTab={activeTab}
-                      setActiveTab={handleNavigateTab}
-                      guests={guests}
-                      menu={menu}
-                      receipts={receipts}
-                      onAddGuest={handleAddGuest}
-                      onCheckoutGuest={handleCheckoutGuest}
-                      onAddMenuItem={handleAddMenuItem}
-                      onUpdateStock={handleUpdateStock}
-                      onAddInventoryItem={handleAddInventoryItem}
-                      onUpdateItemImage={handleUpdateInventoryItemImage}
-                      onDispatchTelegram={dispatchTelegramAlert}
-                      activeMenuItemKey={activeMenuItemKey}
-                      onSetActiveMenuItemKey={setActiveMenuItemKey}
-                      kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                      hideHeader={true}
-                      onUpdateBooking={handleUpdateGuest}
-                      onDeleteBooking={handleDeleteGuest}
-                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
-                      onCFormFiledUpdated={handleCFormFiledUpdated}
-                  onGuestCheckedIn={handleGuestCheckedIn}
-                      serviceRequests={serviceRequests}
+                    <ErrorBoundary section="Guest Management & Bookings">
+                      <GuestManagement
+                        guests={guests}
+                        receipts={receipts}
+                        onAddGuest={handleAddGuest}
+                        onCheckoutGuest={handleCheckoutGuest}
+                        onUpdateGuest={handleUpdateGuest}
+                        onDeleteGuest={handleDeleteGuest}
+                        activeMenuItemKey={activeMenuItemKey}
+                        onDispatchTelegram={dispatchTelegramAlert}
+                        menu={menu}
+                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        rooms={preloadedData.currentProperty?.rooms}
+                        onSetActiveMenuItemKey={setActiveMenuItemKey}
+                        selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                        kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                        focusGuestId={focusGuestId}
+                        onClearFocusGuest={() => setFocusGuestId(null)}
+                        propertyGstin={preloadedData.currentProperty?.gstin || ''}
+                        propertyName={preloadedData.currentProperty?.name || ''}
+                        propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyPhone={preloadedData.currentProperty?.phone || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        onNavigateToBilling={(_guestId) => {}}
                       />
                     </ErrorBoundary>
                   </div>
@@ -1636,7 +1631,7 @@ ${itemsStr}
                         onDeleteBooking={handleDeleteGuest}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}
                         onCFormFiledUpdated={handleCFormFiledUpdated}
-                  onGuestCheckedIn={handleGuestCheckedIn}
+                        onGuestCheckedIn={handleGuestCheckedIn}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
@@ -1653,40 +1648,35 @@ ${itemsStr}
                         serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
+                    <ErrorBoundary section="Guest Management & Bookings">
+                      <GuestManagement
+                        guests={guests}
+                        receipts={receipts}
+                        onAddGuest={handleAddGuest}
+                        onCheckoutGuest={handleCheckoutGuest}
+                        onUpdateGuest={handleUpdateGuest}
+                        onDeleteGuest={handleDeleteGuest}
+                        activeMenuItemKey={activeMenuItemKey}
+                        onDispatchTelegram={dispatchTelegramAlert}
+                        menu={menu}
+                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        rooms={preloadedData.currentProperty?.rooms}
+                        onSetActiveMenuItemKey={setActiveMenuItemKey}
+                        selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                        kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                        focusGuestId={focusGuestId}
+                        onClearFocusGuest={() => setFocusGuestId(null)}
+                        propertyGstin={preloadedData.currentProperty?.gstin || ''}
+                        propertyName={preloadedData.currentProperty?.name || ''}
+                        propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyPhone={preloadedData.currentProperty?.phone || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        onNavigateToBilling={(_guestId) => {}}
+                      />
+                    </ErrorBoundary>
                   </div>
                 )
               ) : null}
-
-              {!selectedRoomSlugOverride && activeTab === 'guests' && (
-                <ErrorBoundary section="Guest Management">
-                  <GuestManagement
-                    guests={guests}
-                    receipts={receipts}
-                    onAddGuest={handleAddGuest}
-                    onCheckoutGuest={handleCheckoutGuest}
-                    onUpdateGuest={handleUpdateGuest}
-                    onDeleteGuest={handleDeleteGuest}
-                    activeMenuItemKey={activeMenuItemKey}
-                    onDispatchTelegram={dispatchTelegramAlert}
-                    menu={menu}
-                    isMultiKeyProperty={preloadedData.isMultiKeyProperty}
-                    rooms={preloadedData.currentProperty?.rooms}
-                    onSetActiveMenuItemKey={setActiveMenuItemKey}
-                    selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
-                    kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                    focusGuestId={focusGuestId}
-                    onClearFocusGuest={() => setFocusGuestId(null)}
-                    propertyGstin={preloadedData.currentProperty?.gstin || ''}
-                    propertyName={preloadedData.currentProperty?.name || ''}
-                    propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                    propertyPhone={preloadedData.currentProperty?.phone || ''}
-                    propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
-                    onNavigateToBilling={(_guestId) => {
-                      // Navigate to billing view for guest
-                    }}
-                  />
-                </ErrorBoundary>
-              )}
 
               {!selectedRoomSlugOverride && activeTab === 'kitchen' && (activeMenuItemKey === 'kitchen_overview' || activeMenuItemKey === 'kitchen') && (
                 <ErrorBoundary section="Kitchen Dashboard">
