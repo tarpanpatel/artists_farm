@@ -43,7 +43,17 @@ param(
     [switch]$DryRun
 )
 
-$ErrorActionPreference = 'Stop'
+# NOTE: deliberately NOT $ErrorActionPreference = 'Stop' globally. Native
+# commands (git, ssh, scp, tar, npm) routinely write benign progress/status
+# text to stderr even on success (e.g. `git fetch`'s "From https://...`
+# line) - PowerShell 5.1 wraps native stderr output into ErrorRecords, and
+# under a global 'Stop' preference those get auto-upgraded into terminating
+# exceptions, aborting the script on a command that actually succeeded.
+# Every native call below already has its own explicit
+# `if ($LASTEXITCODE -ne 0) { throw ... }` check, which is the real error
+# gate; cmdlet calls that need strict failure handling (Invoke-WebRequest)
+# pass -ErrorAction Stop individually instead.
+$ErrorActionPreference = 'Continue'
 
 # ---- Configuration (matches what's been used by hand all session) ----
 $SshKey    = "C:\Users\Tarpan Patel\Documents\Downloads\github_cpanel"
@@ -157,11 +167,23 @@ try {
 
     # ---- 6. Package and ship dist/ ----
     Write-Step "Packaging dist/"
+    # Explicit path to Windows' native tar.exe, not just `tar` - Git for
+    # Windows ships its own MSYS/Unix tar (Git\usr\bin\tar.exe), and
+    # depending on which process launched this script, that one can win
+    # the PATH race over the native C:\Windows\System32\tar.exe. The MSYS
+    # build interprets a Windows path like "C:\Users\..." as a REMOTE HOST
+    # spec (Unix tar's `host:path` syntax for remote tape archives sees
+    # "C" as the hostname) and fails with "Cannot connect to C: resolve
+    # failed" - happened when this ran via the deploy-panel PHP page
+    # (Apache's spawned-process PATH order differs from an interactive
+    # shell's) even though the exact same command worked fine run by hand.
+    $tarExe = "$env:WINDIR\System32\tar.exe"
+    if (-not (Test-Path $tarExe)) { $tarExe = "tar" } # fallback for older Windows without bundled tar
     $tarPath = Join-Path $env:TEMP "artists_farm_dist_deploy.tar.gz"
     if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
     Push-Location (Join-Path $ProjectRoot "dist")
     try {
-        & tar -czf $tarPath .
+        & $tarExe -czf $tarPath .
         if ($LASTEXITCODE -ne 0) { throw "tar failed" }
     } finally {
         Pop-Location
@@ -182,7 +204,7 @@ try {
     Write-Step "Verifying deployment"
     $localBundle = Select-String -Path (Join-Path $ProjectRoot "dist\index.html") -Pattern 'index-[A-Za-z0-9_]+\.(js|css)' -AllMatches |
         ForEach-Object { $_.Matches.Value }
-    $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing
+    $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -ErrorAction Stop
     $liveBundle = [regex]::Matches($liveHtml.Content, 'index-[A-Za-z0-9_]+\.(js|css)') | ForEach-Object { $_.Value }
 
     $mismatch = Compare-Object $localBundle $liveBundle
