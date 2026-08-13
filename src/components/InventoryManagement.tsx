@@ -2081,15 +2081,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     center: true,
                      cell: (row: any) => (
                      <div className="flex items-center justify-center gap-1.5">
-<button onClick={() => handleEditFulfill(row)} className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
-                          <span className="opacity-80">-</span> {t('edit_button')}
+                        <button onClick={() => handleEditFulfill(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200">
+                          <Pencil className="w-3.5 h-3.5" /> {t('edit_button')}
                         </button>
-                       {row.status === 'PENDING' && (
-<button onClick={() => handleQuickComplete(row)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-3 py-2 rounded shadow-2xs cursor-pointer flex items-center gap-1 min-h-[36px]">
-                            <Check className="w-3.5 h-3.5 opacity-80" /> {t('complete_button')}
+                        {row.status === 'PENDING' && (
+                          <button onClick={() => handleQuickComplete(row)} className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {t('complete_button')}
                           </button>
-                       )}
-                     </div>
+                        )}
+                      </div>
                    ),
                  },
                ]}
