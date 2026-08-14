@@ -232,10 +232,27 @@ try {
 
     # ---- 7. Verify ----
     Write-Step "Verifying deployment"
-    $localBundle = Select-String -Path (Join-Path $ProjectRoot "dist\index.html") -Pattern 'index-[A-Za-z0-9_]+\.(js|css)' -AllMatches |
-        ForEach-Object { $_.Matches.Value }
+    # Vite's content-hash alphabet includes hyphens (e.g. "index-hBgSHhk-.js",
+    # "index-Bk-Aez8Z.css") - the character class here used to be missing '-',
+    # so it silently matched ZERO bundle filenames whenever a build's hash
+    # happened to contain one (random per build). Piping zero matches through
+    # ForEach-Object collapses to $null (not an empty array) in PowerShell,
+    # and Compare-Object refuses a $null ReferenceObject/DifferenceObject -
+    # crashing with a cryptic "Cannot bind argument" error that had nothing
+    # to do with the actual deploy, which had already succeeded by this
+    # point (upload + swap both complete before this check even runs).
+    # Fixed 14 Aug 2026: added '-' to the class, and wrapped both sides in
+    # @(...) so a genuine zero-match case degrades to a clear error message
+    # instead of this same crash.
+    $localBundle = @(Select-String -Path (Join-Path $ProjectRoot "dist\index.html") -Pattern 'index-[A-Za-z0-9_-]+\.(js|css)' -AllMatches |
+        ForEach-Object { $_.Matches.Value })
     $liveHtml = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -ErrorAction Stop
-    $liveBundle = [regex]::Matches($liveHtml.Content, 'index-[A-Za-z0-9_]+\.(js|css)') | ForEach-Object { $_.Value }
+    $liveBundle = @([regex]::Matches($liveHtml.Content, 'index-[A-Za-z0-9_-]+\.(js|css)') | ForEach-Object { $_.Value })
+
+    if ($localBundle.Count -eq 0 -or $liveBundle.Count -eq 0) {
+        Write-Err "Could not find bundle filenames to compare (local: $($localBundle.Count) found, live: $($liveBundle.Count) found) - deploy itself succeeded, but this verification step couldn't confirm it. Check $LiveUrl manually."
+        exit 1
+    }
 
     $mismatch = Compare-Object $localBundle $liveBundle
     if ($mismatch) {

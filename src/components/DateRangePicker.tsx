@@ -172,12 +172,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <>
       {/* Dark Overlay Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 transition-opacity date-range-picker__backdrop"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-70 transition-opacity date-range-picker__backdrop"
         onClick={onClose}
       />
 
       {/* Centered Modal Popover Container */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-100 dark:border-slate-700 relative date-range-picker__modal">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-70 w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-100 dark:border-slate-700 date-range-picker__modal">
         {/* Close Button Inside Modal */}
         <button
           type="button"

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
-import { ChevronDown, ChevronRight, LogOut, Link as LinkIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, LogOut, Link as LinkIcon, UserRound } from 'lucide-react';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -577,25 +577,12 @@ export const Navigation: React.FC<NavigationProps> = ({
 
             <div className="navigation__logout-section pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
               <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
-                <img
-                  src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-                  alt="User Avatar"
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30 shrink-0"
-                />
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
+                  <UserRound className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                    {(() => {
-                      const nameStr = (currentUser?.name || '').trim();
-                      const isPhone = !nameStr || /^\+?\d{7,15}$/.test(nameStr.replace(/[\s-]/g, ''));
-                      if (!isPhone) return nameStr;
-                      const r = (activeRole || currentUser?.role || '').toLowerCase();
-                      if (r.includes('root') || r.includes('super')) return 'Root Admin';
-                      if (r.includes('admin')) return 'Property Admin';
-                      return 'Staff Member';
-                    })()}
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                    {activeRole}
+                    {currentUser?.name || 'User'}
                   </div>
                 </div>
               </div>

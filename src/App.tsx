@@ -1582,6 +1582,7 @@ ${itemsStr}
                           return kitchenModule?.is_enabled ?? true;
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
+                        onNavigate={(tab) => handleNavigateTab(tab)}
                         onAddBooking={() => setIsAddBookingModalOpen(true)}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}

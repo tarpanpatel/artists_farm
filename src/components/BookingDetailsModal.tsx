@@ -227,7 +227,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   return (
     <>
-      <div className="booking-details-modal__overlay fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
+      <div className="booking-details-modal__overlay fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4" onClick={() => { onClose(); setIsEditing(false); }}>
         <div
           id="printableBookingDetailsContent"
           className="booking-details-modal__content relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
@@ -528,7 +528,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
           <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             {!isEditing ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              <div className="grid grid-cols-2 gap-2 w-full">
                 {(guest.status === GUEST_STATUS_BOOKED || (guest.status as string) === GUEST_STATUS_CONFIRMED_LEGACY) && (
                   <button
                     type="button"
@@ -547,30 +547,30 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         showToast('Failed to check in guest', { type: 'error' });
                       }
                     }}
-                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-1 sm:col-span-2"
+                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
                   </button>
                 )}
 
-                <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="w-full">
+                <a href={buildWhatsAppShareUrl()} target="_blank" rel="noopener noreferrer" className="col-span-1 min-w-0 block">
                   <button
                     type="button"
-                    className="w-full h-9 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="w-full h-9 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <MessageCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Share with guest</span>
+                    <span className="truncate">Share with guest</span>
                   </button>
                 </a>
 
                 <button
                   type="button"
                   onClick={startEditing}
-                  className="w-full h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="col-span-1 min-w-0 w-full h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>{t('edit_button', 'Edit')}</span>
+                  <Pencil className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{t('edit_button', 'Edit')}</span>
                 </button>
 
                 {onDelete && (
@@ -578,7 +578,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     type="button"
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-1 sm:col-span-2"
+                    className="w-full h-9 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 col-span-2"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                     <span>{isDeleting ? t('deleting_button', 'Deleting...') : t('today_delete_booking_button', 'Delete Booking')}</span>
