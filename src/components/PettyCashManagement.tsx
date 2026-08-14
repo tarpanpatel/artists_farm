@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { X, Search, Edit2, FileText, ImageIcon, Landmark } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
@@ -64,7 +64,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   onDispatchTelegram,
 }) => {
   const { staff } = useStaff();
-  const { pettyCash, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
+  const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { showToast } = useToast();
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
@@ -786,7 +786,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">
                 {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
-              <span className="text-slate-400 font-semibold text-xs">{filteredEntries.length} {t('entries_label', 'entries')}</span>
+              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading ? '…' : filteredEntries.length} {t('entries_label', 'entries')}</span>
             </div>
           }
           customStyles={{
@@ -795,6 +795,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             cells: { style: { fontSize: '12px', color: '#334155', paddingLeft: '12px' } },
             rows: { style: { minHeight: '52px' } },
           }}
+          progressPending={pettyCashLoading}
+          progressComponent={
+            <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...
+            </div>
+          }
           noDataComponent={
             <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 font-semibold text-xs">
               {t('no_expenses_this_month_message', 'No expenses recorded for this month.')}

@@ -661,6 +661,7 @@ switch ($action) {
                 'user' => [
                     'id' => $_SESSION['user_id'] ?? null,
                     'username' => $_SESSION['username'],
+                    'name' => $_SESSION['full_name'] ?? null,
                     'role' => $_SESSION['role'] ?? 'Staff',
                     'property_id' => $_SESSION['property_id'] ?? null,
                 ],
@@ -789,6 +790,7 @@ switch ($action) {
                     $_SESSION['role'] = $role;
                     $_SESSION['is_platform_admin'] = $is_platform_admin;
                     $_SESSION['default_tenant_id'] = $user['default_tenant_id'] ?? null;
+                    $_SESSION['full_name'] = $user['full_name'] ?: $user['username'];
 
                     setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
@@ -875,6 +877,7 @@ switch ($action) {
                         $_SESSION['role'] = $staff['role'] ?: 'Staff';
                         $_SESSION['staff_access_all_properties'] = true;
                         $_SESSION['staff_tenant_id'] = $tenantRow['tenant_id'] ?? null;
+                        $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
                         // Deliberately NOT setting $_SESSION['property_id'] here -
                         // isPropertyAccessAllowed() (access_control.php) sets it as a
                         // side effect once they actually navigate into a property.
@@ -905,6 +908,7 @@ switch ($action) {
                     $_SESSION['username'] = $staff['username'];
                     $_SESSION['role'] = $staff['role'] ?: 'Staff';
                     $_SESSION['property_id'] = $staff['property_id'];
+                    $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
 
                     setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
@@ -933,6 +937,7 @@ switch ($action) {
                 $_SESSION['username'] = $rawIdentifier ?: 'admin';
                 $_SESSION['role'] = 'root_admin';
                 $_SESSION['is_platform_admin'] = true;
+                $_SESSION['full_name'] = $rawIdentifier ?: 'admin';
 
                 setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
                 $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
@@ -943,6 +948,7 @@ switch ($action) {
                     'user' => [
                         'id' => 1,
                         'username' => $rawIdentifier ?: 'admin',
+                        'name' => $rawIdentifier ?: 'admin',
                         'role' => 'root_admin',
                         'is_platform_admin' => true,
                         'default_tenant_id' => null,
@@ -1573,6 +1579,86 @@ switch ($action) {
                     'must_change_passcode' => 1,
                 ],
             ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+
+    // Root-admin edit of the Super Admin's editable identity fields (Name,
+    // Passcode, QR code) directly from a property's Staff & Permissions page
+    // (StaffManagement.tsx's "Modify Team Member" modal, locked down to just
+    // this trio for the Super Admin row - added 14 Aug 2026 alongside hiding
+    // Role/Cash Handling/Access All Properties out of that same modal, since
+    // those are permanently fixed for Super Admin, never editable). Narrower
+    // than reset_tenant_login above: this lets Root Admin set a SPECIFIC
+    // name/passcode (not a random forced-reset one). Username is deliberately
+    // NOT accepted here - changing the tenant's actual login phone number
+    // stays on the dedicated tenant-login flows above, not this per-property
+    // modal. Writes to `users` (the source of truth) then resyncs every
+    // property's staff_users row from it - never touches this property's
+    // staff_users row directly for name/passcode, which is exactly the
+    // desync bug fixed earlier this session (see syncTenantSuperAdminRow's
+    // doc comment above).
+    case 'update_tenant_super_admin':
+        if (!($_SESSION['is_platform_admin'] ?? false)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $tenant_id = $input['tenant_id'] ?? '';
+        $property_id = $input['property_id'] ?? '';
+        $full_name = trim($input['full_name'] ?? '');
+        $passcode = trim($input['passcode'] ?? '');
+        $qr_code_url = $input['qr_code_url'] ?? '';
+        if (!$tenant_id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'tenant_id required']);
+            exit;
+        }
+        if ($full_name === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Staff Name is required']);
+            exit;
+        }
+        if ($passcode !== '' && !preg_match('/^\d{6}$/', $passcode)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Passcode must be exactly 6 digits']);
+            exit;
+        }
+        try {
+            $existingStmt = $pdo->prepare("
+                SELECT id FROM users WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL) LIMIT 1
+            ");
+            $existingStmt->execute([$tenant_id]);
+            $existing = $existingStmt->fetch();
+            if (!$existing) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'This tenant has no login yet - use Create Login instead']);
+                exit;
+            }
+
+            if ($passcode !== '') {
+                $pdo->prepare("UPDATE users SET full_name = ?, passcode = ? WHERE id = ?")
+                    ->execute([$full_name, $passcode, $existing['id']]);
+            } else {
+                $pdo->prepare("UPDATE users SET full_name = ? WHERE id = ?")
+                    ->execute([$full_name, $existing['id']]);
+            }
+
+            // Push the updated name/passcode out to every property's mirrored row.
+            syncTenantSuperAdminAcrossProperties($pdo, $tenant_id);
+
+            // QR code is a per-property display field, not part of the tenant's
+            // login identity - the sync above deliberately never touches it, so
+            // apply it directly to the property actually being edited.
+            if ($qr_code_url !== '' && $property_id !== '') {
+                $pdo->prepare("UPDATE staff_users SET qr_code_url = ? WHERE property_id = ? AND role = 'Super Admin'")
+                    ->execute([$qr_code_url, $property_id]);
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Super Admin updated successfully']);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);

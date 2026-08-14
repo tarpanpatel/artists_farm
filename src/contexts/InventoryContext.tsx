@@ -11,6 +11,7 @@ interface InventoryContextValue {
   inventory: InventoryItem[];
   requisitions: Requisition[];
   lowStockCount: number;
+  inventoryLoading: boolean;
   refreshInventory: () => Promise<void>;
   updateStock: (itemId: string, newStock: number) => void;
   addInventoryItem: (item: InventoryItem) => void;
@@ -41,6 +42,13 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   const { isEnabled } = useModules();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+  // Every "No catalog items found" / "No inventory items found" empty state
+  // downstream (InventoryManagement.tsx, KitchenManagement.tsx) used to
+  // render straight off `inventory.length === 0`, which is also true for
+  // the split second before this context's very first fetch resolves -
+  // found 14 Aug 2026, same class of bug as StaffManagement's staff/payees
+  // tables. Defaults true so consumers can gate their empty state on it.
+  const [inventoryLoading, setInventoryLoading] = useState(true);
   const currentUserName = currentUser?.name || 'Admin';
 
   const lowStockCount = inventory.filter((i) => i.currentStock <= i.minThreshold).length;
@@ -48,11 +56,16 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
   const refreshInventory = useCallback(async () => {
     const data = await fetchInventoryFromDB();
     if (data && data.length > 0) setInventory(data); else setInventory([]);
+    setInventoryLoading(false);
   }, []);
 
   useEffect(() => {
     if (isAuthenticated && isEnabled('kitchen')) {
       refreshInventory();
+    } else {
+      // Not going to fetch (unauthenticated, or kitchen module off) - don't
+      // leave consumers stuck showing a spinner forever.
+      setInventoryLoading(false);
     }
   }, [refreshInventory, isAuthenticated, isEnabled]);
 
@@ -90,6 +103,7 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
         inventory,
         requisitions,
         lowStockCount,
+        inventoryLoading,
         refreshInventory,
         updateStock,
         addInventoryItem,

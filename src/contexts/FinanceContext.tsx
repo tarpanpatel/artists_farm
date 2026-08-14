@@ -10,6 +10,7 @@ import { useAuth } from './AuthContext';
 
 interface FinanceContextValue {
   pettyCash: PettyCashEntry[];
+  pettyCashLoading: boolean;
   refreshPettyCash: () => Promise<void>;
   addPettyCash: (entry: PettyCashEntry) => void;
   updatePettyCash: (entry: PettyCashEntry) => void;
@@ -37,15 +38,22 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
 }) => {
   const { isAuthenticated } = useAuth();
   const [pettyCash, setPettyCash] = useState<PettyCashEntry[]>([]);
+  // Same fix as InventoryContext/KitchenContext (14 Aug 2026): PettyCashManagement's
+  // "No expenses recorded for this month." rendered off `pettyCash.length === 0`
+  // before the first fetch ever resolved. Defaults true so consumers can gate on it.
+  const [pettyCashLoading, setPettyCashLoading] = useState(true);
 
   const refreshPettyCash = useCallback(async () => {
     const data = await fetchExpensesFromDB();
     if (data && data.length > 0) setPettyCash(data); else setPettyCash([]);
+    setPettyCashLoading(false);
   }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       refreshPettyCash();
+    } else {
+      setPettyCashLoading(false);
     }
   }, [refreshPettyCash, isAuthenticated]);
 
@@ -85,6 +93,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     <FinanceContext.Provider
       value={{
         pettyCash,
+        pettyCashLoading,
         refreshPettyCash,
         addPettyCash,
         updatePettyCash,

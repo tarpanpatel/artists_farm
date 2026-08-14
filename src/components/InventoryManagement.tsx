@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2 } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
@@ -36,7 +36,16 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 }) => {
   const { staff } = useStaff();
   const { currentUser } = useAuth();
-  const { inventory } = useInventoryContext();
+  const { inventory, inventoryLoading } = useInventoryContext();
+  // Shared spinner for every DataTable's progressComponent in this file
+  // (14 Aug 2026 loading-state pass) - kept as one constant so all of this
+  // page's tables show a consistent "still loading" indicator instead of
+  // their "No X found" empty state flashing before the fetch resolves.
+  const tableLoadingIndicator = (label: string) => (
+    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+      <Loader2 className="w-4 h-4 animate-spin" /> {label}
+    </div>
+  );
   const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'purchases' | 'fulfill' | 'catalog'>('stock_log');
 
   useEffect(() => {
@@ -544,6 +553,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   };
 
   const [recentSheets, setRecentSheets] = useState<{ id: string; status: string; date: string; items: string[] }[]>([]);
+  // 14 Aug 2026: "No stock request sheets found" (Fulfill Requisitions tab)
+  // used to render off recentSheets.length === 0 before the fetch below
+  // resolved. Defaults true.
+  const [stockRequestsLoading, setStockRequestsLoading] = useState(true);
   const [fulfillSearch, setFulfillSearch] = useState('');
 
   const [fulfillRangeOpen, setFulfillRangeOpen] = useState(false);
@@ -603,6 +616,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           },
         ]);
       }
+      setStockRequestsLoading(false);
     });
   }, []);
 
@@ -710,6 +724,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Wastage & Spillage Log State
   const [wastageLogs, setWastageLogs] = useState<any[]>([]);
+  const [wastageLoading, setWastageLoading] = useState(true);
   const [wastedItem, setWastedItem] = useState('');
   const [wastedQty, setWastedQty] = useState<number | ''>('');
   const [wastedUnit, setWastedUnit] = useState('Kg');
@@ -719,6 +734,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Kitchen Purchases Ledger State
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
+  // 14 Aug 2026: both "No wastage or spillage incidents recorded." and "No
+  // kitchen purchases recorded yet." rendered off length===0 before the
+  // fetches below resolved. Default true.
+  const [kitchenPurchasesLoading, setKitchenPurchasesLoading] = useState(true);
   const [purDate, setPurDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [purItemName, setPurItemName] = useState('');
   const [purSpec, setPurSpec] = useState('N/A');
@@ -747,12 +766,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       if (logs && logs.length > 0) {
         setWastageLogs(logs);
       }
+      setWastageLoading(false);
     });
 
     fetchKitchenPurchasesFromDB().then((data) => {
       if (data && data.length > 0) {
         setKitchenPurchases(data);
       }
+      setKitchenPurchasesLoading(false);
     });
   }, []);
 
@@ -980,6 +1001,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               },
             ]}
             data={wastageLogs}
+            progressPending={wastageLoading}
+            progressComponent={tableLoadingIndicator('Loading wastage log...')}
             pagination
             paginationPerPage={10}
             paginationRowsPerPageOptions={[10, 25, 50]}
@@ -987,7 +1010,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             subHeader={
               <div className="w-full flex items-center justify-between py-2">
                 <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
-                <span className="text-slate-400 font-semibold text-xs">{wastageLogs.length} incidents</span>
+                <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? '…' : wastageLogs.length} incidents</span>
               </div>
             }
             customStyles={{
@@ -1510,6 +1533,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             paginationPerPage={25}
             paginationRowsPerPageOptions={[10, 25, 50, 100]}
             highlightOnHover
+            progressPending={kitchenPurchasesLoading}
+            progressComponent={tableLoadingIndicator('Loading purchases...')}
             noDataComponent={
               <div className="p-6 text-center text-slate-400 font-semibold">{t('no_data_purchases_message')}</div>
             }
@@ -1872,6 +1897,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             onSelectedRowsChange={({ selectedRows }) => {
               setSelectedCatalogItemIds(selectedRows.map((r: CatalogItem) => r.id));
             }}
+            progressPending={inventoryLoading}
+            progressComponent={tableLoadingIndicator('Loading catalog...')}
             noDataComponent={
               <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
             }
@@ -2127,6 +2154,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                highlightOnHover
                pointerOnHover
                dense
+                progressPending={stockRequestsLoading}
+                progressComponent={tableLoadingIndicator('Loading stock requests...')}
                 noDataComponent={
                   <div className="p-8 text-center text-slate-400 text-sm">{t('no_stock_request_sheets_message')}</div>
                 }
@@ -2271,8 +2300,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const visibleReqDrawerItems = isReqCartDrawerExpanded ? [...reqBasket].reverse() : [...reqBasket].slice(-3).reverse();
 
     return (
-      <div className="stock-requisitions-container space-y-4 pb-48 lg:pb-0">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+      <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col space-y-4 lg:pb-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
           <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
             {/* Sticky Search & Category Pills Bar */}
@@ -2324,12 +2353,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 {reqCategory === 'All Items' ? t('all_stock_catalog_items_header') : reqCategory.toUpperCase()}
               </h3>
               <span className="text-[11px] text-slate-400 font-semibold">
-                {filteredCatalog.length} items
+                {inventoryLoading ? '…' : filteredCatalog.length} items
               </span>
             </div>
 
             {/* Stock Items Grid with Row Items (Mobile: 1 col, Sm: 2 cols, Lg: 3 cols) */}
-            {filteredCatalog.length === 0 ? (
+            {inventoryLoading ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center gap-2">
+                <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
+                <p className="text-slate-500 font-semibold text-xs">Loading catalog...</p>
+              </div>
+            ) : filteredCatalog.length === 0 ? (
               <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl">
                 <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                 <p className="text-slate-600 font-semibold text-xs">{t('no_catalog_items_found_message')} "{reqSearch}"</p>
@@ -2473,7 +2507,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
         {(reqBasket.length > 0 || specialRequestText.trim()) && (
           <div
-            className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white text-slate-900 rounded-t-2xl shadow-2xl border-t border-slate-200 transition-all duration-300 flex flex-col ${
+            className={`sticky bottom-0 mt-auto z-40 lg:hidden bg-white text-slate-900 rounded-t-2xl shadow-2xl border-t border-slate-200 transition-all duration-300 flex flex-col ${
               isReqCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
             }`}
           >
@@ -2696,6 +2730,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
             rows: { style: { minHeight: '52px' } },
           }}
+          progressPending={inventoryLoading}
+          progressComponent={tableLoadingIndicator('Loading inventory...')}
           noDataComponent={
             <div className="text-center p-8 text-slate-400 font-semibold text-xs">
               {inventory.length === 0 ? 'No inventory items found.' : 'No items match your search.'}

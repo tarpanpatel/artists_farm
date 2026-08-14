@@ -14,7 +14,8 @@ import {
   Settings,
   Target,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
@@ -22,7 +23,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
-import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
+import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, updateTenantSuperAdminDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -33,6 +34,7 @@ interface StaffManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
   tenantId?: number;
+  propertyId?: number | string;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -41,12 +43,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   onLogAudit,
   onDispatchTelegram,
   onAddDrawerEntry,
-  tenantId: _tenantId,
+  tenantId,
+  propertyId,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { currentUser } = useAuth();
-  const { staff, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
+  const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>('control_center');
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
@@ -60,6 +63,15 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [payees, setPayees] = useState<PayeeEntity[]>([]);
+  // Payees load independently of staff (own fetch, own effect) - the page
+  // used to render this table's "No payees registered." empty state the
+  // instant the component mounted, before the fetch even started, so a
+  // fresh page load visibly showed the empty message and then "popped" in
+  // real data a moment later. Track loading explicitly so we can show a
+  // spinner instead of a false empty state (found 14 Aug 2026, same report
+  // as the Staff table showing "No system users registered." before
+  // staffLoading data arrives).
+  const [isPayeesLoading, setIsPayeesLoading] = useState(true);
   // Available roles from site architecture (independent of staff members).
   // "Super Admin" deliberately excluded (13 Aug 2026): that role is not an
   // assignable staff position - it's a single, automatically-synced row that
@@ -96,6 +108,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateAccessAllProperties, setUpdateAccessAllProperties] = useState(false);
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
   const [updateDailyWage, setUpdateDailyWage] = useState('');
+  // Super Admin's role/username/cash-handling/access-all-properties are
+  // permanently fixed (14 Aug 2026 - "no one can change Super Admin's role,
+  // it's always Cash Handler + Access All Properties by definition") - the
+  // update modal locks those fields out entirely whenever the row being
+  // edited is Super Admin, and routes the save through updateTenantSuperAdminDB
+  // instead of the normal per-property updateStaffUserDB (see
+  // handleUpdateUserSubmit below).
+  const isEditingSuperAdmin = updateRole === 'Super Admin';
 
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -227,6 +247,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         type: payee.type,
         qrCodeUrl: payee.qrCodeUrl,
       })));
+      setIsPayeesLoading(false);
     });
   }, []);
 
@@ -432,16 +453,29 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Passcode must be exactly 6 digits.', { type: 'error' });
       return;
     }
-    const saved = await updateStaffUserDB(selectedUpdateUserId, {
-      fullName: updateFullName.trim(),
-      username: updateUsername || targetUser.username,
-      role: updateRole || targetUser.role,
-      passcode: updatePasscode || targetUser.passcodePin,
-      isFinancialHandler: updateIsFinancialHandler,
-      accessAllProperties: updateAccessAllProperties,
-      qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
-      dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
-    });
+    // Super Admin IS the tenant's own login - route through the tenant-login
+    // sync path (Name/Passcode/QR only) instead of the normal per-property
+    // write, which would otherwise desync this property's copy from every
+    // other property's and from the tenant's real login (see
+    // updateTenantSuperAdminDB / update_tenant_super_admin).
+    const saved = isEditingSuperAdmin
+      ? await updateTenantSuperAdminDB({
+          tenantId: tenantId as number,
+          propertyId,
+          fullName: updateFullName.trim(),
+          passcode: updatePasscode,
+          qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+        })
+      : await updateStaffUserDB(selectedUpdateUserId, {
+          fullName: updateFullName.trim(),
+          username: updateUsername || targetUser.username,
+          role: updateRole || targetUser.role,
+          passcode: updatePasscode || targetUser.passcodePin,
+          isFinancialHandler: updateIsFinancialHandler,
+          accessAllProperties: updateAccessAllProperties,
+          qrCodeUrl: updateQrCodeUrl || targetUser.qrCodeUrl,
+          dailyWage: updateDailyWage ? Number(updateDailyWage) : (targetUser.dailyWage ?? 0),
+        });
     if (!saved) {
       showToast('Unable to update the user in the database.', { type: 'error' });
       return;
@@ -684,7 +718,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {t('active_system_users_heading', 'Active System Users & Staff')}
               </h3>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">{users.length} {t('registered_suffix', 'Registered')}</span>
+                <span className="text-xs text-slate-400">{staffLoading ? '…' : users.length} {t('registered_suffix', 'Registered')}</span>
               </div>
             </div>
 
@@ -767,6 +801,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 },
               ]}
               data={visibleUsers}
+              progressPending={staffLoading}
+              progressComponent={
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                </div>
+              }
               pagination
               paginationPerPage={15}
               paginationRowsPerPageOptions={[10, 15, 25, 50]}
@@ -796,7 +836,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-sm">
                   {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
                 </h3>
-                <span className="text-xs text-slate-400">{payees.length} {t('vendors_suffix', 'Vendors')}</span>
+                <span className="text-xs text-slate-400">{isPayeesLoading ? '…' : payees.length} {t('vendors_suffix', 'Vendors')}</span>
               </div>
               <Button
                 onClick={() => {
@@ -855,6 +895,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 },
               ]}
               data={filteredPayees}
+              progressPending={isPayeesLoading}
+              progressComponent={
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_payees_message', 'Loading payees...')}
+                </div>
+              }
               pagination
               paginationPerPage={15}
               paginationRowsPerPageOptions={[10, 15, 25, 50]}
@@ -1856,10 +1902,16 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         type="tel"
                         maxLength={10}
                         value={updateUsername}
+                        disabled={isEditingSuperAdmin}
                         onChange={(e) => setUpdateUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         placeholder="10-digit mobile number"
                         className="text-slate-900 dark:text-white"
                       />
+                      {isEditingSuperAdmin && (
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                          {t('super_admin_username_locked_hint', "This is the tenant's own login - change it from the Root Dashboard's tenant login tools instead.")}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -1874,41 +1926,49 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       className="text-center font-mono font-semibold tracking-widest text-sm"
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'System Role')}</label>
-                      <StyledSelect
-                        value={updateRole}
-                        onChange={(val) => setUpdateRole(val as any)}
-                        placeholder="-- Keep Current Role --"
-                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                      />
+                  {isEditingSuperAdmin ? (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+                      {t('super_admin_locked_fields_hint', "Super Admin's role can't be reassigned - it's the tenant's own login, not an assignable position - and it's always a Cash Handler with Access All Properties, so there's nothing to toggle here.")}
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
-                      <input
-                        type="checkbox"
-                        id="updateIsFinancialHandlerCheck"
-                        checked={updateIsFinancialHandler}
-                        onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                        {t('cash_handling_user_label', 'Cash Handling User')}
-                      </label>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                    <input
-                      type="checkbox"
-                      id="updateAccessAllPropertiesCheck"
-                      checked={updateAccessAllProperties}
-                      onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
-                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                    />
-                    <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                      {t('access_all_properties_label', 'Access All Properties')}
-                    </label>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                        <div>
+                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'System Role')}</label>
+                          <StyledSelect
+                            value={updateRole}
+                            onChange={(val) => setUpdateRole(val as any)}
+                            placeholder="-- Keep Current Role --"
+                            options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                          <input
+                            type="checkbox"
+                            id="updateIsFinancialHandlerCheck"
+                            checked={updateIsFinancialHandler}
+                            onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
+                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                          />
+                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                            {t('cash_handling_user_label', 'Cash Handling User')}
+                          </label>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                        <input
+                          type="checkbox"
+                          id="updateAccessAllPropertiesCheck"
+                          checked={updateAccessAllProperties}
+                          onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
+                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                        />
+                        <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
+                          {t('access_all_properties_label', 'Access All Properties')}
+                        </label>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
                     <Input

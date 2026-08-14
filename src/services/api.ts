@@ -1658,6 +1658,41 @@ export async function updateStaffUserDB(id: string, updated: any): Promise<boole
   }
 }
 
+// Root-admin-only counterpart to updateStaffUserDB, used exclusively for the
+// Super Admin row in StaffManagement's "Modify Team Member" modal. Unlike
+// updateStaffUserDB (which writes one property's staff_users row directly -
+// exactly the per-property desync bug fixed elsewhere this session), this
+// writes the tenant's real `users`-table login and resyncs every property
+// from it. Deliberately narrower than the general update: no role/username/
+// cash-handler/access-all-properties, since those are permanently fixed for
+// Super Admin - see update_tenant_super_admin in router.php.
+export async function updateTenantSuperAdminDB(params: {
+  tenantId: number | string;
+  propertyId?: number | string;
+  fullName: string;
+  passcode?: string;
+  qrCodeUrl?: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_tenant_super_admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id: params.tenantId,
+        property_id: params.propertyId,
+        full_name: params.fullName,
+        passcode: params.passcode || '',
+        qr_code_url: params.qrCodeUrl || '',
+      }),
+    });
+    const json = await res.json();
+    return json.success === true;
+  } catch (err) {
+    console.error('Failed to update tenant Super Admin in DB:', err);
+    return false;
+  }
+}
+
 export async function deleteStaffUserDB(id: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=delete_user`, {

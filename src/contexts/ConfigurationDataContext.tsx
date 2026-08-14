@@ -37,8 +37,13 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
   const { isEnabled } = useModules();
   const [miscCharges, setMiscCharges] = useState<MiscChargeTemplate[]>([]);
   const [materialCategories, setMaterialCategories] = useState<MaterialCategory[]>([]);
-  const [isLoadingMisc, setIsLoadingMisc] = useState(false);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  // Default true, not false (14 Aug 2026 fix): both start an unconditional
+  // fetch on mount (see the effect below), so there's always a brief window
+  // before it resolves - defaulting to false let MiscChargesManagement's "No
+  // miscellaneous charges found." render during that window, same class of
+  // bug as Inventory/Kitchen/Finance contexts above.
+  const [isLoadingMisc, setIsLoadingMisc] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   const fetchMiscCharges = async () => {
     setIsLoadingMisc(true);
@@ -72,6 +77,10 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
     fetchMiscCharges();
     if (isEnabled('kitchen')) {
       fetchMaterialCategories();
+    } else {
+      // Never going to fetch for this property - don't leave isLoadingCategories
+      // stuck true forever now that it defaults true.
+      setIsLoadingCategories(false);
     }
   }, [isEnabled]);
 

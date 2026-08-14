@@ -3,14 +3,14 @@ import {
   Building2, LogOut, Plus, AlertCircle, Loader2,
   Pencil, Trash2, ExternalLink, CheckCircle, XCircle, Layers,
   Home, TrendingUp, ChevronRight, Lock, Zap, X, User, MessageSquare,
-  Settings, Calendar, Users,
+  Settings, Calendar, Users, Bell,
 } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { ScrollToTopButton } from './ScrollToTopButton';
-import { API_ROOT_BASE } from '../services/api';
+import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
 
 interface SlotBreakdownItem {
@@ -85,6 +85,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [, setGuests] = useState<any[]>([]);
+  const [, setServiceRequests] = useState<any[]>([]);
+  const [todaysArrivalsCount, setTodaysArrivalsCount] = useState(0);
+  const [todaysDeparturesCount, setTodaysDeparturesCount] = useState(0);
+  const [inHouseCount, setInHouseCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Add property form state
   const [newPropName, setNewPropName] = useState('');
@@ -125,6 +131,30 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       else setError(propsData.message || 'Failed to load properties');
 
       if (slotsData.success) setSlotUsage(slotsData.data);
+
+      const props = propsData.success ? (propsData.data || []) : [];
+      const targetProp = props.find((p: Property) => p.slug === getPropertySlug()) || props[0];
+      if (targetProp) {
+        const [guestsRes, reqRes] = await Promise.all([
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${targetProp.id}`),
+          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${targetProp.id}`),
+        ]);
+        const [guestsJson, reqJson] = await Promise.all([guestsRes.json(), reqRes.json()]);
+        const guestsList = (guestsJson.data || guestsJson) as any[];
+        const reqList = (reqJson.data || reqJson) as any[];
+        setGuests(Array.isArray(guestsList) ? guestsList : []);
+        setServiceRequests(Array.isArray(reqList) ? reqList : []);
+
+        const today = new Date().toISOString().split('T')[0];
+        const arrivals = guestsList.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today));
+        const departures = guestsList.filter((g: any) => (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout'));
+        const inHouse = guestsList.filter((g: any) => ['checked in', 'checkedin', 'checked-in', 'active'].includes((g.status || '').toLowerCase()));
+        const pending = reqList.filter((r: any) => (r.status || '').toLowerCase() === 'pending');
+        setTodaysArrivalsCount(arrivals.length);
+        setTodaysDeparturesCount(departures.length);
+        setInHouseCount(inHouse.length);
+        setPendingRequestsCount(pending.length);
+      }
     } catch (err) {
       setError('Failed to load dashboard data. Please refresh.');
     } finally {
@@ -367,6 +397,92 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 style={{ width: `${Math.min(slotPercent, 100)}%` }}
               />
             </div>
+          </div>
+        </section>
+
+        {/* ── Metrics Grid ── */}
+        <section className="tenant-dashboard__metrics-section">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 tenant-dashboard__metrics-grid">
+            {[
+              {
+                label: 'Arrivals:',
+                count: todaysArrivalsCount,
+                sub: 'checking in today',
+                icon: Calendar,
+                color: 'blue',
+                btnLabel: 'Bookings',
+                tab: 'guests',
+              },
+              {
+                label: 'Departures:',
+                count: todaysDeparturesCount,
+                sub: 'checking out today',
+                icon: LogOut,
+                color: 'amber',
+                btnLabel: 'Bookings',
+                tab: 'guests',
+              },
+              {
+                label: 'Guests In-House:',
+                count: inHouseCount,
+                sub: 'active guests',
+                icon: User,
+                color: 'emerald',
+                btnLabel: 'Guests',
+                tab: 'guests',
+              },
+              {
+                label: 'Service Requests:',
+                count: pendingRequestsCount,
+                sub: 'active requests',
+                icon: Bell,
+                color: 'red',
+                btnLabel: 'Requests',
+                tab: 'service_requests',
+              },
+            ].map((metric) => {
+              const Icon = metric.icon;
+              const colorClasses: Record<string, { bg: string; text: string; btn: string }> = {
+                blue: { bg: 'bg-blue-50 dark:bg-blue-900/35', text: 'text-blue-600 dark:text-blue-400', btn: 'bg-blue-600 hover:bg-blue-700' },
+                amber: { bg: 'bg-amber-50 dark:bg-amber-900/35', text: 'text-amber-600 dark:text-amber-400', btn: 'bg-amber-600 hover:bg-amber-700' },
+                emerald: { bg: 'bg-emerald-50 dark:bg-emerald-900/35', text: 'text-emerald-600 dark:text-emerald-400', btn: 'bg-emerald-600 hover:bg-emerald-700' },
+                red: { bg: 'bg-red-50 dark:bg-red-900/35', text: 'text-red-600 dark:text-red-400', btn: 'bg-red-600 hover:bg-red-700' },
+              };
+              const colors = colorClasses[metric.color] || colorClasses.blue;
+              const targetProp = properties.find((p) => p.slug === getPropertySlug()) || properties[0];
+              return (
+                <div key={metric.label} className="tenant-dashboard__metric-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className={`p-2.5 rounded-xl ${colors.bg} ${colors.text} shrink-0`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{metric.label}</span>
+                        <span className="text-sm font-extrabold text-slate-900 dark:text-white">{metric.count}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{metric.sub}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (targetProp) {
+                        const tenantSlug = tenantInfo?.slug ?? '';
+                        const url = tenantSlug
+                          ? `${API_ROOT_BASE}/${tenantSlug}/${targetProp.slug}/#${metric.tab}`
+                          : `${API_ROOT_BASE}/${targetProp.slug}/#${metric.tab}`;
+                        window.location.href = url;
+                      }
+                    }}
+                    className={`px-3 py-1.5 ${colors.btn} text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1`}
+                    title={metric.btnLabel}
+                  >
+                    <span>{metric.btnLabel}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
 

@@ -22,7 +22,8 @@ import {
   Bell,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -450,8 +451,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   }, []);
   const [smLogs, setSmLogs] = useState<{ date: string; staff: string; food: string; hasTag: boolean }[]>([]);
+  // 14 Aug 2026: "No meal logs this month" used to render off smLogs.length
+  // === 0 before this fetch resolved. Defaults true.
+  const [smLogsLoading, setSmLogsLoading] = useState(true);
   useEffect(() => {
-    fetchStaffMealLogsFromDB().then(setSmLogs);
+    fetchStaffMealLogsFromDB().then((data) => {
+      setSmLogs(data);
+      setSmLogsLoading(false);
+    });
   }, []);
 
   const { staff } = useStaff();
@@ -1704,7 +1711,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-500" /> {t('monthly_tracking_log_heading')}
               </div>
-              <span className="text-slate-400 font-semibold text-[10px]">{smLogs.length} {t('entries_suffix')}</span>
+              <span className="text-slate-400 font-semibold text-[10px]">{smLogsLoading ? '…' : smLogs.length} {t('entries_suffix')}</span>
             </h3>
             
             <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
@@ -1745,6 +1752,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   },
                 ]}
                 data={smLogs}
+                progressPending={smLogsLoading}
+                progressComponent={
+                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
+                  </div>
+                }
                 pagination
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[10, 25, 50]}

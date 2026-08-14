@@ -1763,6 +1763,7 @@ ${itemsStr}
                     onLogAudit={logAudit}
                     onDispatchTelegram={dispatchTelegramAlert}
                     tenantId={preloadedData.currentProperty?.tenant_id}
+                    propertyId={preloadedData.currentProperty?.id}
                   />
                 </ErrorBoundary>
               )}

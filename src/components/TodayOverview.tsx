@@ -39,16 +39,23 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyWhatsappTemplate = '',
   serviceRequests = [],
 }) => {
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const calendarScrollRef = useRef<HTMLDivElement>(null);
-
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
+
+  const yesterday = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(yesterday.getMonth());
+  const [currentYear, setCurrentYear] = useState(yesterday.getFullYear());
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -68,14 +75,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     }).length;
   }, [guests, today]);
 
-  // The booking API uses `Booked` and `Checked In` as well as the legacy
-  // `Active` state. A calendar represents room occupancy/availability, not
-  // only the legacy active-resident state, so all non-final stays belong here.
-  // Cancelled bookings never actually happened, so they stay excluded - but a
-  // Checked Out stay is real history and should still show, just visually
-  // distinct (greyed out) from what's actually happening right now, so a user
-  // browsing past months isn't looking at a calendar that's silently missing
-  // most of it.
   const calendarGuests = useMemo(() => {
     return guests.filter((g) => {
       const status = String(g.status || '').trim().toLowerCase();
@@ -88,23 +87,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     return s === 'checkedout' || s === 'checked out';
   };
 
-  const year = currentYear;
-  const month = currentMonth;
-  const monthName = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  // Note: In a multi-key property, we pass room objects with IDs
-  // For single properties, we match by room name
   const getGuestsForRoom = (roomId: number, roomName?: string) => {
     return calendarGuests
       .filter((guest) => {
-        // Match by room_id if available (most reliable)
         if (roomId) {
           const guestRoomId = (guest as any).roomId || (guest as any).room_id;
           if (guestRoomId && Number(guestRoomId) === Number(roomId)) return true;
         }
-        // Fallback to room name for backward compatibility
         if (roomName && guest.roomNumber === roomName) return true;
         return false;
       })
@@ -113,9 +102,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
   const getGuestColor = (guestId: any, status?: any) => {
     if (isCheckedOutStatus(status)) {
-      // Deliberately flat/muted, distinct from every active-stay color below,
-      // so a completed stay reads as "history" at a glance rather than
-      // looking like it's still an active booking.
       return 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 border border-slate-400/40 dark:border-slate-500/40';
     }
     const colors = [
@@ -144,25 +130,30 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     setCurrentYear(newYear);
   };
 
-  // Autoscroll calendar container to position the current day on the left
+  // Autoscroll calendar container to position yesterday's day on the left
   useEffect(() => {
     if (!calendarScrollRef.current) return;
     const now = new Date();
     if (currentMonth === now.getMonth() && currentYear === now.getFullYear()) {
-      const todayDate = now.getDate();
-      const targetScrollLeft = Math.max(0, (todayDate - 1) * 64);
+      const yesterdayDate = yesterday.getDate();
+      const targetScrollLeft = Math.max(0, (yesterdayDate - 1) * 64);
       const timer = setTimeout(() => {
         if (calendarScrollRef.current) {
           calendarScrollRef.current.scrollLeft = targetScrollLeft;
         }
       }, 50);
       return () => clearTimeout(timer);
-    } else {
-      if (calendarScrollRef.current) {
-        calendarScrollRef.current.scrollLeft = 0;
-      }
+    }
+    if (calendarScrollRef.current) {
+      calendarScrollRef.current.scrollLeft = 0;
     }
   }, [currentMonth, currentYear]);
+
+  const year = currentYear;
+  const month = currentMonth;
+  const monthName = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
     <div className="today-overview space-y-6">
