@@ -259,8 +259,8 @@ export const Header: React.FC<HeaderProps> = ({
                           >
                             <div className="header__order-info overflow-hidden">
                               <div className="header__order-id font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <span>{ord.id}</span>
-                                <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
+                                <span>#{ord.id}</span>
+                                {ord.roomNumber && <span className="text-slate-400 font-normal">({ord.roomNumber})</span>}
                               </div>
                               <p className="header__order-items text-[11px] text-slate-500 dark:text-slate-400 truncate">
                                 {ord.items.map((i) => `${i.quantity}x ${i.name}`).join(', ')}
