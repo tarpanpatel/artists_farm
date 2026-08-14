@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, ArrowRight } from 'lucide-react';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
+import { getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
 
 interface TodayOverviewProps {
@@ -48,6 +49,43 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+
+  // OTA-synced blocked dates (Airbnb/Booking.com/etc via connected iCal
+  // feeds) - same fetch OperationalDashboard.tsx already does for single
+  // properties; this multi-key calendar never had it at all (found 14 Aug
+  // 2026), so a room's iCal-blocked dates never showed here regardless of
+  // how many feeds were connected. get_blocked_dates itself already expands
+  // a MULTI_KEY parent to include all its rooms, but the room-level
+  // `room_id` on each returned event is what actually scopes a block to one
+  // room's own row below.
+  const [blockedDates, setBlockedDates] = useState<Array<{
+    event_start: string;
+    event_end: string;
+    event_title: string;
+    room_id?: number;
+    reservation_url?: string;
+    source?: string;
+    source_label?: string;
+  }>>([]);
+
+  useEffect(() => {
+    const fetchBlockedDates = async () => {
+      try {
+        const propertySlug = getPropertySlug();
+        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
+          headers: { 'X-Property-Slug': propertySlug },
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          setBlockedDates(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blocked dates:', error);
+      }
+    };
+    fetchBlockedDates();
+  }, []);
 
   // Rolling window instead of a fixed calendar month (14 Aug 2026 fix): this
   // used to be locked to whichever single calendar month currentMonth/
@@ -184,20 +222,31 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   );
   const windowEnd = daysArray[daysArray.length - 1];
 
-  // Position the initial scroll so "today - 2 days" sits at the left edge
-  // (only meaningful right after mount/paging, while today is still inside
-  // the buffer), then compute the month label for wherever that lands.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const todayIdx = daysArray.findIndex((d) => isSameDate(d, today));
-    const targetIdx = todayIdx >= 0 ? Math.max(0, todayIdx - 2) : 0;
-    const timer = setTimeout(() => {
-      if (!scrollRef.current) return;
-      scrollRef.current.scrollLeft = targetIdx * COLUMN_WIDTH;
-      updateVisibleMonthLabel(daysArray);
-    }, 50);
-    return () => clearTimeout(timer);
+  // Column that should sit at the left edge on initial view: "today - 2
+  // days" (only meaningful right after mount/paging, while today is still
+  // inside the buffer - falls back to the very start of the window
+  // otherwise). Referenced by the header cell below and scrolled to via
+  // scrollIntoView in the layout effect underneath it.
+  const todayIdx = daysArray.findIndex((d) => isSameDate(d, today));
+  const scrollTargetIdx = todayIdx >= 0 ? Math.max(0, todayIdx - 2) : 0;
+  const scrollTargetRef = useRef<HTMLDivElement>(null);
+
+  // BUG (found 14 Aug 2026): the previous approach computed a pixel offset
+  // by hand (targetIdx * COLUMN_WIDTH) and applied it via a bare
+  // setTimeout(..., 50) - a guess at how long layout takes, not a real
+  // signal that it's actually safe to scroll yet. On a slower/first paint
+  // (real data still loading, rooms not rendered yet, etc.) 50ms wasn't
+  // always enough, so the scroll landed at whatever position the browser's
+  // default (0, or mid-scroll from a still-settling layout) happened to be
+  // - reported as the view opening days away from "today" instead of at it,
+  // inconsistently between loads. scrollIntoView in a layout effect lets
+  // the browser itself handle "is this actually laid out yet" - it runs
+  // synchronously after DOM mutations, before paint, so there's no visible
+  // jump and no timing to guess at. `block: 'nearest'` stops it from also
+  // vertically scrolling the whole page to center this row.
+  useLayoutEffect(() => {
+    scrollTargetRef.current?.scrollIntoView({ inline: 'start', block: 'nearest' });
+    updateVisibleMonthLabel(daysArray);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysArray]);
 
@@ -365,13 +414,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">
             <div className="w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30">
               {t('room_column', 'Room')}
-            </div>            {daysArray.map((day) => {
+            </div>            {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
               const isToday = isSameDate(day, today);
 
               return (
                 <div
                   key={day.toISOString()}
+                  ref={idx === scrollTargetIdx ? scrollTargetRef : undefined}
                   className={`w-16 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold ${
                     isToday
                       ? 'bg-teal-500 dark:bg-teal-600 text-white'
@@ -397,50 +447,81 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 return checkinDate <= windowEnd && checkoutDate >= windowStart;
               });
 
-              // Sort by checkinDate ascending
-              activeWindowGuests.sort(
-                (a, b) => new Date(a.checkinDate).getTime() - new Date(b.checkinDate).getTime()
-              );
+              // OTA-synced blocks for THIS room specifically (Airbnb/Booking.com/
+              // etc via a connected iCal feed) that overlap the visible window -
+              // laid out in the exact same lane-packing pass as real guest
+              // bookings below (not a separate row), so a block can never
+              // visually collide with a real booking even if their dates
+              // happen to touch.
+              const roomBlockedDates = blockedDates.filter((bd) => {
+                if (Number(bd.room_id) !== Number(room.id)) return false;
+                const start = new Date(bd.event_start.split(' ')[0].split('T')[0]);
+                const end = new Date(bd.event_end.split(' ')[0].split('T')[0]);
+                return start <= windowEnd && end >= windowStart;
+              });
+
+              type TimelineItem =
+                | { kind: 'guest'; start: Date; end: Date; guest: Guest }
+                | { kind: 'ota'; start: Date; end: Date; label: string; tooltip: string };
+
+              const timelineItems: TimelineItem[] = [
+                ...activeWindowGuests.map((guest): TimelineItem => ({
+                  kind: 'guest',
+                  start: new Date(guest.checkinDate),
+                  end: new Date(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate),
+                  guest,
+                })),
+                ...roomBlockedDates.map((bd): TimelineItem => ({
+                  kind: 'ota',
+                  start: new Date(bd.event_start.split(' ')[0].split('T')[0]),
+                  end: new Date(bd.event_end.split(' ')[0].split('T')[0]),
+                  label: bd.source_label || bd.source || t('ota_blocked_label', 'Blocked'),
+                  tooltip: t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', bd.source_label || bd.source || 'external calendar'),
+                })),
+              ];
+
+              // Sort by start date ascending
+              timelineItems.sort((a, b) => a.start.getTime() - b.start.getTime());
 
               // Lane assignment algorithm for non-overlapping vertical alignment
               const dayMs = 24 * 60 * 60 * 1000;
               const laneEndDates: Date[] = [];
-              const guestLanesInfo = activeWindowGuests.map((guest) => {
-                const checkinDate = new Date(guest.checkinDate);
-                const checkoutDate = new Date(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate);
-
+              const timelineLanesInfo = timelineItems.map((item) => {
                 // Clamp to the visible window, then convert to a 1-indexed
                 // column position (matching the `(startCol - 1) * 64` pixel
                 // offset used below) - was previously the raw day-of-month
                 // number, now a position relative to windowStart since the
                 // window can span a month boundary.
-                const clampedCheckin = checkinDate < windowStart ? windowStart : checkinDate;
-                const clampedCheckout = checkoutDate > windowEnd ? new Date(windowEnd.getTime() + dayMs) : checkoutDate;
-                const startCol = Math.round((clampedCheckin.getTime() - windowStart.getTime()) / dayMs) + 1;
-                const endCol = Math.round((clampedCheckout.getTime() - windowStart.getTime()) / dayMs) + 1;
+                const clampedStart = item.start < windowStart ? windowStart : item.start;
+                const clampedEnd = item.end > windowEnd ? new Date(windowEnd.getTime() + dayMs) : item.end;
+                const startCol = Math.round((clampedStart.getTime() - windowStart.getTime()) / dayMs) + 1;
+                const endCol = Math.round((clampedEnd.getTime() - windowStart.getTime()) / dayMs) + 1;
 
                 const span = Math.max(1, endCol - startCol);
 
-                const amount = (guest as any).totalCharge || (guest as any).totalAmount || (guest as any).total_charge || 0;
-                const nightlyRate = Math.round(amount / Math.max(1, span));
+                let nightlyRate = 0;
+                if (item.kind === 'guest') {
+                  const amount = (item.guest as any).totalCharge || (item.guest as any).totalAmount || (item.guest as any).total_charge || 0;
+                  nightlyRate = Math.round(amount / Math.max(1, span));
+                }
 
                 let assignedLane = 0;
                 let foundLane = false;
                 for (let l = 0; l < laneEndDates.length; l++) {
-                  if (laneEndDates[l] <= checkinDate) {
+                  if (laneEndDates[l] <= item.start) {
                     assignedLane = l;
-                    laneEndDates[l] = checkoutDate;
+                    laneEndDates[l] = item.end;
                     foundLane = true;
                     break;
                   }
                 }
                 if (!foundLane) {
                   assignedLane = laneEndDates.length;
-                  laneEndDates.push(checkoutDate);
+                  laneEndDates.push(item.end);
                 }
 
                 return {
-                  guest,
+                  item,
                   startCol,
                   span,
                   nightlyRate,
@@ -484,26 +565,41 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                     {/* Spanning capsules overlaid */}
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-                      {guestLanesInfo.map((info, idx) => {
+                      {timelineLanesInfo.map((info, idx) => {
                         const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
+                        const commonStyle = {
+                          left: `${(info.startCol - 1) * 64 + 3}px`,
+                          width: `${Math.max(48, info.span * 64 - 6)}px`,
+                          top: `${topOffset}px`,
+                          height: `${capsuleHeight}px`,
+                        };
 
+                        if (info.item.kind === 'ota') {
+                          return (
+                            <div
+                              key={`ota-${idx}`}
+                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-500 dark:bg-slate-600 text-white pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
+                              style={commonStyle}
+                              title={info.item.tooltip}
+                            >
+                              <span className="font-semibold truncate text-[11px] leading-none">{info.item.label}</span>
+                            </div>
+                          );
+                        }
+
+                        const guest = info.item.guest;
                         return (
                           <div
-                            key={`${info.guest.id}-${idx}`}
+                            key={`${guest.id}-${idx}`}
                             className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
-                              info.guest.id,
-                              info.guest.status
+                              guest.id,
+                              guest.status
                             )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
-                            style={{
-                              left: `${(info.startCol - 1) * 64 + 3}px`,
-                              width: `${Math.max(48, info.span * 64 - 6)}px`,
-                              top: `${topOffset}px`,
-                              height: `${capsuleHeight}px`,
-                            }}
-                            onClick={() => setSelectedGuest(info.guest)}
-                            title={`${info.guest.guestName} (₹${info.nightlyRate}/night)`}
+                            style={commonStyle}
+                            onClick={() => setSelectedGuest(guest)}
+                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
                           >
-                            <span className="font-semibold truncate text-[11px] leading-none">{info.guest.guestName}</span>
+                            <span className="font-semibold truncate text-[11px] leading-none">{guest.guestName}</span>
                             <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                           </div>
                         );

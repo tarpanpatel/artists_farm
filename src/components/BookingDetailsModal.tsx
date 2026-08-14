@@ -432,7 +432,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   )
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
-                    {g.pending_received_by || guest.pendingReceivedBy || '—'}
+                    {g.pending_received_by || guest.pendingReceivedBy || t('pending_received_by_not_received', 'Not received')}
                   </div>
                 )}
               </div>

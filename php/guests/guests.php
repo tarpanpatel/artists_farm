@@ -92,6 +92,32 @@ function validateGuestIdOrRespond($value, string $fieldName = 'id') {
     }
 }
 
+// Demo guest status is set once by generateDemoData() (php/api/demo_data.php)
+// relative to whatever "today" was at generation time, then never revisited -
+// a demo stay whose checkout date has since passed silently stays "Checked In"
+// forever until the next full "Reset Demo Data" regenerates everything from
+// scratch. Found 14 Aug 2026 via the multi-key Dashboard calendar coloring
+// checked-in-looking bookings that had actually already ended.
+// Self-heals instead: called at the top of get_guests (the one read path
+// every guest-consuming page ultimately sources from - App.tsx fetches guests
+// once via fetchGuestsFromDB() and every screen reads from that same state),
+// this flips any is_demo=1 stay still marked Checked In past its own checkout
+// straight to Checked Out, right in the DB - so it's fixed for every reader,
+// not just this one endpoint, and stays correct indefinitely with zero resets
+// needed. Scoped to the property being loaded (cheap, avoids touching every
+// demo property on every request) and only ever touches is_demo=1 rows - a
+// real tenant's real checkout is a real business event a human performs, not
+// something this should ever silently flip.
+function reconcileDemoGuestStatuses($pdo, $propertyId) {
+    try {
+        $pdo->prepare("
+            UPDATE guests
+            SET status = ?
+            WHERE property_id = ? AND is_demo = 1 AND status = ? AND expected_checkout <= NOW()
+        ")->execute([GUEST_STATUS_CHECKED_OUT, $propertyId, GUEST_STATUS_CHECKED_IN]);
+    } catch (PDOException $e) {}
+}
+
 function ensureIdVerificationSchema($pdo) {
     if (isSchemaVerified('schema_id_verification')) return;
     try {
@@ -198,6 +224,7 @@ function cleanupExpiredIdDocuments($pdo, int $hours = 24, int $propertyId = 0): 
 function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
+            reconcileDemoGuestStatuses($pdo, $propertyId);
             try {
                 // A Single property has no separate "room" to assign - it IS the one
                 // bookable unit, so a guest there should show the property's own name,

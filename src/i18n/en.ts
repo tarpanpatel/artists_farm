@@ -61,6 +61,7 @@
   checkout_time_label: "Check-Out Time (Optional)",
   pending_balance_label: "Pending Balance (₹)",
   pending_received_by_label: "Pending Received By",
+  pending_received_by_not_received: "Not received",
   guest_notes_label: "Guest Notes",
   foreign_national_guest_label: "Foreign National Guest",
   additional_charges_label: "Additional Charges (Optional)",

@@ -42,6 +42,18 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `cash_drawer_entries` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `billing_receipts` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `payee_entities` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `staff_attendance` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        // Real fix (14 Aug 2026), not demo-only: staff_users.id is a
+        // non-numeric string (e.g. "DEMO-abc123", "usr-1723..."), but
+        // staff_attendance.user_id was declared int(11) - inserting any
+        // non-numeric id into it silently coerces to 0 (or fails under
+        // strict SQL modes), so the LEFT JOIN back to staff_users in
+        // get_attendance (staff.php) could never actually resolve a name,
+        // and multiple staff marking attendance would collide on the same
+        // coerced 0. Widened to match staff_users.id's actual type - fixes
+        // this for real (non-demo) attendance too, not just seeded data.
+        "ALTER TABLE `staff_attendance` MODIFY COLUMN `user_id` VARCHAR(50) NULL",
     ];
     foreach ($alterCols as $sql) {
         try { $pdo->exec($sql); } catch (PDOException $e) {}
@@ -124,8 +136,13 @@ function generateDemoData($pdo, $propertyId) {
             ['username' => 'demo_reception', 'name' => 'Neha Gupta', 'phone' => '9876543213', 'role' => 'Manager/Reception', 'status' => 'Active', 'is_financial_handler' => 1],
         ];
 
+        // Keyed by full_name so the attendance-seeding section below (6f) can
+        // mark attendance against the exact staff_users.id each of these
+        // rows actually got, without a re-query.
+        $demoUserIdsByName = [];
         foreach ($demoUsers as $user) {
             $userId = 'DEMO-' . uniqid();
+            $demoUserIdsByName[$user['name']] = $userId;
             $stmt = $pdo->prepare("
                 INSERT IGNORE INTO staff_users (id, property_id, username, full_name, phone, role, status, is_financial_handler, is_demo, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
@@ -746,6 +763,144 @@ function generateDemoData($pdo, $propertyId) {
             ], $propertyId);
         }
 
+        // 6f. Demo Staff Attendance - every demo staff member gets a mark for
+        // (almost) every day in the past window, matching how attendance is
+        // actually kept in practice (marked daily, not bursty like purchase
+        // logs). Mostly Present, with a realistic scattering of Half Day/Paid
+        // Leave/Absent - Rajesh Kumar (Manager) marks everyone, including
+        // himself, same as a real property's shift lead would.
+        $attendanceStatusWeights = [
+            ['status' => 'Present', 'weight' => 78],
+            ['status' => 'Half Day', 'weight' => 8],
+            ['status' => 'Paid Leave', 'weight' => 7],
+            ['status' => 'Absent', 'weight' => 5],
+            ['status' => 'Unpaid Leave', 'weight' => 2],
+        ];
+        $pickAttendanceStatus = function () use ($attendanceStatusWeights) {
+            $roll = rand(1, 100);
+            $cumulative = 0;
+            foreach ($attendanceStatusWeights as $w) {
+                $cumulative += $w['weight'];
+                if ($roll <= $cumulative) return $w['status'];
+            }
+            return 'Present';
+        };
+        $attStmt = $pdo->prepare("
+            INSERT IGNORE INTO staff_attendance (property_id, attendance_date, user_id, staff_name, status, marked_by, is_demo)
+            VALUES (?, ?, ?, ?, ?, 'Rajesh Kumar', 1)
+        ");
+        for ($d = clone $windowStart; $d <= $today; $d->modify('+1 day')) {
+            // A day off here and there for the whole property (skeleton
+            // crew / quiet day) - not literally every single staff member
+            // marked every single day, which would look too mechanically
+            // perfect to read as real.
+            if (rand(1, 100) > 92) continue;
+            foreach ($demoUsers as $user) {
+                $userId = $demoUserIdsByName[$user['name']] ?? null;
+                if (!$userId) continue;
+                $attStmt->execute([$propertyId, $d->format('Y-m-d'), $userId, $user['name'], $pickAttendanceStatus()]);
+            }
+        }
+
+        // 6g. Demo iCal/OTA Sync Feeds - Airbnb + Booking.com connected on a
+        // couple of the rooms (not every room - not every listing is
+        // multi-channel in real life either), each with a few synced
+        // blocked-date ranges that land in gaps between that room's own
+        // already-seeded direct bookings above, so a room's timeline reads
+        // as "some direct bookings, some OTA-only blocks" like a real
+        // multi-channel property - never overlapping/double-booking the
+        // same dates.
+        $otaRooms = array_slice($rooms, 0, min(2, count($rooms)));
+        $otaWindowStart = (clone $today)->modify('-20 days');
+        $otaWindowEnd = (clone $today)->modify('+30 days');
+
+        foreach ($otaRooms as $otaRoom) {
+            $otaRoomId = $otaRoom['id'];
+            if (!$otaRoomId) continue;
+
+            // This room's own direct bookings (from section 3 above) - OTA
+            // blocks must never land on top of one of these.
+            $roomOwnBookings = array_values(array_filter($allBookings, function ($b) use ($otaRoomId) {
+                return (int)$b['room_id'] === (int)$otaRoomId;
+            }));
+
+            $feeds = [
+                [
+                    'service_type' => 'airbnb',
+                    'service_name' => 'Airbnb - ' . $otaRoom['name'],
+                    'ical_url' => 'https://www.airbnb.com/calendar/ical/' . rand(10000000, 99999999) . '.ics?s=' . substr(md5('airbnb' . $otaRoomId), 0, 32),
+                    'uid_suffix' => '@airbnb.com',
+                    'event_title' => 'Reserved',
+                ],
+                [
+                    // enum('google','airbnb','ical','other') has no distinct
+                    // 'booking' value - service_name is what actually drives
+                    // the label everywhere this is displayed (see
+                    // getBlockedDates()'s source/source_label resolution in
+                    // ical_sync.php), so 'ical' here still reads correctly
+                    // as "Booking.com" throughout the UI.
+                    'service_type' => 'ical',
+                    'service_name' => 'Booking.com - ' . $otaRoom['name'],
+                    'ical_url' => 'https://ical.booking.com/v1/export?t=' . substr(md5('booking' . $otaRoomId), 0, 8) . '-' . substr(md5('booking2' . $otaRoomId), 0, 4) . '-' . substr(md5('booking3' . $otaRoomId), 0, 4) . '-' . substr(md5('booking4' . $otaRoomId), 0, 12),
+                    'uid_suffix' => '@booking.com',
+                    'event_title' => 'CLOSED - Not available',
+                ],
+            ];
+
+            foreach ($feeds as $feed) {
+                $lastSyncAt = (clone $today)->modify('-' . rand(0, 6) . ' hours')->format('Y-m-d H:i:s');
+                $syncCount = rand(15, 60);
+                $configStmt = $pdo->prepare("
+                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, last_sync, sync_count, is_demo)
+                    VALUES (?, ?, ?, ?, 1, 'import', ?, ?, 1)
+                ");
+                $configStmt->execute([$otaRoomId, $feed['service_type'], $feed['service_name'], $feed['ical_url'], $lastSyncAt, $syncCount]);
+                $syncConfigId = $pdo->lastInsertId();
+
+                // 2-3 blocked ranges, each checked against every existing
+                // direct booking AND every OTA block already placed on this
+                // same room/feed before it, so nothing ever overlaps.
+                $placedRanges = array_map(function ($b) {
+                    return ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
+                }, $roomOwnBookings);
+
+                $blockCount = rand(2, 3);
+                $attempts = 0;
+                $placed = 0;
+                while ($placed < $blockCount && $attempts < 40) {
+                    $attempts++;
+                    $spanDays = $otaWindowStart->diff($otaWindowEnd)->days;
+                    $startOffset = rand(0, max(0, $spanDays - 5));
+                    $blockStart = (clone $otaWindowStart)->modify("+$startOffset days");
+                    $blockLen = rand(2, 4);
+                    $blockEnd = (clone $blockStart)->modify("+$blockLen days");
+
+                    $overlaps = false;
+                    foreach ($placedRanges as $range) {
+                        if ($blockStart < $range['end'] && $blockEnd > $range['start']) {
+                            $overlaps = true;
+                            break;
+                        }
+                    }
+                    if ($overlaps) continue;
+
+                    $placedRanges[] = ['start' => $blockStart, 'end' => $blockEnd];
+                    $externalId = 'demo-' . uniqid() . '-' . $syncConfigId . $feed['uid_suffix'];
+                    $eventData = json_encode(['source' => $feed['service_type'], 'source_label' => $feed['service_name']]);
+                    $eventStmt = $pdo->prepare("
+                        INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)
+                        VALUES (?, ?, ?, ?, ?, ?, 'synced')
+                    ");
+                    $eventStmt->execute([
+                        $syncConfigId, $externalId, $feed['event_title'],
+                        $blockStart->format('Y-m-d 00:00:00'), $blockEnd->format('Y-m-d 00:00:00'),
+                        $eventData,
+                    ]);
+                    $placed++;
+                }
+            }
+        }
+
         // 7. Demo Service Requests - real varied guests (not one generic "Demo
         // Guest" for every request), correct status vocabulary, and a genuine
         // pending/fulfilled mix. The real app uses 'Pending'/'Fulfilled'
@@ -1024,6 +1179,37 @@ function clearDemoData($pdo, $propertyId) {
         $stmt = $pdo->prepare("DELETE FROM payee_entities WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
+
+        // Delete demo staff attendance
+        $stmt = $pdo->prepare("DELETE FROM staff_attendance WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo iCal sync feeds + their synced events - configs were
+        // seeded against each ROOM's own property_id (rooms are their own
+        // rows in `properties`, see section 2 in generateDemoData), not the
+        // parent's, matching how a real per-room OTA integration is actually
+        // connected. Expand scope to the parent + its rooms the same way
+        // ICalSyncManager::getBlockedDates() does, or a parent-level clear
+        // would leave every room's demo feed (and its synced events) behind.
+        $scopeStmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? OR parent_property_id = ?");
+        $scopeStmt->execute([$propertyId, $propertyId]);
+        $scopeIds = $scopeStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($scopeIds)) {
+            $inPlaceholders = implode(',', array_fill(0, count($scopeIds), '?'));
+            $configIdStmt = $pdo->prepare("SELECT id FROM ical_sync_configs WHERE property_id IN ($inPlaceholders) AND is_demo = 1");
+            $configIdStmt->execute($scopeIds);
+            $demoConfigIds = $configIdStmt->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($demoConfigIds)) {
+                $configPlaceholders = implode(',', array_fill(0, count($demoConfigIds), '?'));
+                $stmt = $pdo->prepare("DELETE FROM ical_synced_events WHERE sync_config_id IN ($configPlaceholders)");
+                $stmt->execute($demoConfigIds);
+                $deletedRows += $stmt->rowCount();
+            }
+            $stmt = $pdo->prepare("DELETE FROM ical_sync_configs WHERE property_id IN ($inPlaceholders) AND is_demo = 1");
+            $stmt->execute($scopeIds);
+            $deletedRows += $stmt->rowCount();
+        }
 
         // Delete demo financial ledger entries - generateDemoData() posts these
         // (guest_advance/checkout_settlement/expense/cash_drawer, each keyed
