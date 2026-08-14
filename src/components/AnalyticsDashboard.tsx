@@ -9,7 +9,8 @@ import {
   Calendar, 
   Layers, 
   Filter,
-  BedDouble
+  BedDouble,
+  Loader2
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt } from '../types';
@@ -46,7 +47,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   isMultiKeyProperty = false,
   rooms = [],
 }) => {
-  const { orders } = useKitchenContext();
+  const { orders, ordersLoading } = useKitchenContext();
   const { pettyCash } = useFinance();
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
@@ -65,6 +66,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
   const [ledgerData, setLedgerData] = useState<any[]>([]);
+  // Starts false, not true: the fetch below only fires once activeTab is one
+  // of the ledger tabs, so defaulting true would leave it stuck "loading"
+  // forever on every other tab (Overview, Kitchen, etc. never flip it false).
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerMonth, setLedgerMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -85,7 +90,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   useEffect(() => {
     if (['profit_loss', 'balance_sheet', 'cash_flow'].includes(activeTab)) {
-      fetchFinancialLedger(ledgerMonth).then(setLedgerData);
+      // 14 Aug 2026: Balance Sheet/Cash Flow's "ledgerData.length === 0" empty
+      // rows rendered before this per-tab-switch fetch resolved. Reset to
+      // true on every trigger (tab switch or month change), not just once.
+      setLedgerLoading(true);
+      fetchFinancialLedger(ledgerMonth).then((data) => {
+        setLedgerData(data);
+        setLedgerLoading(false);
+      });
     }
   }, [activeTab, ledgerMonth]);
 
@@ -664,7 +676,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     {sortedMenuItems.length === 0 && (
                       <tr>
                         <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                          {t('no_food_orders_message', 'No food orders recorded yet.')}
+                          {ordersLoading ? (
+                            <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading orders...</span>
+                          ) : (
+                            t('no_food_orders_message', 'No food orders recorded yet.')
+                          )}
                         </td>
                       </tr>
                     )}
@@ -732,7 +748,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   {sortedMenuItems.length === 0 && (
                     <tr>
                       <td colSpan={3} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                        {t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')}
+                        {ordersLoading ? (
+                          <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading orders...</span>
+                        ) : (
+                          t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')
+                        )}
                       </td>
                     </tr>
                   )}
@@ -847,7 +867,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
+                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">
+                            {ledgerLoading ? (
+                              <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
+                            ) : (
+                              t('no_ledger_entries_message', 'No ledger entries for this month.')
+                            )}
+                          </td></tr>
                         )}
                       </tbody>
                     </table>
@@ -954,7 +980,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
+                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">
+                            {ledgerLoading ? (
+                              <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
+                            ) : (
+                              t('no_ledger_entries_message', 'No ledger entries for this month.')
+                            )}
+                          </td></tr>
                         )}
                       </tbody>
                     </table>

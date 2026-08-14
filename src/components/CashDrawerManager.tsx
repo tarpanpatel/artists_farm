@@ -459,13 +459,19 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 },
               ]}
               data={filteredEntries}
+              progressPending={isLoading}
+              progressComponent={
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
+                </div>
+              }
               pagination
               paginationPerPage={10}
               paginationRowsPerPageOptions={[10, 25, 50]}
               highlightOnHover
               subHeader={
                 <div className="w-full flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold text-xs">{drawerEntries.length} entries</span>
+                  <span className="text-slate-400 font-semibold text-xs">{isLoading ? '…' : drawerEntries.length} entries</span>
                   <div>
                     <Input
                       type="text"

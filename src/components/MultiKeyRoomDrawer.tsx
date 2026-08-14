@@ -32,7 +32,10 @@ export const MultiKeyRoomDrawer: React.FC<MultiKeyRoomDrawerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(true); // Always start open for hash-based nav
   const [rooms, setRooms] = useState<Room[]>(externalRooms || []);
-  const [loading, setLoading] = useState(false);
+  // Default true only when we're actually about to fetch (no externalRooms
+  // prop, see the effect below) - otherwise "No rooms yet" could flash for
+  // one render before that effect's setLoading(true) ever runs (14 Aug 2026).
+  const [loading, setLoading] = useState(!externalRooms);
 
   useEffect(() => {
     // If rooms are passed as a prop, use them directly

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { getPropertySlug } from '../services/api';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
@@ -56,7 +56,7 @@ const customStyles = {
 export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ onLogAudit }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { miscCharges, refreshMiscCharges } = useConfigurationData();
+  const { miscCharges, isLoadingMisc, refreshMiscCharges } = useConfigurationData();
   const [charges, setCharges] = useState<MiscChargeTemplate[]>([]);
   const [isEditing, setIsEditing] = useState<string | number | null>(null);
   const [editForm, setEditForm] = useState<Partial<MiscChargeTemplate>>({});
@@ -323,6 +323,12 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           pagination
           paginationPerPage={15}
           paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
+          progressPending={isLoadingMisc}
+          progressComponent={
+            <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading charges...
+            </div>
+          }
           noDataComponent={
             <div className="text-center py-6 text-slate-500 font-medium">
               {t('no_misc_charges_found_label', 'No miscellaneous charges found.')}

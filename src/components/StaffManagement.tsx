@@ -1307,6 +1307,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 },
               ]}
               data={filteredPayout}
+              progressPending={staffLoading}
+              progressComponent={
+                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                </div>
+              }
               pagination
               paginationPerPage={15}
               paginationRowsPerPageOptions={[10, 15, 25, 50]}
@@ -1471,6 +1477,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               }] : []),
             ]}
             data={filteredStaff}
+            progressPending={staffLoading}
+            progressComponent={
+              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+              </div>
+            }
             pagination
             paginationPerPage={15}
             paginationRowsPerPageOptions={[10, 15, 25, 50]}
