@@ -11,11 +11,11 @@
 
 if (!defined('DEFAULT_TENANT_WELCOME_TEMPLATE')) {
     define('DEFAULT_TENANT_WELCOME_TEMPLATE',
-        "ðŸŽ‰ Welcome to Ground Code, {tenant_name}!\n\n" .
+        "🎉 Welcome to Ground Code, {tenant_name}!\n\n" .
         "Your property management account is ready.\n\n" .
-        "ðŸ”— Login: {login_url}\n" .
-        "ðŸ“± Username (your phone number): {username}\n" .
-        "ðŸ”‘ Temporary Passcode: {temp_passcode}\n\n" .
+        "🔗 Login: {login_url}\n" .
+        "📱 Username (your phone number): {username}\n" .
+        "🔑 Temporary Passcode: {temp_passcode}\n\n" .
         "You'll be asked to set a new 6-digit passcode the first time you log in.\n\n" .
         "Need help? Just reply to this message."
     );

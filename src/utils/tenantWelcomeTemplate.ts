@@ -21,13 +21,13 @@ export const TENANT_WELCOME_VARIABLES: WelcomeTemplateVariable[] = [
 ];
 
 export const DEFAULT_TENANT_WELCOME_TEMPLATE =
-  `ðŸŽ‰ Welcome to Ground Code, {tenant_name}!
+  `🎉 Welcome to Ground Code, {tenant_name}!
 
 Your property management account is ready.
 
-ðŸ”— Login: {login_url}
-ðŸ“± Username (your phone number): {username}
-ðŸ”‘ Temporary Passcode: {temp_passcode}
+🔗 Login: {login_url}
+📱 Username (your phone number): {username}
+🔑 Temporary Passcode: {temp_passcode}
 
 You'll be asked to set a new 6-digit passcode the first time you log in.
 
