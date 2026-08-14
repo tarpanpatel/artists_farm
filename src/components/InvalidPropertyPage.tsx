@@ -30,7 +30,7 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
         </div>
 
         {/* Error Message */}
-        <h1 className="invalid-property-page__heading text-2xl font-bold text-slate-900 dark:text-white mb-2 text-center">
+        <h1 className="invalid-property-page__heading text-2xl font-semibold text-slate-900 dark:text-white mb-2 text-center">
           {t('invalid_property_heading')}
         </h1>
         <p className="invalid-property-page__message text-slate-600 dark:text-slate-400 text-center mb-6">
@@ -41,7 +41,7 @@ export const InvalidPropertyPage: React.FC<{ propertySlug?: string }> = ({ prope
         {/* Action Button */}
         <a
           href="/"
-          className="invalid-property-page__home-button w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="invalid-property-page__home-button w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           <Home className="w-4 h-4" />
           {t('invalid_property_home_button')}

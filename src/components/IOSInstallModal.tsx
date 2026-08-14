@@ -27,7 +27,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 ios-install-modal__dialog">
         <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-5 pb-4 flex items-start justify-between gap-3 ios-install-modal__header">
           <div>
-            <h3 className="ios-install-modal__subtitle font-bold text-slate-900 dark:text-white text-lg">Install Ground Code App</h3>
+            <h3 className="ios-install-modal__subtitle font-semibold text-slate-900 dark:text-white text-lg">Install Ground Code App</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               iPhone/iPad's browser doesn't let a website install itself - only you tapping these steps can. Takes about 10 seconds.
             </p>
@@ -43,7 +43,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
         <div className="p-5 space-y-5 ios-install-modal__steps">
           {/* Step 1: Tap Share */}
           <div className="flex gap-3">
-            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">1</div>
+            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">1</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 Tap <strong>Share</strong> {isIPad ? 'at the top of the screen' : 'in the bar at the bottom of your screen'}
@@ -63,7 +63,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
 
           {/* Step 2: Add to Home Screen */}
           <div className="flex gap-3">
-            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">2</div>
+            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">2</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 Scroll the share sheet down and tap <strong>"Add to Home Screen"</strong>
@@ -86,7 +86,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
                     <span className="w-3.5 h-3.5 rounded-[4px] bg-blue-600 flex items-center justify-center shrink-0">
                       <Plus className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                     </span>
-                    <span className="text-xs font-bold text-blue-700 dark:text-blue-300">Add to Home Screen</span>
+                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Add to Home Screen</span>
                   </div>
                   <div className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-400 dark:text-slate-500">
                     <Printer className="w-3.5 h-3.5" /> Print
@@ -98,7 +98,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
 
           {/* Step 3: Tap Add */}
           <div className="flex gap-3">
-            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">3</div>
+            <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-semibold flex items-center justify-center mt-0.5">3</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 Tap <strong>"Add"</strong> in the top-right corner
@@ -107,13 +107,13 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClos
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-700">
                   <span className="text-[11px] text-slate-400 dark:text-slate-500">Cancel</span>
-                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">New Home Screen Icon</span>
-                  <span className="text-[11px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md ring-2 ring-blue-200 dark:ring-blue-900/50">Add</span>
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">New Home Screen Icon</span>
+                  <span className="text-[11px] font-semibold text-white bg-blue-600 px-2 py-0.5 rounded-md ring-2 ring-blue-200 dark:ring-blue-900/50">Add</span>
                 </div>
                 <div className="flex items-center gap-2.5 px-3 py-3">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--app-primary-600,#2563eb)] text-white flex items-center justify-center text-xs font-bold shrink-0">AF</div>
+                  <div className="w-9 h-9 rounded-xl bg-[var(--app-primary-600,#2563eb)] text-white flex items-center justify-center text-xs font-semibold shrink-0">AF</div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">Ground Code App</p>
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">Ground Code App</p>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">artistic-sthan.com</p>
                   </div>
                 </div>

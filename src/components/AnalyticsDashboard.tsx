@@ -338,7 +338,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       {/* Summary KPI Cards (Always Visible) */}
       <div className={`analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 ${kitchenModuleEnabled ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('gross_total_revenue_kpi', 'Gross Total Revenue')}</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('gross_total_revenue_kpi', 'Gross Total Revenue')}</p>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
             <IndianRupee className="w-5 h-5 text-emerald-600" />
             {totalGrossRevenue.toLocaleString('en-IN')}
@@ -349,7 +349,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('room_accommodations_kpi', 'Room Accommodations')}</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('room_accommodations_kpi', 'Room Accommodations')}</p>
           <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
             <IndianRupee className="w-4 h-4 text-blue-600" />
             {roomRevenue.toLocaleString('en-IN')}
@@ -359,7 +359,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
         {kitchenModuleEnabled && (
           <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('kitchen_pos_sales_kpi', 'Kitchen POS Sales')}</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('kitchen_pos_sales_kpi', 'Kitchen POS Sales')}</p>
             <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
               <IndianRupee className="w-4 h-4 text-cyan-600" />
               {kitchenRevenue.toLocaleString('en-IN')}
@@ -369,7 +369,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         )}
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('net_operating_margin_kpi', 'Net Operating Margin')}</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('net_operating_margin_kpi', 'Net Operating Margin')}</p>
           <p className={`text-xl font-extrabold mt-1 flex items-center ${netOperatingMargin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             <IndianRupee className="w-4 h-4" />
             {netOperatingMargin.toLocaleString('en-IN')}
@@ -382,7 +382,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       <div className="analytics-tab-bar flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl gap-1 flex-wrap">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'overview'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -393,7 +393,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('bookings')}
-          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'bookings'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -405,7 +405,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         {kitchenModuleEnabled && (
           <button
             onClick={() => setActiveTab('food')}
-            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'food'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -418,7 +418,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         {kitchenModuleEnabled && (
           <button
             onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'kitchen'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -430,7 +430,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         )}
         <button
           onClick={() => setActiveTab('expenses')}
-          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'expenses'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -441,7 +441,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('profit_loss')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'profit_loss'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -452,7 +452,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('balance_sheet')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'balance_sheet'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -463,7 +463,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('cash_flow')}
-          className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'cash_flow'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -489,7 +489,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
               <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                     <span>{t('room_lodging_revenue_label', 'Room Lodging Revenue')}</span>
                     <span className="font-extrabold">₹{roomRevenue.toLocaleString('en-IN')}</span>
                   </div>
@@ -503,7 +503,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
                 {kitchenModuleEnabled && (
                   <div>
-                    <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                       <span>{t('kitchen_dining_pos_revenue_label', 'Kitchen & Dining POS Revenue')}</span>
                       <span className="font-extrabold">₹{kitchenRevenue.toLocaleString('en-IN')}</span>
                     </div>
@@ -517,7 +517,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 )}
 
                 <div>
-                  <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
                     <span>{t('operational_outflow_expenses_label', 'Operational Outflow Expenses (Salaries, Bills, Other)')}</span>
                     <span className="font-extrabold text-red-600">₹{totalOutflowExpenses.toLocaleString('en-IN')}</span>
                   </div>
@@ -544,19 +544,19 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <p className="font-bold text-slate-700 mb-2">{t('monthly_revenue_label', 'Monthly Revenue')}</p>
+                <p className="font-semibold text-slate-700 mb-2">{t('monthly_revenue_label', 'Monthly Revenue')}</p>
                 <ReactApexChart options={bookingsBarOptions} series={bookingsBarSeries} type="bar" height={320} />
               </div>
 
               <div>
-                <p className="font-bold text-slate-700 mb-2">{t('monthly_guest_count_label', 'Monthly Guest Count')}</p>
+                <p className="font-semibold text-slate-700 mb-2">{t('monthly_guest_count_label', 'Monthly Guest Count')}</p>
                 <ReactApexChart options={bookingsGuestOptions} series={bookingsGuestSeries} type="line" height={320} />
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--overview">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
                   <tr className="analytics-dashboard__table-header-row">
                     <th className="p-3 analytics-dashboard__table-header-cell">{t('month_column', 'Month')}</th>
                     <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
@@ -567,15 +567,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                   {sortedBookingsByMonth.map(([month, data]) => (
                     <tr key={month} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="p-3 font-bold text-slate-900 dark:text-white">{month}</td>
-                      <td className="p-3 text-center font-semibold text-blue-600">{data.bookings}</td>
-                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
-                      <td className="p-3 text-center font-semibold text-amber-600">{data.guests}</td>
+                      <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{month}</td>
+                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.bookings}</td>
+                      <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-amber-600">{data.guests}</td>
                     </tr>
                   ))}
                   {sortedBookingsByMonth.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center p-6 text-slate-400">
+                      <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
                         {t('no_bookings_recorded_message', 'No bookings recorded for the selected period.')}
                       </td>
                     </tr>
@@ -598,7 +598,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
                 <div className="overflow-x-auto">
                   <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--bookings">
-                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                    <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
                       <tr className="analytics-dashboard__table-header-row">
                         <th className="p-3 analytics-dashboard__table-header-cell">{t('room_column', 'Room')}</th>
                         <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
@@ -609,10 +609,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                       {roomPerformance.map((room) => (
                         <tr key={room.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="p-3 font-bold text-slate-900 dark:text-white">{room.name}</td>
-                          <td className="p-3 text-center font-semibold text-blue-600">{room.bookings}</td>
-                          <td className="p-3 text-right font-extrabold text-emerald-600">₹{room.revenue.toLocaleString('en-IN')}</td>
-                          <td className="p-3 text-right font-semibold text-amber-600">
+                          <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{room.name}</td>
+                          <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{room.bookings}</td>
+                          <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{room.revenue.toLocaleString('en-IN')}</td>
+                          <td className="analytics-dashboard__cell p-3 text-right font-semibold text-amber-600">
                             {room.occupancyRate === null ? '—' : `${room.occupancyRate.toFixed(0)}%`}
                           </td>
                         </tr>
@@ -644,7 +644,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
               <div className="overflow-x-auto">
                   <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--room-performance">
-                    <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                    <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
                       <tr className="analytics-dashboard__table-header-row">
                         <th className="p-3 analytics-dashboard__table-header-cell">{t('rank_column', 'Rank')}</th>
                         <th className="p-3 analytics-dashboard__table-header-cell">{t('menu_item_name_column', 'Menu Item Name')}</th>
@@ -655,15 +655,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                     {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
                       <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="p-3 font-bold text-slate-400">#{index + 1}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
-                        <td className="p-3 text-center font-semibold text-blue-600">{data.count} {t('orders_count_suffix', 'orders')}</td>
-                        <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                        <td className="analytics-dashboard__cell p-3 font-semibold text-slate-400">#{index + 1}</td>
+                        <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{itemName}</td>
+                        <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count} {t('orders_count_suffix', 'orders')}</td>
+                        <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
                     {sortedMenuItems.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="text-center p-6 text-slate-400">
+                        <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
                           {t('no_food_orders_message', 'No food orders recorded yet.')}
                         </td>
                       </tr>
@@ -691,19 +691,19 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
               <div className="space-y-4">
                 <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <p className="text-xs text-emerald-800 dark:text-emerald-300 font-bold uppercase">{t('kitchen_pos_sales_income_label', 'Kitchen POS Sales Income')}</p>
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold uppercase">{t('kitchen_pos_sales_income_label', 'Kitchen POS Sales Income')}</p>
                   <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
                   <p className="text-[10px] text-emerald-600 mt-1">{t('from_guest_dining_orders_subtext', 'From guest dining orders')}</p>
                 </div>
 
                 <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs text-amber-800 dark:text-amber-300 font-bold uppercase">{t('kitchen_purchase_outflows_label', 'Kitchen Purchase Outflows')}</p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 font-semibold uppercase">{t('kitchen_purchase_outflows_label', 'Kitchen Purchase Outflows')}</p>
                   <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
                   <p className="text-[10px] text-amber-600 mt-1">{t('groceries_gas_supplies_subtext', 'Groceries, gas, and supplies spend')}</p>
                 </div>
 
                 <div className={`p-4 rounded-xl border ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
-                  <p className={`text-xs font-bold uppercase ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>{t('kitchen_net_profit_label', 'Kitchen Net Profit')}</p>
+                  <p className={`text-xs font-semibold uppercase ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>{t('kitchen_net_profit_label', 'Kitchen Net Profit')}</p>
                   <p className={`text-2xl font-extrabold mt-1 ${kitchenNetProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>
                     ₹{kitchenNetProfit.toLocaleString('en-IN')}
                   </p>
@@ -714,7 +714,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
             <div className="overflow-x-auto">
               <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--food">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
                   <tr className="analytics-dashboard__table-header-row">
                     <th className="p-3 analytics-dashboard__table-header-cell">{t('dish_name_column', 'Dish Name')}</th>
                     <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('times_ordered_column', 'Times Ordered')}</th>
@@ -724,14 +724,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                   {sortedMenuItems.slice(0, 10).map(([itemName, data]) => (
                     <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="p-3 font-bold text-slate-900 dark:text-white">{itemName}</td>
-                      <td className="p-3 text-center font-semibold text-blue-600">{data.count}</td>
-                      <td className="p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
+                      <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{itemName}</td>
+                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count}</td>
+                      <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                   {sortedMenuItems.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="text-center p-6 text-slate-400">
+                      <td colSpan={3} className="analytics-dashboard__cell text-center p-6 text-slate-400">
                         {t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')}
                       </td>
                     </tr>
@@ -758,7 +758,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
               <div className="overflow-x-auto">
               <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--kitchen">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
                   <tr className="analytics-dashboard__table-header-row">
                     <th className="p-3 analytics-dashboard__table-header-cell">#</th>
                     <th className="p-3 analytics-dashboard__table-header-cell">{t('item_description_column', 'Item Description')}</th>
@@ -771,16 +771,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       const itemData = data as { count: number; category: string; totalCost: number };
                       return (
                         <tr key={name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
-                          <td className="p-3 font-bold text-slate-900 dark:text-white">{name}</td>
-                          <td className="p-3 text-center font-semibold text-blue-600">{itemData.category}</td>
-                          <td className="p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="analytics-dashboard__cell p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
+                          <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{name}</td>
+                          <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{itemData.category}</td>
+                          <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         </tr>
                       );
                     })}
                     {sortedExpenseItems.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="text-center p-6 text-slate-400">
+                        <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
                           {t('no_expenses_recorded_message', 'No expenses recorded for the selected period.')}
                         </td>
                       </tr>
@@ -817,15 +817,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">{t('total_income_label', 'Total Income')}</p>
+                      <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('total_income_label', 'Total Income')}</p>
                       <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{income.toLocaleString('en-IN')}</p>
                     </div>
                     <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                      <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">{t('total_expenses_label', 'Total Expenses')}</p>
+                      <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('total_expenses_label', 'Total Expenses')}</p>
                       <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{expensesPL.toLocaleString('en-IN')}</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
-                      <p className={`text-[10px] font-bold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
+                      <p className={`text-[10px] font-semibold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
                       <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
@@ -833,21 +833,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--profit-loss">
                       <thead className="analytics-dashboard__table-header">
                         <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                         {ledgerData.map((l, i) => (
                           <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
-                            <td className={`p-2 font-mono font-bold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <td className="analytics-dashboard__cell p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
+                            <td className={`p-2 font-mono font-semibold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
                               {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
                             </td>
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
+                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -882,15 +882,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <p className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">{t('total_assets_label', 'Total Assets')}</p>
+                    <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase">{t('total_assets_label', 'Total Assets')}</p>
                     <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{totalAssets.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                    <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">{t('total_liabilities_label', 'Total Liabilities')}</p>
+                    <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('total_liabilities_label', 'Total Liabilities')}</p>
                     <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{totalLiabilities.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">{t('equity_label', 'Equity')}</p>
+                    <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('equity_label', 'Equity')}</p>
                     <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{equity.toLocaleString('en-IN')}</p>
                   </div>
                 </div>
@@ -924,15 +924,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">{t('cash_inflow_label', 'Cash Inflow')}</p>
+                      <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('cash_inflow_label', 'Cash Inflow')}</p>
                       <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{cashIn.toLocaleString('en-IN')}</p>
                     </div>
                     <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                      <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase">{t('cash_outflow_label', 'Cash Outflow')}</p>
+                      <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('cash_outflow_label', 'Cash Outflow')}</p>
                       <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{cashOut.toLocaleString('en-IN')}</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${netCash >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
-                      <p className={`text-[10px] font-bold uppercase ${netCash >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>{t('net_cash_flow_label', 'Net Cash Flow')}</p>
+                      <p className={`text-[10px] font-semibold uppercase ${netCash >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>{t('net_cash_flow_label', 'Net Cash Flow')}</p>
                       <p className={`text-xl font-extrabold mt-1 ${netCash >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>{netCash >= 0 ? '+' : '-'}₹{Math.abs(netCash).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
@@ -940,21 +940,21 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--balance-sheet">
                       <thead className="analytics-dashboard__table-header">
                         <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('entry_column', 'Entry')}</th>
-                          <th className="p-2 font-bold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('entry_column', 'Entry')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                         {ledgerData.map((l, i) => (
                           <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
-                            <td className={`p-2 font-mono font-bold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
+                            <td className="analytics-dashboard__cell p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
+                            <td className={`p-2 font-mono font-semibold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
                               {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
                             </td>
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
+                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">{t('no_ledger_entries_message', 'No ledger entries for this month.')}</td></tr>
                         )}
                       </tbody>
                     </table>

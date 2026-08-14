@@ -222,7 +222,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
 
-  const fieldLabelClass = 'text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase';
+  const fieldLabelClass = 'text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase';
   const inputClass = 'mt-1 w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30';
 
   return (
@@ -244,7 +244,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </button>
 
           <div className="booking-details-modal__header flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
-            <h2 className="booking-details-modal__title text-base font-bold text-slate-900 dark:text-white">
+            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
             </h2>
           </div>
@@ -258,11 +258,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
               }`}
             >
-              <span className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-100">
+              <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-100">
                 <IdCard className="w-4 h-4 text-slate-500" />
                 {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                 guest.idVerificationStatus === 'Complete'
                   ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
                   : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
@@ -463,11 +463,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {/* Foreign Guest + Notes toggle (edit mode only - view mode shows notes text directly if present) */}
             {isEditing ? (
               <div className="grid grid-cols-2 gap-4">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} className="form-field__checkbox" />
                   {t('guest_notes_checkbox_label', 'Guest Notes')}
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} className="form-field__checkbox" />
                   {t('foreign_national_guest_label', 'Foreign National Guest')}
                 </label>
@@ -547,7 +547,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         showToast('Failed to check in guest', { type: 'error' });
                       }
                     }}
-                    className="w-full h-9 px-3.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-1 sm:col-span-2"
+                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-1 sm:col-span-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
@@ -599,7 +599,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   <span>{t('save_button', 'Save')}</span>

@@ -145,12 +145,12 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
               <div className="admin-dashboard__card-mobile flex md:hidden items-center justify-between gap-2 w-full">
                 <div className="admin-dashboard__card-mobile-header flex items-center gap-2 min-w-0 flex-1">
                   <IconComponent className="admin-dashboard__card-mobile-icon w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <h3 className="admin-control-overview-dashboard__subtitle admin-dashboard__card-mobile-title text-xs font-bold text-slate-900 dark:text-white truncate">{card.title}</h3>
+                  <h3 className="admin-control-overview-dashboard__subtitle admin-dashboard__card-mobile-title text-xs font-semibold text-slate-900 dark:text-white truncate">{card.title}</h3>
                 </div>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="shrink-0 font-bold px-2.5 py-1 cursor-pointer text-[11px] h-7"
+                  className="shrink-0 font-semibold px-2.5 py-1 cursor-pointer text-[11px] h-7"
                   onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
                   rightIcon={<ArrowRight className="w-3 h-3" />}
                 >
@@ -165,7 +165,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
                     <IconComponent className="admin-dashboard__card-desktop-icon w-5 h-5" />
                   </div>
                   <div className="admin-dashboard__card-desktop-text">
-                    <h3 className="admin-control-overview-dashboard__subtitle admin-dashboard__card-desktop-title text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="admin-control-overview-dashboard__subtitle admin-dashboard__card-desktop-title text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
                     <p className="admin-dashboard__card-desktop-desc text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
@@ -176,7 +176,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
                     variant="secondary"
                     size="sm"
                     block
-                    className="justify-center gap-2 font-bold cursor-pointer"
+                    className="justify-center gap-2 font-semibold cursor-pointer"
                     onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
                     rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                   >

@@ -58,7 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             }
              className={`
                app-input ${hasError ? 'app-input-error' : ''} ${disabled ? 'app-input-disabled' : ''}
-               w-full h-10 px-3.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none
+                w-full h-10 px-3.5 text-sm font-normal rounded-lg transition-all duration-200 outline-none
                bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)]
                border ${
                  disabled

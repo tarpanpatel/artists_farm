@@ -39,7 +39,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
               <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="room-selector-modal__subtitle text-lg font-bold text-slate-800 dark:text-slate-100">
+              <h3 className="room-selector-modal__subtitle text-lg font-semibold text-slate-800 dark:text-slate-100">
                 {t('select_room_heading')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -84,7 +84,7 @@ export const RoomSelectorModal: React.FC<RoomSelectorModalProps> = ({
                     <div className="relative z-10 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <h4 className="room-selector-modal__caption font-bold text-slate-800 dark:text-slate-100 text-sm line-clamp-1">
+                          <h4 className="room-selector-modal__caption font-semibold text-slate-800 dark:text-slate-100 text-sm line-clamp-1">
                             {room.name}
                           </h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">

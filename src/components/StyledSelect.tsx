@@ -129,7 +129,7 @@ return (
                 return (
                   <React.Fragment key={option.value}>
                     {showGroupHeader && (
-                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--input-placeholder)] styled-select__group-header">
+                      <div className="px-3 pt-2 pb-1 text-[10px] font-normal uppercase tracking-wide text-[var(--input-placeholder)] styled-select__group-header">
                         {option.group}
                       </div>
                     )}
@@ -145,7 +145,7 @@ return (
                         option.disabled
                           ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-[var(--select-option-selected-bg)] text-[var(--select-option-selected-text)] font-semibold cursor-pointer'
+                          ? 'bg-[var(--select-option-selected-bg)] text-[var(--select-option-selected-text)] font-normal cursor-pointer'
                           : 'text-[var(--input-text-default)] hover:bg-[var(--select-option-hover)] cursor-pointer'
                       }`}
                     >

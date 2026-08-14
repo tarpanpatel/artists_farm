@@ -697,7 +697,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           <div className="flex items-center gap-3">
             <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <div>
-              <h1 className="platform-property-management__page-title text-lg font-bold text-slate-900 dark:text-white">
+              <h1 className="platform-property-management__page-title text-lg font-semibold text-slate-900 dark:text-white">
                 {t('platform_title', 'Ground Code Platform')}
               </h1>
               <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -725,7 +725,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                   {t('total_tenants_label', 'Total Tenants')}
                 </p>
-                <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                <p className="text-3xl font-semibold text-slate-900 dark:text-white">
                   {tenants.length}
                 </p>
               </div>
@@ -739,7 +739,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                   {t('total_properties_label', 'Total Properties')}
                 </p>
-                <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                <p className="text-3xl font-semibold text-slate-900 dark:text-white">
                   {properties.length}
                 </p>
               </div>
@@ -753,7 +753,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
                   {t('active_tenants_label', 'Active Tenants')}
                 </p>
-                <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                <p className="text-3xl font-semibold text-slate-900 dark:text-white">
                   {tenants.filter((t) => t.is_active).length}
                 </p>
               </div>
@@ -765,7 +765,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         {/* Tenants with Collapsible Properties */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="platform-property-management__title text-xl font-bold text-slate-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
+            <h2 className="platform-property-management__title text-xl font-semibold text-slate-900 dark:text-white">{t('tenants_and_properties_heading', 'Tenants & Properties')}</h2>
             <Button
               onClick={() => setShowAddTenantModal(true)}
               className="flex items-center gap-2"
@@ -810,7 +810,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           )}
                         </div>
                          <div className="flex-1">
-                           <h3 className="platform-property-management__subtitle font-bold text-lg text-slate-900 dark:text-white mb-1">
+                           <h3 className="platform-property-management__subtitle font-semibold text-lg text-slate-900 dark:text-white mb-1">
                              {tenant.name}
                            </h3>
                            <p className="text-sm text-slate-500 dark:text-slate-400 font-mono">
@@ -823,7 +823,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       </div>
                       <div className="flex items-center gap-3">
                         <span
-                          className={`px-3 py-1 text-xs font-bold rounded-full ${
+                          className={`px-3 py-1 text-xs font-semibold rounded-full ${
                             tenant.is_active
                               ? 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
                               : 'bg-slate-100 text-slate-800 dark:bg-slate-900/50 dark:text-slate-300'
@@ -860,7 +860,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                             e.stopPropagation();
                             setShowDeleteTenantModal(tenant.id);
                           }}
-                          className="text-red-600 dark:text-red-400 font-bold"
+                          className="text-red-600 dark:text-red-400 font-semibold"
                           title={t('delete_tenant_tooltip', 'Delete Tenant')}
                           variant="ghost"
                           size="xs"
@@ -875,7 +875,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   {isExpanded && (
                     <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-700/30">
                       <div className="mb-6">
-                        <h4 className="platform-property-management__caption text-sm font-bold text-slate-900 dark:text-white mb-3">
+                        <h4 className="platform-property-management__caption text-sm font-semibold text-slate-900 dark:text-white mb-3">
                           {t('subscription_details_heading', 'Subscription Details')}
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -907,7 +907,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                         {/* Login Credentials - always visible to root admin, even after the tenant changes their own passcode */}
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-2">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-2">
                             <KeyRound className="w-3.5 h-3.5 text-indigo-500" /> {t('login_credentials_label', 'Login Credentials')}
                           </p>
                           {credsLoadingId === tenant.id ? (
@@ -950,12 +950,12 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                                   <div>
                                     <p className="text-slate-600 dark:text-slate-400 text-xs">{t('username_column', 'Username')}</p>
-                                    <p className="font-mono font-bold text-slate-900 dark:text-white">{creds.username}</p>
+                                    <p className="font-mono font-semibold text-slate-900 dark:text-white">{creds.username}</p>
                                   </div>
                                   <div>
                                     <p className="text-slate-600 dark:text-slate-400 text-xs">{t('passcode_label', 'Passcode')}</p>
                                     <div className="flex items-center gap-2">
-                                      <p className="font-mono font-bold text-slate-900 dark:text-white tracking-widest">
+                                      <p className="font-mono font-semibold text-slate-900 dark:text-white tracking-widest">
                                         {isRevealed ? creds.passcode : '\u2022'.repeat(creds.passcode.length || 6)}
                                       </p>
                                       <Button
@@ -977,11 +977,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                     </div>
                                   </div>
                                   {creds.mustChangePasscode ? (
-                                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                                       {t('temp_passcode_badge', 'Temp passcode - not yet changed')}
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300">
+                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300">
                                       {t('own_passcode_badge', 'Tenant has set their own passcode')}
                                     </span>
                                   )}
@@ -1052,7 +1052,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                       {/* Properties List */}
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="platform-property-management__caption text-sm font-bold text-slate-900 dark:text-white">
+                          <h4 className="platform-property-management__caption text-sm font-semibold text-slate-900 dark:text-white">
                             Properties ({tenantProperties.length})
                           </h4>
                           <Button
@@ -1098,7 +1098,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         <p className="text-sm font-medium text-slate-900 dark:text-white">
                                           {prop.name}
                                         </p>
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                                           isMultiKey
                                             ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
                                             : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
@@ -1154,7 +1154,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                       </Button>
                                       <Button
                                         onClick={() => setShowDeletePropertyModal(prop.id)}
-                                        className="text-red-600 dark:text-red-400 font-bold"
+                                        className="text-red-600 dark:text-red-400 font-semibold"
                                         title={t('delete_property_tooltip', 'Delete Property')}
                                         variant="ghost"
                                         size="xs"
@@ -1174,7 +1174,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                         >
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-0.5">
-                                              <span className="text-xs font-bold text-slate-400"><DoorOpen className="w-3.5 h-3.5" /></span>
+                                              <span className="text-xs font-semibold text-slate-400"><DoorOpen className="w-3.5 h-3.5" /></span>
                                               <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
                                                 {room.name}
                                               </p>
@@ -1215,7 +1215,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                             </Button>
                                             <Button
                                               onClick={() => setShowDeletePropertyModal(room.id)}
-                                              className="text-red-600 dark:text-red-400 font-bold"
+                                              className="text-red-600 dark:text-red-400 font-semibold"
                                               title={t('delete_room_tooltip', 'Delete Room')}
                                               variant="ghost"
                                               size="xs"
@@ -1246,7 +1246,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showEditTenantModal && editingTenant && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
               {t('edit_tenant_heading', 'Edit Tenant')}
             </h3>
 
@@ -1380,7 +1380,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showPropertyModal && editingProperty && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
               {showPropertyModal === 'add' ? t('add_property_heading', 'Add Property') : t('edit_property_heading', 'Edit Property')}
             </h3>
 
@@ -1606,10 +1606,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showDeletePropertyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
               {t('delete_property_heading', 'Delete Property?')}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:')}
             </p>
             <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
@@ -1618,7 +1618,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <li>Menus, inventory stock, staff assignments, and modules will be removed.</li>
             </ul>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Type <span className="font-bold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
+              Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
             </p>
             <Input
               type="text"
@@ -1681,10 +1681,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
       {showDeleteTenantModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
+            <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
               {t('delete_tenant_heading', 'Delete Tenant?')}
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-bold text-red-600 flex items-center gap-1.5">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 font-semibold text-red-600 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {t('deletion_consequences_label', 'Deletion Consequences for this Property:').replace('this Property', 'this Tenant')}
             </p>
             <ul className="text-sm text-slate-600 dark:text-slate-400 mb-4 list-disc list-inside space-y-1">
@@ -1696,7 +1696,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <li>Menus, inventory stock, staff assignments, and modules for every property will be removed.</li>
             </ul>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Type <span className="font-bold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
+              Type <span className="font-semibold font-mono text-slate-900 dark:text-white">DELETE</span> to confirm:
             </p>
             <Input
               type="text"
@@ -1759,7 +1759,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <>
                 <div className="flex items-center gap-2 mb-1">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white">
                     {t('tenant_created_heading', 'Tenant Created')}
                   </h3>
                 </div>
@@ -1776,11 +1776,11 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-2 mb-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">{t('username_column', 'Username')}</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white">{newTenantCredentials.username}</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white">{newTenantCredentials.username}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">{t('temporary_passcode_label', 'Temporary Passcode')}</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-white tracking-widest">{newTenantCredentials.tempPasscode}</span>
                       </div>
                     </div>
 
@@ -1794,7 +1794,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         href={`https://api.whatsapp.com/send?phone=91${newTenantCredentials.whatsappPhone}&text=${encodeURIComponent(newTenantCredentials.renderedMessage)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
                       >
                         <Share2 className="w-4 h-4" /> {t('share_whatsapp_button', 'Share via WhatsApp')}
                       </a>
@@ -1825,7 +1825,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </>
             ) : (
               <>
-                <h3 className="platform-property-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">
+                <h3 className="platform-property-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">
                   {t('add_new_tenant_heading', 'Add New Tenant')}
                 </h3>
 

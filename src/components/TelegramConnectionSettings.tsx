@@ -64,7 +64,7 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
       {/* Master toggle */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div>
-          <div className="text-sm font-bold text-slate-100">{t('telegram_notifications_heading')}</div>
+          <div className="text-sm font-semibold text-slate-100">{t('telegram_notifications_heading')}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {t('telegram_toggle_description')}
           </div>

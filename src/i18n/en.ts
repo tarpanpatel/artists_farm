@@ -367,7 +367,7 @@
   create_button: "Create",
 
   // Telegram Notification Modal
-  telegram_template_manager_heading: "ðŸ“¡ Telegram Template Manager",
+  telegram_template_manager_heading: "📡 Telegram Template Manager",
   bot_connected_badge: "Bot Connected",
   telegram_manager_subtitle: "Customize automated Telegram notification formats, variables & live previews",
   send_test_ping_button: "Send Test Telegram Ping",

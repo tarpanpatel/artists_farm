@@ -165,7 +165,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
       {/* Header */}
       <div className="local-llm-chat__header flex items-center justify-between mb-4">
         <div className="local-llm-chat__header-left">
-          <h2 className="local-llm-chat__title local-llm-chat__heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="local-llm-chat__title local-llm-chat__heading text-2xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Bot className="w-6 h-6 text-purple-600" />
             {t('local_llm_chat_heading', 'Local AI Assistant')}
           </h2>
@@ -284,7 +284,7 @@ export const LocalLLMChat: React.FC<LocalLLMChatProps> = ({ propertyId, property
         <button
           onClick={sendMessage}
           disabled={isLoading || !input.trim() || connectionStatus !== 'connected'}
-          className="local-llm-chat__send-btn bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-bold py-2 px-4 rounded-xl transition-colors flex items-center gap-2"
+          className="local-llm-chat__send-btn bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-semibold py-2 px-4 rounded-xl transition-colors flex items-center gap-2"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />

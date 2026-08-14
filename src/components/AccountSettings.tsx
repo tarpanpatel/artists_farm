@@ -139,7 +139,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
     <div className="account-settings space-y-4">
       {/* Profile Details */}
       <div className="account-settings__section account-settings__section--profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="account-settings__section-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+        <h3 className="account-settings__section-title text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
           <UserCog className="account-settings__section-icon w-4 h-4 text-blue-500" /> Profile Details
         </h3>
         <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">
@@ -194,7 +194,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ username, onUs
 
       {/* Passcode */}
       <div className="account-settings__section account-settings__section--passcode bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="account-settings__section-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+        <h3 className="account-settings__section-title text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
           <KeyRound className="account-settings__section-icon w-4 h-4 text-amber-500" /> Change Passcode
         </h3>
         <p className="account-settings__section-desc text-xs text-slate-500 dark:text-slate-400 mb-4">

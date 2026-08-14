@@ -120,7 +120,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           <div className="login-modal__logo w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-4 ring-white/20">
             <Lock className="w-7 h-7 text-white" />
           </div>
-          <h2 className="login-modal__title text-xl font-bold tracking-tight uppercase">{t('login_modal_brand')}</h2>
+          <h2 className="login-modal__title text-xl font-semibold tracking-tight uppercase">{t('login_modal_brand')}</h2>
           <p className="login-modal__subtitle text-xs text-emerald-100 mt-1 font-medium">{t('terminal_authorization_subtitle')}</p>
         </div>
 
@@ -135,12 +135,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
           {/* Mobile Number Field */}
           <div className="login-modal__field">
-            <label className="login-modal__label block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <label className="login-modal__label block text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('mobile_number_label')}
             </label>
             <div className="login-modal__mobile-input relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400 dark:text-slate-500 z-10">
-                <span className="text-xs font-bold border-r border-slate-300 dark:border-slate-600 pr-2">+91</span>
+                <span className="text-xs font-semibold border-r border-slate-300 dark:border-slate-600 pr-2">+91</span>
               </div>
               <Input
                 type="tel"
@@ -155,7 +155,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
 
           {/* 6-Digit Passcode Field */}
           <div className="login-modal__field">
-            <label className="login-modal__label block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <label className="login-modal__label block text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {t('six_digit_pin_label')}
             </label>
             <Input
@@ -169,7 +169,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
               placeholder={t('passcode_dots_placeholder')}
               maxLength={6}
               inputMode="numeric"
-              className="text-center tracking-widest text-2xl font-bold py-3"
+              className="text-center tracking-widest text-2xl font-semibold py-3"
             />
           </div>
 
@@ -180,7 +180,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
                 key={num}
                 type="button"
                 onClick={() => handlePasscodeKey(num)}
-                className="login-modal__key login-modal__key--number py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+                className="login-modal__key login-modal__key--number py-3 text-lg font-semibold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
               >
                 {num}
               </button>
@@ -188,21 +188,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
             <button
               type="button"
               onClick={handleClear}
-              className="login-modal__key login-modal__key--clear py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
+              className="login-modal__key login-modal__key--clear py-3 text-xs font-semibold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
             >
               {t('clear_keypad_button')}
             </button>
             <button
               type="button"
               onClick={() => handlePasscodeKey('0')}
-              className="login-modal__key login-modal__key--number py-3 text-lg font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
+              className="login-modal__key login-modal__key--number py-3 text-lg font-semibold bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-white rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/40 hover:text-emerald-600 transition-colors active:scale-95 cursor-pointer"
             >
               0
             </button>
             <button
               type="button"
               onClick={handleBackspace}
-              className="login-modal__key login-modal__key--backspace py-3 text-xs font-bold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
+              className="login-modal__key login-modal__key--backspace py-3 text-xs font-semibold bg-slate-100 dark:bg-slate-700/70 text-slate-500 dark:text-slate-400 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
             >
               <Delete className="w-4 h-4 mx-auto" />
             </button>
@@ -212,7 +212,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, onLoginF
           <button
             type="submit"
             disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
-            className="login-modal__submit w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+            className="login-modal__submit w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
           >
             <span>{isLoading ? t('authenticating_text') : t('login_to_terminal_button')}</span>
             <ArrowRight className="w-4 h-4" />

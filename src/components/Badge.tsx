@@ -25,7 +25,7 @@ export const Badge: React.FC<BadgeProps> = ({
     'app-badge',
     `app-badge-${variant}`,
     'inline-flex items-center',
-    'text-[11px] font-bold px-2 py-0.5 rounded-full border',
+    'text-[11px] font-semibold px-2 py-0.5 rounded-full border',
     variantClasses[variant],
     className,
   ]

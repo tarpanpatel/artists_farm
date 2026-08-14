@@ -287,7 +287,7 @@ We look forward to welcoming you!`;
 
       <div className="property-edit-form__whatsapp-section pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
         <div>
-          <p className="property-edit-form__section-heading text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
+          <p className="property-edit-form__section-heading text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
           <p className="property-edit-form__section-help text-xs text-slate-400 dark:text-slate-500 mb-3">{t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, the built-in default template is used.')}</p>
           
           {/* Quick variable insert buttons */}
@@ -318,7 +318,7 @@ We look forward to welcoming you!`;
                 💬
               </span>
               <div>
-                <h4 className="property-edit-form__caption text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>
+                <h4 className="property-edit-form__caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">Updates live as you edit property details & template</p>
               </div>
             </div>
@@ -354,7 +354,7 @@ We look forward to welcoming you!`;
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
               <div className="bg-indigo-600 p-3 text-white">
                 <p className="text-[10px] uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
-                <h3 className="property-edit-form__subtitle text-sm font-bold mt-0.5">{name.trim() || 'Property Name'}</h3>
+                <h3 className="property-edit-form__subtitle text-sm font-semibold mt-0.5">{name.trim() || 'Property Name'}</h3>
                 <p className="text-xs text-indigo-100 mt-1">{email.trim() || 'contact@property.com'} · {phone.trim() || '+91 99999 99999'}</p>
               </div>
               <div className="p-4 text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">

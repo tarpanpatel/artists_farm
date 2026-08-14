@@ -303,7 +303,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
        {!hideHeader && (
        <div className="multi-key-property-overview__header flex items-center justify-between">
          <div className="multi-key-property-overview__header-text">
-           <h1 className="multi-key-property-overview__page-title text-3xl font-bold text-slate-900 dark:text-white">{property.name}</h1>
+           <h1 className="multi-key-property-overview__page-title text-3xl font-semibold text-slate-900 dark:text-white">{property.name}</h1>
            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{property.address || t('no_address_label', 'No address')}</p>
          </div>
        </div>
@@ -317,7 +317,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 opacity-60" />
                <div>
                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('total_rooms_label', 'Total Rooms')}</p>
-                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_rooms}</p>
+                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.total_rooms}</p>
                </div>
              </div>
            </div>
@@ -327,7 +327,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-400 opacity-60" />
                <div>
                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupied_label', 'Occupied')}</p>
-                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.total_occupied}</p>
+                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.total_occupied}</p>
                </div>
              </div>
            </div>
@@ -337,7 +337,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400 opacity-60" />
                <div>
                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('occupancy_label', 'Occupancy')}</p>
-                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{overview.occupancy_rate}%</p>
+                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{overview.occupancy_rate}%</p>
                </div>
              </div>
            </div>
@@ -347,7 +347,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400 opacity-60" />
                <div>
                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('revenue_label', 'Revenue')}</p>
-                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
+                 <p className="text-2xl font-semibold text-slate-900 dark:text-white">{property.currency} {overview.total_revenue.toFixed(0)}</p>
                </div>
              </div>
            </div>

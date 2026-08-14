@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, ArrowDown } from 'lucide-react';
 import { t } from '../i18n/en';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface DatePickerProps {
   value: string;
@@ -142,7 +143,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             ${isDisabled
               ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-40'
               : selected || isOtherDate
-              ? 'bg-black dark:bg-white text-white dark:text-black font-bold'
+              ? 'bg-black dark:bg-white text-white dark:text-black font-semibold'
               : inRange
               ? 'bg-slate-200 dark:bg-slate-600 text-slate-900 dark:text-white'
               : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -178,7 +179,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         className="app-input w-full h-10 px-3.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none bg-[var(--input-bg-default)] text-[var(--input-text-default)] border border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)] text-left date-picker__trigger"
       >
         <span className={value ? '' : 'text-[var(--input-placeholder)]'}>
-          {value ? new Date(value).toLocaleDateString('en-GB') : placeholder}
+          {value ? formatDateDDMMYYYY(value) : placeholder}
         </span>
       </button>
 
@@ -203,7 +204,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               ) : isCheckout && value ? (
                 // Show date range summary when checkout date is selected
                 <p className="text-sm font-semibold text-slate-900 dark:text-white date-picker__range-summary">
-                  {t('check_in_label')} {new Date(otherDate || '').toLocaleDateString('en-GB')} - {t('check_out_label')} {new Date(value).toLocaleDateString('en-GB')}
+                  {t('check_in_label')} {formatDateDDMMYYYY(otherDate || '')} - {t('check_out_label')} {formatDateDDMMYYYY(value)}
                 </p>
               ) : (
                 // Show title with bouncing arrow when still selecting
@@ -220,7 +221,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   </div>
                   {otherDate && isCheckout && (
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 date-picker__other-date">
-                      {t('check_in_label')} {new Date(otherDate).toLocaleDateString('en-GB')}
+                      {t('check_in_label')} {formatDateDDMMYYYY(otherDate || '')}
                     </p>
                   )}
                 </>

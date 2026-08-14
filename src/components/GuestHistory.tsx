@@ -112,7 +112,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
           <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
             <span>{getFirstName(row.guestName)}</span>
             {row.isForeignGuest && (
-              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-sm">
+              <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-sm">
                 {t('passport_badge', 'Passport')}
               </span>
             )}
@@ -187,7 +187,7 @@ export const GuestHistory: React.FC<GuestHistoryProps> = ({ guests = [], onCForm
       grow: 2,
       cell: (row: Guest) => (
         <div className="flex flex-col py-2">
-          <div className="flex items-center gap-1 font-bold text-slate-900 dark:text-white">
+          <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
             <span>{t('bill_field', 'Bill:')}</span>
             <span className="text-blue-600 dark:text-blue-400">₹{row.totalAmount || 0}</span>
           </div>

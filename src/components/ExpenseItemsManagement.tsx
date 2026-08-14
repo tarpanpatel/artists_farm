@@ -252,7 +252,7 @@ export const ExpenseItemsManagement: React.FC = () => {
             return (
               <div key={category} className="expense-items-management__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="bg-slate-100 dark:bg-slate-700 px-6 py-3">
-                  <h3 className="expense-items-management__subtitle font-bold text-slate-900 dark:text-white">{category}</h3>
+                  <h3 className="expense-items-management__subtitle font-semibold text-slate-900 dark:text-white">{category}</h3>
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

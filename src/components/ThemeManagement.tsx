@@ -155,7 +155,7 @@ export const ThemeManagement: React.FC = () => {
     <div className="space-y-6 p-6 theme-management">
       {/* Header */}
       <div className="theme-management__header">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white theme-management__title">{t('theme_settings_heading', 'Theme Settings')}</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white theme-management__title">{t('theme_settings_heading', 'Theme Settings')}</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 theme-management__description">
           {t('theme_settings_description', 'Customize the platform appearance for all users')}
         </p>
@@ -172,7 +172,7 @@ export const ThemeManagement: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 theme-management__grid">
         {/* Colors */}
         <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white theme-management__section-title">{t('colors_section_label', 'Colors')}</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('colors_section_label', 'Colors')}</h3>
           <div className="space-y-3 theme-management__color-grid">
             {Object.entries(settings.colors).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3 theme-management__color-row">
@@ -202,7 +202,7 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Dark Mode Colors */}
         <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white theme-management__section-title">{t('dark_mode_section_label', 'Dark Mode')}</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('dark_mode_section_label', 'Dark Mode')}</h3>
           <div className="space-y-3 theme-management__color-grid">
             {Object.entries(settings.darkMode).map(([key, value]) => (
               <div key={key} className="flex items-center gap-3 theme-management__color-row">
@@ -232,7 +232,7 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Typography */}
         <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white theme-management__section-title">{t('typography_section_label', 'Typography')}</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('typography_section_label', 'Typography')}</h3>
           <div className="space-y-3 theme-management__typography-fields">
             <div className="theme-management__typography-field">
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 theme-management__label">
@@ -273,7 +273,7 @@ export const ThemeManagement: React.FC = () => {
 
         {/* Border Radius */}
         <div className="space-y-4 theme-management__section">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white theme-management__section-title">{t('border_radius_section_label', 'Border Radius')}</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('border_radius_section_label', 'Border Radius')}</h3>
           <div className="space-y-3 theme-management__border-radius-fields">
             {Object.entries(settings.borderRadius).map(([key, value]) => (
               <div key={key} className="theme-management__form-row">
@@ -294,7 +294,7 @@ export const ThemeManagement: React.FC = () => {
 
       {/* Shadows */}
       <div className="space-y-4 theme-management__section">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white theme-management__section-title">{t('shadows_section_label', 'Shadows')}</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white theme-management__section-title">{t('shadows_section_label', 'Shadows')}</h3>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 theme-management__shadows-grid">
           {Object.entries(settings.shadows).map(([key, value]) => (
             <div key={key} className="theme-management__form-row">

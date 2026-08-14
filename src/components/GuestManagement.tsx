@@ -807,7 +807,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             )}
           </div>
           
-          <form noValidate className="app-form app-form--add-guest space-y-4 text-xs font-bold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
+          <form noValidate className="app-form app-form--add-guest space-y-4 text-xs font-semibold text-slate-700 dark:text-slate-300" onSubmit={(e) => {
             e.preventDefault();
             const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
@@ -984,7 +984,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   onClick={() => setShowDateRangePicker(true)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-left flex items-center justify-between cursor-pointer transition-all"
                 >
-                  <span>{checkinDate ? new Date(checkinDate).toLocaleDateString('en-GB') : 'Select date'}</span>
+                  <span>{checkinDate ? formatDateDDMMYYYY(checkinDate) : 'Select date'}</span>
                   <Calendar className="w-4 h-4 text-blue-600" />
                 </button>
               </div>
@@ -996,7 +996,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   onClick={() => setShowDateRangePicker(true)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-left flex items-center justify-between cursor-pointer transition-all"
                 >
-                  <span>{expectedCheckout ? new Date(expectedCheckout).toLocaleDateString('en-GB') : 'Select date'}</span>
+                  <span>{expectedCheckout ? formatDateDDMMYYYY(expectedCheckout) : 'Select date'}</span>
                   <Calendar className="w-4 h-4 text-blue-600" />
                 </button>
               </div>
@@ -1097,7 +1097,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setShowGuestNotes(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs font-bold">{t('guest_notes_label', 'Guest Notes')}</span>
+                  <span className="text-xs font-semibold">{t('guest_notes_label', 'Guest Notes')}</span>
                 </label>
                 {showGuestNotes && (
                   <Textarea
@@ -1118,7 +1118,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setIsForeignGuest(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500"
                   />
-                  <span className="text-xs font-bold">{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
+                  <span className="text-xs font-semibold">{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
                 </label>
                 {isForeignGuest && (
                   <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
@@ -1135,7 +1135,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     onChange={(e) => setShowDynamicIncidentals(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs font-bold">{t('additional_charges_label', 'Additional Charges (Optional)')}</span>
+                  <span className="text-xs font-semibold">{t('additional_charges_label', 'Additional Charges (Optional)')}</span>
                 </label>
                 {showDynamicIncidentals && (
                   <div className="mt-2">
@@ -1327,14 +1327,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           {checkedInGuests.length === 0 ? (
             <div className="guest-management__empty-state bg-white p-8 rounded-2xl border border-slate-200 shadow-2xs text-center">
               <Building className="guest-management__empty-state-icon w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="guest-management__empty-state-title text-lg font-bold text-slate-700 mb-1">No Active Residents</h3>
+              <h3 className="guest-management__empty-state-title text-lg font-semibold text-slate-700 mb-1">No Active Residents</h3>
               <p className="guest-management__empty-state-desc text-sm text-slate-500">There are no guests currently checked in. Register a new guest or check in an existing booking to begin billing.</p>
             </div>
           ) : (<>
           {/* Active Resident Selector Bar */}
           <div className="guest-management__resident-selector bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="guest-management__resident-selector-left flex items-center gap-3">
-              <span className="guest-management__resident-label font-bold text-slate-700">Active Resident Account:</span>
+              <span className="guest-management__resident-label font-semibold text-slate-700">Active Resident Account:</span>
               <StyledSelect
                 className="w-64"
                 value={selectedGuestId}
@@ -1350,7 +1350,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             <div className="guest-management__resident-status flex items-center gap-2">
               {currentGuest ? (
-                <span className={`guest-management__status-badge inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-full text-[11px] border ${
+                <span className={`guest-management__status-badge inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full text-[11px] border ${
                   currentGuest.status === GUEST_STATUS_CHECKED_IN
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     : currentGuest.status === GUEST_STATUS_BOOKED
@@ -1367,7 +1367,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   {currentGuest.status === GUEST_STATUS_CHECKED_IN ? 'Checked In' : currentGuest.status === GUEST_STATUS_BOOKED ? 'Reservation Booked' : currentGuest.status}
                 </span>
               ) : (
-                <span className="guest-management__status-empty bg-slate-100 text-slate-500 font-bold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
+                <span className="guest-management__status-empty bg-slate-100 text-slate-500 font-semibold px-2.5 py-1 rounded-full text-[11px] border border-slate-300">
                   No Checked-In Resident Selected
                 </span>
               )}
@@ -1385,17 +1385,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
                 <div className="flex justify-between items-center text-xs py-1">
                   <span className="text-slate-600 font-semibold">Base Lodging Charges:</span>
-                  <strong className="text-slate-900 font-bold">₹{baseLodging.toFixed(2)}</strong>
+                  <strong className="text-slate-900 font-semibold">₹{baseLodging.toFixed(2)}</strong>
                 </div>
                 <div className="flex justify-between items-center text-xs py-1">
                   <span className="text-slate-600 font-semibold">Advance Paid:</span>
-                  <strong className="summary-line summary-line--advance-paid text-emerald-600 font-bold">
+                  <strong className="summary-line summary-line--advance-paid text-emerald-600 font-semibold">
                     + ₹{advancePaid.toFixed(2)} by {advancePayer}
                   </strong>
                 </div>
                 <div className="flex justify-between items-center text-xs py-1 border-t border-dashed border-slate-200 pt-2">
                   <span className="text-slate-600 font-semibold">Pending Lodging Due:</span>
-                  <strong className="summary-line summary-line--pending-lodging-due text-emerald-700 font-bold">
+                  <strong className="summary-line summary-line--pending-lodging-due text-emerald-700 font-semibold">
                     ₹{lodgingPendingDue.toFixed(2)} Settled via {pendingSettledBy}
                   </strong>
                 </div>
@@ -1420,7 +1420,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           onChange={setSelectedDishId}
                           placeholder="-- Choose Menu Dish --"
                           options={[
-                            { value: 'custom', label: <span className="font-bold text-cyan-600">-- CUSTOM --</span> },
+                            { value: 'custom', label: <span className="font-semibold text-cyan-600">-- CUSTOM --</span> },
                             ...menu.map((dish) => ({
                               value: String(dish.id),
                               label: `${dish.name} (₹${dish.price.toFixed(2)})`,
@@ -1448,7 +1448,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <div>
                         <button
                           type="submit"
-                          className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-4 py-2 rounded-lg transition-all cursor-pointer shadow-2xs h-[36px]"
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-4 py-2 rounded-lg transition-all cursor-pointer shadow-2xs h-[36px]"
                         >
                           + Insert
                         </button>
@@ -1496,7 +1496,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 {/* FOOD LOG TABLE */}
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
                   <table className="datatable w-full text-left text-xs text-slate-800 guest-management__table">
-                    <thead className="bg-slate-100 font-bold border-b border-slate-200 text-slate-600 uppercase text-[10px] guest-management__table-header">
+                    <thead className="bg-slate-100 font-semibold border-b border-slate-200 text-slate-600 uppercase text-[10px] guest-management__table-header">
                       <tr className="guest-management__table-header-row">
                         <th className="py-2.5 px-3 guest-management__table-header-cell">Description Item</th>
                         <th className="py-2.5 px-3 text-center w-[130px] guest-management__table-header-cell">Quantity</th>
@@ -1506,13 +1506,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <tbody className="divide-y divide-slate-100 guest-management__table-body">
                       {incidentals.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50">
-                          <td className="py-2.5 px-3 font-semibold text-slate-900">{item.name}</td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="guest-management__cell py-2.5 px-3 font-semibold text-slate-900">{item.name}</td>
+                          <td className="guest-management__cell py-2 px-3 text-center">
                             <div className="inline-flex items-center bg-slate-100 border border-slate-300 rounded-md p-1 gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleUpdateIncidentalsQty(item.id, -1)}
-                                className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded text-slate-700 font-bold text-sm flex items-center justify-center cursor-pointer"
+                                className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded text-slate-700 font-semibold text-sm flex items-center justify-center cursor-pointer"
                               >
                                 -
                               </button>
@@ -1522,13 +1522,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleUpdateIncidentalsQty(item.id, 1)}
-                                className="w-7 h-7 bg-cyan-600 hover:bg-cyan-700 rounded text-white font-bold text-sm flex items-center justify-center cursor-pointer"
+                                className="w-7 h-7 bg-cyan-600 hover:bg-cyan-700 rounded text-white font-semibold text-sm flex items-center justify-center cursor-pointer"
                               >
                                 +
                               </button>
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                          <td className="guest-management__cell py-2.5 px-3 text-right font-semibold text-slate-900">
                             ₹{(item.price * item.quantity).toFixed(2)}
                           </td>
                         </tr>
@@ -1540,7 +1540,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 {/* MANUAL ADJUSTMENTS APPLIED SUMMARY BOX */}
                 {adjustments.length > 0 && (
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
-                    <span className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">
+                    <span className="font-semibold text-slate-700 block text-[10px] uppercase tracking-wider">
                       Manual Adjustments Applied
                     </span>
                     {adjustments.map((adj) => (
@@ -1552,8 +1552,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           <span
                             className={
                               adj.type === 'charge'
-                                ? 'text-red-600 font-bold'
-                                : 'text-emerald-600 font-bold'
+                                ? 'text-red-600 font-semibold'
+                                : 'text-emerald-600 font-semibold'
                             }
                           >
                             {adj.type === 'charge' ? '+' : '-'}₹{adj.amount.toFixed(2)}
@@ -1561,7 +1561,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveAdjustment(adj.id)}
-                            className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                            className="text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded cursor-pointer"
                             title="Remove Adjustment"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -1574,7 +1574,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                 {/* INCIDENTALS SUBTOTAL ROW */}
                 <div className="pt-2 border-t border-slate-200 text-right text-xs">
-                  <span className="font-bold text-slate-700">
+                  <span className="font-semibold text-slate-700">
                     Food Items Subtotal:&nbsp;
                     <strong className="text-sky-600 text-sm font-extrabold">
                       ₹{foodTotal.toFixed(2)}
@@ -1664,7 +1664,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-lg transition-all cursor-pointer shadow-2xs"
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 rounded-lg transition-all cursor-pointer shadow-2xs"
                   >
                     Apply Adjustment
                   </button>
@@ -1712,10 +1712,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           />
                           <div className="w-8 h-4 bg-slate-300 peer-checked:bg-blue-600 rounded-full peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
                         </label>
-                        <span className="font-bold text-slate-600 text-[11px]">Apply GST</span>
+                        <span className="font-semibold text-slate-600 text-[11px]">Apply GST</span>
                       </div>
                       {gstEnabled && (
-                        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                           Acc: {gstAccommodationRate}% | Food: 5%
                         </span>
                       )}
@@ -1723,7 +1723,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     {gstEnabled && gstAmount > 0 && (
                       <>
                         <div className="border-t border-dashed border-slate-100 pt-1 mb-1" />
-                        <div className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">Item-wise GST</div>
+                        <div className="font-semibold text-[10px] text-slate-500 uppercase tracking-wider mb-1">Item-wise GST</div>
                         <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
                           <span>Accommodation GST @ {gstAccommodationRate}%:</span>
                           <span>₹{gstAccommodationAmount.toFixed(2)}</span>
@@ -1735,11 +1735,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                           </div>
                         )}
                         <div className="border-t border-dashed border-slate-200 pt-1 mt-1">
-                          <div className="flex justify-between items-center text-blue-700 font-bold text-[11px]">
+                          <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
                             <span>Total CGST @ 50%:</span>
                             <span>₹{gstCgst.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between items-center text-blue-700 font-bold text-[11px]">
+                          <div className="flex justify-between items-center text-blue-700 font-semibold text-[11px]">
                             <span>Total SGST @ 50%:</span>
                             <span>₹{gstSgst.toFixed(2)}</span>
                           </div>
@@ -1753,7 +1753,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-dashed border-slate-200">
                       <span>Total Stacked Entered:</span>
                       <span
-                        className={`summary-line summary-line--total-stacked font-bold ${
+                        className={`summary-line summary-line--total-stacked font-semibold ${
                           isSplitMatching ? 'text-emerald-600' : 'text-red-600 font-extrabold'
                         }`}
                       >
@@ -1764,7 +1764,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                   {/* Cashier Field */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">
                       Desk Cashier Handling checkout:
                     </label>
                     <Input
@@ -1792,7 +1792,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveSplitRow(row.id)}
-                              className="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-sm cursor-pointer"
+                              className="absolute top-2 right-2 text-red-500 hover:text-red-700 font-semibold text-sm cursor-pointer"
                               title="Remove row"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -1848,7 +1848,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleTriggerQrModal(row.recipient)}
-                                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs h-[32px] flex items-center gap-1"
+                                className="bg-sky-600 hover:bg-sky-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs h-[32px] flex items-center gap-1"
                               >
                                 <QrCode className="w-3.5 h-3.5" /> Show QR
                               </button>
@@ -1861,7 +1861,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <button
                       type="button"
                       onClick={handleAddSplitRow}
-                      className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-400 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                      className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-400 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
                     >
                       Add Payment Split Row
                     </button>
@@ -1869,7 +1869,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
                   {/* Validation Error Alert */}
                   {!isSplitMatching && (
-                    <div className="p-2.5 bg-red-50 border border-red-200 text-red-800 text-center font-bold text-[11px] rounded-lg">
+                    <div className="p-2.5 bg-red-50 border border-red-200 text-red-800 text-center font-semibold text-[11px] rounded-lg">
                       Split sum (₹{totalSplitSum.toFixed(2)}) must equal target due (₹
                       {grandTargetDue.toFixed(2)}) exactly.
                     </div>
@@ -1879,7 +1879,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPrintModalOpen(true)}
-                      className="btn-print-receipt w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
+                      className="btn-print-receipt w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-xl transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5"
                     >
                       <Printer className="w-4 h-4" /> View Print Receipt
                     </button>
@@ -1912,7 +1912,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {isQrModalOpen && (
         <div className="guest-management__qr-modal fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 text-center max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
-            <h4 className="guest-management__caption font-bold text-[10px] uppercase tracking-wider text-slate-900">
+            <h4 className="guest-management__caption font-semibold text-[10px] uppercase tracking-wider text-slate-900">
               Scan UPI QR Target: {qrModalTitle}
             </h4>
 
@@ -1921,16 +1921,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <div className="space-y-3 flex flex-col items-center">
                   <div className="w-48 h-48 bg-white border-2 border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center shadow-md relative">
                     <QrCode className="w-36 h-36 text-slate-900" />
-                    <span className="text-[10px] font-mono font-bold text-slate-600 mt-1">
+                    <span className="text-[10px] font-mono font-semibold text-slate-600 mt-1">
                       artistsfarm@upi
                     </span>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Verified Payee: {qrModalTitle}
                   </span>
                 </div>
               ) : (
-                <div className="p-4 text-amber-700 font-bold text-xs flex items-center gap-1.5">
+                <div className="p-4 text-amber-700 font-semibold text-xs flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" /> No QR screenshot registered for this recipient ({qrModalTitle}).
                 </div>
               )}
@@ -1939,7 +1939,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <button
               type="button"
               onClick={() => setIsQrModalOpen(false)}
-              className="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+              className="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-xs cursor-pointer"
             >
               Close Preview Box
             </button>
@@ -1964,18 +1964,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <button
                 type="button"
                 onClick={handleShareReceipt}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
               >
                 <Share2 className="w-3.5 h-3.5" /> Share Bill (PNG)
               </button>
               {currentGuest && (
                 <a
                   href={`https://api.whatsapp.com/send?phone=${currentGuest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + currentGuest.phoneNumber.replace(/\D/g, '') : currentGuest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                    `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${new Date().toLocaleDateString('en-GB')}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
+                     `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(new Date().toISOString())}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
                 >
                   Share via WhatsApp
                 </a>
@@ -1983,7 +1983,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(false)}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
               >
                 Close
               </button>
@@ -2001,13 +2001,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <b>Phone:</b> 8888888
                 </span>
                 <span>
-                  <b>Date:</b> {new Date().toLocaleDateString('en-GB')}
+                  <b>Date:</b> {formatDateDDMMYYYY(new Date().toISOString())}
                 </span>
               </div>
 
               {/* Stay Logistics */}
               <div className="space-y-1">
-                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   Stay Logistics
                 </div>
                 <div className="flex justify-between text-black">
@@ -2018,7 +2018,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <span>[-] Advance Paid:</span>
                   <span className="summary-line summary-line--advance-paid">₹{advancePaid.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
+                <div className="flex justify-between text-black font-semibold border-t border-dashed border-slate-200 pt-1">
                   <span>Pending Lodging Settled:</span>
                   <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
@@ -2026,7 +2026,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               {/* KOT Kitchen Incidentals */}
               <div className="space-y-1 pt-2">
-                <div className="flex justify-between items-center font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                <div className="flex justify-between items-center font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   <span>KOT Kitchen Incidentals</span>
                   <span>Subtotal: ₹{foodTotal.toFixed(2)}</span>
                 </div>
@@ -2045,7 +2045,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* Adjustments: Extra Charges and Discounts */}
               {adjustments.length > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     Applied Adjustments
                   </div>
                   <div className="space-y-1 pt-1">
@@ -2066,7 +2066,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* GST Breakdown â€” item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     Tax Breakdown (GST)
                   </div>
                   <div className="flex justify-between text-black text-[11px]">
@@ -2080,11 +2080,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     </div>
                   )}
                   <div className="border-t border-dashed border-slate-300 pt-1">
-                    <div className="flex justify-between text-black text-[11px] font-bold">
+                    <div className="flex justify-between text-black text-[11px] font-semibold">
                       <span>CGST (50% split):</span>
                       <span>₹{gstCgst.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-black text-[11px] font-bold">
+                    <div className="flex justify-between text-black text-[11px] font-semibold">
                       <span>SGST (50% split):</span>
                       <span>₹{gstSgst.toFixed(2)}</span>
                     </div>
@@ -2118,7 +2118,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <button
                 type="button"
                 onClick={handleShareBookingVoucher}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-xs"
               >
                 <Share2 className="w-3.5 h-3.5" /> Share Voucher (PNG)
               </button>
@@ -2139,7 +2139,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center text-xs"
               >
                 Share via WhatsApp
               </a>
@@ -2149,7 +2149,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   setCreatedBooking(null);
                   resetBookingForm();
                 }}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg cursor-pointer text-xs"
               >
                 Close
               </button>
@@ -2169,18 +2169,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <b>Guest:</b> {createdBooking.guestName}
                 </span>
                 <span>
-                  <b>Date:</b> {new Date().toLocaleDateString('en-GB')}
+                  <b>Date:</b> {formatDateDDMMYYYY(new Date().toISOString())}
                 </span>
               </div>
 
               {/* Stay Logistics */}
               <div className="space-y-1">
-                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   Booking Logistics
                 </div>
                 <div className="flex justify-between text-black">
                   <span>Assigned Room / Villa:</span>
-                  <span className="font-bold">{createdBooking.roomNumber}</span>
+                  <span className="font-semibold">{createdBooking.roomNumber}</span>
                 </div>
                 <div className="flex justify-between text-black">
                   <span>Check-In Date/Time:</span>
@@ -2202,7 +2202,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
               {/* Financial Summary */}
               <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   Financial Summary
                 </div>
                 <div className="flex justify-between text-black">
@@ -2213,7 +2213,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <span>[-] Advance Paid:</span>
                   <span>₹{(createdBooking.advanceAmount || 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
+                <div className="flex justify-between text-black font-semibold border-t border-dashed border-slate-200 pt-1">
                   <span>Balance Due:</span>
                   <span>₹{Math.max(0, (createdBooking.roomRate || 0) - (createdBooking.advanceAmount || 0)).toFixed(2)}</span>
                 </div>
@@ -2222,7 +2222,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {/* Notes */}
               {createdBooking.notes && (
                 <div className="pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     Guest Notes
                   </div>
                   <p className="text-black italic mt-1 pl-2">{createdBooking.notes}</p>

@@ -376,7 +376,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             {/* Room Header */}
             <div className="billing-checkout__room-card-header bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
               <div className="min-w-0 flex-1">
-                <h3 className="billing-checkout__room-card-title text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                <h3 className="billing-checkout__room-card-title text-base font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
                   <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                   {group.roomName}
                 </h3>
@@ -389,7 +389,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 // Same "Refund Due" relabeling as the per-guest card below -
                 // a raw negative number here read as a bug, not a refund.
                 return (
-                  <span className="summary-line summary-line--group-total text-[11px] font-bold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                  <span className="summary-line summary-line--group-total text-[11px] font-semibold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
                     {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
                   </span>
                 );
@@ -414,21 +414,21 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                             {guest.guestName}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {guest.phoneNumber || t('no_contact', 'No contact')}
                           </p>
                         </div>
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
+                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
                           {stayStatus.label}
                         </span>
                       </div>
 
                       {/* Stay Dates */}
                       <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                           <span className="inline-flex items-center gap-1">{formatDate(guest.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatDate(guest.expectedCheckout)}</span>
                         </div>
@@ -458,7 +458,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           <span className="summary-line summary-line--advance-paid font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center text-xs font-bold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
+                      <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
                         <span className="text-slate-700 dark:text-slate-300">
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
@@ -474,7 +474,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {t('edit_button', 'Edit')}
@@ -482,7 +482,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           {t('checkout_button', 'Checkout')}
@@ -493,7 +493,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {t('edit_booking_button', 'Edit Booking')}
@@ -506,7 +506,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <div className="p-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg flex gap-1.5 text-[10px]">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                         <p className="text-amber-800 dark:text-amber-200 line-clamp-2">
-                          <span className="font-bold">{t('notes_prefix', 'Notes:')}</span> {guest.notes}
+                          <span className="font-semibold">{t('notes_prefix', 'Notes:')}</span> {guest.notes}
                         </p>
                       </div>
                     )}
@@ -593,7 +593,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         <div className="space-y-8">
           {upcomingByDate.map((dateGroup) => (
             <div key={dateGroup.dateStr}>
-              <h3 className="billing-checkout__subtitle text-[10px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h3 className="billing-checkout__subtitle text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 {dateGroup.label}
               </h3>
@@ -609,7 +609,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {filteredGroups.length === 0 && (
         <div className="billing-checkout__empty-state bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-12 text-center">
           <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <h3 className="billing-checkout__subtitle text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">
+          <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
             {t('no_guest_records_found', 'No Guest Records Found')}
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400">

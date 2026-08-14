@@ -298,7 +298,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <Building2 className="w-5 h-5 text-white tenant-dashboard__header-icon" />
             </div>
             <div className="tenant-dashboard__header-title-container">
-              <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight tenant-dashboard__header-title">
+              <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-tight tenant-dashboard__header-title">
                 {tenantInfo?.name ?? t('tenant_dashboard_heading', 'Tenant Dashboard')}
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 tenant-dashboard__header-subtitle">{t('property_control_panel_label', 'Property Control Panel')}</p>
@@ -348,7 +348,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="flex items-center justify-between tenant-dashboard__slot-widget-inner">
             <div className="flex items-center gap-3 tenant-dashboard__slot-widget-left">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center tenant-dashboard__slot-widget-icon-container">
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tenant-dashboard__slot-widget-count">{usedSlots}/{totalSlots}</span>
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 tenant-dashboard__slot-widget-count">{usedSlots}/{totalSlots}</span>
               </div>
               <div className="tenant-dashboard__slot-widget-text">
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 tenant-dashboard__slot-widget-label">Slots</p>
@@ -373,7 +373,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ── Properties Section ── */}
           <section className="tenant-dashboard__properties-section">
             <div className="flex items-center justify-between mb-5 tenant-dashboard__properties-header">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__properties-title">{t('your_properties_heading', 'Your Properties')}</h2>
               {remaining > 0 ? (
                 <Button
                   id="tenant-add-property-btn"
@@ -428,16 +428,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 tenant-dashboard__property-card-badges">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isMultiKey ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'} tenant-dashboard__property-type-badge`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isMultiKey ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'} tenant-dashboard__property-type-badge`}>
                           {isMultiKey ? t('tenant_multi_key_badge', 'Multi-Key') : t('single_type_label', 'Single')}
                         </span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${property.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'} tenant-dashboard__property-status-badge`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${property.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'} tenant-dashboard__property-status-badge`}>
                           {property.is_active ? t('active_status_badge', 'Active') : t('tenant_inactive_status_badge', 'Inactive')}
                         </span>
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-slate-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tenant-dashboard__property-card-name">
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tenant-dashboard__property-card-name">
                       {property.name}
                     </h3>
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mb-1 tenant-dashboard__property-card-slug">/{property.slug}</p>
@@ -472,7 +472,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
         {/* ── Quick Actions ── */}
         <section className="tenant-dashboard__quick-actions">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 tenant-dashboard__quick-actions-heading">{t('quick_actions_heading', 'Quick Actions')}</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 tenant-dashboard__quick-actions-heading">{t('quick_actions_heading', 'Quick Actions')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tenant-dashboard__quick-actions-grid">
             {[
               { label: t('guest_check_in_action', 'Guest Check-In'), icon: User, href: '#checkin', color: 'teal' },
@@ -521,7 +521,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all active:scale-95 ${colorMap[action.color] ?? colorMap.slate} tenant-dashboard__quick-action-btn`}
                 >
                   <Icon className="w-6 h-6 tenant-dashboard__quick-action-icon" />
-                  <span className="text-xs font-bold text-center leading-tight tenant-dashboard__quick-action-label">{action.label}</span>
+                  <span className="text-xs font-semibold text-center leading-tight tenant-dashboard__quick-action-label">{action.label}</span>
                 </button>
               );
             })}
@@ -550,7 +550,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm tenant-dashboard__analytics">
           <div className="flex items-center justify-between mb-6 tenant-dashboard__analytics-header">
             <div className="tenant-dashboard__analytics-title-wrapper">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__analytics-title">{t('combined_analytics_heading', 'Combined Analytics')}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 tenant-dashboard__analytics-subtitle">{t('across_all_properties_subtext', 'Across all your properties')}</p>
             </div>
             <div className="flex items-center gap-2 tenant-dashboard__analytics-filters">
@@ -583,7 +583,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm tenant-dashboard__modal-overlay">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 tenant-dashboard__modal">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 tenant-dashboard__modal-header">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('add_new_property_heading', 'Add New Property')}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('add_new_property_heading', 'Add New Property')}</h3>
               <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'none' })} className="tenant-dashboard__modal-close-btn">
                 <X className="w-5 h-5" />
               </Button>
@@ -674,7 +674,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm tenant-dashboard__modal-overlay">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto tenant-dashboard__modal">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 tenant-dashboard__modal-header">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('tenant_edit_property_heading', 'Edit Property')}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('tenant_edit_property_heading', 'Edit Property')}</h3>
               <Button variant="ghost" size="xs" onClick={() => setModal({ type: 'none' })} className="tenant-dashboard__modal-close-btn">
                 <X className="w-5 h-5" />
               </Button>
@@ -709,7 +709,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </label>
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 tenant-dashboard__edit-section">
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
                 <div className="grid grid-cols-2 gap-3 mb-3 tenant-dashboard__edit-grid">
                   <div className="tenant-dashboard__form-group">
                     <Input
@@ -770,13 +770,13 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm tenant-dashboard__modal-overlay">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-red-200 dark:border-red-900 tenant-dashboard__modal tenant-dashboard__modal--delete">
             <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 tenant-dashboard__modal-header">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('tenant_delete_property_heading', 'Delete Property')}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('tenant_delete_property_heading', 'Delete Property')}</h3>
             </div>
             <div className="px-6 py-5 space-y-3 tenant-dashboard__modal-body">
               <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl tenant-dashboard__warning-box">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 tenant-dashboard__warning-icon" />
                 <div className="text-sm text-red-800 dark:text-red-300 space-y-1 w-full tenant-dashboard__warning-content">
-                  <p className="font-bold text-red-700 dark:text-red-400 tenant-dashboard__warning-text">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
+                  <p className="font-semibold text-red-700 dark:text-red-400 tenant-dashboard__warning-text">{t('permanent_irreversible_warning', 'This action is permanent and irreversible.')}</p>
                   <div className="text-xs space-y-2 mt-1 tenant-dashboard__warning-details">
                     <p className="font-semibold text-[10px] uppercase tracking-wider text-red-600 dark:text-red-400 tenant-dashboard__warning-subtitle">{t('deletion_consequences_for_label', 'Deletion Consequences for')} "{modal.property.name}":</p>
                     <ul className="list-disc list-inside space-y-1 text-red-800 dark:text-red-300 tenant-dashboard__warning-list">
@@ -786,7 +786,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     </ul>
                   </div>
                   {(modal.property.room_count ?? 0) > 0 && (
-                    <p className="text-[11px] font-bold mt-1 tenant-dashboard__warning-note">Note: This will also delete all {modal.property.room_count} sub-rooms.</p>
+                    <p className="text-[11px] font-semibold mt-1 tenant-dashboard__warning-note">Note: This will also delete all {modal.property.room_count} sub-rooms.</p>
                   )}
                 </div>
               </div>
@@ -832,12 +832,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-amber-200 dark:border-amber-900 tenant-dashboard__modal tenant-dashboard__modal--slots">
             <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 tenant-dashboard__modal-header">
               <Zap className="w-5 h-5 text-amber-500 tenant-dashboard__modal-icon" />
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('not_enough_slots_heading', 'Not Enough Slots')}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('not_enough_slots_heading', 'Not Enough Slots')}</h3>
             </div>
             <div className="px-6 py-5 tenant-dashboard__modal-body">
               <p className="text-sm text-slate-600 dark:text-slate-400 tenant-dashboard__slots-info">
-                You need <span className="font-bold text-slate-900 dark:text-white tenant-dashboard__slots-needed">{modal.needed} slot(s)</span> but only have{' '}
-                <span className="font-bold text-amber-600 dark:text-amber-400 tenant-dashboard__slots-remaining">{modal.remaining} remaining</span>.
+                You need <span className="font-semibold text-slate-900 dark:text-white tenant-dashboard__slots-needed">{modal.needed} slot(s)</span> but only have{' '}
+                <span className="font-semibold text-amber-600 dark:text-amber-400 tenant-dashboard__slots-remaining">{modal.remaining} remaining</span>.
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 tenant-dashboard__slots-message">
                 {t('contact_root_admin_upgrade_message', 'Please contact your Root Admin to upgrade your subscription package.')}
@@ -863,7 +863,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto shadow-lg tenant-dashboard__upgrade-icon-container">
                 <Zap className="w-7 h-7 text-white tenant-dashboard__upgrade-icon" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('upgrade_package_button', 'Upgrade Package')}</h3>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white tenant-dashboard__modal-title">{t('upgrade_package_button', 'Upgrade Package')}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 tenant-dashboard__upgrade-message">
                 {t('upgrade_managed_by_root_admin_message', 'Package upgrades are managed by the Root Admin. Please contact your administrator to increase your slot limit.')}
               </p>

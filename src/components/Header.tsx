@@ -163,13 +163,13 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Logo */}
           <div className="header__logo pos-logo-container flex items-center gap-2.5">
-            <div className="header__logo-icon w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-bold">
+            <div className="header__logo-icon w-9 h-9 rounded-xl bg-[var(--app-primary-600)] text-white flex items-center justify-center shadow-xs font-semibold">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="header__logo-text block">
-              <span className="text-sm font-bold text-slate-700 dark:text-white tracking-tight flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-700 dark:text-white tracking-tight flex items-center gap-2">
                 {propertyName}
-                <span className="header__pos-badge hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                <span className="header__pos-badge hidden sm:inline-block bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                   {t('pos_badge', 'POS')}
                 </span>
               </span>
@@ -228,11 +228,11 @@ export const Header: React.FC<HeaderProps> = ({
             {showNotificationDropdown && (
               <div className="header__dropdown notifications-popover-dropdown fixed left-2 right-2 top-16 max-sm:w-auto sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="header__dropdown-header px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                  <span className="header__dropdown-title text-[10px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="header__dropdown-title text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
                     {t('notifications_label', 'Notifications')}
                   </span>
-                  <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full">
+                  <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
                     {totalCount} updates
                   </span>
                 </div>
@@ -241,12 +241,12 @@ export const Header: React.FC<HeaderProps> = ({
                   {/* 1. Kitchen Module Orders */}
                   {kitchenModuleEnabled && kitchenDisplayOrders.length > 0 && (
                     <div className="header__section header__section--kitchen p-3 space-y-2">
-                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <Utensils className="w-3.5 h-3.5 text-amber-600" />
                           {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
-                        <span className={`header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                        <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
                           {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
                         </span>
                       </div>
@@ -258,7 +258,7 @@ export const Header: React.FC<HeaderProps> = ({
                             className="header__order-item p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                           >
                             <div className="header__order-info overflow-hidden">
-                              <div className="header__order-id font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <div className="header__order-id font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <span>{ord.id}</span>
                                 <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
                               </div>
@@ -286,12 +286,12 @@ export const Header: React.FC<HeaderProps> = ({
                   {/* 2. MultiKey Property Bookings */}
                   {isMultiKeyProperty && (todayGuests.length > 0 || tomorrowGuests.length > 0) && (
                     <div className="header__section header__section--bookings p-3 space-y-2">
-                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-blue-600" />
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
-                        <span className="header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                           {t('today_tomorrow_badge', 'Today & Tomorrow')}
                         </span>
                       </div>
@@ -317,7 +317,7 @@ export const Header: React.FC<HeaderProps> = ({
                               className="header__guest-item header__guest-item--today p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                             >
                               <div className="header__guest-info">
-                                <p className="header__guest-name font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <p className="header__guest-name font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                                   <User className="w-3 h-3 text-slate-400" />
                                   <span>{guest.guestName}</span>
                                   <span className="text-slate-400 font-normal">({guest.roomNumber})</span>
@@ -340,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({
                             className="header__guest-item header__guest-item--tomorrow p-2 rounded-lg bg-purple-50/60 dark:bg-purple-950/20 flex items-center justify-between gap-2 border border-purple-100 dark:border-purple-900/30"
                           >
                             <div className="header__guest-info">
-                              <p className="header__guest-name font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <p className="header__guest-name font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <User className="w-3 h-3 text-purple-500" />
                                 <span>{guest.guestName}</span>
                                 <span className="text-slate-400 font-normal">({guest.roomNumber})</span>
@@ -365,12 +365,12 @@ export const Header: React.FC<HeaderProps> = ({
                       drops it from here immediately. */}
                   {recentServiceRequests.length > 0 && (
                     <div className="header__section header__section--service-requests p-3 space-y-2">
-                      <div className="header__section-header flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      <div className="header__section-header flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5">
                           <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
                           {t('recent_service_requests_label', 'Guest Service Requests')}
                         </span>
-                        <span className="header__section-badge text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                           {t('pending_status_badge', 'Pending')}
                         </span>
                       </div>
@@ -382,7 +382,7 @@ export const Header: React.FC<HeaderProps> = ({
                             className="header__service-request-item p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 flex items-center justify-between gap-2"
                           >
                             <div className="header__service-request-info overflow-hidden">
-                              <div className="header__service-request-type font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <div className="header__service-request-type font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                                 <span>{r.requestType}</span>
                                 <span className="text-slate-400 font-normal flex items-center gap-0.5">
                                   <RoomIcon className="w-2.5 h-2.5" /> {r.roomName}
@@ -405,7 +405,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <AlertTriangle className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="header__low-stock-title text-xs font-bold text-slate-900 dark:text-white">
+                        <p className="header__low-stock-title text-xs font-semibold text-slate-900 dark:text-white">
                           {lowStockCount} Low Inventory Items
                         </p>
                         <p className="header__low-stock-desc text-[11px] text-slate-500 dark:text-slate-400">

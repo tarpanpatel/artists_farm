@@ -292,15 +292,15 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
         subtitle={t('kitchen_dashboard_subtitle', 'Central command for food orders, staff meals, ingredient stock, and inventory logs.')}
       >
         {/* Live Quick Stats Badges */}
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold text-emerald-700 dark:text-emerald-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-emerald-700 dark:text-emerald-300">
           <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>{pendingOrdersCount} {t('active_orders_label', 'Active Orders')}</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold text-amber-700 dark:text-amber-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-amber-700 dark:text-amber-300">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           <span>{lowStockCount} {t('low_stock_label', 'Low Stock Items')}</span>
         </div>
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold text-blue-700 dark:text-blue-300">
+        <div className="hidden md:flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg md:rounded-xl text-[10px] md:text-xs font-semibold text-blue-700 dark:text-blue-300">
           <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           <span>{pendingRequisitionsCount} {t('open_requests_label', 'Open Stock Req')}</span>
         </div>
@@ -341,11 +341,11 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   {/* Bare Icon without square box on mobile */}
                   <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <h3 className="kitchen-dashboard__subtitle text-xs font-bold text-slate-900 dark:text-white truncate">
+                    <h3 className="kitchen-dashboard__subtitle text-xs font-semibold text-slate-900 dark:text-white truncate">
                       {card.title}
                     </h3>
                     {card.badgeText && (
-                      <Badge variant={card.badgeVariant} className="text-[9px] font-bold py-0 px-1 inline-flex shrink-0">
+                      <Badge variant={card.badgeVariant} className="text-[9px] font-semibold py-0 px-1 inline-flex shrink-0">
                         {card.badgeText}
                       </Badge>
                     )}
@@ -355,7 +355,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                 <Button
                   variant={card.buttonVariant}
                   size="sm"
-                  className="shrink-0 font-bold px-2.5 py-1 cursor-pointer text-[11px] h-7"
+                  className="shrink-0 font-semibold px-2.5 py-1 cursor-pointer text-[11px] h-7"
                   onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
                   rightIcon={<ArrowRight className="w-3 h-3" />}
                 >
@@ -381,14 +381,14 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                       </div>
                     </div>
                     {card.badgeText && (
-                      <Badge variant={card.badgeVariant} className="font-bold">
+                      <Badge variant={card.badgeVariant} className="font-semibold">
                         {card.badgeText}
                       </Badge>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="kitchen-dashboard__subtitle text-base md:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="kitchen-dashboard__subtitle text-base md:text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
@@ -402,7 +402,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                     variant={card.buttonVariant}
                     size="sm"
                     block
-                    className="justify-center gap-2 font-bold cursor-pointer"
+                    className="justify-center gap-2 font-semibold cursor-pointer"
                     onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
                     rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
                   >

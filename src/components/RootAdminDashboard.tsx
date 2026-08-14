@@ -298,11 +298,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           <div className="space-y-1">
             {/* Branding */}
             <div className="px-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-700/80">
-              <h1 className="root-admin-dashboard__page-title text-sm font-bold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
+              <h1 className="root-admin-dashboard__page-title text-sm font-semibold text-slate-900 dark:text-white">{t('root_admin_branding', 'Root Admin')}</h1>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('system_management_label', 'System Management')}</p>
             </div>
 
-            <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400">
+            <div className="px-3 pb-2 mb-2 border-b border-slate-100 dark:border-slate-700/80 text-xs font-semibold text-slate-500 dark:text-slate-400">
               Hello, {displayUsername}
             </div>
 
@@ -316,7 +316,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   onClick={() => goToSection(item.section)}
                   className={`w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
+                      ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
                       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -341,14 +341,14 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div className="px-2.5 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
               <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{t('logged_in_as_label', 'Logged in as')}</p>
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                 {/^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername}
               </p>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">{activeRole}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 p-2.5 text-xs font-bold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+              className="w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
               style={{ color: '#ff5252' }}
             >
               <LogOut className="w-4 h-4 text-red-500" />
@@ -372,7 +372,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               <Menu className="w-5 h-5" />
             </button>
             <div className="min-w-0">
-              <h2 className="root-admin-dashboard__title text-lg lg:text-2xl font-bold text-slate-900 dark:text-white truncate">
+              <h2 className="root-admin-dashboard__title text-lg lg:text-2xl font-semibold text-slate-900 dark:text-white truncate">
                 {activeSection === 'dashboard' && t('root_dashboard_label', 'Dashboard')}
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
@@ -412,7 +412,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('system_status_label', 'System Status')}</p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{t('online_status', 'Online')}</p>
+                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('online_status', 'Online')}</p>
                     </div>
                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/50 rounded-xl flex items-center justify-center">
                       <div className="w-3 h-3 bg-emerald-600 rounded-full animate-pulse"></div>
@@ -424,7 +424,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('global_css_configured_label', 'Global CSS Configured')}</p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{t('yes_status', 'Yes')}</p>
+                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('yes_status', 'Yes')}</p>
                     </div>
                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center">
                       <Paintbrush className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -436,10 +436,10 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('admin_level_label', 'Admin Level')}</p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{t('root_level', 'Root')}</p>
+                      <p className="text-3xl font-semibold text-slate-900 dark:text-white">{t('root_level', 'Root')}</p>
                     </div>
                     <div className="w-12 h-12 bg-purple-100 dark:bg-purple-950/50 rounded-xl flex items-center justify-center">
-                      <span className="text-lg font-bold text-purple-600 dark:text-purple-400">∞</span>
+                      <span className="text-lg font-semibold text-purple-600 dark:text-purple-400">∞</span>
                     </div>
                   </div>
                 </div>
@@ -447,7 +447,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="root-admin-dashboard__subtitle text-lg font-bold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
+                  <h3 className="root-admin-dashboard__subtitle text-lg font-semibold text-slate-900 dark:text-white">{t('system_information_heading', 'System Information')}</h3>
                   <button
                     type="button"
                     onClick={() => goToSection('account_settings')}
@@ -548,7 +548,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <DatabaseBackup className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="root-admin-dashboard__subtitle text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="root-admin-dashboard__subtitle text-sm font-semibold text-slate-900 dark:text-white">
                     {t('root_db_sync_heading', 'Download Live Database')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -560,7 +560,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 type="button"
                 onClick={handleDownloadLiveDb}
                 disabled={isExportingDb}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-xs"
               >
                 {isExportingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseBackup className="w-4 h-4" />}
                 {isExportingDb ? t('root_db_sync_exporting', 'Exporting...') : t('root_db_sync_download_button', 'Download .sql File')}
@@ -579,7 +579,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                   <RefreshCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="root-admin-dashboard__subtitle text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="root-admin-dashboard__subtitle text-sm font-semibold text-slate-900 dark:text-white">
                     {t('root_demo_data_heading', 'Reset Public Demo Data')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -604,14 +604,14 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               {!isLoadingDemoProperty && demoProperty && (
                 <>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    {t('root_demo_data_target_label', 'Target property:')} <span className="font-bold text-slate-900 dark:text-white">{demoProperty.name}</span>
+                    {t('root_demo_data_target_label', 'Target property:')} <span className="font-semibold text-slate-900 dark:text-white">{demoProperty.name}</span>
                     <span className="text-slate-400 dark:text-slate-500"> ({demoProperty.slug})</span>
                   </p>
                   <button
                     type="button"
                     onClick={handleResetDemoData}
                     disabled={isResettingDemo}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-xs"
                   >
                     {isResettingDemo ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     {isResettingDemo ? t('root_demo_data_resetting', 'Resetting...') : t('root_demo_data_reset_button', 'Reset Demo Data')}

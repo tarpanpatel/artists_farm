@@ -360,7 +360,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             onClick={handleHeaderClick}
             className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
-                ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
+                ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
                 : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
             } navigation__node-btn`}
           >
@@ -370,7 +370,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
             <div className="flex items-center gap-1 navigation__node-badge-wrapper">
               {badge && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badge.className} navigation__node-badge`}>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.className} navigation__node-badge`}>
                   {badge.text}
                 </span>
               )}
@@ -420,7 +420,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         }}
         className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'p-2.5 text-xs font-semibold' : depth === 1 ? 'p-2 text-xs font-semibold' : 'p-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
           isActive
-            ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-bold'
+            ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
         } navigation__leaf-btn`}
       >
@@ -434,7 +434,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         </div>
         {badge && (
           <span
-            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
               isActive ? 'bg-white/20 text-white' : badge.className
             } navigation__leaf-badge`}
           >
@@ -551,7 +551,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
               {customUrlRootItems.length > 0 && (
                 <div className="navigation__custom-links pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
+                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
                   {customUrlRootItems.map(item => {
                     const ItemIcon = getIconComponent(item.iconName);
                     return (
@@ -583,7 +583,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500/30 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                     {(() => {
                       const nameStr = (currentUser?.name || '').trim();
                       const isPhone = !nameStr || /^\+?\d{7,15}$/.test(nameStr.replace(/[\s-]/g, ''));
@@ -601,7 +601,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               </div>
               <button
                 onClick={handleLogoutClick}
-                className="navigation__logout-btn w-full flex items-center gap-3 p-2.5 text-xs font-bold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+                className="navigation__logout-btn w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
                 style={{ color: '#ff5252' }}
               >
                 <LogOut className="w-4 h-4 text-red-500" />

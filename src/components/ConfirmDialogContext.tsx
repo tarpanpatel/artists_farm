@@ -102,7 +102,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
               </div>
 
               <div className="flex-1 min-w-0 confirm-dialog__content">
-                <h3 className="confirm-dialog-context__subtitle text-lg font-bold text-slate-900 dark:text-white confirm-dialog__title">
+                <h3 className="confirm-dialog-context__subtitle text-lg font-semibold text-slate-900 dark:text-white confirm-dialog__title">
                   {pendingDialog.options.title ||
                     (pendingDialog.options.variant === 'danger'
                       ? t('confirm_action_title')
@@ -134,7 +134,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
               <button
                 type="button"
                 onClick={handleConfirm}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs text-white transition-all shadow-md cursor-pointer confirm-dialog__btn confirm-dialog__btn--confirm ${
+                className={`px-5 py-2.5 rounded-xl font-semibold text-xs text-white transition-all shadow-md cursor-pointer confirm-dialog__btn confirm-dialog__btn--confirm ${
                   pendingDialog.options.variant === 'danger'
                     ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                     : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

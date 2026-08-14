@@ -223,13 +223,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           <div className="space-y-6 service-requests-management__sections">
             {pending.length > 0 && (
               <div className="space-y-2 service-requests-management__section">
-                <h3 className="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 service-requests-management__section-header">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
+                <h3 className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 service-requests-management__section-header">{t('pending_status_badge', 'Pending')} ({pending.length})</h3>
                 <div className="space-y-2 service-requests-management__request-list">
                   {pending.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl service-requests-management__request-item service-requests-management__request-item--pending">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
@@ -255,13 +255,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
             {fulfilled.length > 0 && (
               <div className="space-y-2 service-requests-management__section">
-                <h3 className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 service-requests-management__section-header">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
+                <h3 className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 service-requests-management__section-header">{t('fulfilled_status_badge', 'Fulfilled')} ({fulfilled.length})</h3>
                 <div className="space-y-2 service-requests-management__request-list">
                   {paginatedFulfilled.map((r) => (
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75 service-requests-management__request-item service-requests-management__request-item--fulfilled">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-bold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
@@ -270,7 +270,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
                         </p>
                       </div>
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-bold shrink-0 service-requests-management__done-badge">
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-xs font-semibold shrink-0 service-requests-management__done-badge">
                         <CheckCircle2 className="w-3.5 h-3.5" /> {t('done_badge', 'Done')}
                       </span>
                     </div>
@@ -309,7 +309,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in service-requests-management__modal-overlay">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 service-requests-management__modal">
             <div className="flex items-center justify-between mb-4 service-requests-management__modal-header">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2 service-requests-management__modal-title">
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-white flex items-center gap-2 service-requests-management__modal-title">
                 <Clock className="w-5 h-5 text-indigo-500" />
                 {t('new_service_request_heading', 'New Service Request')}
               </h3>

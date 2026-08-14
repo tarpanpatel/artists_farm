@@ -145,7 +145,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 ? 'text-slate-300 dark:text-slate-600 line-through cursor-not-allowed'
                 : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
               : isCheckinSelected || isCheckoutSelected
-              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-md z-10'
+              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold shadow-md z-10'
               : inRange
               ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-none'
               : 'text-slate-800 dark:text-slate-200 hover:border hover:border-slate-900 dark:hover:border-white'
@@ -191,7 +191,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pr-8 sm:pr-10 date-range-picker__header">
           <div className="date-range-picker__header-info">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight date-range-picker__heading">
+            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight date-range-picker__heading">
               {heading ?? t('select_dates_heading', 'Select dates')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 date-range-picker__description">
@@ -206,11 +206,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               onClick={() => setSelectedMode('checkin')}
               className={`px-3 py-1.5 rounded-xl text-left transition-all date-range-picker__mode-btn ${
                 selectedMode === 'checkin'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-slate-900 dark:ring-white'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold ring-2 ring-slate-900 dark:ring-white'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{fromLabel ?? t('checkin_pill_label', 'CHECK-IN')}</div>
               <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkinDate)}</div>
             </button>
 
@@ -221,11 +221,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               onClick={() => setSelectedMode('checkout')}
               className={`px-3 py-1.5 rounded-xl text-left transition-all date-range-picker__mode-btn ${
                 selectedMode === 'checkout'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-slate-900 dark:ring-white'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-semibold ring-2 ring-slate-900 dark:ring-white'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 date-range-picker__mode-label">{toLabel ?? t('checkout_pill_label', 'CHECKOUT')}</div>
               <div className="text-xs font-semibold date-range-picker__mode-date">{formatDisplayDate(checkoutDate)}</div>
             </button>
           </div>
@@ -257,10 +257,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 px-4 date-range-picker__calendars">
             {/* Month 1 */}
             <div className="space-y-3 date-range-picker__month">
-              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white date-range-picker__month-title">
+              <h3 className="text-sm font-semibold text-center text-slate-900 dark:text-white date-range-picker__month-title">
                 {monthNames[month1.getMonth()]} {month1.getFullYear()}
               </h3>
-              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
                 <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
               </div>
               <div className="grid grid-cols-7 gap-1 justify-items-center date-range-picker__days">
@@ -270,10 +270,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
             {/* Month 2 */}
             <div className="space-y-3 hidden sm:block date-range-picker__month">
-              <h3 className="text-sm font-bold text-center text-slate-900 dark:text-white date-range-picker__month-title">
+              <h3 className="text-sm font-semibold text-center text-slate-900 dark:text-white date-range-picker__month-title">
                 {monthNames[month2.getMonth()]} {month2.getFullYear()}
               </h3>
-              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 dark:text-slate-500 date-range-picker__weekdays">
                 <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
               </div>
               <div className="grid grid-cols-7 gap-1 justify-items-center date-range-picker__days">
@@ -292,7 +292,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 onClear();
                 setSelectedMode('checkin');
               }}
-              className="text-xs font-bold text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-white transition date-range-picker__clear-btn"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-400 underline hover:text-slate-900 dark:hover:text-white transition date-range-picker__clear-btn"
             >
               {t('clear_dates_button', 'Clear dates')}
             </button>
@@ -301,7 +301,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className={`px-6 py-2.5 text-xs font-bold rounded-2xl shadow-md transition cursor-pointer date-range-picker__confirm-btn ${
+            className={`px-6 py-2.5 text-xs font-semibold rounded-2xl shadow-md transition cursor-pointer date-range-picker__confirm-btn ${
               checkinDate && checkoutDate
                 ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white border-0'
                 : 'bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900'

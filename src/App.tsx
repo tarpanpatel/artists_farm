@@ -1910,13 +1910,13 @@ ${itemsStr}
               <Smartphone className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="app__caption text-xs font-bold text-slate-900 dark:text-white truncate">Install Ground Code App</h4>
+              <h4 className="app__caption text-xs font-semibold text-slate-900 dark:text-white truncate">Install Ground Code App</h4>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Use it directly from your desktop or mobile homescreen</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleInstallApp}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Install</span>
@@ -1952,20 +1952,20 @@ ${itemsStr}
                 <Smartphone className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="app__caption text-xs font-bold text-slate-900 dark:text-white">Install Ground Code App</h4>
+                <h4 className="app__caption text-xs font-semibold text-slate-900 dark:text-white">Install Ground Code App</h4>
                 <ol className="mt-2 space-y-1.5">
                   <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">1</span>
                     <span>
                       Tap <Share className="w-3.5 h-3.5 inline mx-0.5 text-blue-600 dark:text-blue-400 -mt-0.5" /><strong>Share</strong> {isIPadDevice ? 'at the top of the screen' : 'in the bar below'}
                     </span>
                   </li>
                   <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">2</span>
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">2</span>
                     <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
                   </li>
                   <li className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">3</span>
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-semibold flex items-center justify-center">3</span>
                     <span>Tap <strong>"Add"</strong> in the top-right corner</span>
                   </li>
                 </ol>

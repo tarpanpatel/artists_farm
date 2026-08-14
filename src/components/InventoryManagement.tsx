@@ -10,6 +10,7 @@ import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -145,6 +146,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return ['All', ...cats];
   }, [catalogItems]);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   // Sync recorded-by with logged-in user
   useEffect(() => {
@@ -520,8 +522,17 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     showToast('Transaction Complete: Variance Analyzed, Shortfalls Logged, Req Items Updated, Master Catalog Synced, Audit Log Written, Telegram Alert Dispatched!', { type: 'success' });
   };
 
-  const handleQuickComplete = (sheet: any) => {
+  const handleQuickComplete = async (sheet: any) => {
     const targetSheetId = sheet.id;
+    const confirmed = await confirm({
+      title: t('complete_confirm_title', 'Complete Stock Request?'),
+      message: t('complete_confirm_message', `This will mark requisition sheet #${targetSheetId} as FULFILLED and archive it. Continue?`),
+      confirmText: t('complete_button', 'Complete'),
+      cancelText: t('cancel_button', 'Cancel'),
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+
     const updatedStatus = 'FULFILLED';
     setRecentSheets(prev => prev.map(s => s.id === targetSheetId ? { ...s, status: updatedStatus } : s));
     updateStockRequestStatusInDB(targetSheetId, updatedStatus, sheet.items);
@@ -629,7 +640,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const newSheet = {
       id: newSheetId,
       status: 'PENDING',
-      date: `${new Date().toLocaleDateString('en-GB')} - ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+      date: `${formatDateDDMMYYYY(new Date().toISOString())} - ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
       items,
     };
     setRecentSheets([newSheet, ...recentSheets]);
@@ -831,7 +842,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         {/* Wastage Form */}
         <div className="record-wastage-card max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-          <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+          <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
             <ClipboardEdit className="w-4 h-4" /> RECORD WASTAGE / SPILLAGE INCIDENT
           </h3>
 
@@ -859,7 +870,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     value={wastedQty}
                     onChange={e => setWastedQty(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0.00"
-                    className="wastage-qty-input w-full font-bold"
+                    className="wastage-qty-input w-full font-semibold"
                   />
                   <StyledSelect
                     className="w-28 shrink-0"
@@ -912,7 +923,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div>
               <button
                 type="submit"
-                className="btn-log-wastage bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-colors flex items-center gap-2"
+                className="btn-log-wastage bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-colors flex items-center gap-2"
               >
                 <span>LOG WASTAGE INCIDENT</span>
               </button>
@@ -936,14 +947,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 selector: (log: any) => log.itemName,
                 sortable: true,
                 grow: 2,
-                cell: (log: any) => <span className="font-bold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
+                cell: (log: any) => <span className="font-semibold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
               },
               {
                 name: 'Wasted Qty',
                 selector: (log: any) => log.wastedQty,
                 sortable: true,
                 width: '100px',
-                cell: (log: any) => <span className="font-bold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
+                cell: (log: any) => <span className="font-semibold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
               },
               {
                 name: 'Reason',
@@ -951,7 +962,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 sortable: true,
                 width: '140px',
                 cell: (log: any) => (
-                  <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
+                  <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
                 ),
               },
               {
@@ -975,8 +986,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             highlightOnHover
             subHeader={
               <div className="w-full flex items-center justify-between py-2">
-                <h3 className="inventory-management__subtitle font-bold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
-                <span className="text-slate-400 font-bold text-xs">{wastageLogs.length} incidents</span>
+                <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
+                <span className="text-slate-400 font-semibold text-xs">{wastageLogs.length} incidents</span>
               </div>
             }
             customStyles={{
@@ -1163,7 +1174,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
             <Search className="text-slate-400 w-4 h-4" />
-            <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider">
+            <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider">
               {t('record_kitchen_purchases_header', 'Record Kitchen Purchases & Stock')}
             </h3>
           </div>
@@ -1182,7 +1193,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">
+              <label className="block text-[10px] text-slate-400 font-semibold uppercase mb-1">
                 {t('inventory_item_detail_label', 'Inventory Item Detail (Select from Master Materials Catalog)')}
               </label>
               <StyledSelect
@@ -1252,7 +1263,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   readOnly
                   value={purUnit}
                   placeholder="Locked from Master Catalog"
-                  className="cursor-not-allowed font-bold"
+                  className="cursor-not-allowed font-semibold"
                 />
               </div>
 
@@ -1265,7 +1276,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   value={purTotalPrice}
                   onChange={e => setPurTotalPrice(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="0.00"
-                  className="font-bold"
+                  className="font-semibold"
                 />
               </div>
             </div>
@@ -1282,7 +1293,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div>
               <button
                 type="submit"
-                className="w-full py-3 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors shadow-xs cursor-pointer tracking-wider"
+                className="w-full py-3 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors shadow-xs cursor-pointer tracking-wider"
               >
                 {t('save_purchase_sync_button')}
               </button>
@@ -1292,7 +1303,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         {/* Bottom Card: RECENT KITCHEN PURCHASE LOG */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-          <h3 className="inventory-management__subtitle font-bold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-3">
+          <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 pb-3">
             {t('recent_kitchen_purchase_log_header')}
           </h3>
 
@@ -1300,7 +1311,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             {/* Step 1: Assign Vendor */}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-bold text-slate-700 text-xs w-12">{t('vendor_to_pay_label')}</span>
+              <span className="font-semibold text-slate-700 text-xs w-12">{t('vendor_to_pay_label')}</span>
               <StyledSelect
                 className="max-w-xs w-full"
                 value={selectedVendorToPay}
@@ -1310,7 +1321,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               />
               <button
                 onClick={handleAssignVendor}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
               >
                 Assign Vendor
               </button>
@@ -1318,7 +1329,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Step 2: Settlement Engine */}
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-slate-700 text-xs w-12">{t('paid_by_label')}</span>
+              <span className="font-semibold text-slate-700 text-xs w-12">{t('paid_by_label')}</span>
               {currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? (
                 <StyledSelect
                   className="max-w-xs w-full"
@@ -1338,12 +1349,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 />
               )}
 
-              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
                 <Coins size={14} /> ₹{(kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0)).toLocaleString('en-IN')}
               </span>
 
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600">
                   <Landmark size={14} className="text-slate-500" /> {t('cash_label')}
                 </span>
                 <Input
@@ -1359,7 +1370,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   placeholder="0"
                   className="w-20 text-center"
                 />
-                <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-purple-600">
                   <Wallet size={14} className="text-slate-500" /> {t('pocket_label')}
                 </span>
                 <Input
@@ -1379,7 +1390,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
 <button
                  onClick={handleMarkSelectedPaid}
-                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
                >
                  {t('mark_selected_paid_button')}
                </button>
@@ -1431,7 +1442,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 grow: 2,
                 cell: (row: any) => (
                   <div>
-                    <p className="font-bold text-slate-900 dark:text-white">{row.itemName}</p>
+                    <p className="font-semibold text-slate-900 dark:text-white">{row.itemName}</p>
                     <p className="text-[10px] text-slate-400 font-medium">{row.vendorName || 'Account: Unassigned'}</p>
                   </div>
                 ),
@@ -1449,7 +1460,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 sortable: true,
                 width: '110px',
                 right: true,
-                cell: (row: any) => <span className="font-bold text-slate-900 dark:text-white">₹{Number(row.totalPrice).toFixed(2)}</span>,
+                cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">₹{Number(row.totalPrice).toFixed(2)}</span>,
               },
               {
                 name: t('settlement_column_header'),
@@ -1458,7 +1469,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 width: '110px',
                 center: true,
                 cell: (row: any) => (
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${
+                  <span className={`text-[10px] font-semibold px-3 py-1 rounded-full ${
                     row.settlementStatus === 'Paid'
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : 'bg-amber-100 text-amber-800 border border-amber-300'
@@ -1474,7 +1485,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 cell: (row: any) => (
                   <button
                     onClick={() => handleDeletePurchase(row.id, row.itemName)}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold text-[10px] rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
                     {t('delete_button')}
                   </button>
@@ -1561,21 +1572,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <div className="stock-inventory-container space-y-4">
         {/* Header Title & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="text-slate-800 font-bold text-[10px] uppercase tracking-wider flex items-center gap-2">
+          <div className="text-slate-800 font-semibold text-[10px] uppercase tracking-wider flex items-center gap-2">
             <Package className="w-4 h-4 text-slate-700" /> {t('master_materials_catalog_header')}
           </div>
           
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowCategoryManager(!showCategoryManager)}
-              className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
             >
               <Settings className="w-3.5 h-3.5 text-slate-500" />
               <span>{showCategoryManager ? t('hide_categories_button') : t('manage_categories_button')}</span>
             </button>
             <button
               onClick={handleCreateNewCatalogItem}
-              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
             >
               <span>+ {t('register_new_item_button')}</span>
             </button>
@@ -1623,7 +1634,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     setNewCategoryName('');
                   }
                 }}
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-bold cursor-pointer"
+                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
               >
                 {t('add_category_button')}
               </button>
@@ -1663,7 +1674,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             setDbCategories((prev: any[]) => prev.map(c => c.id === dbCat.id ? { ...c, is_ingredient: newVal ? 1 : 0 } : c));
                           }
                         }}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${dbCat?.is_ingredient ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${dbCat?.is_ingredient ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}
                         title={dbCat?.is_ingredient ? 'Used in recipes' : 'Not used in recipes'}
                       >
                         {dbCat?.is_ingredient ? t('ingredient_badge') : t('not_food_badge')}
@@ -1695,7 +1706,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {selectedCatalogItemIds.length > 0 && (
           <div className="bulk-category-action-bar bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-250">
             <div className="flex items-center gap-2">
-              <span className="bg-blue-600 text-white font-bold text-xs px-2.5 py-1 rounded-full shadow-3xs">
+              <span className="bg-blue-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full shadow-3xs">
                 {selectedCatalogItemIds.length} Selected
               </span>
               <span className="text-xs text-blue-700 font-semibold">
@@ -1713,7 +1724,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <button
                 onClick={() => handleBulkAssignCategory(bulkTargetCategory)}
                 disabled={!bulkTargetCategory}
-                className="btn-bulk-assign-category bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-2xs shrink-0"
+                className="btn-bulk-assign-category bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-2xs shrink-0"
               >
                 {t('assign_category_button')}
               </button>
@@ -1749,7 +1760,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 selector: (row: CatalogItem) => row.name,
                 sortable: true,
                 grow: 2,
-                cell: (row: CatalogItem) => <span className="font-bold text-slate-800">{row.name}</span>,
+                cell: (row: CatalogItem) => <span className="font-semibold text-slate-800">{row.name}</span>,
               },
               {
                 name: t('category_label'),
@@ -1757,7 +1768,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 sortable: true,
                 width: '140px',
                 cell: (row: CatalogItem) => (
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">{row.category}</span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold">{row.category}</span>
                 ),
               },
               {
@@ -1782,9 +1793,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 width: '100px',
                 cell: (row: CatalogItem) => (
                   row.is_verified ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">{t('active_status_badge')}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 badge badge--success">{t('active_status_badge')}</span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">{t('review_status_badge')}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 badge badge--warning">{t('review_status_badge')}</span>
                   )
                 ),
               },
@@ -1792,18 +1803,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 name: 'Actions',
                 width: '180px',
                 cell: (row: CatalogItem) => (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 inventory-management__actions">
                     {!row.is_verified && (
-                      <button onClick={() => handleApproveItem(row.id)} className="text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
-                        Approve
+                      <button onClick={() => handleApproveItem(row.id)} className="button button--approve text-emerald-600 hover:text-emerald-700 font-medium text-xs cursor-pointer">
+                        {t('approve_button')}
                       </button>
                     )}
-                    <button onClick={() => handleEditCatalogItem(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                    <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                       <Pencil className="w-3.5 h-3.5" />
                       {t('edit_button')}
                     </button>
                     {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
-                      <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
+                      <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
                   {t('delete_button')}
                       </button>
                     )}
@@ -1927,7 +1938,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="inventory-management__subtitle font-bold text-slate-800 dark:text-white">
+                <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white">
                   {editingCatalogItem ? t('edit_catalog_item_heading') : t('register_new_material_heading')}
                 </h3>
                 <button onClick={() => setIsCatalogModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
@@ -1982,7 +1993,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div className="pt-2">
-                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-2xs transition-colors cursor-pointer">
+                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl shadow-2xs transition-colors cursor-pointer">
                     {t('save_commit_updates_button')}
                   </button>
                 </div>
@@ -1999,7 +2010,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <div className="space-y-4">
         {/* Header Title & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="text-slate-800 font-bold text-[10px] uppercase tracking-wider">
+          <div className="text-slate-800 font-semibold text-[10px] uppercase tracking-wider">
             {t('stock_request_log_header')}
           </div>
           
@@ -2011,7 +2022,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             >
               <span className="inline-flex items-center gap-1">{formatDateDDMMYYYY(fulfillFromDraft)} <ArrowRight className="w-3 h-3" /> {formatDateDDMMYYYY(fulfillToDraft)}</span>
             </button>
-            <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
+            <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
 {t('enter_button')}
             </button>
           </div>
@@ -2065,7 +2076,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                    sortable: true,
                    center: true,
                    cell: (row: any) => (
-                     <span className={`font-bold text-[10px] px-2 py-1 rounded-md ${
+                     <span className={`font-semibold text-[10px] px-2 py-1 rounded-md ${
                        row.status === 'PENDING'
                          ? 'bg-amber-100 text-amber-700'
                          : row.status === 'FULFILLED'
@@ -2163,7 +2174,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
               <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="inventory-management__subtitle font-bold text-slate-700 text-sm tracking-wide uppercase">
+                <h3 className="inventory-management__subtitle font-semibold text-slate-700 text-sm tracking-wide uppercase">
                   {t('modify_stock_request_header')}
                 </h3>
                 <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
@@ -2173,7 +2184,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               
               <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                 <div className="pt-2">
-                  <h4 className="inventory-management__caption text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
+                  <h4 className="inventory-management__caption text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
                   
                   <div className="space-y-5">
                     {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
@@ -2182,7 +2193,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       
                       return (
                         <div key={idx} className="space-y-2">
-                          <h5 className="inventory-management__label font-bold text-slate-800 text-sm">{namePart}</h5>
+                          <h5 className="inventory-management__label font-semibold text-slate-800 text-sm">{namePart}</h5>
                           <div className="grid grid-cols-4 gap-3">
                             <div>
                               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label')}</label>
@@ -2228,10 +2239,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-bold text-white bg-slate-500 rounded-lg hover:bg-slate-600 transition-colors shadow-xs cursor-pointer">
+                <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-semibold text-white bg-slate-500 rounded-lg hover:bg-slate-600 transition-colors shadow-xs cursor-pointer">
                   {t('cancel_button')}
                 </button>
-                <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-bold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 transition-colors shadow-xs cursor-pointer">
+                <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 transition-colors shadow-xs cursor-pointer">
                   {t('save_commit_updates_button')}
                 </button>
               </div>
@@ -2294,7 +2305,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <button
                       key={cat}
                       onClick={() => setReqCategory(cat)}
-                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                         isSelected
                           ? 'bg-cyan-500 text-white border-cyan-500 shadow-sm'
                           : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'
@@ -2309,7 +2320,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Selected Category Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="inventory-management__subtitle font-bold text-slate-700 text-xs tracking-wider uppercase">
+              <h3 className="inventory-management__subtitle font-semibold text-slate-700 text-xs tracking-wider uppercase">
                 {reqCategory === 'All Items' ? t('all_stock_catalog_items_header') : reqCategory.toUpperCase()}
               </h3>
               <span className="text-[11px] text-slate-400 font-semibold">
@@ -2321,7 +2332,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {filteredCatalog.length === 0 ? (
               <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl">
                 <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-600 font-bold text-xs">{t('no_catalog_items_found_message')} "{reqSearch}"</p>
+                <p className="text-slate-600 font-semibold text-xs">{t('no_catalog_items_found_message')} "{reqSearch}"</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -2338,15 +2349,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         {/* Item Icon Thumbnail */}
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-500 font-bold text-[10px]">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-500 font-semibold text-[10px]">
                           <Boxes className="w-5 h-5 text-cyan-600" />
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <h4 className="inventory-management__caption font-bold text-slate-800 text-xs truncate">
+                          <h4 className="inventory-management__caption font-semibold text-slate-800 text-xs truncate">
                             {item.name}
                           </h4>
-                          <p className="text-slate-500 font-bold text-[11px] mt-0.5">
+                          <p className="text-slate-500 font-semibold text-[11px] mt-0.5">
                             Per {item.unit} • ₹{item.rate.toFixed(2)}
                           </p>
                         </div>
@@ -2354,7 +2365,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                       <button
                         onClick={() => handleAddToReqBasket(item)}
-                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-1 cursor-pointer min-h-[36px] ${
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-1 cursor-pointer min-h-[36px] ${
                           isRecentlyAdded
                             ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
                             : 'bg-slate-50 hover:bg-cyan-50 text-slate-800 hover:text-cyan-700 border border-slate-300 hover:border-cyan-400 active:scale-90 shadow-2xs'
@@ -2378,11 +2389,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Panel 1: SUPPLY ORDER BASKET */}
             <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-4 flex-col justify-between space-y-3.5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="inventory-management__subtitle font-bold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
+                <h3 className="inventory-management__subtitle font-semibold text-slate-900 text-xs tracking-wider uppercase flex items-center gap-1.5">
                   <ShoppingCart className="w-4 h-4 text-slate-700" />
                   <span>{t('supply_basket_header')}</span>
                 </h3>
-                <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-200">
+                <span className="text-[10px] font-semibold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-200">
                   {totalReqCount} Items
                 </span>
               </div>
@@ -2401,7 +2412,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="flex-1 truncate pr-1">
-                        <h4 className="inventory-management__caption font-bold text-slate-900 text-xs truncate">
+                        <h4 className="inventory-management__caption font-semibold text-slate-900 text-xs truncate">
                           {b.name} <span className="text-slate-500 font-normal">({b.unit})</span>
                         </h4>
                       </div>
@@ -2414,18 +2425,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                  .filter((item) => item.qty > 0)
                              )
                            }
-                           className="w-8 h-8 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
+                           className="w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
                          >
                            -
                          </button>
-                         <span className="w-6 text-center font-bold text-slate-900 text-xs">{b.qty}</span>
+                         <span className="w-6 text-center font-semibold text-slate-900 text-xs">{b.qty}</span>
                          <button
                            onClick={() =>
                              setReqBasket((prev) =>
                                prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
                              )
                            }
-                           className="w-8 h-8 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
+                           className="w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
                          >
                            +
                          </button>
@@ -2450,7 +2461,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <button
                 onClick={handleDispatchReq}
                 disabled={reqBasket.length === 0 && !specialRequestText.trim()}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98]"
+                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98]"
               >
                 <span>{t('dispatch_requirement_button')}</span>
               </button>
@@ -2469,19 +2480,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Header Bar */}
             <div className="p-3 bg-slate-50 rounded-t-2xl border-b border-slate-200 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="bg-cyan-100 text-cyan-800 border border-cyan-200 font-bold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
+                <div className="bg-cyan-100 text-cyan-800 border border-cyan-200 font-semibold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
                   <ShoppingCart className="w-3.5 h-3.5 text-cyan-700" />
                   <span>{totalReqCount} Items</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">TOTAL: </span>
-                  <span className="text-emerald-600 font-bold text-sm">₹{totalReqSum.toFixed(2)}</span>
+                  <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider">TOTAL: </span>
+                  <span className="text-emerald-600 font-semibold text-sm">₹{totalReqSum.toFixed(2)}</span>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsReqCartDrawerExpanded(!isReqCartDrawerExpanded)}
-                className="bg-white hover:bg-slate-100 text-cyan-700 font-bold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                className="bg-white hover:bg-slate-100 text-cyan-700 font-semibold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
               >
                 {isReqCartDrawerExpanded ? (
                   <ChevronDown className="w-3.5 h-3.5" />
@@ -2495,7 +2506,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             {/* Items List */}
             <div className="p-3 flex-1 overflow-y-auto space-y-2">
               {!isReqCartDrawerExpanded && reqBasket.length > 3 && (
-                <p className="text-[10px] text-cyan-700 font-bold tracking-wide uppercase text-center pb-1">
+                <p className="text-[10px] text-cyan-700 font-semibold tracking-wide uppercase text-center pb-1">
                   {t('showing_last_3_items_prefix')} {reqBasket.length} {t('showing_last_3_items_suffix')}
                 </p>
               )}
@@ -2505,7 +2516,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs text-slate-900"
                 >
                   <div className="flex-1 pr-1 truncate">
-                    <h4 className="inventory-management__caption font-bold text-slate-900 text-xs truncate">
+                    <h4 className="inventory-management__caption font-semibold text-slate-900 text-xs truncate">
                       {b.name} <span className="text-slate-500 font-normal">({b.unit})</span>
                     </h4>
                   </div>
@@ -2519,11 +2530,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             .filter((item) => item.qty > 0)
                         )
                       }
-                      className="w-7 h-7 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                      className="w-7 h-7 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                     >
                       -
                     </button>
-                    <span className="w-6 text-center font-bold text-slate-900 text-xs">
+                    <span className="w-6 text-center font-semibold text-slate-900 text-xs">
                       {b.qty}
                     </span>
                     <button
@@ -2532,7 +2543,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
                         )
                       }
-                      className="w-7 h-7 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                      className="w-7 h-7 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                     >
                       +
                     </button>
@@ -2553,7 +2564,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <button
                 onClick={handleDispatchReq}
                 disabled={reqBasket.length === 0 && !specialRequestText.trim()}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
+                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
               >
                 <span>{t('dispatch_requirement_button')}</span>
               </button>
@@ -2584,7 +2595,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       sortable: true,
       grow: 1,
       cell: (item: InventoryItem) => (
-        <span className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</span>
+        <span className="font-semibold text-slate-900 dark:text-white text-sm">{item.name}</span>
       ),
     },
     {
@@ -2603,7 +2614,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       sortable: true,
       width: '130px',
       cell: (item: InventoryItem) => (
-        <span className="font-bold text-slate-800 dark:text-slate-200">{item.currentStock} {item.unit}</span>
+        <span className="font-semibold text-slate-800 dark:text-slate-200">{item.currentStock} {item.unit}</span>
       ),
     },
     {
@@ -2621,12 +2632,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       cell: (item: InventoryItem) => {
         const isLow = item.currentStock <= item.minThreshold;
         return isLow ? (
-          <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+          <span className="bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-800 text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
             <AlertTriangle className="w-3 h-3 text-red-600" />
             {t('low_stock_badge').toUpperCase()}
           </span>
         ) : (
-          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             {t('in_stock_badge')}
           </span>
@@ -2637,7 +2648,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       name: t('tracking_column_header'),
       width: '180px',
       cell: () => (
-        <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-bold px-2.5 py-1 rounded-full inline-block">
+        <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-semibold px-2.5 py-1 rounded-full inline-block">
           {t('system_tracked_badge')}
         </span>
       ),
@@ -2658,7 +2669,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       </div>
       <button
         onClick={() => setIsAddModalOpen(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer transition-colors"
       >
         <Plus className="w-3.5 h-3.5" /> {t('add_new_item_button')}
       </button>
@@ -2702,28 +2713,28 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div key={item.id} className="pt-3 first:pt-0 space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                       {item.category}
                     </span>
-                    <h4 className="inventory-management__caption font-bold text-slate-900 text-sm">{item.name}</h4>
+                    <h4 className="inventory-management__caption font-semibold text-slate-900 text-sm">{item.name}</h4>
                   </div>
                   {isLow ? (
-                    <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3 text-red-600" /> {t('low_stock_badge')}
                     </span>
                   ) : (
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {t('in_stock_badge')}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t('current_stock_column_header')}</span>
-                    <span className="font-bold text-slate-900 text-sm">{item.currentStock} {item.unit}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('current_stock_column_header')}</span>
+                    <span className="font-semibold text-slate-900 text-sm">{item.currentStock} {item.unit}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{t('min_threshold_column_header')}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('min_threshold_column_header')}</span>
                     <span className="font-semibold text-slate-600">{item.minThreshold} {item.unit}</span>
                   </div>
                 </div>
@@ -2741,7 +2752,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs">
             <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="inventory-management__subtitle font-bold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
+              <h3 className="inventory-management__subtitle font-semibold text-slate-800 text-sm">{t('add_new_item_button')}</h3>
               <button onClick={() => setIsAddModalOpen(false)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -2812,7 +2823,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_label')}</label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <label className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                    <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button')}</span>
                       <Input

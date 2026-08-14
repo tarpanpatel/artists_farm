@@ -57,9 +57,9 @@ const DEFAULT_CSS = `/* Ground Code â€” Custom CSS Override
 */
 
 /* Global Font Weight Mapping: caps font weights at 600 (semibold) system-wide */
-.font-bold,
-.font-bold,
-.font-bold,
+.font-semibold,
+.font-semibold,
+.font-semibold,
 strong,
 b,
 h1,
@@ -414,7 +414,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 flex items-start gap-4 custom-css-override__access-denied">
           <Lock className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="custom-cssoverride__subtitle font-bold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
+            <h3 className="custom-cssoverride__subtitle font-semibold text-red-900 dark:text-red-100 mb-1">{t('access_restricted_heading', 'Access Restricted')}</h3>
             <p className="text-sm text-red-800 dark:text-red-300">
               {t('access_restricted_description', 'Only root administrators can modify system-wide settings like custom CSS and icon configurations. These changes apply to all properties under all tenants.')}
             </p>
@@ -440,7 +440,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs custom-css-override__header">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="custom-cssoverride__title text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h2 className="custom-cssoverride__title text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Paintbrush className="w-6 h-6 text-purple-600" />
               <span>{t('custom_css_override_title', 'Custom CSS Override')}</span>
             </h2>
@@ -450,7 +450,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
           </div>
           <div className="flex items-center gap-2">
             {isApplied && (
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
                 <Eye className="w-3 h-3" />
                 {t('live_badge', 'LIVE')}
               </span>
@@ -470,7 +470,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
         <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 custom-css-override__toolbar">
           <div className="flex items-center gap-2">
             <Code className="w-4 h-4 text-slate-400" />
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{t('styles_css_label', 'styles.css')}</span>
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('styles_css_label', 'styles.css')}</span>
             {hasChanges && (
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title={t('unsaved_changes_tooltip', 'Unsaved changes')} />
             )}
@@ -528,7 +528,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
           <div className="flex items-center gap-2">
             <button
               onClick={handleApply}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Eye className="w-3.5 h-3.5" />
               {t('preview_button', 'Preview')}
@@ -536,7 +536,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className={`px-4 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm ${
+              className={`px-4 py-2 text-xs font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm ${
                 hasChanges
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
@@ -548,7 +548,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
           </div>
           <button
             onClick={handleReset}
-            className="px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
             {t('reset_all_button', 'Reset All')}
@@ -567,7 +567,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <Palette className="w-5 h-5 text-white" />
             </div>
             <div className="text-left">
-              <h3 className="custom-cssoverride__subtitle text-sm font-bold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
+              <h3 className="custom-cssoverride__subtitle text-sm font-semibold text-slate-900 dark:text-white">{t('lucide_icon_browser_title', 'Lucide Icon Browser')}</h3>
               <p className="text-[11px] text-slate-500">
                 {iconsLoaded ? `${allIcons.length} icons available` : t('browse_copy_lucide_message', 'Browse, customize, and copy the complete Lucide icon library')}
               </p>
@@ -587,7 +587,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Size */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                     <span>{t('icon_size_label', 'Size')}</span>
                     <span className="font-mono text-blue-600 dark:text-blue-400">{iconSize}px</span>
                   </label>
@@ -617,7 +617,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
                 {/* Stroke Width */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                     <span>{t('icon_stroke_width_label', 'Stroke Width')}</span>
                     <span className="font-mono text-blue-600 dark:text-blue-400">{iconStroke}px</span>
                   </label>
@@ -648,7 +648,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
                 {/* Color */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                     {t('icon_color_label', 'Color')}
                   </label>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -680,20 +680,20 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
               <div className="mt-3 flex items-center gap-2">
                 <button
                   onClick={handleLucideSave}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors"
                 >
                   <Save className="w-3.5 h-3.5" />
                   {t('save_apply_site_wide_button', 'Save & Apply Site-Wide')}
                 </button>
                 <button
                   onClick={handleLucideReset}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg cursor-pointer transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   {t('reset_to_defaults_button', 'Reset to Defaults')}
                 </button>
                 {lucideSaved && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 ml-1">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 ml-1">
                     <Eye className="w-2.5 h-2.5" /> {t('active_badge', 'ACTIVE')}
                   </span>
                 )}
@@ -767,7 +767,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                     <div className="text-center mt-4">
                       <button
                         onClick={() => setIconPage((p) => p + 1)}
-                        className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer transition-colors"
+                        className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 rounded-lg cursor-pointer transition-colors"
                       >
                         Load More ({filteredIcons.length - visibleIcons.length} remaining)
                       </button>
@@ -792,7 +792,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
                   {/* Details */}
                   <div className="flex-1 min-w-0">
-                    <h4 className="custom-cssoverride__caption text-sm font-bold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
+                    <h4 className="custom-cssoverride__caption text-sm font-semibold text-slate-900 dark:text-white mb-1">{selectedIcon.name}</h4>
                     <div className="space-y-1.5 text-[11px]">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400 w-16">{t('icon_import_label', 'Import:')}</span>
@@ -819,14 +819,14 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={() => handleCopyIconImport(selectedIcon.name)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
                       >
                         {copiedIcon === selectedIcon.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         {copiedIcon === selectedIcon.name ? t('copied_exclamation_button', 'Copied!') : t('copy_import_button', 'Copy Import')}
                       </button>
                       <button
                         onClick={() => handleCopyIconJSX(selectedIcon.name)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
                       >
                         {copiedIcon === selectedIcon.name ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         {copiedIcon === selectedIcon.name ? t('copied_exclamation_button', 'Copied!') : t('copy_jsx_button', 'Copy JSX')}
@@ -848,25 +848,25 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Quick Reference */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3 custom-css-override__quick-reference">
-        <h3 className="custom-cssoverride__subtitle text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="custom-cssoverride__subtitle text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-purple-100 dark:bg-purple-950 text-purple-600 px-2 py-0.5 rounded-md text-[10px]">{t('tips_badge', 'TIPS')}</span>
           {t('common_css_overrides_heading', 'Common CSS Overrides')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
           <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t('change_font_family_title', 'Change Font Family')}</p>
+            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('change_font_family_title', 'Change Font Family')}</p>
             <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">body {'{'} font-family: 'Inter', sans-serif; {'}'}</code>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t('sidebar_background_title', 'Sidebar Background')}</p>
+            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('sidebar_background_title', 'Sidebar Background')}</p>
             <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">nav {'{'} background: #1a1a2e; {'}'}</code>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t('card_border_radius_title', 'Card Border Radius')}</p>
+            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('card_border_radius_title', 'Card Border Radius')}</p>
             <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">.rounded-2xl {'{'} border-radius: 8px; {'}'}</code>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <p className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t('button_styles_title', 'Button Styles')}</p>
+            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">{t('button_styles_title', 'Button Styles')}</p>
             <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">button {'{'} border-radius: 12px; {'}'}</code>
           </div>
         </div>
@@ -874,7 +874,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg animate-toast-in custom-css-override__toast">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-lg animate-toast-in custom-css-override__toast">
           {toast}
         </div>
       )}

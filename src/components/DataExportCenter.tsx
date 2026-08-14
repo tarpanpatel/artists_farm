@@ -326,7 +326,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         subtitle={t('data_export_center_subtitle', 'Download master auditing spreadsheets or generate snapshot recovery files for your records workbook.')}
       >
         {downloadSuccessMsg && (
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-lg text-xs font-bold animate-fade-in">
+          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-lg text-xs font-semibold animate-fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{downloadSuccessMsg}</span>
           </div>
@@ -339,7 +339,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
         <div className="data-export-center__tabs flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl max-w-md">
           <button
             onClick={() => setExportRangeType('month')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               exportRangeType === 'month'
                 ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -349,7 +349,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           </button>
           <button
             onClick={() => setExportRangeType('year')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               exportRangeType === 'year'
                 ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -359,7 +359,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           </button>
           <button
             onClick={() => setExportRangeType('custom')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               exportRangeType === 'custom'
                 ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
@@ -373,7 +373,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {exportRangeType === 'month' && (
             <>
               <div>
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-slate-500" />
                   <span>{t('target_month_label', 'Target Month')}</span>
                 </label>
@@ -388,7 +388,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-slate-500" />
                   <span>{t('target_year_label', 'Target Year')}</span>
                 </label>
@@ -406,7 +406,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
 
           {exportRangeType === 'year' && (
             <div className="col-span-2 max-w-sm">
-              <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label className="block text-[10px] font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-slate-500" />
                 <span>{t('target_year_label', 'Target Year')}</span>
               </label>
@@ -451,7 +451,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 1: Bookings */}
           <div className="data-export-center__export-card flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Hotel className="w-4 h-4 text-blue-600" />
                 <span>{t('bookings_export_title', 'Accommodations Booking Spreadsheet')}</span>
               </h3>
@@ -462,7 +462,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <button
               type="button"
               onClick={exportBookings}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
@@ -474,7 +474,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {kitchenModuleEnabled && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
               <div className="space-y-1">
-                <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-amber-600" />
                   <span>{t('kitchen_purchases_export_title', 'Kitchen Purchases Workbook')}</span>
                 </h3>
@@ -485,7 +485,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <button
                 type="button"
                 onClick={exportKitchenExpenses}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 <Download className="w-4 h-4" />
                 <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
@@ -496,7 +496,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 3: Farm Upkeep & Utilities */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-purple-600" />
                 <span>{t('maintenance_utilities_export_title', 'Property Maintenance & Utilities Logs')}</span>
               </h3>
@@ -507,7 +507,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <button
               type="button"
               onClick={exportFarmUpkeep}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
@@ -517,7 +517,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 4: Payroll & Salaries */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl gap-4 hover:border-slate-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="data-export-center__subtitle text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-indigo-600" />
                 <span>{t('payroll_salaries_export_title', 'Payroll & Salaries Registry')}</span>
               </h3>
@@ -528,7 +528,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <button
               type="button"
               onClick={exportSalaries}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
               <span>{t('export_sheets_button', 'EXPORT SHEETS')}</span>
@@ -538,7 +538,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {/* Card 5: Master Ledger */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-sky-50 border border-sky-200 rounded-xl gap-4 hover:border-sky-300 transition-colors">
             <div className="space-y-1">
-              <h3 className="data-export-center__subtitle text-sm font-bold text-sky-900 flex items-center gap-2">
+              <h3 className="data-export-center__subtitle text-sm font-semibold text-sky-900 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-sky-700" />
                 <span>{t('master_ledger_export_title', 'Master Transaction Ledger')}</span>
               </h3>
@@ -549,7 +549,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
             <button
               type="button"
               onClick={exportMasterLedger}
-              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4" />
               <span>{t('export_master_button', 'EXPORT MASTER')}</span>
@@ -560,7 +560,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
           {isRootAdmin && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-rose-50 border border-rose-200 rounded-xl gap-4 mt-6 hover:border-rose-300 transition-colors">
               <div className="space-y-1">
-                <h3 className="data-export-center__subtitle text-sm font-bold text-rose-900 flex items-center gap-2">
+                <h3 className="data-export-center__subtitle text-sm font-semibold text-rose-900 flex items-center gap-2">
                   <Database className="w-4 h-4 text-rose-700" />
                   <span>{t('snapshot_backup_export_title', 'Full System Snapshot Backup (Root Admin)')}</span>
                 </h3>
@@ -571,7 +571,7 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
               <button
                 type="button"
                 onClick={exportFullSqlBackup}
-                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 <HardDriveDownload className="w-4 h-4" />
                 <span>{t('download_backup_button', 'DOWNLOAD BACKUP (.SQL)')}</span>

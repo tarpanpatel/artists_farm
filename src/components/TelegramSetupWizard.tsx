@@ -304,7 +304,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               <Rocket className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h2 className="telegram-setup-wizard__title text-base font-bold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
+              <h2 className="telegram-setup-wizard__title text-base font-semibold text-slate-900 dark:text-white m-0">{t('telegram_setup_title', 'Telegram Setup')}</h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">{t('configure_bot_subtitle', 'Configure bot settings and pairing alerts')}</p>
             </div>
           </div>
@@ -350,7 +350,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     {done && !isSett ? <CheckCircle2 className="w-4.5 h-4.5" /> : <StepIcon className="w-4.5 h-4.5" />}
                   </div>
                   <span
-                    className={`text-[10px] font-bold ${
+                    className={`text-[10px] font-semibold ${
                       active ? 'text-sky-700 dark:text-sky-400' : 'text-slate-400 dark:text-slate-500'
                     }`}
                   >
@@ -371,7 +371,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
               {/* Enabled toggle */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white">{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('enable_telegram_notifications_label', 'Enable Telegram Notifications')}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {t('enable_telegram_notifications_description', 'Toggle to enable or disable all Telegram notifications.')}
                   </div>
@@ -407,7 +407,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     type="button"
                     onClick={handleSaveToken}
                     disabled={savingToken}
-                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="shrink-0 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     {savingToken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     {t('save_button', 'Save')}
@@ -427,7 +427,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 {/* Collapsible/Guided Block */}
                 {(!botUsername || showBotFatherGuide) && (
                   <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex justify-between items-center">
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex justify-between items-center">
                       <span>{t('how_to_create_bot_heading', '🤖 How to create a Telegram Bot:')}</span>
                       {botUsername && (
                         <button
@@ -441,7 +441,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     </div>
                     <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400">
                       <div>
-                        1. Open <a href="https://t.me/BotFather?text=%2Fnewbot" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline font-bold">BotFather</a> and send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/newbot</code>.
+                        1. Open <a href="https://t.me/BotFather?text=%2Fnewbot" target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline font-semibold">BotFather</a> and send <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/newbot</code>.
                       </div>
                       <div>
                         2. Choose a display name, then choose a unique username ending in <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">bot</code>.
@@ -459,7 +459,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowBotFatherGuide(true)}
-                    className="text-xs font-bold text-sky-600 hover:underline cursor-pointer block mt-1"
+                    className="text-xs font-semibold text-sky-600 hover:underline cursor-pointer block mt-1"
                   >
                     <Lightbulb className="w-3.5 h-3.5 inline-block mr-1" /> {t('show_botfather_guide_button', 'Show BotFather setup guide')}
                   </button>
@@ -488,11 +488,11 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             <>
               {/* Group steps */}
               <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                Pair your <span className="font-bold text-slate-700 dark:text-slate-200">{currentStep.label}</span> Telegram group
+                Pair your <span className="font-semibold text-slate-700 dark:text-slate-200">{currentStep.label}</span> Telegram group
               </div>
 
               <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 rounded-lg px-3 py-2 text-[11px] text-sky-800 dark:text-sky-300">
-                <span className="font-bold">{t('who_belongs_here_prefix', 'Who belongs here: ')}</span>
+                <span className="font-semibold">{t('who_belongs_here_prefix', 'Who belongs here: ')}</span>
                 {ROLE_GUIDANCE[currentStep.key as keyof typeof ROLE_GUIDANCE]}
               </div>
 
@@ -502,7 +502,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                   <button
                     type="button"
                     onClick={() => setCurrentIndex(0)}
-                    className="bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg block mx-auto cursor-pointer"
+                    className="bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg block mx-auto cursor-pointer"
                   >
                     {t('go_to_settings_button', 'Go to Settings')}
                   </button>
@@ -515,7 +515,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="telegram-setup-wizard__caption text-sm font-bold text-slate-900 dark:text-white">{t('successfully_connected_heading', 'Successfully Connected!')}</h4>
+                    <h4 className="telegram-setup-wizard__caption text-sm font-semibold text-slate-900 dark:text-white">{t('successfully_connected_heading', 'Successfully Connected!')}</h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Your <b>{currentStep.label}</b> group chat is linked to the bot.
                     </p>
@@ -529,7 +529,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                       type="button"
                       onClick={handleSendTest}
                       disabled={currentState.testSending}
-                      className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="w-full bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       {currentState.testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       {currentState.testSent ? t('test_message_sent_again_button', 'Test Message Sent (send again)') : t('send_test_message_button', 'Send Test Message')}
@@ -538,7 +538,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     <button
                       type="button"
                       onClick={handleReSetup}
-                      className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> {t('re_setup_group_button', 'Re-setup / Re-pair Group')}
                     </button>
@@ -561,25 +561,25 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 <>
                   <ol className="space-y-2.5 text-sm text-slate-700 dark:text-slate-200 list-none">
                     <li className="flex gap-2.5">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">1</span>
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-semibold flex items-center justify-center">1</span>
                       <span>In Telegram, create a new group{propertyName ? ` (e.g. "${propertyName} - ${currentStep.label}")` : ''}.</span>
                     </li>
                     <li className="flex gap-2.5">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">2</span>
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-semibold flex items-center justify-center">2</span>
                       <span>
                         Tap the group name → <b>Add Members</b> → search{' '}
-                        <span className="font-mono font-bold text-sky-700 dark:text-sky-400">@{botUsername}</span> → tap it to add.
+                        <span className="font-mono font-semibold text-sky-700 dark:text-sky-400">@{botUsername}</span> → tap it to add.
                       </span>
                     </li>
                     <li className="flex gap-2.5">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-bold flex items-center justify-center">3</span>
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-semibold flex items-center justify-center">3</span>
                       <span>{t('send_this_code_label', 'Send this code as a message in the group:')}</span>
                     </li>
                   </ol>
 
                   {/* Code display */}
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-slate-900 dark:bg-black rounded-xl px-4 py-3 font-mono text-sky-400 text-sm font-bold tracking-wide text-center border border-slate-700">
+                    <div className="flex-1 bg-slate-900 dark:bg-black rounded-xl px-4 py-3 font-mono text-sky-400 text-sm font-semibold tracking-wide text-center border border-slate-700">
                       {currentState.status === 'generating' || !currentState.code ? (
                         <Loader2 className="w-4 h-4 animate-spin inline-block text-slate-400" />
                       ) : (
@@ -612,10 +612,10 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     )}
                     {currentState.status === 'expired' && (
                       <div className="space-y-2">
-                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('code_expired_label', 'This code expired.')}</div>
+                        <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">{t('code_expired_label', 'This code expired.')}</div>
                         <button
                           onClick={startPairing}
-                          className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
+                          className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
                         >
                           <RefreshCw className="w-3.5 h-3.5" /> {t('generate_new_code_button', 'Generate a new code')}
                         </button>
@@ -623,10 +623,10 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     )}
                     {currentState.status === 'error' && (
                       <div className="space-y-2">
-                        <div className="text-xs font-bold text-red-600 dark:text-red-400">{currentState.errorMessage}</div>
+                        <div className="text-xs font-semibold text-red-600 dark:text-red-400">{currentState.errorMessage}</div>
                         <button
                           onClick={startPairing}
-                          className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
+                          className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1.5 cursor-pointer"
                         >
                           <RefreshCw className="w-3.5 h-3.5" /> {t('try_again_button', 'Try again')}
                         </button>
@@ -644,7 +644,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
           <button
             onClick={goBack}
             disabled={currentIndex === 0}
-            className="text-xs font-bold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-semibold text-slate-500 dark:text-slate-400 disabled:opacity-0 flex items-center gap-1 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> {t('back_button', 'Back')}
           </button>
@@ -659,7 +659,7 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
             )}
             <button
               onClick={goNext}
-              className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
             >
               {isLastStep ? t('finish_button', 'Finish') : t('next_button', 'Next')} <ArrowRight className="w-3.5 h-3.5" />
             </button>

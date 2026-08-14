@@ -243,7 +243,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
       <div className="service-request-types-manager__card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="service-request-types-manager__header flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="service-request-types-manager__heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="service-request-types-manager__heading text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-600" />
               {t('service_request_types_heading', 'Service Request Types')}
             </h2>
@@ -314,7 +314,7 @@ export const ServiceRequestTypesManager: React.FC = () => {
           <div className="service-request-types-manager__types-grid grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[55vh] overflow-y-auto pr-1">
             {categories.map((category) => (
               <div key={category}>
-                <h4 className="service-request-types-manager__category-heading text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">{category}</h4>
+                <h4 className="service-request-types-manager__category-heading text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">{category}</h4>
                 <div className="service-request-types-manager__type-list space-y-1.5">
                   {effectiveTypes.filter((rt) => rt.category === category).map((rt) => (
                     <div key={rt.id} className="service-request-types-manager__type-item flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700">

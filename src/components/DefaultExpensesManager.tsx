@@ -182,7 +182,7 @@ export const DefaultExpensesManager: React.FC = () => {
       <div className="default-expenses-manager__header bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="default-expenses-manager__title text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="default-expenses-manager__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600 shrink-0" />
               <span className="truncate">{t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}</span>
             </h2>
@@ -308,7 +308,7 @@ export const DefaultExpensesManager: React.FC = () => {
         {categories.map((category) => (
           <div key={category} className="default-expenses-manager__category-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="bg-slate-100 dark:bg-slate-700 px-4 py-2">
-              <h3 className="default-expenses-manager__subtitle font-bold text-slate-900 dark:text-white text-sm">{category}</h3>
+              <h3 className="default-expenses-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm">{category}</h3>
             </div>
             <div className="p-2.5">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
@@ -361,7 +361,7 @@ export const DefaultExpensesManager: React.FC = () => {
       {editingItem && (
         <div className="default-expenses-manager__edit-modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="default-expenses-manager__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">{t('edit_expense_item_title', 'Edit Expense Item')}</h3>
+            <h3 className="default-expenses-manager__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('edit_expense_item_title', 'Edit Expense Item')}</h3>
             <form onSubmit={handleEditItem} className="app-form app-form--edit-expense-item space-y-4">
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">

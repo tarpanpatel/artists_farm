@@ -169,7 +169,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
       <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0 flex-1">
-          <h1 className="today-overview__page-title text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
+          <h1 className="today-overview__page-title text-base font-semibold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium line-clamp-1 sm:line-clamp-none">
@@ -197,8 +197,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Arrivals:</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">{todaysArrivals}</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Arrivals:</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{todaysArrivals}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
               </div>
             </div>
@@ -213,8 +213,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Departures:</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">{todaysDepartures}</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Departures:</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{todaysDepartures}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
               </div>
             </div>
@@ -230,8 +230,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Guests In-House:</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">{inHouseCount}</span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Guests In-House:</span>
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">{inHouseCount}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
                 </div>
               </div>
@@ -247,8 +247,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Service Requests:</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">{pendingRequests}</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Service Requests:</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">{pendingRequests}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
               </div>
             </div>
@@ -260,7 +260,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header with navigation */}
         <div className="flex justify-between items-center">
-          <h2 className="today-overview__title text-base font-bold text-slate-900 dark:text-white">{monthName}</h2>
+          <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{monthName}</h2>
           <div className="flex items-center gap-2">
           <button
             onClick={() => navigateMonth(-1)}
@@ -299,7 +299,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }`}
                 >
                   <div className="text-[8px] uppercase tracking-wide">{dayName}</div>
-                  <div className={`text-sm font-bold ${isToday ? 'text-white' : ''}`}>{day}</div>
+                  <div className={`text-sm font-semibold ${isToday ? 'text-white' : ''}`}>{day}</div>
                 </div>
               );
             })}
@@ -419,7 +419,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             onClick={() => setSelectedGuest(info.guest)}
                             title={`${info.guest.guestName} (₹${info.nightlyRate}/night)`}
                           >
-                            <span className="font-bold truncate text-[11px] leading-none">{info.guest.guestName}</span>
+                            <span className="font-semibold truncate text-[11px] leading-none">{info.guest.guestName}</span>
                             <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                           </div>
                         );

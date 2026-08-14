@@ -188,6 +188,13 @@ html.dark {
   }
 }
 
+/* Global: force normal font-weight on all form fields */
+input,
+select,
+textarea {
+  font-weight: normal;
+}
+
 /* Global Date Input - Click Anywhere to Open Picker */
 input[type="date"],
 input[type="datetime-local"],
@@ -1018,7 +1025,6 @@ html.dark .category-tab-active {
 
 /* Global Font Weight Mapping: Caps font weights at 600 (semibold) system-wide.
    Mirrored in the Custom CSS Override (Appearance page) so it can be tuned there. */
-.font-bold,
 .font-extrabold,
 .font-black,
 strong,

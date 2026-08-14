@@ -409,7 +409,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
             <button
               onClick={handleOpenAddFood}
-              className="menu-manager__add-food-btn w-full md:w-auto text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-bold text-xs px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
+              className="menu-manager__add-food-btn w-full md:w-auto text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>
@@ -440,7 +440,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                     <button
                       onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                      className={`menu-manager__availability-badge text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                      className={`menu-manager__availability-badge text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                         item.available
                           ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
                           : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200'
@@ -470,7 +470,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                     {/* Quick Image Upload Overlay Button */}
                     <label
-                      className="menu-manager__image-upload-overlay absolute inset-0 bg-slate-900/60 text-white flex items-center justify-center gap-1 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                      className="menu-manager__image-upload-overlay absolute inset-0 bg-slate-900/60 text-white flex items-center justify-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
                       title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
                     >
                       <Upload className="w-4 h-4" />
@@ -496,7 +496,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   </div>
 
                   <div>
-                    <h4 className="menu-manager__food-name font-bold text-slate-900 text-sm">{item.name}</h4>
+                    <h4 className="menu-manager__food-name font-semibold text-slate-900 text-sm">{item.name}</h4>
                     <p className="menu-manager__food-price text-emerald-700 font-semibold text-sm mt-0.5">₹{item.price.toFixed(2)}</p>
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="menu-manager__icon-picker-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="menu-manager__modal-title font-bold text-slate-900 text-sm">{t('select_navigation_icon_heading', 'Select Navigation Icon')}</h3>
+              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-sm">{t('select_navigation_icon_heading', 'Select Navigation Icon')}</h3>
               <button
                 onClick={() => setIconPickerTargetId(null)}
                 className="menu-manager__modal-close w-7 h-7 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
@@ -550,7 +550,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     className="menu-manager__icon-option p-3 bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs"
                   >
                     <IconComp className="w-6 h-6" />
-                    <span className="text-[9px] font-bold text-slate-500 truncate w-full text-center">
+                    <span className="text-[9px] font-semibold text-slate-500 truncate w-full text-center">
                       {item.name}
                     </span>
                   </button>
@@ -566,7 +566,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="menu-manager__nav-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="menu-manager__modal-title font-bold text-slate-900 text-base">
+              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-base">
                 {editingNavItem ? t('edit_main_menu_item_heading', 'Edit Main Menu Item') : t('add_new_main_menu_item_heading', 'Add New Main Menu Item')}
               </h3>
               <button
@@ -675,7 +675,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                             : [...navForm.roles, role];
                           setNavForm({ ...navForm, roles: updatedRoles });
                         }}
-                        className={`menu-manager__role-chip text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${
+                        className={`menu-manager__role-chip text-[11px] font-semibold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${
                           isChecked
                             ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                             : 'bg-white border-slate-200 text-slate-400'
@@ -700,7 +700,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   onChange={(e) => setNavForm({ ...navForm, isVisible: e.target.checked })}
                   className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="font-bold text-slate-800">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
+                <span className="font-semibold text-slate-800">{t('visible_in_system_navigation_label', 'Visible in System Navigation')}</span>
               </label>
 
               <div className="menu-manager__custom-link-box bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
@@ -722,7 +722,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     onChange={(e) => setNavForm({ ...navForm, openInNewTab: e.target.checked })}
                     className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-700 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
+                  <span className="font-semibold text-slate-700 text-xs">{t('open_link_new_browser_tab_label', 'Open link in new browser tab')}</span>
                 </label>
               </div>
 
@@ -730,13 +730,13 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNavModalOpen(false)}
-                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   {t('cancel_button', 'Cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm cursor-pointer"
+                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm cursor-pointer"
                 >
                   {editingNavItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
                 </button>
@@ -751,7 +751,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         <div className="menu-manager__modal-overlay fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="menu-manager__food-modal bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="menu-manager__modal-header flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="menu-manager__modal-title font-bold text-slate-900 text-base">
+              <h3 className="menu-manager__modal-title font-semibold text-slate-900 text-base">
                 {editingFoodItem ? t('edit_food_menu_item_heading', 'Edit Food Menu Item') : t('add_new_food_menu_item_heading', 'Add New Food Menu Item')}
               </h3>
               <button
@@ -801,7 +801,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_upload_url_label', 'Item Image Upload / URL')}</label>
                 <div className="menu-manager__field space-y-2">
                   <div className="menu-manager__upload-row flex items-center gap-2">
-                    <label className="menu-manager__upload-btn bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
+                    <label className="menu-manager__upload-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs text-xs shrink-0 transition-all">
                       <Upload className="w-4 h-4" />
                       <span>{t('upload_image_button', 'Upload Image')}</span>
                       <Input
@@ -858,20 +858,20 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   onChange={(e) => setFoodForm({ ...foodForm, available: e.target.checked })}
                   className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="font-bold text-slate-800">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
+                <span className="font-semibold text-slate-800">{t('item_currently_available_label', 'Item Currently Available in Kitchen')}</span>
               </label>
 
               <div className="menu-manager__modal-footer pt-3 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddFoodModalOpen(false)}
-                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="menu-manager__modal-cancel px-4 py-2 rounded-xl border border-slate-300 font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   {t('cancel_button', 'Cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm cursor-pointer"
+                  className="menu-manager__modal-submit px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm cursor-pointer"
                 >
                   {editingFoodItem ? t('save_changes_button', 'Save Changes') : t('create_item_button', 'Create Item')}
                 </button>
@@ -909,7 +909,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             />
 
             {passcodeError && (
-              <p className="menu-manager__passcode-error text-red-500 text-xs font-bold text-center">{passcodeError}</p>
+              <p className="menu-manager__passcode-error text-red-500 text-xs font-semibold text-center">{passcodeError}</p>
             )}
 
             <div className="menu-manager__passcode-actions flex justify-end gap-2">
@@ -921,7 +921,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </button>
               <button
                 onClick={handleVerifyPasscode}
-                className="menu-manager__passcode-verify px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs cursor-pointer transition-colors shadow-sm"
+                className="menu-manager__passcode-verify px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold text-xs cursor-pointer transition-colors shadow-sm"
               >
                 {t('verify_continue_button', 'Verify & Continue')}
               </button>

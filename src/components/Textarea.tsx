@@ -45,7 +45,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             errorMessage ? `${textareaId}-error` : helperText ? `${textareaId}-helper` : undefined
           }
            className={`
-               w-full px-3.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 outline-none
+                w-full px-3.5 py-2.5 text-sm font-normal rounded-lg transition-all duration-200 outline-none
                bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-slate-400 dark:placeholder:text-slate-500
                border ${
                  disabled

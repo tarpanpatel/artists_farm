@@ -214,7 +214,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           />
         ) : (
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900 dark:text-white">{row.label}</span>
+            <span className="font-semibold text-slate-900 dark:text-white">{row.label}</span>
             {row.is_system_default && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
                 {t('system_default_badge', 'Default')}
@@ -236,7 +236,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
           />
         ) : (
-          <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-[10px] font-bold px-2.5 py-1 rounded-full">
+          <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 text-[10px] font-semibold px-2.5 py-1 rounded-full">
             {row.category}
           </span>
         );
@@ -254,7 +254,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
             onChange={(e) => setEditForm({ ...editForm, default_amount: Number(e.target.value) })}
           />
         ) : (
-          <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.default_amount?.toLocaleString('en-IN') || 0}</span>
         );
       },
     },
@@ -266,8 +266,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
         const isSystemDefault = row.is_system_default;
         return editing ? (
           <div className="flex justify-end gap-2">
-            <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('save_button', 'Save')}</button>
-            <button onClick={() => setIsEditing(null)} className="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+            <button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">{t('save_button', 'Save')}</button>
+            <button onClick={() => setIsEditing(null)} className="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
           </div>
         ) : (
           <div className="flex justify-end gap-3">
@@ -345,7 +345,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
       {isAddModalOpen && (
         <div className="misc-charges-management__modal fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="misc-charges-management__subtitle font-bold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
+            <h3 className="misc-charges-management__subtitle font-semibold text-lg text-slate-900 dark:text-white mb-4">{t('add_extra_service_title', 'Add Extra Service')}</h3>
             <form onSubmit={handleAdd} className="app-form app-form--add-misc-charge space-y-4">
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('service_name_label', 'Service Name')}</label>
@@ -376,8 +376,8 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-white transition-colors cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm transition-colors cursor-pointer">{t('add_service_button', 'Add Service')}</button>
               </div>
             </form>
           </div>

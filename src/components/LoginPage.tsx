@@ -225,7 +225,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
             {t('forgot_passcode_title', 'Forgot Your Passcode?')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -253,13 +253,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('mobile_username_label', 'Mobile Number / Username')}
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
                   <Phone className="w-4 h-4" />
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
+                  <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
                 </div>
                 <Input
                   type="tel"
@@ -279,7 +279,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isSendingLoginInfo || forgotMobile.length === 0}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSendingLoginInfo ? (
                 <>
@@ -321,7 +321,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+          <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
             {t('set_new_passcode_title', 'Set a New Passcode')}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
@@ -337,7 +337,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('new_passcode_label', 'New 6-Digit Passcode')}
               </label>
               <div className="relative">
@@ -357,7 +357,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 {t('confirm_new_passcode_label', 'Confirm New Passcode')}
               </label>
               <div className="relative">
@@ -378,7 +378,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isSavingPasscode || newPasscode.length !== 6 || confirmPasscode.length !== 6}
-              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSavingPasscode ? (
                 <>
@@ -409,7 +409,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Title */}
-        <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white text-center tracking-tight">
+        <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
           Ground Code
         </h1>
         <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 text-center mb-8 uppercase tracking-wider">
@@ -428,13 +428,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* Mobile Number Input */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               {t('mobile_username_label', 'Mobile Number / Username')}
             </label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
                 <Phone className="w-4 h-4" />
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
               </div>
                <Input
                  type="tel"
@@ -451,7 +451,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* 6-Digit Passcode Input */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               {t('pin_passcode_label', '6-Digit PIN Passcode')}
             </label>
             <div className="relative">
@@ -487,7 +487,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {isLoading ? (
               <>

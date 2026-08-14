@@ -219,10 +219,10 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   return (
     <div className="rooms-management space-y-4">
       <div className="rooms-management__header flex items-center justify-between">
-        <h3 className="rooms-management__subtitle text-base font-bold text-slate-900 dark:text-white">{t('rooms_heading', 'Rooms')}</h3>
+        <h3 className="rooms-management__subtitle text-base font-semibold text-slate-900 dark:text-white">{t('rooms_heading', 'Rooms')}</h3>
         <div className="flex items-center gap-3">
           {slotUsage && (
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
               slotUsage.remaining_slots <= 0
                 ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
                 : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
@@ -265,7 +265,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-900 dark:text-white text-sm mb-1 truncate">{room.name}</p>
                   <span
-                    className={`inline-block px-2 py-1 text-xs font-bold rounded ${
+                    className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
                       status === 'booked'
                         ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300'
                         : 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300'
@@ -356,7 +356,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
       {showAddRoomModal && (
         <div className="rooms-management__modal fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <h3 className="rooms-management__subtitle text-lg font-bold text-slate-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
+            <h3 className="rooms-management__subtitle text-lg font-semibold text-slate-900 dark:text-white mb-4">{t('add_new_room_title', 'Add New Room')}</h3>
 
             {property.room_count >= 10 && (
               <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded">

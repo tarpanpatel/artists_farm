@@ -38,7 +38,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 
         {/* Message */}
         <div className="text-center loading-screen__message">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2 loading-screen__title">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 loading-screen__title">
             {t('artists_farm_brand')}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 loading-screen__text">
@@ -64,7 +64,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             </div>
             <a
               href="/"
-              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 loading-screen__home-link"
+              className="block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 loading-screen__home-link"
             >
               <Home className="w-4 h-4 loading-screen__home-icon" />
               {t('go_home_button')}

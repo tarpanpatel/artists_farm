@@ -85,7 +85,7 @@ export const GlobalModal = () => {
             {getIcon()}
           </div>
           <div className="flex-1 pt-1 global-modal__content">
-            <h3 className="font-bold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
+            <h3 className="font-semibold text-slate-900 text-lg mb-1 global-modal__title">{modal.title}</h3>
             <p className="text-slate-600 text-sm font-medium leading-relaxed global-modal__message">{modal.message}</p>
           </div>
         </div>
@@ -94,13 +94,13 @@ export const GlobalModal = () => {
             <>
               <button
                 onClick={handleClose}
-                className="px-4 py-2 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
+                className="px-4 py-2 rounded-xl text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors global-modal__btn global-modal__btn--cancel"
               >
                 {t('cancel_button')}
               </button>
               <button
                 onClick={handleConfirm}
-                className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
+                className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--confirm"
               >
                 {t('confirm_button')}
               </button>
@@ -108,7 +108,7 @@ export const GlobalModal = () => {
           ) : (
               <button
                 onClick={handleClose}
-                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
+                className="px-5 py-2 rounded-xl bg-cyan-600 text-white font-semibold text-sm shadow-md hover:bg-cyan-700 transition-colors global-modal__btn global-modal__btn--ok"
               >
                 {t('okay_button')}
               </button>

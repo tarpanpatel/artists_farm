@@ -20,7 +20,7 @@ interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => (
   <div className="gen_page_head flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800 page-header">
     <div className="min-w-0 flex-1 page-header__left">
-       <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate page-header__title flex items-center gap-2">
+       <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight truncate page-header__title flex items-center gap-2">
          {title}
        </h1>
       {subtitle && (

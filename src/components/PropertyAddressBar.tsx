@@ -98,7 +98,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
           <div className="absolute inset-0 bg-black/50 property-address-bar__overlay" onClick={() => !isSaving && setIsModalOpen(false)} />
           <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md p-6 property-address-bar__modal">
             <div className="flex items-center justify-between mb-4 property-address-bar__modal-header">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 property-address-bar__modal-title">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 property-address-bar__modal-title">
                 <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 {t('property_details_header', 'Property Details')}
               </h2>
@@ -138,7 +138,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               <button
                 onClick={handleSave}
                 disabled={isSaving || !editAddress.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__save-btn"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__save-btn"
               >
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 {t('save_address_button', 'Save Address')}
@@ -146,7 +146,7 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
               <button
                 onClick={() => setIsModalOpen(false)}
                 disabled={isSaving}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__cancel-btn"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer property-address-bar__cancel-btn"
               >
                 <X className="w-3.5 h-3.5" />
                 {t('cancel_button', 'Cancel')}

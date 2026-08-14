@@ -8,14 +8,12 @@ const normalizeMonth = (month: string): string | undefined =>
 
 const pad = (n: string | number): string => String(n).padStart(2, '0');
 
+// All front-end date displays use dd/mm/YY (2-digit year) per product spec.
+// formatDateDDMMYY is the canonical display formatter; the YYYY-named alias
+// below returns the same 2-digit-year string so existing call sites render
+// dd/mm/YY without per-call-site changes.
 export const formatDateDDMMYY = (dateStr?: string | null): string => {
-  const formatted = formatDateDDMMYYYY(dateStr);
-  if (!formatted) return '';
-  const parts = formatted.split('/');
-  if (parts.length === 3 && parts[2].length === 4) {
-    return `${parts[0]}/${parts[1]}/${parts[2].slice(-2)}`;
-  }
-  return formatted;
+  return formatDateDDMMYYYY(dateStr);
 };
 
 export const formatDateDDMMYYYY = (dateStr?: string | null): string => {
@@ -23,20 +21,23 @@ export const formatDateDDMMYYYY = (dateStr?: string | null): string => {
   const cleaned = String(dateStr).trim();
   if (!cleaned) return '';
 
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) return cleaned;
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
+    const parts = cleaned.split('/');
+    return `${pad(parts[0])}/${pad(parts[1])}/${String(parts[2]).slice(-2)}`;
+  }
 
   const dmy = cleaned.match(/^(\d{1,2})\s+([A-Za-z]{3})[.,]?\s+(\d{4})/);
   if (dmy) {
     const month = normalizeMonth(dmy[2]);
-    if (month) return `${pad(dmy[1])}/${month}/${dmy[3]}`;
+    if (month) return `${pad(dmy[1])}/${month}/${String(dmy[3]).slice(-2)}`;
   }
 
   const ymd = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (ymd) return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
+  if (ymd) return `${ymd[3]}/${ymd[2]}/${String(ymd[1]).slice(-2)}`;
 
   const dt = new Date(cleaned);
   if (!isNaN(dt.getTime())) {
-    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${String(dt.getFullYear()).slice(-2)}`;
   }
 
   return cleaned;
@@ -50,11 +51,11 @@ export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
   const dmy = cleaned.match(/^(\d{1,2})\s+([A-Za-z]{3})[.,]?\s+(\d{4})\s*-\s*(.+)$/);
   if (dmy) {
     const month = normalizeMonth(dmy[2]);
-    if (month) return `${pad(dmy[1])}/${month}/${dmy[3]} - ${dmy[4]}`;
+    if (month) return `${pad(dmy[1])}/${month}/${String(dmy[3]).slice(-2)} - ${dmy[4]}`;
   }
 
   const dtMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})[T ](.+)$/);
-  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${dtMatch[1]} ${dtMatch[4]}`;
+  if (dtMatch) return `${dtMatch[3]}/${dtMatch[2]}/${String(dtMatch[1]).slice(-2)} ${dtMatch[4]}`;
 
   return formatDateDDMMYYYY(cleaned);
 };

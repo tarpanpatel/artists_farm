@@ -129,7 +129,7 @@ export const EmailSettingsPanel: React.FC = () => {
     <div className="space-y-4">
       {/* SMTP Connection */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="email-settings-panel__subtitle text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+        <h3 className="email-settings-panel__subtitle text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
           <Mail className="w-4 h-4 text-indigo-500" /> {t('smtp_connection_heading', 'SMTP Connection')}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
@@ -267,7 +267,7 @@ export const EmailSettingsPanel: React.FC = () => {
       {/* Welcome Template */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 email-settings-panel__section email-settings-panel__section--welcome">
         <div className="flex items-center justify-between mb-1.5 email-settings-panel__welcome-header">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
           <button
             type="button"
             onClick={() => setTemplate('')}
@@ -320,7 +320,7 @@ export const EmailSettingsPanel: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </button>

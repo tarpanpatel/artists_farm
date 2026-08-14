@@ -538,7 +538,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="receipt-edit-modal__title text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="receipt-edit-modal__title text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <IndianRupee className="w-5 h-5 text-blue-600" />
               {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Guest Billing & Final Checkout Settlement')}
             </h2>
@@ -572,49 +572,49 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('guest_name_only_label', 'Guest Name')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('guest_name_only_label', 'Guest Name')}</label>
                     <Input
                       type="text"
                       value={editGuestName}
                       onChange={(e) => setEditGuestName(e.target.value)}
-                      className="text-xs font-bold text-slate-900 dark:text-white"
+                      className="text-xs font-semibold text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('phone_number_label', 'Phone Number')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('phone_number_label', 'Phone Number')}</label>
                     <Input
                       type="tel"
                       value={editPhoneNumber}
                       onChange={(e) => setEditPhoneNumber(e.target.value)}
-                      className="text-xs font-bold text-slate-900 dark:text-white"
+                      className="text-xs font-semibold text-slate-900 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkin_date_only_label', 'Check-In Date')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkin_date_only_label', 'Check-In Date')}</label>
                     <Button
                       type="button"
                       onClick={() => setIsDatePickerOpen(true)}
                       block
                       size="sm"
                       variant="secondary"
-                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-bold"
+                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-semibold"
                     >
                       <span>{checkinDate ? formatDisplayDate(checkinDate) : 'Select Date'}</span>
                       <Calendar className="w-4 h-4 text-blue-600" />
                     </Button>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkout_date_only_label', 'Check-Out Date')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('checkout_date_only_label', 'Check-Out Date')}</label>
                     <Button
                       type="button"
                       onClick={() => setIsDatePickerOpen(true)}
                       block
                       size="sm"
                       variant="secondary"
-                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-bold"
+                      className="text-slate-900 dark:text-white flex items-center justify-between hover:border-blue-500 font-semibold"
                     >
                       <span>{checkoutDate ? formatDisplayDate(checkoutDate) : 'Select Date'}</span>
                       <Calendar className="w-4 h-4 text-blue-600" />
@@ -623,22 +623,22 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('base_lodging_charges_label', 'Base Lodging Charges (₹)')}</label>
                   <Input
                     type="number"
                     value={roomCharges}
                     onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="text-xs font-bold text-slate-900 dark:text-white"
+                    className="text-xs font-semibold text-slate-900 dark:text-white"
                   />
                 </div>
 
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center font-bold">
+                  <div className="flex justify-between items-center font-semibold">
                     <span className="text-slate-700 dark:text-slate-300">{t('advance_paid_label', 'Advance Paid:')}</span>
                     <span className="summary-line summary-line--advance-paid text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
                     <StyledSelect
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
@@ -648,7 +648,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 flex justify-between items-center text-xs font-bold border border-amber-200 dark:border-amber-800">
+                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 flex justify-between items-center text-xs font-semibold border border-amber-200 dark:border-amber-800">
                   <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
                   <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
@@ -670,7 +670,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {/* Dish / Item Selector Controls */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                     <div className="sm:col-span-7">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t('select_dish_item_label', 'Select Dish / Item')}</label>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('select_dish_item_label', 'Select Dish / Item')}</label>
                       <StyledSelect
                         value={selectedMenuId}
                         onChange={setSelectedMenuId}
@@ -681,13 +681,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
                       <Input
                         type="number"
                         min="1"
                         value={itemQty}
                         onChange={(e) => setItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="text-xs font-bold text-center"
+                        className="text-xs font-semibold text-center"
                       />
                     </div>
                     <div className="sm:col-span-3 flex items-end">
@@ -707,7 +707,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {incidentals.length > 0 ? (
                     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800">
                       <table className="w-full text-xs text-left receipt-edit-modal__table">
-                        <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-600 receipt-edit-modal__table-header">
+                        <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-600 receipt-edit-modal__table-header">
                           <tr className="receipt-edit-modal__table-header-row">
                             <th className="py-2 px-3 receipt-edit-modal__table-header-cell">{t('description_item_column', 'Description Item')}</th>
                             <th className="py-2 px-3 text-center receipt-edit-modal__table-header-cell">{t('qty_column', 'Qty')}</th>
@@ -717,15 +717,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700 receipt-edit-modal__table-body">
                           {incidentals.map((item) => (
                             <tr key={item.id}>
-                              <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">
+                              <td className="receipt-edit-modal__cell py-2 px-3 font-semibold text-slate-900 dark:text-white">
                                 {item.name} <span className="text-[10px] text-slate-400">(₹{item.price})</span>
                               </td>
-                              <td className="py-2 px-3 text-center">
+                              <td className="receipt-edit-modal__cell py-2 px-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateIncidentalQty(item.id, -1)}
-                                    className="w-5 h-5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 rounded font-bold text-xs"
+                                    className="w-5 h-5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 rounded font-semibold text-xs"
                                   >
                                     -
                                   </button>
@@ -733,13 +733,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateIncidentalQty(item.id, 1)}
-                                    className="w-5 h-5 bg-cyan-600 text-white hover:bg-cyan-700 rounded font-bold text-xs"
+                                    className="w-5 h-5 bg-cyan-600 text-white hover:bg-cyan-700 rounded font-semibold text-xs"
                                   >
                                     +
                                   </button>
                                 </div>
                               </td>
-                              <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
+                              <td className="receipt-edit-modal__cell py-2 px-3 text-right font-semibold text-slate-900 dark:text-white">
                                 ₹{(item.price * item.quantity).toFixed(2)}
                               </td>
                             </tr>
@@ -768,7 +768,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 <form onSubmit={handleAddAdjustment} className="app-form app-form--add-adjustment space-y-3 text-xs">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('strategy_type_label', 'Strategy Type')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('strategy_type_label', 'Strategy Type')}</label>
                     <StyledSelect
                       value={adjType}
                       onChange={(val) => setAdjType(val as 'charge' | 'discount')}
@@ -782,7 +782,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                   {adjType === 'charge' && (
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('charge_category_label', 'Charge Category')}</label>
+                      <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">{t('charge_category_label', 'Charge Category')}</label>
                       <StyledSelect
                         value={adjReasonCharge}
                         onChange={setAdjReasonCharge}
@@ -803,7 +803,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         value={adjReasonDiscount}
                         onChange={(e) => setAdjReasonDiscount(e.target.value)}
                         placeholder={t('discount_label_placeholder', 'e.g. Service Apology...')}
-                        className="font-bold"
+                        className="font-semibold"
                       />
                     </div>
                   )}
@@ -818,7 +818,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
                       placeholder="0.00"
                       inputMode="decimal"
-                      className="font-bold"
+                      className="font-semibold"
                     />
                   </div>
 
@@ -834,9 +834,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 {/* Applied Adjustments List */}
                 {adjustments.length > 0 && (
                   <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs mt-2">
-                    <span className="font-bold text-slate-500 uppercase text-[10px] block">{t('applied_adjustments_label', 'Applied Adjustments')}</span>
+                    <span className="font-semibold text-slate-500 uppercase text-[10px] block">{t('applied_adjustments_label', 'Applied Adjustments')}</span>
                     {adjustments.map((adj) => (
-                      <div key={adj.id} className="flex items-center justify-between font-bold">
+                      <div key={adj.id} className="flex items-center justify-between font-semibold">
                         <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1">
                           <CornerDownRight className="w-3.5 h-3.5" /> {adj.reason}
                         </span>
@@ -868,25 +868,25 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <div className="space-y-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <div className="flex justify-between">
                     <span>{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
-                    <span className="font-bold">₹{lodgingPendingDue.toFixed(2)}</span>
+                    <span className="font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
                   </div>
 
                   {kitchenModuleEnabled && (
                     <div className="flex justify-between">
                       <span>{t('food_incidentals_subtotal_label', 'Food & Incidentals Subtotal:')}</span>
-                      <span className="font-bold">₹{foodTotal.toFixed(2)}</span>
+                      <span className="font-semibold">₹{foodTotal.toFixed(2)}</span>
                     </div>
                   )}
 
                   {extraCharges > 0 && (
-                    <div className="flex justify-between text-red-600 font-bold">
+                    <div className="flex justify-between text-red-600 font-semibold">
                       <span>{t('extra_charges_label', '(+) Extra Charges:')}</span>
                       <span>+₹{extraCharges.toFixed(2)}</span>
                     </div>
                   )}
 
                   {discounts > 0 && (
-                    <div className="flex justify-between text-emerald-600 font-bold">
+                    <div className="flex justify-between text-emerald-600 font-semibold">
                       <span>{t('discount_rebate_label', '(-) Discount Rebate:')}</span>
                       <span>-₹{discounts.toFixed(2)}</span>
                     </div>
@@ -904,10 +904,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         />
                         <div className="w-8 h-4 bg-slate-300 peer-checked:bg-blue-600 rounded-full peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
                       </label>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">{t('apply_gst_label', 'Apply GST')}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{t('apply_gst_label', 'Apply GST')}</span>
                     </div>
                     {gstEnabled && (
-                      <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                         Acc: {gstAccommodationRate}% | Food: {gstFoodRate}%
                       </span>
                     )}
@@ -918,12 +918,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
                       <div className="flex justify-between">
                         <span>Accommodation GST @ {gstAccommodationRate}%:</span>
-                        <span className="font-bold">₹{gstAccommodationAmount.toFixed(2)}</span>
+                        <span className="font-semibold">₹{gstAccommodationAmount.toFixed(2)}</span>
                       </div>
                       {kitchenModuleEnabled && foodTotal > 0 && (
                         <div className="flex justify-between">
                           <span>Food GST @ {gstFoodRate}%:</span>
-                          <span className="font-bold">₹{gstFoodAmount.toFixed(2)}</span>
+                          <span className="font-semibold">₹{gstFoodAmount.toFixed(2)}</span>
                         </div>
                       )}
 
@@ -956,7 +956,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                             <button
                               type="button"
                               onClick={() => { setRateDraft(gstRates); setIsEditingRates(true); }}
-                              className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline cursor-pointer"
+                              className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 underline cursor-pointer"
                             >
                               {t('edit_gst_rates_button', 'Edit GST Rates (Root Admin)')}
                             </button>
@@ -1007,7 +1007,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                                 />
                               </div>
                               <div className="flex justify-end gap-2">
-                                <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-bold text-slate-500 cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                                <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-semibold text-slate-500 cursor-pointer">{t('cancel_button', 'Cancel')}</button>
                                 <button
                                   type="button"
                                   disabled={savingRates}
@@ -1034,7 +1034,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                                       setSavingRates(false);
                                     }
                                   }}
-                                  className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded cursor-pointer disabled:opacity-50"
+                                  className="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded cursor-pointer disabled:opacity-50"
                                 >
                                   {savingRates ? 'Saving...' : t('save_rates_button', 'Save Rates')}
                                 </button>
@@ -1051,7 +1051,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       "the bill" and "the pending payment" are never the same
                       line. */}
                   <div className="border-t-2 border-emerald-300 dark:border-emerald-700 pt-2 space-y-1">
-                    <div className="flex justify-between items-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-500 dark:text-slate-400">
                       <span>{t('grand_total_full_stay_label', 'Grand Total (Full Stay):')}</span>
                       <span className="summary-line summary-line--grand-total">₹{grandTotalFullStay.toFixed(2)}</span>
                     </div>
@@ -1063,7 +1063,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                   <div className="flex justify-between items-center text-[11px] pt-1">
                     <span>{t('total_stacked_entered_label', 'Total Stacked Entered:')}</span>
-                    <span className={`summary-line summary-line--total-stacked font-bold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`summary-line summary-line--total-stacked font-semibold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
                       ₹{totalSplitSum.toFixed(2)}
                     </span>
                   </div>
@@ -1079,7 +1079,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     value={deskCashier}
                     readOnly
                     disabled
-                    className="font-bold cursor-not-allowed"
+                    className="font-semibold cursor-not-allowed"
                   />
                 </div>
 
@@ -1090,7 +1090,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddSplitRow}
-                      className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg cursor-pointer shrink-0"
+                      className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg cursor-pointer shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" /> {t('add_row_button', 'Add Row')}
                     </button>
@@ -1150,7 +1150,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                               type="button"
                               disabled={!selectedPayTo}
                               onClick={() => setVisibleQrRowId((prev) => (prev === row.id ? null : row.id))}
-                              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                              className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
                             >
                               <QrCode className="w-3.5 h-3.5" /> {visibleQrRowId === row.id ? t('hide_qr_button', 'Hide QR') : t('show_qr_button', 'Show QR')}
                             </button>
@@ -1159,7 +1159,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         {row.mode === 'UPI' && visibleQrRowId === row.id && selectedPayTo && (
                           <div className="flex flex-col items-center gap-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
                             <img src={selectedPayTo.qrCodeUrl} alt={`${selectedPayTo.name} UPI QR code`} className="w-32 h-32 object-contain" />
-                            <span className="text-[10px] font-bold text-slate-500">{selectedPayTo.name}</span>
+                            <span className="text-[10px] font-semibold text-slate-500">{selectedPayTo.name}</span>
                           </div>
                         )}
                       </div>
@@ -1262,7 +1262,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               <button
                 type="button"
                 onClick={handleShareReceipt}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
               >
                 <Share2 className="w-3.5 h-3.5" /> {t('share_bill_png_button', 'Share Bill (PNG)')}
               </button>
@@ -1272,14 +1272,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center"
               >
                 Share via WhatsApp
               </a>
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(false)}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg cursor-pointer"
               >
                 {t('close_button', 'Close')}
               </button>
@@ -1317,7 +1317,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Stay Logistics */}
               <div className="space-y-1">
-                <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                   Stay Logistics (Room {guest.roomNumber})
                 </div>
                 <div className="flex justify-between text-black">
@@ -1328,7 +1328,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   <span>{t('advance_paid_dash_label', '[-] Advance Paid:')}</span>
                   <span className="summary-line summary-line--advance-paid">₹{advancePaid.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-black font-bold border-t border-dashed border-slate-200 pt-1">
+                <div className="flex justify-between text-black font-semibold border-t border-dashed border-slate-200 pt-1">
                   <span>{t('pending_lodging_settled_label', 'Pending Lodging Settled:')}</span>
                   <span className="summary-line summary-line--pending-lodging-due">₹{lodgingPendingDue.toFixed(2)}</span>
                 </div>
@@ -1337,7 +1337,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* KOT Kitchen Incidentals */}
               {kitchenModuleEnabled && incidentals.length > 0 && (
                 <div className="space-y-1 pt-2">
-                  <div className="flex justify-between items-center font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="flex justify-between items-center font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     <span>{t('kot_kitchen_incidentals_heading', 'KOT Kitchen Incidentals')}</span>
                     <span>Subtotal: ₹{foodTotal.toFixed(2)}</span>
                   </div>
@@ -1357,7 +1357,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* Adjustments: Extra Charges and Discounts */}
               {adjustments.length > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     {t('applied_adjustments_label', 'Applied Adjustments')}
                   </div>
                   <div className="space-y-1 pt-1">
@@ -1378,7 +1378,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* GST Breakdown â€” item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
-                  <div className="font-bold border-l-2 border-slate-400 pl-2 text-black text-xs">
+                  <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
                     {t('tax_breakdown_heading', 'Tax Breakdown (GST)')}
                   </div>
                   <div className="flex justify-between text-black text-[11px]">
@@ -1392,11 +1392,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   )}
                   <div className="border-t border-dashed border-slate-300 pt-1">
-                    <div className="flex justify-between text-black text-[11px] font-bold">
+                    <div className="flex justify-between text-black text-[11px] font-semibold">
                       <span>{t('cgst_split_label', 'CGST (50% split):')}</span>
                       <span>₹{gstCgst.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-black text-[11px] font-bold">
+                    <div className="flex justify-between text-black text-[11px] font-semibold">
                       <span>{t('sgst_split_label', 'SGST (50% split):')}</span>
                       <span>₹{gstSgst.toFixed(2)}</span>
                     </div>

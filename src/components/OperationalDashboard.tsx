@@ -320,7 +320,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Arrivals:</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Arrivals:</span>
                 <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysArrivalsCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
               </div>
@@ -328,7 +328,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Bookings"
           >
             <span>Bookings</span>
@@ -344,7 +344,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Departures:</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Departures:</span>
                 <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysDeparturesCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
               </div>
@@ -352,7 +352,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Bookings"
           >
             <span>Bookings</span>
@@ -369,7 +369,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Guests In-House:</span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Guests In-House:</span>
                   <span className="text-sm font-extrabold text-slate-900 dark:text-white">{inHouseCount}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
                 </div>
@@ -377,7 +377,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
               title="View Bookings"
             >
               <span>Guests</span>
@@ -394,7 +394,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Service Requests:</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Service Requests:</span>
                 <span className="text-sm font-extrabold text-slate-900 dark:text-white">{pendingRequestsCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
               </div>
@@ -402,7 +402,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('service_requests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
             title="View Service Requests"
           >
             <span>Requests</span>
@@ -442,13 +442,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }
                 }}
                 autoFocus
-                className="text-2xl font-bold text-slate-900 dark:text-white"
+                className="text-2xl font-semibold text-slate-900 dark:text-white"
               />
             ) : (
               <div className="flex items-center gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="operational-dashboard__subtitle text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
+                    <h3 className="operational-dashboard__subtitle text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
                     <button
                       onClick={() => {
                         setIsEditingRoomName(true);
@@ -473,7 +473,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Front-desk Alerts */}
       {(totalAlerts > 0 || clearedGuests.length > 0) && (
         <div className="operational-dashboard__alerts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-          <h3 className="operational-dashboard__alerts-title font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="operational-dashboard__alerts-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="operational-dashboard__alerts-icon w-4 h-4 text-red-600" />
             {t('alerts_heading', 'Alerts')}
             {totalAlerts > 0 && (
@@ -488,7 +488,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse operational-dashboard__table operational-dashboard__table--checkout">
                 <thead className="operational-dashboard__table-header">
-                  <tr className="text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
+                  <tr className="text-left text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
                     <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_guest_room', 'Guest / Room')}</th>
                     <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_issue', 'Issue')}</th>
                     <th className="pb-2 w-36 operational-dashboard__table-header-cell">{t('alerts_col_action', 'Action')}</th>
@@ -500,13 +500,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       key={g.id}
                       className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
                     >
-                      <td className="py-2.5 pr-3 align-top">
-                        <div className={`text-sm font-bold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                      <td className="operational-dashboard__cell py-2.5 pr-3 align-top">
+                        <div className={`text-sm font-semibold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
                           {g.guestName}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
                       </td>
-                      <td className="py-2.5 pr-3 align-top">
+                      <td className="operational-dashboard__cell py-2.5 pr-3 align-top">
                         <div className="space-y-0.5">
                           {reasons.map((r, i) => (
                             <div
@@ -519,7 +519,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           ))}
                         </div>
                       </td>
-                      <td className="py-2.5 align-top">
+                      <td className="operational-dashboard__cell py-2.5 align-top">
                         <button
                           onClick={() => setSelectedBooking(g)}
                           className={`text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
@@ -540,7 +540,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end">
               <button
                 onClick={() => setShowAllAlertsModal(true)}
-                className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
+                className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
               >
                 <span>View All System Alerts ({combinedAlerts.length})</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -551,7 +551,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
               <button
                 onClick={() => setShowCleared((prev) => !prev)}
-                className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {t('cleared_label', 'Cleared')} ({clearedGuests.length})
@@ -565,7 +565,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         onClick={() => setSelectedBooking(g)}
                         className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
                       >
-                        <span className="text-sm font-bold text-emerald-900">
+                        <span className="text-sm font-semibold text-emerald-900">
                           {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
                         </span>
                         <span className="text-xs font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
@@ -584,7 +584,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
       {cFormPending.length > 0 && (
         <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
-          <h3 className="operational-dashboard__cform-title font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="operational-dashboard__cform-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
             {t('cform_filing_due_heading', 'C-Form Filing Due')}
             <span className="operational-dashboard__cform-badge text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
@@ -607,12 +607,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     onClick={() => setSelectedBooking(g)}
                     className="text-left cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{g.guestName}</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{g.guestName}</p>
                     <p className={`text-xs font-medium ${due.overdue ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
                       {due.label}
                     </p>
                   </button>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap shrink-0">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer whitespace-nowrap shrink-0">
                     <input
                       type="checkbox"
                       disabled={cFormSavingId === g.id}
@@ -634,11 +634,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="operational-dashboard__col-profile bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div className="operational-dashboard__col-profile-inner">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600" />
                 {t('current_resident_profile_heading', 'Guest Currently Staying')}
               </h3>
-              <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
+              <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-200">
                 {t('checked_in_badge', 'Active Stay')}
               </span>
             </div>
@@ -649,7 +649,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-400" /> {t('guest_name_colon_label', 'Guest Name:')}
                   </span>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">{checkedInGuest.guestName}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{checkedInGuest.guestName}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/60">
@@ -683,7 +683,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
                 <div className="flex justify-between items-center py-1.5">
                   <span className="text-slate-500 dark:text-slate-400 font-medium">{t('room_label', 'Room:')}</span>
-                  <span className="font-bold bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-2.5 py-1 rounded border border-slate-200 dark:border-slate-600">
+                  <span className="font-semibold bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-2.5 py-1 rounded border border-slate-200 dark:border-slate-600">
                     {checkedInGuest.roomNumber}
                   </span>
                 </div>
@@ -701,7 +701,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       }`}
                     >
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{g.guestName}</p>
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">{g.guestName}</p>
                         <p className="text-[11px] text-slate-500">{g.roomNumber}</p>
                       </div>
                       {verified ? (
@@ -744,11 +744,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           <div className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
             <div className="operational-dashboard__col-kitchen-inner">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Tickets')}
                 </h3>
-                <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200">
+                <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-blue-200">
                   {pendingOrders.length} {t('tickets_suffix', 'Tickets')}
                 </span>
               </div>
@@ -758,7 +758,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   {recentOrders.slice(0, 5).map((ord) => (
                     <li key={ord.id} className="py-2.5 flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                           <span>{ord.id}</span>
                           <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
                         </div>
@@ -807,11 +807,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 {t('requisitions_label', 'Requisitions')}
               </h3>
-              <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded border border-red-200">
+              <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-red-200">
                 {stockAlerts.length} {t('items_low_suffix', 'Items Low')}
               </span>
             </div>
@@ -821,7 +821,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {stockAlerts.slice(0, 5).map((item) => (
                   <li key={item.id} className="py-2 flex items-center justify-between gap-2">
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white">{item.name}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">{item.name}</p>
                       <p className="text-slate-500 text-[11px]">{item.category}</p>
                     </div>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300">
@@ -851,17 +851,17 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="operational-dashboard__subtitle font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+          <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
             {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
           </h3>
-          <span className="text-xs font-bold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
+          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 px-3 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
             {monthName}
           </span>
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
+        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
           <div>Sun</div>
           <div>Mon</div>
           <div>Tue</div>
@@ -936,22 +936,22 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                 }`}
               >
-                <span className={`text-xs font-bold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}</span>
+                <span className={`text-xs font-semibold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'}`}>{d}</span>
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : `text-white ${colors[guestColorIndex]}`} text-xs font-bold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
                   >
-                    <div className="truncate font-bold">{dayBooking.guestName.split(' ')[0]}</div>
+                    <div className="truncate font-semibold">{dayBooking.guestName.split(' ')[0]}</div>
                     {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
                   </button>
                 )}
                 {otaBlock && (
                   <div
                     title={t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
-                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-bold flex flex-col justify-center shadow-xs truncate w-full cursor-help"
+                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-help"
                   >
-                    <div className="truncate font-bold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                    <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                   </div>
                 )}
               </div>
@@ -1083,7 +1083,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse operational-dashboard__table operational-dashboard__table--alerts">
                 <thead className="operational-dashboard__table-header">
-                  <tr className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
+                  <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 operational-dashboard__table-header-row">
                     <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_guest_room', 'Guest / Room')}</th>
                     <th className="pb-2 pr-3 operational-dashboard__table-header-cell">{t('alerts_col_issue', 'Issue')}</th>
                     <th className="pb-2 w-36 operational-dashboard__table-header-cell">{t('alerts_col_action', 'Action')}</th>
@@ -1095,13 +1095,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       key={g.id}
                       className={severity === 'red' ? 'bg-red-50/60 dark:bg-red-900/10' : 'bg-amber-50/60 dark:bg-amber-900/10'}
                     >
-                      <td className="py-3 pr-3 align-top">
-                        <div className={`text-sm font-bold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                      <td className="operational-dashboard__cell py-3 pr-3 align-top">
+                        <div className={`text-sm font-semibold ${severity === 'red' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
                           {g.guestName}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">{g.roomNumber}</div>
                       </td>
-                      <td className="py-3 pr-3 align-top">
+                      <td className="operational-dashboard__cell py-3 pr-3 align-top">
                         <div className="space-y-1">
                           {reasons.map((r, i) => (
                             <div
@@ -1114,7 +1114,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           ))}
                         </div>
                       </td>
-                      <td className="py-3 align-top">
+                      <td className="operational-dashboard__cell py-3 align-top">
                         <button
                           onClick={() => {
                             setShowAllAlertsModal(false);

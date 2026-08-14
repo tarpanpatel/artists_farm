@@ -371,12 +371,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
          {/* Card 1: Active Connected Channels */}
          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('connected_ical_feeds_label', 'Connected iCal Feeds')}</span>
             <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg">
               <Globe className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+          <p className="text-2xl font-semibold text-slate-900 dark:text-white">
             {calendars.length} <span className="text-xs font-semibold text-slate-500">{t('active_unit_label', 'Active')}</span>
           </p>
           <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
@@ -387,12 +387,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
          {/* Card 2: Auto-Sync Worker Interval */}
          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2 ical-sync-manager__kpi-item">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('background_worker_label', 'Background Worker')}</span>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
               <Clock className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">
+          <p className="text-2xl font-semibold text-slate-900 dark:text-white">
             15 Min <span className="text-xs font-semibold text-slate-500">{t('interval_unit_label', 'Interval')}</span>
           </p>
           <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
@@ -403,12 +403,12 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
         {/* Card 3: Channel Health */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('integration_health_label', 'Integration Health')}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('integration_health_label', 'Integration Health')}</span>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
               <CheckCircle2 className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
             100% <span className="text-xs font-semibold text-slate-500">{t('operational_unit_label', 'Operational')}</span>
           </p>
           <p className="text-[10px] text-slate-500 font-semibold">{t('zero_availability_conflicts_label', 'Zero availability conflicts')}</p>
@@ -449,7 +449,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
             </div>
           </div>
 
-          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">
             {t('showing_label', 'Showing')} {filteredCalendars.length} {t('of_label', 'of')} {calendars.length} {t('connected_feeds_label', 'Connected Feeds')}
           </div>
         </div>
@@ -476,7 +476,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 return (
                   <tr key={cal.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
                     {/* Platform & Name */}
-                    <td className="p-4">
+                    <td className="ical-sync-manager__cell p-4">
                       <div className="flex items-center gap-2.5">
                         <span className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
@@ -489,33 +489,35 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                     </td>
 
                     {/* Endpoint URL with Copy Button */}
-                    <td className="p-4 max-w-xs">
+                    <td className="ical-sync-manager__cell p-4 max-w-xs">
                       <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                         <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate flex-1">
                           {cal.ical_url}
                         </span>
                         <button
                           onClick={() => copyToClipboard(cal.ical_url, cal.id)}
-                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 transition cursor-pointer shrink-0"
+                          className="button button--copy p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 transition cursor-pointer shrink-0"
                           title={t('copy_feed_url_tooltip', 'Copy feed URL')}
                         >
-                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span className="button__icon flex items-center">
+                            {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </span>
                         </button>
                       </div>
                     </td>
 
                     {/* Sync Mode */}
-                    <td className="p-4 text-center">
+                    <td className="ical-sync-manager__cell p-4 text-center">
                       <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-mono text-[10px]">
                         {t('auto_15m_badge', 'Auto (15m)')}
                       </span>
                     </td>
 
                     {/* Last Synced */}
-                    <td className="p-4">
+                    <td className="ical-sync-manager__cell p-4">
                       {cal.last_sync ? (
                         <div className="space-y-0.5">
-                          <p className="text-slate-900 dark:text-white font-bold text-xs">
+                          <p className="text-slate-900 dark:text-white font-semibold text-xs">
                             {new Date(cal.last_sync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                           <p className="text-[10px] text-slate-400">
@@ -528,32 +530,36 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                     </td>
 
                     {/* Status */}
-                    <td className="p-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <td className="ical-sync-manager__cell p-4 text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         {t('connected_badge', 'Connected')}
                       </span>
                     </td>
 
                     {/* Actions */}
-                    <td className="p-4 text-right">
+                    <td className="ical-sync-manager__cell p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleManualSync(cal.id, cal.service_name)}
                           disabled={isSyncing}
-                          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-bold rounded-lg transition flex items-center gap-1 cursor-pointer border border-blue-200 dark:border-blue-800 text-[11px]"
+                          className="button button--sync px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer border border-blue-200 dark:border-blue-800 text-[11px]"
                           title={t('sync_channel_now_tooltip', 'Sync channel now')}
                         >
-                          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                          <span className="button__icon flex items-center">
+                            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                          </span>
                           <span>{isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}</span>
                         </button>
 
                         <button
                           onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
-                          className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-transparent hover:border-rose-200"
+                          className="button button--delete p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-transparent hover:border-rose-200"
                           title={t('delete_integration_key_tooltip', 'Delete integration key')}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <span className="button__icon flex items-center">
+                            <Trash2 className="w-4 h-4" />
+                          </span>
                         </button>
                       </div>
                     </td>
@@ -563,16 +569,18 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
               {filteredCalendars.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center p-12 text-slate-400 space-y-3">
+                  <td colSpan={6} className="ical-sync-manager__cell text-center p-12 text-slate-400 space-y-3">
                     <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
                     <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
-                    <button
-                      onClick={() => setIsAddModalOpen(true)}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
-                    </button>
+                      <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                      >
+                        <span className="button__icon flex items-center">
+                          <Plus className="w-4 h-4" />
+                        </span>
+                        <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
+                      </button>
                   </td>
                 </tr>
               )}
@@ -616,7 +624,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                       <h4 className="ical-sync-manager__caption font-semibold text-base text-slate-900 dark:text-white">{room.name}</h4>
                       <p className="text-[10px] text-slate-400 font-mono">{t('room_slug_label', 'Room Slug:')} {room.slug}</p>
                     </div>
-                    <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
+                    <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-[10px] rounded-full border border-blue-200 dark:border-blue-800">
                       {roomCalendars.length} {t('feeds_label', 'Feeds')}
                     </span>
                   </div>
@@ -624,7 +632,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                   {/* Connected Feeds for this Room */}
                   {roomCalendars.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">{t('connected_feeds_label', 'Connected Feeds')} ({roomCalendars.length})</span>
+                      <span className="text-[10px] font-semibold text-slate-500 uppercase">{t('connected_feeds_label', 'Connected Feeds')} ({roomCalendars.length})</span>
                       <div className="space-y-1.5">
                         {roomCalendars.map((cal) => {
                           const badge = getPlatformBadge(cal.service_name);
@@ -672,7 +680,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
                   {/* Add Feed Inputs */}
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t('connect_channel_for_label', 'Connect Channel for')} {room.name}</span>
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase">{t('connect_channel_for_label', 'Connect Channel for')} {room.name}</span>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="w-36 shrink-0">
                         <StyledSelect
@@ -709,7 +717,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                           setRoomCustomNames((prev) => ({ ...prev, [room.id]: '' }));
                         }}
                         disabled={!url.trim()}
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition whitespace-nowrap cursor-pointer shadow-xs"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl transition whitespace-nowrap cursor-pointer shadow-xs"
                       >
                         {t('add_feed_button', 'Add Feed')}
                       </button>
@@ -718,7 +726,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
 
                   {/* Room Export URL */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t('export_ical_feed_label', 'Export iCal Feed')} ({room.name})</span>
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase">{t('export_ical_feed_label', 'Export iCal Feed')} ({room.name})</span>
                     <div className="flex gap-2">
                       <Input
                         type="text"
@@ -728,7 +736,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                       />
                       <button
                         onClick={() => copyToClipboard(roomExportUrl, room.id)}
-                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold rounded-lg transition text-[11px] cursor-pointer"
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition text-[11px] cursor-pointer"
                       >
                         {isCopied ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
                       </button>
@@ -824,7 +832,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer text-xs"
+                className="px-4 py-2 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer text-xs"
               >
                 {t('cancel_button', 'Cancel')}
               </button>
@@ -832,7 +840,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                 type="button"
                 onClick={() => handleAddCalendar()}
                 disabled={isAdding || !newImportUrl.trim()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl transition cursor-pointer text-xs shadow-xs flex items-center gap-2"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl transition cursor-pointer text-xs shadow-xs flex items-center gap-2"
               >
                 {isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 <span>{isAdding ? t('connecting_button', 'Connecting...') : t('connect_feed_button', 'Connect Feed')}</span>
