@@ -760,7 +760,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       <div>
                         <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                           <span>{ord.id}</span>
-                          <span className="text-slate-400 font-normal">({ord.roomNumber})</span>
+                          {ord.roomNumber && <span className="text-slate-400 font-normal">({ord.roomNumber})</span>}
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 line-clamp-1">
                           {ord.items.map((i) => `${i.name} (${i.quantity})`).join(', ')}
