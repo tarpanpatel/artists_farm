@@ -1,4 +1,4 @@
-﻿/**
+/**
  * API service helper for Ground Code Resort PHP/MySQL backend.
  */
 
@@ -688,8 +688,18 @@ export async function fetchMiscCatalogFromDB(): Promise<{ id: string | number; l
   try {
     const res = await apiFetch(`${API_BASE}?action=get_misc_catalog`);
     const json = await res.json();
-    if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data;
+    if (json.status === 'success') {
+      if (Array.isArray(json.data)) {
+        return json.data;
+      } else if (json.grouped && typeof json.data === 'object') {
+        const flatArray: any[] = [];
+        Object.values(json.data).forEach((arr: any) => {
+          if (Array.isArray(arr)) {
+            flatArray.push(...arr);
+          }
+        });
+        return flatArray;
+      }
     }
   } catch (err) {
     console.error('Failed to fetch misc catalog from DB:', err);

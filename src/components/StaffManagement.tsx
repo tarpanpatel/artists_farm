@@ -290,7 +290,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // Role hierarchy: lower index = higher privilege
   const ROLE_HIERARCHY = ['Root Admin', 'Super Admin', 'Admin', 'Staff Supervisor', 'Staff Kitchen', 'Staff'];
 
-  const getRoleLevel = (role: string) => ROLE_HIERARCHY.indexOf(role) >= 0 ? ROLE_HIERARCHY.indexOf(role) : ROLE_HIERARCHY.length;
+  const getRoleLevel = (role: string) => {
+    const r = role === 'root_admin' ? 'Root Admin' : role;
+    return ROLE_HIERARCHY.indexOf(r) >= 0 ? ROLE_HIERARCHY.indexOf(r) : ROLE_HIERARCHY.length;
+  };
 
   const canEditUser = (currentUserRole: string, targetUserRole: string) => {
     const currentLevel = getRoleLevel(currentUserRole);
@@ -691,6 +694,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   name: t('staff_name_label', 'Staff Name'),
                   selector: (row: any) => row.fullName,
                   sortable: true,
+                  width: '200px',
                   cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">{row.fullName}</span>,
                 },
                 {
