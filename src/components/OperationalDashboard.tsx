@@ -67,6 +67,13 @@ interface OperationalDashboardProps {
   isMultiKeyProperty?: boolean;
   serviceRequests?: any[];
   onCheckout?: (guestId: string) => void;
+  // Used when this is embedded next to a room's own Edit Property form (see
+  // MultiKeyPropertyOverview's 'edit_property' branch) - just the booking
+  // calendar (still fully interactive - clicking a booking still opens
+  // BookingDetailsModal), none of the property-wide Arrivals/Departures/
+  // Alerts/Kitchen/Requisitions summary widgets that belong on the real
+  // Dashboard tab, not a room-editing screen.
+  minimalMode?: boolean;
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
@@ -102,6 +109,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   isMultiKeyProperty = false,
   serviceRequests = [],
   onCheckout,
+  minimalMode = false,
 }) => {
   const { showToast } = useToast();
   const { orders } = useKitchenContext();
@@ -303,16 +311,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   return (
     <div className="operational-dashboard space-y-6">
-      <PageHeader
-        title={t('dashboard_heading', 'Dashboard')}
-        subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
-      >
-        <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
-          {t('add_booking_button', 'Add Booking')}
-        </PageHeaderButton>
-      </PageHeader>
+      {minimalMode ? (
+        <div className="operational-dashboard__minimal-header flex justify-end">
+          <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
+            {t('add_booking_button', 'Add Booking')}
+          </PageHeaderButton>
+        </div>
+      ) : (
+        <PageHeader
+          title={t('dashboard_heading', 'Dashboard')}
+          subtitle={t('dashboard_subheading', "Who's arriving, what's ready, and what needs you now.")}
+        >
+          <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
+            {t('add_booking_button', 'Add Booking')}
+          </PageHeaderButton>
+        </PageHeader>
+      )}
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
+      {!minimalMode && (
       <div className={`operational-dashboard__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
         {/* Arrivals Block */}
         <div className="operational-dashboard__metric operational-dashboard__metric--arrivals stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-blue-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
@@ -412,9 +429,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* Room Info / Property Location Bar */}
-      {roomName ? (
+      {!minimalMode && roomName ? (
         <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="operational-dashboard__room-info-content flex-1">
             {isEditingRoomName ? (
@@ -474,7 +492,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       ) : null}
 
       {/* C-Form (FRRO) Filing Tracker for foreign guests */}
-      {cFormPending.length > 0 && (
+      {!minimalMode && cFormPending.length > 0 && (
         <div className="operational-dashboard__cform-tracker bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5">
           <h3 className="operational-dashboard__cform-title font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
             <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -521,6 +539,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       )}
 
       {/* 3-Column Operational Row: System Alerts | Kitchen Queue | Requisitions */}
+      {!minimalMode && (
       <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: System Alerts Box (replaces Guest Currently Staying for single property) */}
         <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 flex flex-col justify-between">
@@ -747,6 +766,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* Booking Calendar Row - Full Width Spread Out at Bottom */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
@@ -932,11 +952,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Add Guest Modal */}
       {showAddGuestModal && (
         <div
-          className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-16 sm:pt-20 pb-6 overflow-y-auto"
+          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-20 sm:pt-24 pb-6 overflow-y-auto"
           onClick={() => setShowAddGuestModal(false)}
         >
           <div
-            className="w-full max-w-lg max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl shadow-2xl relative z-[10000]"
+            className="w-full max-w-lg max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl shadow-2xl relative z-[100000]"
             onClick={(e) => e.stopPropagation()}
           >
             <GuestManagement

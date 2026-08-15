@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
     // both the scrim (z-[55]) and the sidebar (z-[56]) so the header stays
     // sharp and its toggle button stays usable to close the drawer, while
     // the scrim still dims the actual page content underneath it.
-    <header className="header fixed top-0 left-0 right-0 z-57 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
+    <header className="header fixed top-0 left-0 right-0 z-40 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">

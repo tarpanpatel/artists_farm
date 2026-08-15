@@ -1208,7 +1208,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             onChange={(val) => handleUpdateBookingExtraChargeLine(line.id, 'category', val)}
                             placeholder="-- Select Type --"
                             options={[
-                              ...miscChargesList.map((m) => ({ value: m.name, label: `${m.name} (₹${m.defaultPrice})` })),
+                              ...miscChargesList.map((m) => {
+                                const chargeLabel = m.label || (m as any).name || 'Misc Charge';
+                                const chargePrice = m.default_amount ?? (m as any).defaultPrice ?? 0;
+                                return { value: chargeLabel, label: `${chargeLabel} (₹${chargePrice})` };
+                              }),
                               { value: 'Decoration Fees', label: 'Decoration Fees' },
                               { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
                               { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
@@ -1317,128 +1321,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            {/* Guest Notes & Additional Charges on same row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showGuestNotes}
-                    onChange={(e) => setShowGuestNotes(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-xs font-semibold">{t('guest_notes_label', 'Guest Notes')}</span>
-                </label>
-                {showGuestNotes && (
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Dietary adjustments..."
-                    rows={2}
-                    className="w-full mt-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isForeignGuest}
-                    onChange={(e) => setIsForeignGuest(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500"
-                  />
-                  <span className="text-xs font-semibold">{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
-                </label>
-                {isForeignGuest && (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
-                    C-Form must be filed with FRRO within 24 hours of check-in. A reminder will appear on the dashboard.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showDynamicIncidentals}
-                    onChange={(e) => setShowDynamicIncidentals(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-200 dark:border-slate-600 dark:bg-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-xs font-semibold">{t('additional_charges_label', 'Additional Charges (Optional)')}</span>
-                </label>
-                {showDynamicIncidentals && (
-                  <div className="mt-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <button
-                        type="button"
-                        onClick={() => setBookingIncidentals([...bookingIncidentals, {type: '', amount: 0}])}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-semibold"
-                      >
-                        + Add Line
-                      </button>
-                    </div>
-                    {bookingIncidentals.length === 0 ? (
-                      <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50 text-center text-slate-400 text-xs">
-                        No incidentals added
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {bookingIncidentals.map((inc, idx) => (
-                          <div key={idx} className="flex gap-2 items-center text-xs">
-                            <StyledSelect
-                              className="flex-1"
-                              value={inc.type}
-                              onChange={(val) => {
-                                const newInc = [...bookingIncidentals];
-                                newInc[idx].type = val;
-                                setBookingIncidentals(newInc);
-                              }}
-                              placeholder="-- Select Type --"
-                              options={miscChargesList.map(m => {
-                                const Icon = getExpenseItemIcon(m.label, m.category);
-                                return {
-                                  value: m.label,
-                                  label: (
-                                    <span className="flex items-center gap-2">
-                                      <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                      <span>{m.label}</span>
-                                    </span>
-                                  ),
-                                  searchText: m.label,
-                                };
-                              })}
-                            />
-                              <Input
-                                type="number"
-                                value={inc.amount || ''}
-                                onChange={(e) => {
-                                  const newInc = [...bookingIncidentals];
-                                  newInc[idx].amount = Number(e.target.value);
-                                  setBookingIncidentals(newInc);
-                                }}
-                                placeholder="Amount"
-                                className="w-24"
-                                fullWidth={false}
-                                required={!!inc.type}
-                              />
-                            <button
-                              type="button"
-                              onClick={() => setBookingIncidentals(bookingIncidentals.filter((_, i) => i !== idx))}
-                              className="text-slate-400 hover:text-red-500 p-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button type="submit" className="btn-register-guest w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl shadow-md transition-colors text-sm">
+            <button type="submit" className="btn-register-guest w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl shadow-md transition-colors text-sm font-bold mt-4 cursor-pointer">
               {t('save_guest_booking_button', 'Save Guest Booking')}
             </button>
           </form>
@@ -1468,11 +1351,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         {/* Add Booking Modal Overlay inside GuestManagement */}
         {isAddBookingModalOpen && (
           <div
-            className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-16 sm:pt-20 pb-6 overflow-y-auto"
+            className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-20 sm:pt-24 pb-6 overflow-y-auto"
             onClick={() => setIsAddBookingModalOpen(false)}
           >
             <div
-              className="w-full max-w-[550px] max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4 relative z-[10000]"
+              className="w-full max-w-[550px] max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4 relative z-[100000]"
               onClick={(e) => e.stopPropagation()}
             >
               <GuestManagement
