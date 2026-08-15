@@ -16,19 +16,19 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
 
     // Non-destructive column addition for time tracking
     try {
-        $pdo->exec("ALTER TABLE farm_utility_expenses ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT NULL");
-        $pdo->exec("ALTER TABLE petty_cash ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE farm_utility_expenses ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT '12:00'");
+        $pdo->exec("ALTER TABLE petty_cash ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT '12:00'");
     } catch (Exception $eCol) {}
 
     switch ($action) {
         case 'get_petty_cash':
             try {
-                $stmt = $pdo->prepare("SELECT id, expense_date as date, COALESCE(expense_time, TIME_FORMAT(created_at, '%H:%i')) as time, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses WHERE property_id = ? ORDER BY expense_date DESC, id DESC");
+                $stmt = $pdo->prepare("SELECT id, expense_date as date, COALESCE(expense_time, '12:00') as time, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses WHERE property_id = ? ORDER BY expense_date DESC, id DESC");
                 $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
-                    $stmt = $pdo->prepare("SELECT id, date, COALESCE(expense_time, TIME_FORMAT(created_at, '%H:%i')) as time, category, amount, description, vendor_name as vendor FROM petty_cash WHERE property_id = ? ORDER BY date DESC, id DESC");
+                    $stmt = $pdo->prepare("SELECT id, date, COALESCE(expense_time, '12:00') as time, category, amount, description, vendor_name as vendor FROM petty_cash WHERE property_id = ? ORDER BY date DESC, id DESC");
                     $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
