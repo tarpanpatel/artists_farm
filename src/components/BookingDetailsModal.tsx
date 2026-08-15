@@ -318,26 +318,37 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action Banner 2: Unsettled Bill / Missing Payment Receiver */}
-          {!isEditing && (guest.pendingAmount > 0 || !g.advance_received_by || !g.pending_received_by) && (
-            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
-              <div className="flex items-center gap-2 text-xs font-semibold text-red-900 dark:text-red-200">
-                <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-                <span>
-                  {guest.pendingAmount > 0
-                    ? `Unsettled Bill: Owes ₹${guest.pendingAmount.toLocaleString('en-IN')}`
-                    : 'Payment Receiver Unassigned'}
-                </span>
+          {(() => {
+            const advanceReceiver = g.advance_received_by || guest.advanceReceivedBy || '';
+            const pendingReceiver = g.pending_received_by || guest.pendingReceivedBy || '';
+            const isAdvanceUnassigned = advancePaid > 0 && !advanceReceiver;
+            const isPendingUnassigned = pendingDisplay > 0 && !pendingReceiver;
+            const isCheckedOutUnsettled = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') && pendingDisplay > 0;
+            const showBanner = !isEditing && (isAdvanceUnassigned || isPendingUnassigned || isCheckedOutUnsettled);
+
+            if (!showBanner) return null;
+
+            return (
+              <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2 text-xs font-semibold text-red-900 dark:text-red-200">
+                  <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                  <span>
+                    {isCheckedOutUnsettled
+                      ? `Unsettled Bill: Owes ₹${pendingDisplay.toLocaleString('en-IN')}`
+                      : `Payment Receiver Unassigned (${isAdvanceUnassigned ? 'Advance' : ''}${isAdvanceUnassigned && isPendingUnassigned ? ' & ' : ''}${isPendingUnassigned ? 'Pending' : ''})`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startEditing(true)}
+                  className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {isCheckedOutUnsettled ? 'Settle Bill' : 'Assign Receiver'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => startEditing(true)}
-                className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Settle / Assign Receiver
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="booking-details-modal__body space-y-4">
             {/* Row: Guest Name + Room */}
