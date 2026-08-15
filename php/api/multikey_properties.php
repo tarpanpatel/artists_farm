@@ -577,9 +577,12 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
             exit;
         }
 
-        // Get all rooms (non-deleted)
+        // Get all rooms (non-deleted). checkin_time/checkout_time included so a
+        // room's own Edit Property form can show/save them per-room (each room
+        // row already carries its own values - see properties.checkin_time/
+        // checkout_time - just never surfaced here before).
         $stmt = $pdo->prepare("
-            SELECT id, name, slug, room_order, is_active, created_at, default_tariff
+            SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time
             FROM properties
             WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
             ORDER BY room_order ASC
