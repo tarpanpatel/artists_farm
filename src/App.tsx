@@ -1448,15 +1448,21 @@ ${itemsStr}
       });
       const data = await response.json();
       if (data.success) {
-        // No local setter for preloadedData (it's loaded once by DataLoader
-        // above AppBody) - reload to pick up the saved address, matching how
-        // other property-level changes elsewhere in this file already do it.
-        window.location.reload();
+        if (preloadedData.currentProperty) {
+          preloadedData.currentProperty.address = address;
+          preloadedData.currentProperty.google_maps_link = googleMapsLink;
+          if (instructions !== undefined) {
+            (preloadedData.currentProperty as any).instructions = instructions;
+          }
+        }
+        showToast(t('location_saved_success', 'Property address saved successfully!'), { type: 'success' });
         return true;
       }
+      showToast(data.error || data.message || 'Failed to save address', { type: 'error' });
       return false;
     } catch (err) {
       console.error('Failed to save address:', err);
+      showToast('Failed to save address due to network error', { type: 'error' });
       return false;
     }
   };
