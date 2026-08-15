@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  HelpCircle
+  HelpCircle,
+  Edit2
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
@@ -92,6 +93,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newFullName, setNewFullName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
+  const [newConfirmPasscode, setNewConfirmPasscode] = useState('');
   const [newRole, setNewRole] = useState<UserAccount['role']>('');
   const [newIsFinancialHandler, setNewIsFinancialHandler] = useState(false);
   const [newAccessAllProperties, setNewAccessAllProperties] = useState(false);
@@ -109,6 +111,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [updateUsername, setUpdateUsername] = useState('');
   const [updateRole, setUpdateRole] = useState<UserAccount['role'] | ''>('');
   const [updatePasscode, setUpdatePasscode] = useState('');
+  const [updateConfirmPasscode, setUpdateConfirmPasscode] = useState('');
   const [updateIsFinancialHandler, setUpdateIsFinancialHandler] = useState(false);
   const [updateAccessAllProperties, setUpdateAccessAllProperties] = useState(false);
   const [updateQrCodeUrl, setUpdateQrCodeUrl] = useState('');
@@ -357,6 +360,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Passcode must be exactly 6 digits.', { type: 'error' });
       return;
     }
+    if (newPasscode !== newConfirmPasscode) {
+      showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
+      return;
+    }
     const newUser: UserAccount = {
       id: `usr-${Date.now().toString().slice(-4)}`,
       fullName: newFullName.trim(),
@@ -390,6 +397,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setNewFullName('');
     setNewUsername('');
     setNewPasscode('');
+    setNewConfirmPasscode('');
     setNewQrCodeUrl('');
     setNewIsFinancialHandler(false);
     setNewAccessAllProperties(false);
@@ -473,6 +481,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       showToast('Passcode must be exactly 6 digits.', { type: 'error' });
       return;
     }
+    if (updatePasscode && updatePasscode !== updateConfirmPasscode) {
+      showToast('Passcodes do not match! Please verify both passcode fields.', { type: 'error' });
+      return;
+    }
     // Super Admin IS the tenant's own login - route through the tenant-login
     // sync path (Name/Passcode/QR only) instead of the normal per-property
     // write, which would otherwise desync this property's copy from every
@@ -505,6 +517,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setUpdateFullName('');
     setUpdateUsername('');
     setUpdatePasscode('');
+    setUpdateConfirmPasscode('');
     setUpdateRole('');
     setUpdateQrCodeUrl('');
     setUpdateDailyWage('');
@@ -805,7 +818,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         ) : (
                           <>
                             {canEdit && (
-                              <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                              <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
                             )}
                             {canDelete && (
                               <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
@@ -908,7 +921,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   width: '160px',
                   cell: (row: any) => (
                     <div className="flex items-center justify-end gap-1.5">
-                      <Button onClick={() => setEditingPayee(row)} variant="secondary" size="xs" className="font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                      <Button onClick={() => setEditingPayee(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
                       <Button onClick={() => handleDeletePayee(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
                     </div>
                   ),
@@ -1492,7 +1505,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
                   </div>
                 ) : (
-                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('edit_button', 'Edit')}</button>
+                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Edit2 className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
                 ),
               }] : []),
             ]}
@@ -1818,18 +1831,33 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         className="text-slate-900 dark:text-white"
                       />
                     </div>
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
-                      <Input
-                        type="password"
-                        required
-                        maxLength={6}
-                        value={newPasscode}
-                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="••••••"
-                        inputMode="numeric"
-                        className="text-slate-900 dark:text-white text-center font-mono font-semibold tracking-widest"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
+                        <Input
+                          type="password"
+                          required
+                          maxLength={6}
+                          value={newPasscode}
+                          onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="••••••"
+                          inputMode="numeric"
+                          className="text-slate-900 dark:text-white text-center font-mono font-semibold tracking-widest"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm Passcode PIN *</label>
+                        <Input
+                          type="password"
+                          required
+                          maxLength={6}
+                          value={newConfirmPasscode}
+                          onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="••••••"
+                          inputMode="numeric"
+                          className="text-slate-900 dark:text-white text-center font-mono font-semibold tracking-widest"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
@@ -1964,17 +1992,31 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       )}
                     </div>
                   </div>
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
-                    <Input
-                      type="password"
-                      maxLength={6}
-                      value={updatePasscode}
-                      onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="••••••"
-                      inputMode="numeric"
-                      className="text-center font-mono font-semibold tracking-widest text-sm"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
+                      <Input
+                        type="password"
+                        maxLength={6}
+                        value={updatePasscode}
+                        onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Leave blank to keep current"
+                        inputMode="numeric"
+                        className="text-center font-mono font-semibold tracking-widest text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
+                      <Input
+                        type="password"
+                        maxLength={6}
+                        value={updateConfirmPasscode}
+                        onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Re-enter new passcode"
+                        inputMode="numeric"
+                        className="text-center font-mono font-semibold tracking-widest text-xs"
+                      />
+                    </div>
                   </div>
                   {isEditingSuperAdmin ? (
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
