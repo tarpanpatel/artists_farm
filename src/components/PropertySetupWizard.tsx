@@ -40,7 +40,14 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   if (isDismissed) return null;
 
-  // Show a smooth skeleton loader while staff data is loading to prevent layout jump
+  const step1Done = !!address.trim();
+  const step2Done = staffCount >= 1; // 1 user (owner) or more staff members
+  const step3Done = (roomCount ?? 0) > 0;
+
+  // If setup is already complete, return null IMMEDIATELY - no skeleton flash!
+  if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
+
+  // Show a smooth skeleton loader while staff data is loading ONLY if setup is actually incomplete
   if (isStaffLoading) {
     return (
       <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/40 dark:border-amber-800/40 p-4 h-36 animate-pulse flex flex-col justify-between">
@@ -55,12 +62,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       </div>
     );
   }
-
-  const step1Done = !!address.trim();
-  const step2Done = staffCount > 1;
-  const step3Done = (roomCount ?? 0) > 0;
-
-  if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
 
   const applicableSteps = showRoomsStep ? [step1Done, step2Done, step3Done] : [step1Done, step2Done];
   const totalSteps = applicableSteps.length;
