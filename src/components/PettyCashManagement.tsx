@@ -32,6 +32,7 @@ interface FormState {
   showDrawerSplit: boolean;
   drawerAmount: number | '';
   staffAmount: number | '';
+  isOutofPocketChecked?: boolean;
   invoiceBillUrl: string;
   paymentScreenshotUrl: string;
 }
@@ -56,6 +57,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         showDrawerSplit: false,
         drawerAmount: '',
         staffAmount: '',
+        isOutofPocketChecked: false,
       };
     default:
       return state;
@@ -606,27 +608,52 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             {formState.showDrawerSplit && (
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+                {/* LEFT COLUMN: Property Cash in Hand (₹) */}
                 <div>
-                  <Input
-                    label={t('paid_from_own_pocket_rupees_label', 'If Out of Your Own Pocket? (₹)')}
-                    type="number"
-                    min="0"
-                    max={formState.amount === '' ? undefined : formState.amount}
-                    value={formState.staffAmount}
-                    onChange={e => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
-                    }}
-                    placeholder="0"
-                  />
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
+                  <div className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
+                    ₹{Number(formState.drawerAmount || 0).toFixed(2)}
+                  </div>
                 </div>
-            <div>
-              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
-              <div className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
-                ₹{Number(formState.drawerAmount || 0).toFixed(2)}
-              </div>
-            </div>
+
+                {/* RIGHT COLUMN: Any payment out of your own pocket? */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 dark:text-slate-200 font-semibold text-xs mb-1.5 min-h-[18px]">
+                    <input
+                      type="checkbox"
+                      checked={formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        dispatch({ type: 'SET_FIELD', field: 'isOutofPocketChecked', value: checked });
+                        if (!checked) {
+                          dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: 0 });
+                        }
+                      }}
+                      className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                    />
+                    <span>Any payment out of your own pocket?</span>
+                  </label>
+
+                  {(formState.isOutofPocketChecked || Number(formState.staffAmount || 0) > 0) ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      max={formState.amount === '' ? undefined : formState.amount}
+                      value={formState.staffAmount}
+                      onChange={e => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
+                      }}
+                      placeholder="Enter pocket amount (₹)"
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 italic p-2 rounded-xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 h-[38px] flex items-center px-3">
+                      Check box to enter pocket portion
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
