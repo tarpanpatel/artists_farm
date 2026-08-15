@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Loader2, AlertCircle, AlertTriangle, BarChart3, ChevronDown, ChevronRight, Edit2, Eye, CheckCircle2, Share2, Copy, XCircle, ExternalLink, KeyRound, X, DoorOpen, RotateCcw, Mail, MessageCircle } from 'lucide-react';
 import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
@@ -438,7 +438,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const openPropertyWithAutoLogin = (property: Property, tenantSlug: string) => {
     try {
       // Root admin can access any property - open in new tab with property slug
-      const propertyUrl = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/`;
+      const propertyUrl = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`;
       window.open(propertyUrl, '_blank');
     } catch (err) {
       setError('Failed to open property');
@@ -834,7 +834,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(`/artists_farm/${tenant.slug}/`, '_blank');
+                            window.open(`/artists_farm/${tenant.slug}/#dashboard`, '_blank');
                           }}
                           className="text-emerald-600 dark:text-emerald-400"
                           title={t('visit_tenant_dashboard_tooltip', 'Visit Tenant Dashboard')}
