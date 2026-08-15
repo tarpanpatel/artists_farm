@@ -82,6 +82,13 @@ function burstyDayList($windowStart, $windowEnd, $activeChance = 55) {
 }
 
 function generateDemoData($pdo, $propertyId) {
+    // Demo data is a sales/testing aid - never seed it on live production,
+    // regardless of which entry point (router.php or a direct/scripted call)
+    // reached this function. See APP_DEMO_DATA_ENABLED in config/database.php.
+    if (!APP_DEMO_DATA_ENABLED) {
+        return ['status' => 'error', 'success' => false, 'message' => 'Demo data features are disabled on production.'];
+    }
+
     // Check if dummy history mode is enabled
     try {
         $stmt = $pdo->prepare("SELECT dummy_history_enabled FROM properties WHERE id = ?");
@@ -415,6 +422,64 @@ function generateDemoData($pdo, $propertyId) {
                         'occurred_at' => $checkoutTime,
                     ], $propertyId);
                 }
+            }
+        }
+
+        // 3b. Demo OTA (iCal) Blocks - unconverted Airbnb/Booking.com reservations
+        // for the new "Convert to Booking" feature to act on. clearDemoData()
+        // below has always known how to clean these up (scoped per-room, same
+        // as ICalSyncManager::getBlockedDates()) but nothing ever actually
+        // generated them - this was the missing half. Placed well past the
+        // guest-booking window (+7 days max above) so there's no risk of
+        // colliding with a real generated stay on the same room; real OTA
+        // blocks are also typically booked further ahead than confirmed
+        // walk-ins anyway, so this reads as realistic, not just conveniently
+        // empty.
+        if (count($rooms) >= 2) {
+            $otaDemoBlocks = [
+                [
+                    'room' => $rooms[0],
+                    'service_type' => 'ical',
+                    'service_name' => 'Airbnb Calendar (Demo)',
+                    'external_event_id' => 'demo-ota-' . $rooms[0]['id'] . '-1@airbnb.com',
+                    'event_title' => 'Reserved',
+                    'start_offset' => 12,
+                    'nights' => 3,
+                ],
+                [
+                    'room' => $rooms[1],
+                    'service_type' => 'ical',
+                    'service_name' => 'Booking.com Calendar (Demo)',
+                    'external_event_id' => 'demo-ota-' . $rooms[1]['id'] . '-1@booking.com',
+                    'event_title' => 'CLOSED - Not available',
+                    'start_offset' => 20,
+                    'nights' => 4,
+                ],
+            ];
+
+            foreach ($otaDemoBlocks as $block) {
+                if (empty($block['room']['id'])) continue;
+                $configStmt = $pdo->prepare("
+                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, is_demo, last_sync)
+                    VALUES (?, ?, ?, ?, 1, 'bidirectional', 1, NOW())
+                ");
+                $configStmt->execute([
+                    $block['room']['id'],
+                    $block['service_type'],
+                    $block['service_name'],
+                    'https://example.com/demo-ical-feed-' . $block['room']['id'] . '.ics',
+                ]);
+                $configId = $pdo->lastInsertId();
+
+                $eventStart = (clone $today)->modify('+' . $block['start_offset'] . ' days')->format('Y-m-d 00:00:00');
+                $eventEnd = (clone $today)->modify('+' . ($block['start_offset'] + $block['nights']) . ' days')->format('Y-m-d 00:00:00');
+                $eventData = json_encode(['source' => 'ical', 'source_label' => $block['service_name']]);
+
+                $eventStmt = $pdo->prepare("
+                    INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'synced')
+                ");
+                $eventStmt->execute([$configId, $block['external_event_id'], $block['event_title'], $eventStart, $eventEnd, $eventData]);
             }
         }
 
@@ -1138,6 +1203,14 @@ function generateDemoData($pdo, $propertyId) {
 }
 
 function clearDemoData($pdo, $propertyId) {
+    // Same production gate as generateDemoData() above - clearDemoData() is
+    // also independently reachable (the standalone entry point, and the old
+    // "Exit Test Mode" action), so it needs its own check rather than relying
+    // on generateDemoData()'s.
+    if (!APP_DEMO_DATA_ENABLED) {
+        return ['status' => 'error', 'success' => false, 'message' => 'Demo data features are disabled on production.'];
+    }
+
     ensureDemoSchema($pdo);
     ensureFinancialLedger($pdo);
 

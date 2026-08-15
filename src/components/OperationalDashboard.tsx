@@ -13,12 +13,13 @@ import {
   Bell,
   X,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Globe,
 } from 'lucide-react';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
-import { Tooltip } from './Tooltip';
+import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import {
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_CHECKED_OUT,
@@ -128,29 +129,57 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     event_start: string;
     event_end: string;
     event_title: string;
+    external_event_id: string;
     reservation_url?: string;
     source?: string;
     source_label?: string;
   }>>([]);
+  const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; blockedDateStrings: string[] } | null>(null);
 
-  // Fetch blocked dates from iCal sync
-  useEffect(() => {
-    const fetchBlockedDates = async () => {
-      try {
-        const propertySlug = getPropertySlug();
-        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-          headers: { 'X-Property-Slug': propertySlug },
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (data.status === 'success' && data.data) {
-          setBlockedDates(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch blocked dates:', error);
+  // Every date already spoken for on this calendar (any other guest stay, or
+  // any other still-unclaimed OTA block) - fed to ConvertOtaBookingModal's
+  // DateRangePicker so adjusting a converted booking's dates gets the same
+  // "already taken" highlighting every other booking flow gets. `guests` here
+  // is already scoped to this exact calendar (the whole SINGLE property, or
+  // just one room's guests when this is a per-room instance), so no extra
+  // room filtering is needed the way TodayOverview.tsx's multi-room table
+  // requires.
+  const expandRangeToDayStrings = (startVal: any, endVal: any): string[] => {
+    const days: string[] = [];
+    const cur = new Date(String(startVal || '').split(' ')[0].split('T')[0]);
+    const end = new Date(String(endVal || '').split(' ')[0].split('T')[0]);
+    cur.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    while (cur < end) {
+      days.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+  };
+
+  // Fetch blocked dates from iCal sync. Also re-run after a successful
+  // "Convert to Booking" (see otaConversionTarget below) - the backend's
+  // getBlockedDates() excludes any block a guest row now claims, so
+  // refetching is what makes the capsule disappear immediately instead of
+  // waiting for the next mount/reload.
+  const fetchBlockedDates = async () => {
+    try {
+      const propertySlug = getPropertySlug();
+      const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
+        headers: { 'X-Property-Slug': propertySlug },
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.status === 'success' && data.data) {
+        setBlockedDates(data.data);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch blocked dates:', error);
+    }
+  };
+  useEffect(() => {
     fetchBlockedDates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Low stock alerts where currentStock <= minThreshold
   const stockAlerts = inventory.filter((item) => item.currentStock <= item.minThreshold);
@@ -794,6 +823,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
 
         {/* Calendar Grid - Full Width Spread Out */}
+        {(() => {
+          const allOccupiedDateStrings = [
+            ...guests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || (g as any).checkoutDate || g.checkinDate)),
+            ...blockedDates.flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
+          ];
+          return (
         <div className="grid grid-cols-7 gap-2 text-xs">
           {Array.from({ length: firstDay }).map((_, idx) => (
             <div key={`empty-${idx}`} className="h-24 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/40" />
@@ -848,6 +883,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               const guestIdNum = parseInt(String(dayBooking.id), 10) || 0;
               guestColorIndex = guestIdNum % colors.length;
             }
+            // Bookings converted from an OTA block get a dedicated amber tone
+            // instead of the per-guest hash color above (which stays reserved for
+            // telling simultaneous offline bookings apart) - plus a Globe icon,
+            // so the distinction survives color-blindness/grayscale printing too.
+            const isOtaBooking = !!(dayBooking as any)?.otaSource;
+            const otaBookingColor = 'bg-amber-600 dark:bg-amber-700';
 
             return (
               <div
@@ -862,23 +903,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {dayBooking && (
                   <button
                     onClick={() => setSelectedBooking(dayBooking)}
-                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
+                    className={`rounded-md px-2 py-1.5 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? `text-white ${otaBookingColor}` : `text-white ${colors[guestColorIndex]}`} text-xs font-semibold flex flex-col justify-center shadow-xs hover:shadow-md transition-all cursor-pointer truncate w-full`}
                   >
-                    <div className="truncate font-semibold">{dayBooking.guestName.split(' ')[0]}</div>
+                    <div className="truncate font-semibold flex items-center gap-1">
+                      {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                      <span className="truncate">{dayBooking.guestName.split(' ')[0]}</span>
+                    </div>
                     {nightlyRate > 0 && <div className="text-[10px] font-semibold opacity-90">₹{nightlyRate}</div>}
                   </button>
                 )}
                 {otaBlock && (
-                  <Tooltip content={t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')} className="w-full">
-                    <div className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-help">
-                      <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
-                    </div>
-                  </Tooltip>
+                  // Native title, not Tooltip.tsx: this cell sits in a grid whose
+                  // parent clips overflow for the calendar's layout, which also
+                  // clips an absolutely-positioned hover tooltip trying to render
+                  // outside it (found 16 Aug 2026 - rendered as a clipped black
+                  // bar, not readable text). A native tooltip is drawn by the
+                  // browser, so it can't be clipped by page CSS, and it dismisses
+                  // itself on click with no lingering-above-the-modal z-index fight.
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ownDays = new Set(expandRangeToDayStrings(otaBlock.event_start, otaBlock.event_end));
+                      setOtaConversionTarget({
+                        block: otaBlock,
+                        blockedDateStrings: allOccupiedDateStrings.filter((dstr) => !ownDays.has(dstr)),
+                      });
+                    }}
+                    title={t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 hover:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-pointer transition-colors"
+                  >
+                    <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                  </button>
                 )}
               </div>
             );
           })}
         </div>
+          );
+        })()}
 
         {/* Calendar Legend */}
         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
@@ -899,8 +961,8 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <span>{t('legend_active_resident', 'Confirmed Stay')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-orange-600" />
-            <span>{t('legend_airbnb_booking', 'Airbnb Booking')}</span>
+            <span className="w-3 h-3 rounded bg-amber-600" />
+            <span>{t('legend_ota_converted_booking', 'OTA-Converted Booking')}</span>
           </div>
         </div>
       </div>
@@ -926,6 +988,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           onOpenIdVerification={() => setShowCheckinVerification(true)}
           onCheckedIn={onGuestCheckedIn}
           onCheckout={onCheckout ? () => { onCheckout(selectedBooking.id); setSelectedBooking(null); } : undefined}
+        />
+      )}
+
+      {/* Convert OTA Block to Booking */}
+      {otaConversionTarget && (
+        <ConvertOtaBookingModal
+          otaBlock={otaConversionTarget.block}
+          roomNumber={roomName}
+          blockedDates={otaConversionTarget.blockedDateStrings}
+          onClose={() => setOtaConversionTarget(null)}
+          onConvert={(guest) => {
+            onAddGuest?.(guest);
+            setOtaConversionTarget(null);
+            fetchBlockedDates();
+          }}
         />
       )}
 

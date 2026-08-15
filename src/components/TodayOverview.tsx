@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, ArrowRight, Globe } from 'lucide-react';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
+import { ConvertOtaBookingModal } from './ConvertOtaBookingModal';
 import { getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
-import { Tooltip } from './Tooltip';
 
 interface TodayOverviewProps {
   guests: Guest[];
@@ -14,6 +14,7 @@ interface TodayOverviewProps {
   onNavigateToRoom?: (roomSlug: string) => void;
   onNavigate?: (tab: any, menuItemKey?: string) => void;
   onAddBooking?: () => void;
+  onAddGuest?: (guest: Guest) => void;
   onUpdateGuest?: (guest: Guest) => void | Promise<void>;
   onDeleteGuest?: (guestId: string) => void | Promise<void>;
   onCheckInGuest?: (guestId: string) => void;
@@ -36,6 +37,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   onNavigateToRoom: _onNavigateToRoom,
   onNavigate,
   onAddBooking,
+  onAddGuest,
   onUpdateGuest,
   onDeleteGuest,
   onCheckout,
@@ -66,29 +68,32 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     event_start: string;
     event_end: string;
     event_title: string;
+    external_event_id: string;
     room_id?: number;
     reservation_url?: string;
     source?: string;
     source_label?: string;
   }>>([]);
+  const [otaConversionTarget, setOtaConversionTarget] = useState<{ block: (typeof blockedDates)[number]; roomName: string; blockedDateStrings: string[] } | null>(null);
 
-  useEffect(() => {
-    const fetchBlockedDates = async () => {
-      try {
-        const propertySlug = getPropertySlug();
-        const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
-          headers: { 'X-Property-Slug': propertySlug },
-          credentials: 'include',
-        });
-        const data = await response.json();
-        if (data.status === 'success' && data.data) {
-          setBlockedDates(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch blocked dates:', error);
+  const fetchBlockedDates = async () => {
+    try {
+      const propertySlug = getPropertySlug();
+      const response = await fetch('/php/api/ical_sync.php?action=get_blocked_dates', {
+        headers: { 'X-Property-Slug': propertySlug },
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.status === 'success' && data.data) {
+        setBlockedDates(data.data);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch blocked dates:', error);
+    }
+  };
+  useEffect(() => {
     fetchBlockedDates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Rolling window instead of a fixed calendar month (14 Aug 2026 fix): this
@@ -499,9 +504,35 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 return start <= windowEnd && end >= windowStart;
               });
 
+              // Every date already spoken for in this room (any other guest stay,
+              // or any other still-unclaimed OTA block), expanded to individual
+              // day strings - fed to ConvertOtaBookingModal's DateRangePicker so
+              // adjusting a converted booking's dates gets the same "already
+              // taken" highlighting every other booking flow gets. Deliberately
+              // not window-limited (unlike activeWindowGuests/roomBlockedDates
+              // above, which only cover the visible scroll range) - a staff
+              // member could legitimately pick dates outside today's scroll
+              // position.
+              const expandRangeToDayStrings = (startVal: any, endVal: any): string[] => {
+                const days: string[] = [];
+                const cur = parseLocalDate(startVal);
+                const end = parseLocalDate(endVal);
+                while (cur < end) {
+                  days.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+                  cur.setDate(cur.getDate() + 1);
+                }
+                return days;
+              };
+              const roomOccupiedDateStrings = [
+                ...roomGuests.flatMap((g) => expandRangeToDayStrings(g.checkinDate, g.expectedCheckout || g.checkoutDate || g.checkinDate)),
+                ...blockedDates
+                  .filter((bd) => Number(bd.room_id) === Number(room.id))
+                  .flatMap((bd) => expandRangeToDayStrings(bd.event_start, bd.event_end)),
+              ];
+
               type TimelineItem =
                 | { kind: 'guest'; start: Date; end: Date; guest: Guest }
-                | { kind: 'ota'; start: Date; end: Date; label: string; tooltip: string };
+                | { kind: 'ota'; start: Date; end: Date; label: string; tooltip: string; block: (typeof blockedDates)[number] };
 
               const timelineItems: TimelineItem[] = [
                 ...activeWindowGuests.map((guest): TimelineItem => ({
@@ -515,7 +546,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   start: parseLocalDate(bd.event_start),
                   end: parseLocalDate(bd.event_end),
                   label: bd.source_label || bd.source || t('ota_blocked_label', 'Blocked'),
-                  tooltip: t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', bd.source_label || bd.source || 'external calendar'),
+                  tooltip: t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking. Click to convert.').replace('{{source}}', bd.source_label || bd.source || 'external calendar'),
+                  block: bd,
                 })),
               ];
 
@@ -608,31 +640,55 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         };
 
                         if (info.item.kind === 'ota') {
+                          const otaItem = info.item;
                           return (
-                            <div
+                            // Native title, not the Tooltip.tsx component: this capsule
+                            // lives inside a row that needs overflow-hidden to clip long
+                            // capsule bars at the row's edge, which also clips any
+                            // absolutely-positioned hover tooltip trying to render outside
+                            // it (found 16 Aug 2026 - showed as a thin clipped black bar
+                            // instead of readable text). A native title tooltip is drawn by
+                            // the browser itself, so it can't be clipped by page CSS, and it
+                            // dismisses itself on click with no lingering-above-the-modal
+                            // z-index fight either.
+                            <button
                               key={`ota-${idx}`}
-                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
+                              type="button"
+                              onClick={() => {
+                                const ownDays = new Set(expandRangeToDayStrings(otaItem.block.event_start, otaItem.block.event_end));
+                                setOtaConversionTarget({
+                                  block: otaItem.block,
+                                  roomName: room.name,
+                                  blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
+                                });
+                              }}
+                              title={otaItem.tooltip}
+                              className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-slate-700 dark:bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden transition-colors"
                               style={commonStyle}
-                              title={info.item.tooltip}
                             >
-                              <span className="font-semibold truncate text-[11px] leading-none">{info.item.label}</span>
-                            </div>
+                              <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
+                            </button>
                           );
                         }
 
                         const guest = info.item.guest;
+                        const isOtaBooking = !!(guest as any).otaSource;
                         return (
                           <div
                             key={`${guest.id}-${idx}`}
-                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
-                              guest.id,
-                              guest.status
-                            )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
+                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
+                              isOtaBooking
+                                ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
+                                : getGuestColor(guest.id, guest.status)
+                            } pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
                             style={commonStyle}
                             onClick={() => setSelectedGuest(guest)}
                             title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
                           >
-                            <span className="font-semibold truncate text-[11px] leading-none">{guest.guestName}</span>
+                            <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1">
+                              {isOtaBooking && <Globe className="w-2.5 h-2.5 shrink-0" />}
+                              <span className="truncate">{guest.guestName}</span>
+                            </span>
                             <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                           </div>
                         );
@@ -665,6 +721,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyUpiId={propertyUpiId}
           onCheckout={onCheckout ? () => { onCheckout(selectedGuest.id); setSelectedGuest(null); } : undefined}
+        />
+      )}
+
+      {otaConversionTarget && (
+        <ConvertOtaBookingModal
+          otaBlock={otaConversionTarget.block}
+          roomNumber={otaConversionTarget.roomName}
+          blockedDates={otaConversionTarget.blockedDateStrings}
+          onClose={() => setOtaConversionTarget(null)}
+          onConvert={(guest) => {
+            onAddGuest?.(guest);
+            setOtaConversionTarget(null);
+            fetchBlockedDates();
+          }}
         />
       )}
     </div>

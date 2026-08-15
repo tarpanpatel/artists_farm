@@ -270,6 +270,14 @@ class ICalSyncManager {
                 return ['status' => 'success', 'message' => 'No events found in feed', 'count' => 0];
             }
 
+            // Capture which UIDs were present before this resync, so a UID that
+            // disappears from the fresh feed (guest cancelled upstream) can be
+            // detected below and flagged on any guests row that was converted from
+            // it - see the cancellation-drift check after the insert loop.
+            $oldUidStmt = $this->pdo->prepare("SELECT external_event_id FROM ical_synced_events WHERE sync_config_id = ?");
+            $oldUidStmt->execute([$sync['id']]);
+            $oldExternalEventIds = $oldUidStmt->fetchAll(PDO::FETCH_COLUMN);
+
             // Clear old events for this sync
             $deleteQuery = "DELETE FROM ical_synced_events WHERE sync_config_id = :sync_id";
             $stmt = $this->pdo->prepare($deleteQuery);
@@ -309,6 +317,27 @@ class ICalSyncManager {
             $updateQuery = "UPDATE ical_sync_configs SET last_sync = NOW() WHERE id = :id";
             $updateStmt = $this->pdo->prepare($updateQuery);
             $updateStmt->execute([':id' => $sync['id']]);
+
+            // A UID present before this resync but missing from the fresh feed most
+            // likely means the guest cancelled upstream. Flag (not delete/checkout)
+            // any already-converted guests row for it - informational only, staff
+            // decide what to do, and this never overwrites a flag already set nor
+            // touches a stay that's already checked out.
+            $newExternalEventIds = array_column($events, 'uid');
+            $disappearedUids = array_diff($oldExternalEventIds, $newExternalEventIds);
+            if (!empty($disappearedUids)) {
+                try {
+                    $placeholders = implode(',', array_fill(0, count($disappearedUids), '?'));
+                    $cancelStmt = $this->pdo->prepare("
+                        UPDATE guests SET ota_cancelled_detected_at = NOW()
+                        WHERE ical_external_event_id IN ($placeholders)
+                        AND ota_cancelled_detected_at IS NULL
+                        AND status != 'CheckedOut'
+                        AND (room_id = ? OR property_id = ?)
+                    ");
+                    $cancelStmt->execute([...array_values($disappearedUids), $sync['property_id'], $sync['property_id']]);
+                } catch (PDOException $e) {}
+            }
 
             return ['status' => 'success', 'message' => "Synced $count events", 'count' => $count];
         } catch (Exception $e) {
@@ -422,12 +451,24 @@ class ICalSyncManager {
             }
             $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
 
+            // Excludes events already claimed by a converted guests row (matched on the
+            // stable iCal UID, external_event_id) - this is what makes a converted OTA
+            // block permanently disappear from every calendar looking at this property,
+            // including across future resyncs (resync only ever touches
+            // ical_synced_events, never the guests row or its ical_external_event_id).
+            // It also doubles as the double-conversion guard: once claimed, there's no
+            // block left here to reconvert.
             $query = "SELECT event_start, event_end, event_title, event_data, external_event_id,
                              c.property_id as room_id, c.service_type, c.service_name
                      FROM ical_synced_events e
                      JOIN ical_sync_configs c ON e.sync_config_id = c.id
                      WHERE c.property_id IN ($placeholders)
                      AND e.sync_status = 'synced'
+                     AND NOT EXISTS (
+                         SELECT 1 FROM guests g
+                         WHERE g.ical_external_event_id = e.external_event_id
+                         AND (g.room_id = c.property_id OR g.property_id = c.property_id)
+                     )
                      ORDER BY event_start ASC";
 
             $stmt = $this->pdo->prepare($query);

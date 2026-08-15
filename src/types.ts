@@ -21,6 +21,10 @@ export interface Guest {
   idVerificationStatus?: 'Pending' | 'Complete';
   isForeignGuest?: boolean;
   cFormFiledAt?: string | null;
+  otaSource?: string | null;
+  otaSourceLabel?: string | null;
+  icalExternalEventId?: string | null;
+  otaCancelledDetectedAt?: string | null;
 }
 
 export interface BillingReceipt {

@@ -154,6 +154,48 @@ function ensureComplianceSchema($pdo) {
     markSchemaVerified('schema_compliance');
 }
 
+// Tracks a booking that started life as an OTA (Airbnb/Booking.com/etc) iCal
+// sync block and was converted into a real, locally-editable guests row -
+// see php/api/ical_sync.php's getBlockedDates()/syncICalEvents(). ota_source*
+// is frozen at conversion time (never edited afterwards - a booking's origin
+// doesn't change). ical_external_event_id is the iCal UID, stable across
+// resyncs: it's what makes the source block permanently disappear from
+// getBlockedDates once claimed, and what syncICalEvents() matches against to
+// detect an upstream cancellation (ota_cancelled_detected_at).
+function ensureOtaBookingSchema($pdo) {
+    if (isSchemaVerified('schema_ota_booking')) return;
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `ota_source` VARCHAR(50) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `ota_source_label` VARCHAR(255) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        // Collation must match ical_synced_events.external_event_id
+        // (utf8mb4_unicode_ci) explicitly - guests defaults to
+        // utf8mb4_general_ci, and comparing/joining two VARCHAR columns with
+        // different collations throws "Illegal mix of collations" (found 16
+        // Aug 2026: this silently broke getBlockedDates() - every OTA-blocked
+        // capsule failed to load, with the error swallowed by its own outer
+        // try/catch, so the calendar just looked empty with no visible error).
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `ical_external_event_id` VARCHAR(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        // ADD COLUMN IF NOT EXISTS above is a no-op once the column already
+        // exists, so an environment that already self-healed with the wrong
+        // collation (before this fix) needs this MODIFY to actually correct
+        // it - safe/idempotent to run every time the gate above lets through.
+        $pdo->exec("ALTER TABLE guests MODIFY COLUMN `ical_external_event_id` VARCHAR(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `ota_cancelled_detected_at` DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD INDEX `idx_ical_external_event_id` (`ical_external_event_id`)");
+    } catch (PDOException $e) {}
+    markSchemaVerified('schema_ota_booking');
+}
+
 /**
  * ID-document uploads are temporary, not permanent records (24h TTL): the
  * check-in completion flow sends them to Telegram in one message and then
@@ -235,6 +277,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_guests':
             reconcileDemoGuestStatuses($pdo, $propertyId);
+            ensureOtaBookingSchema($pdo);
             try {
                 // A Single property has no separate "room" to assign - it IS the one
                 // bookable unit, so a guest there should show the property's own name,
@@ -274,6 +317,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'add_guest':
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
+                ensureOtaBookingSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -310,6 +354,48 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
+                    $icalExternalEventId = trim($input['ical_external_event_id'] ?? '') ?: null;
+                    $otaSource = trim($input['ota_source'] ?? '') ?: null;
+                    $otaSourceLabel = trim($input['ota_source_label'] ?? '') ?: null;
+
+                    // Advisory only, not a hard block - staff may already know an OTA
+                    // block is stale (guest cancelled by phone, feed hasn't resynced
+                    // yet). Only checked for genuine new offline bookings, never when
+                    // this call IS the OTA conversion itself (that request is deliberately
+                    // claiming the very block this query would otherwise flag).
+                    $overlapWarning = null;
+                    if ($icalExternalEventId === null) {
+                        try {
+                            $overlapScopeId = $roomId ?? $propertyId;
+                            $newCheckinForOverlap = $input['checkin_date'] ?? date('Y-m-d');
+                            $newCheckoutForOverlap = $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day'));
+                            $overlapStmt = $pdo->prepare("
+                                SELECT e.event_start, e.event_end, c.service_name
+                                FROM ical_synced_events e
+                                JOIN ical_sync_configs c ON e.sync_config_id = c.id
+                                WHERE c.property_id = ?
+                                AND e.sync_status = 'synced'
+                                AND e.event_start < ?
+                                AND e.event_end > ?
+                                AND NOT EXISTS (
+                                    SELECT 1 FROM guests g2
+                                    WHERE g2.ical_external_event_id = e.external_event_id
+                                    AND (g2.room_id = c.property_id OR g2.property_id = c.property_id)
+                                )
+                                LIMIT 1
+                            ");
+                            $overlapStmt->execute([$overlapScopeId, $newCheckoutForOverlap, $newCheckinForOverlap]);
+                            $overlapRow = $overlapStmt->fetch(PDO::FETCH_ASSOC);
+                            if ($overlapRow) {
+                                $overlapWarning = [
+                                    'source_label' => $overlapRow['service_name'] ?: 'an external calendar',
+                                    'event_start' => $overlapRow['event_start'],
+                                    'event_end' => $overlapRow['event_end'],
+                                ];
+                            }
+                        } catch (PDOException $e) {}
+                    }
+
                     // advance_received_by/pending_received_by columns have existed on
                     // this table all along - the Add Booking form collects both as
                     // *required* fields, but nothing ever actually wrote them here.
@@ -321,7 +407,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     } else {
                         $status = GUEST_STATUS_BOOKED;
                     }
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -340,6 +426,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $propertyId,
                         !empty($input['is_foreign_guest']) ? 1 : 0,
                         $roomId,
+                        $otaSource,
+                        $otaSourceLabel,
+                        $icalExternalEventId,
                     ]);
                     $newId = $pdo->lastInsertId();
                     $advance = floatval($input['advance_paid'] ?? 0);
@@ -395,7 +484,11 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         sendWhatsAppTemplateMessage($phone, 'new_booking_cofirmation', [$guestName, $checkinDateFormatted, $roomLabel]);
                     }
 
-                    echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully']);
+                    $response = ['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully'];
+                    if ($overlapWarning !== null) {
+                        $response['overlap_warning'] = $overlapWarning;
+                    }
+                    echo json_encode($response);
                 } catch (PDOException $e) {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
@@ -409,6 +502,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'update_guest':
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
+                ensureOtaBookingSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {

@@ -38,6 +38,7 @@ import { InventoryProvider, useInventoryContext } from './contexts/InventoryCont
 import { KitchenProvider } from './contexts/KitchenContext';
 import { ServiceRequestProvider } from './contexts/ServiceRequestContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
+import { formatDateDDMMYYYY } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
 import { isKitchenModuleNavItem } from './data/appConfig';
 import { fetchThemeSettings, applyThemeSettings, getDefaultTheme } from './services/themeService';
@@ -1155,9 +1156,17 @@ function AppBody({ preloadedData }: AppBodyProps) {
       pending_amount: newGuest.pendingAmount || 0,
       pending_received_by: newGuest.pendingReceivedBy || '',
       is_foreign_guest: newGuest.isForeignGuest || false,
-    }).then((dbId) => {
+      ota_source: newGuest.otaSource || undefined,
+      ota_source_label: newGuest.otaSourceLabel || undefined,
+      ical_external_event_id: newGuest.icalExternalEventId || undefined,
+    }).then(({ id: dbId, overlapWarning }) => {
       if (dbId) {
         setGuests((prev) => prev.map((g) => g.id === newGuest.id ? { ...g, id: dbId } : g));
+      }
+      if (overlapWarning) {
+        const startLabel = formatDateDDMMYYYY(overlapWarning.event_start);
+        const endLabel = formatDateDDMMYYYY(overlapWarning.event_end);
+        showToast(`Heads up: this room has an unconverted ${overlapWarning.source_label} reservation from ${startLabel} to ${endLabel} - please verify with the guest.`, { type: 'warning', duration: 8000 });
       }
     });
     logAudit(`Registered new resident check-in: ${newGuest.guestName} (${newGuest.roomNumber})`);
@@ -1648,6 +1657,7 @@ ${itemsStr}
                         onNavigateToRoom={handleNavigateToRoom}
                         onNavigate={(tab) => handleNavigateTab(tab)}
                         onAddBooking={() => setIsAddBookingModalOpen(true)}
+                        onAddGuest={handleAddGuest}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
                         propertyName={preloadedData.currentProperty?.name || ''}
@@ -1705,6 +1715,7 @@ ${itemsStr}
                         guests={guests}
                         onNavigate={(tab) => handleNavigateTab(tab)}
                         onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                        onAddGuest={handleAddGuest}
                         kitchenModuleEnabled={isModuleEnabled('kitchen')}
                         onUpdateBooking={handleUpdateGuest}
                         onDeleteBooking={handleDeleteGuest}

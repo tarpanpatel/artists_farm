@@ -87,6 +87,17 @@ $__is_staging_env = $server_name === 'staging.artistic-sthan.com';
 if (!defined('APP_IS_LOCAL_ENV')) {
     define('APP_IS_LOCAL_ENV', $__is_local_env);
 }
+if (!defined('APP_IS_STAGING_ENV')) {
+    define('APP_IS_STAGING_ENV', $__is_staging_env);
+}
+// Demo data (public-demo auto-login, the Root Admin "Reset Demo Data" tool,
+// generate/clear_demo_data) is a sales/testing aid, not something a real
+// production visitor or tenant should ever see - gate it to local + staging
+// only. Single shared flag rather than repeating "local || staging" at every
+// call site, same reasoning as APP_IS_LOCAL_ENV above.
+if (!defined('APP_DEMO_DATA_ENABLED')) {
+    define('APP_DEMO_DATA_ENABLED', $__is_local_env || $__is_staging_env);
+}
 if ($__is_local_env) {
     $db_host = 'localhost';
     $live_db = 'artists_farm_resort';

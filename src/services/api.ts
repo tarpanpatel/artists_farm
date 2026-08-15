@@ -943,6 +943,10 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           idVerificationStatus: g.idVerificationStatus || g.id_verification_status || 'Pending',
           isForeignGuest: !!(g.isForeignGuest ?? g.is_foreign_guest),
           cFormFiledAt: g.cFormFiledAt || g.c_form_filed_at || null,
+          otaSource: g.otaSource || g.ota_source || null,
+          otaSourceLabel: g.otaSourceLabel || g.ota_source_label || null,
+          icalExternalEventId: g.icalExternalEventId || g.ical_external_event_id || null,
+          otaCancelledDetectedAt: g.otaCancelledDetectedAt || g.ota_cancelled_detected_at || null,
         });
       }
 
@@ -973,7 +977,14 @@ export async function addGuestToDB(guest: {
   pending_amount?: number;
   pending_received_by?: string;
   is_foreign_guest?: boolean;
-}): Promise<string | null> {
+  // Set only when converting an OTA (Airbnb/Booking.com/etc) iCal-synced block
+  // into a real booking - see ConvertOtaBookingModal.tsx. Omitted for a normal
+  // offline booking, which is also what tells add_guest whether to run its
+  // overlap-warning check (see overlap_warning below).
+  ota_source?: string;
+  ota_source_label?: string;
+  ical_external_event_id?: string;
+}): Promise<{ id: string | null; overlapWarning?: { source_label: string; event_start: string; event_end: string } }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_guest`, {
       method: 'POST',
@@ -982,12 +993,12 @@ export async function addGuestToDB(guest: {
     });
     const json = await res.json();
     if (json.status === 'success') {
-      return json.id || null;
+      return { id: json.id || null, overlapWarning: json.overlap_warning || undefined };
     }
   } catch (err) {
     console.error('Failed to add guest to DB:', err);
   }
-  return null;
+  return { id: null };
 }
 
 export async function updateGuestInDB(guest: {

@@ -1777,6 +1777,13 @@ switch ($action) {
     // access, and the credentials returned are for a designated demo-only
     // account, never a real tenant's real staff.
     case 'get_demo_login_credentials':
+        // Public demo auto-login is a sales/testing aid - never let an
+        // anonymous production visitor get auto-logged into it. See
+        // APP_DEMO_DATA_ENABLED in config/database.php.
+        if (!APP_DEMO_DATA_ENABLED) {
+            echo json_encode(['success' => false, 'message' => 'Not a public demo property']);
+            exit;
+        }
         $demoSlug = $_GET['property_slug'] ?? '';
         if (!$demoSlug) {
             http_response_code(400);
@@ -2717,6 +2724,10 @@ switch ($action) {
         if (!($_SESSION['is_platform_admin'] ?? false)) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Root admin access required']);
+            exit;
+        }
+        if (!APP_DEMO_DATA_ENABLED) {
+            echo json_encode(['success' => false, 'message' => 'Demo data features are disabled on production.']);
             exit;
         }
         try {

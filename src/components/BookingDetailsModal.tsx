@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard } from 'lucide-react';
+import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard, Globe, AlertTriangle } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -83,6 +83,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // Set only when edit mode is entered via the "Settle / Assign Receiver"
+  // banner, so the empty received-by field(s) it's pointing at get a visual
+  // highlight - the generic Edit button shouldn't highlight anything.
+  const [highlightReceiverFields, setHighlightReceiverFields] = useState(false);
 
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -109,7 +113,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0))
     : Math.max(0, roomRent - advancePaid);
 
-  const startEditing = () => {
+  const startEditing = (highlightReceiver: boolean = false) => {
+    setHighlightReceiverFields(highlightReceiver);
     setEditName(guest.guestName || '');
     setEditPhone(guest.phoneNumber || '');
     setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
@@ -257,10 +262,32 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           </button>
 
           <div className="booking-details-modal__header flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
-            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white">
+            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
+              {guest.otaSource && (
+                <span
+                  className="booking-details-modal__ota-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
+                  title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
+                >
+                  <Globe className="w-3 h-3" />
+                  {guest.otaSourceLabel || guest.otaSource}
+                  {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
+                </span>
+              )}
             </h2>
           </div>
+
+          {/* Action Banner 0: OTA cancellation drift - the source calendar no longer
+              has this reservation (guest likely cancelled upstream). Informational
+              only, staff decide what to do - never auto-cancels/checks out. */}
+          {guest.otaCancelledDetectedAt && !isEditing && (
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 flex items-center gap-2 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                {t('ota_cancelled_detected_banner', 'This reservation appears to have been cancelled on {{source}} - verify with the guest before proceeding.').replace('{{source}}', guest.otaSourceLabel || guest.otaSource || 'the OTA')}
+              </span>
+            </div>
+          )}
 
           {/* Action Banner 1: Check-in ID Verification */}
           {onOpenIdVerification && !isEditing && (
@@ -303,7 +330,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={startEditing}
+                onClick={() => startEditing(true)}
                 className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -441,14 +468,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 )}
               </div>
               <div>
-                <label className={fieldLabelClass}>{t('advance_received_by', 'Advance Received By')}</label>
+                <label className={highlightReceiverFields && !editAdvanceReceivedBy ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('advance_received_by', 'Advance Received By')}</label>
                 {isEditing ? (
                   <div className="mt-1">
                     <StyledSelect
                       value={editAdvanceReceivedBy}
                       onChange={setEditAdvanceReceivedBy}
                       placeholder="-- Select Staff/User --"
-                      buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
+                      buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
+                        highlightReceiverFields && !editAdvanceReceivedBy
+                          ? 'border-red-400 dark:border-red-500 ring-4 ring-red-100 dark:ring-red-900/30'
+                          : 'border-slate-300 dark:border-slate-600'
+                      }`}
                       options={availableHandlers}
                     />
                   </div>
@@ -469,14 +500,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </div>
               </div>
               <div>
-                <label className={fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
+                <label className={highlightReceiverFields && !editPendingReceivedBy ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
                 {isEditing ? (
                   <div className="mt-1">
                     <StyledSelect
                       value={editPendingReceivedBy}
                       onChange={setEditPendingReceivedBy}
                       placeholder="-- Select Staff/User --"
-                      buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
+                      buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
+                        highlightReceiverFields && !editPendingReceivedBy
+                          ? 'border-red-400 dark:border-red-500 ring-4 ring-red-100 dark:ring-red-900/30'
+                          : 'border-slate-300 dark:border-slate-600'
+                      }`}
                       options={availableHandlers}
                     />
                   </div>
@@ -627,7 +662,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={startEditing}
+                  onClick={() => startEditing()}
                   className="col-span-1 min-w-0 w-full h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
                   <Pencil className="w-3.5 h-3.5 shrink-0" />
@@ -680,6 +715,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         onCheckoutChange={setEditCheckout}
         onClear={() => { setEditCheckin(''); setEditCheckout(''); }}
         blockedDates={getBlockedDateStrings()}
+        heading={t('select_dates_for_room_heading', 'Select dates - {{room}}').replace('{{room}}', guest.roomNumber || t('this_property_label', 'this property'))}
       />
     </>
   );
