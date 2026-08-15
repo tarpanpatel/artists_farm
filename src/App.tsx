@@ -29,7 +29,6 @@ import { GlobalModal } from './components/GlobalModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { ConfirmDialogProvider } from './components/ConfirmDialogContext';
-import { LoginModal } from './components/LoginModal';
 import { StaffPropertyPicker } from './components/StaffPropertyPicker';
 import { StaffProvider, useStaff } from './contexts/StaffContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -372,16 +371,29 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   const { currentUser, activeRole, isAuthenticated, login, logout } = useAuth();
 
-  const handleLoginSuccess = (staffMember: StaffMember) => {
+  // Reshapes the raw login_user API response into a StaffMember - moved here from the
+  // old LoginModal.tsx when LoginPage/LoginModal merged into one component (15 Aug
+  // 2026), since the two variants hand off a successful login completely differently
+  // and that difference belongs with the caller, not the shared login form.
+  const handleLoginSuccess = (rawUser: any) => {
+    const staffMember: StaffMember = {
+      id: String(rawUser.id),
+      name: rawUser.name || rawUser.username,
+      username: rawUser.username,
+      role: rawUser.role || 'Staff',
+      phone: rawUser.phone_number || rawUser.username || '',
+      monthlySalary: 0,
+      status: 'Active',
+    };
     login(staffMember);
     logAudit(`Staff User ${staffMember.name} logged into POS portal`, { status: 'Success', module: 'login', user: staffMember.name });
   };
 
   // Staff with access_all_properties (see php/security/access_control.php) don't
   // go straight into this property's dashboard on login - they need to pick
-  // which property to enter first. Set by LoginModal's onNeedsPropertySelection,
-  // cleared once StaffPropertyPicker navigates away (full page load) or the
-  // staff logs out from the picker screen instead of picking anything.
+  // which property to enter first. Set by LoginPage's (variant="terminal")
+  // onNeedsPropertySelection, cleared once StaffPropertyPicker navigates away (full
+  // page load) or the staff logs out from the picker screen instead of picking anything.
   const [propertySelection, setPropertySelection] = useState<{ tenantId: number; tenantSlug: string; user: any } | null>(null);
 
   const handleLoginFailed = (username: string) => {
@@ -1451,7 +1463,8 @@ ${itemsStr}
         )}
 
         {!isAuthenticated && !propertySelection && (
-          <LoginModal
+          <LoginPage
+            variant="terminal"
             onLoginSuccess={handleLoginSuccess}
             onLoginFailed={handleLoginFailed}
             onNeedsPropertySelection={setPropertySelection}
@@ -2102,6 +2115,11 @@ export function App() {
     is_platform_admin: boolean;
     default_tenant_id?: number;
   }) => {
+    // Moved here from LoginPage.tsx itself when it merged with LoginModal (15 Aug
+    // 2026) - persistence is a caller concern now, not the shared login form's, since
+    // the terminal variant persists its session a completely different way (see
+    // AuthContext's login()).
+    localStorage.setItem('artists_farm_user_session', JSON.stringify(session));
     setUserSession(session);
 
     // Redirect based on role
@@ -2129,7 +2147,7 @@ export function App() {
     }
 
     if (!userSession) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
     }
 
     // Determine which tenant ID to show: the one from the URL (resolvedTenant) or the user's default
@@ -2169,7 +2187,7 @@ export function App() {
     }
 
     if (!userSession || !userSession.is_platform_admin) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
     }
 
     return (
@@ -2202,7 +2220,7 @@ export function App() {
     }
 
     if (!userSession || !userSession.is_platform_admin) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
     }
 
     return (
@@ -2243,13 +2261,13 @@ export function App() {
       }
     }
     // Show login form if not logged in
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Root path - show login or platform management
   if (isRootPath) {
     if (!userSession) {
-      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+      return <LoginPage variant="management" onLoginSuccess={handleLoginSuccess} />;
     }
 
     // User is logged in at root - platform admins get exactly one canonical URL

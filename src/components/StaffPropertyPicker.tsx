@@ -68,7 +68,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
     // prompt, even though the browser has never been "on" this property's URL
     // before. The PHP session cookie (already set at login) is what actually
     // authorizes every API call from there; this just satisfies the client-side
-    // gate that decides whether to render LoginModal at all.
+    // gate that decides whether to render LoginPage (variant="terminal") at all.
     const slug = property.slug.toLowerCase();
     const staffMember: StaffMember = {
       id: String(user.id),
