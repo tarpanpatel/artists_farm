@@ -404,7 +404,14 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     UNIQUE KEY `unique_item_label_prop` (property_id, label)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM miscellaneous_catalog WHERE property_id = ?");
+                // Purge legacy operational expense items mistakenly seeded into guest miscellaneous_catalog
+                $pdo->exec("
+                    DELETE FROM miscellaneous_catalog
+                    WHERE category IN ('Appliances', 'Staff Expenses', 'Staff Benefits', 'Utilities', 'Cleaning Supplies', 'Room Supplies', 'Furniture & Décor', 'Maintenance & Repairs')
+                       OR (is_system_default = TRUE AND category NOT IN ('Guest Charges', 'Transport', 'Event & Services', 'Services', 'Incidentals', 'Accommodation'))
+                ");
+
+                $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM miscellaneous_catalog WHERE property_id = ? OR property_id = 1");
                 $cntStmt->execute([$propertyId]);
                 if ($cntStmt->fetchColumn() == 0) {
                     $defaultGuestCharges = [
