@@ -1075,13 +1075,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   ) : (
                     <UtensilsCrossed className="w-5 h-5 text-slate-300 dark:text-slate-500" />
                   )}
-
-                  {/* In-Cart Badge over image */}
-                  {inCartQty > 0 && (
-                    <span className="absolute top-1.5 right-1.5 bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-md">
-                      {inCartQty} in cart
-                    </span>
-                  )}
                 </div>
 
                 <div>
