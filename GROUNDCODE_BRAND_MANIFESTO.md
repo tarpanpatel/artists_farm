@@ -4,7 +4,7 @@
 > **Audience:** Homestay, Vacation Rental & Guesthouse Hosts (1–15 rooms)  
 > **Core Driver:** Operations Ease & Daily Peace of Mind  
 > **Design Rule:** Maximum visuals, images, icons — least words.  
-> **Staff App:** Telegram only (Zero apps to install)  
+> **Bottom level Staff App:** Telegram only (Zero apps to install)  
 > **Guest Share:** WhatsApp only (Direct bills & booking vouchers)  
 
 ---
@@ -112,6 +112,7 @@
 - ❌ *"AI revenue management & pricing engine"*
 - ❌ *"Complex enterprise software for hotel chains"*
 - ❌ WhatsApp for staff (WhatsApp is *only* for guest vouchers/bills).
+dont mention tablets. client should feel their mobile phone is enough
 
 ### ✅ What ALWAYS to Say:
 - ✅ *"Effortless daily operations for your stay."*
