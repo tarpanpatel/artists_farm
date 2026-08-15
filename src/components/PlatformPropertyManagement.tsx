@@ -77,15 +77,15 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // the slug field directly, we stop overwriting it - same "auto-generated,
   // editable" pattern used for property slugs elsewhere in the app.
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  // Same auto-fill-from-name behavior for the Edit Tenant modal's slug field
-  // - tracked separately since it's a different modal/session.
   const [editSlugManuallyEdited, setEditSlugManuallyEdited] = useState(false);
+  const [propertySlugManuallyEdited, setPropertySlugManuallyEdited] = useState(false);
   const slugify = (text: string) =>
     text
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/\-\-+/g, '-');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   // Root-admin-visible login credentials per tenant, fetched lazily the first
   // time a tenant row is expanded. Kept separate from `tenants` state since
@@ -1058,6 +1058,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                           <Button
                             onClick={() => {
                               setSelectedTenantForProperty(tenant.id);
+                              setPropertySlugManuallyEdited(false);
                               setEditingProperty({ id: 0, name: '', slug: '', tenant_id: tenant.id, status: 'active', tailwind_color_scheme: 'blue', include_kitchen: true, property_type: 'SINGLE', currency: 'INR', timezone: 'Asia/Kolkata' });
                               setShowPropertyModal('add');
                             }}
@@ -1203,7 +1204,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                             </Button>
                                             <Button
                                               onClick={() => {
-                                                setEditingProperty(room);
+                                                setPropertySlugManuallyEdited(false);
+                                                setEditingProperty({ ...room, slug: slugify(room.slug || room.name) });
                                                 setShowPropertyModal('edit');
                                               }}
                                               className="text-blue-600 dark:text-blue-400"
@@ -1400,9 +1402,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                   value={editingProperty.name}
                   onChange={(e) => {
                     const name = e.target.value;
-                    // Auto-populate slug when adding property
-                    const slug = showPropertyModal === 'add'
-                      ? name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+                    const slug = (showPropertyModal === 'add' || !propertySlugManuallyEdited)
+                      ? slugify(name)
                       : editingProperty.slug;
                     setEditingProperty({ ...editingProperty, name, slug });
                   }}
@@ -1416,9 +1417,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 <Input
                   type="text"
                   value={editingProperty.slug}
-                  onChange={(e) =>
-                    setEditingProperty({ ...editingProperty, slug: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setPropertySlugManuallyEdited(true);
+                    setEditingProperty({ ...editingProperty, slug: slugify(e.target.value) });
+                  }}
                 />
               </div>
 

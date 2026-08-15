@@ -124,6 +124,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   selectedRoomSlug,
   preSelectRoom,
   onClose,
+  focusGuestId = null,
+  onClearFocusGuest,
   // No longer used within this component (was only for the now-removed
   // GuestHistory/"Past Guests" archive view) - kept in the prop interface
   // since MultiKeyPropertyOverview/OperationalDashboard still forward it
@@ -166,12 +168,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
   const [createdBooking, setCreatedBooking] = useState<Guest | null>(null);
-  // Set when "Manage" is clicked on a row in the recent-bookings list on this
-  // same page - carried over to BillingCheckout below so it lands on the
-  // right Today/Upcoming/Past tab with this exact booking already filtered
-  // into view, instead of just dropping the admin on the page in general.
-  const [focusBookingGuestId] = useState<string | null>(null);
   const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
+
+  // BillingCheckout's own effect (child, so it fires first within the same
+  // commit) reads focusGuestId to jump to the right tab and pre-fill the
+  // search box - clearing it here right after just resets App.tsx's state so
+  // a later, unrelated visit to this tab doesn't stay stuck filtered to
+  // whichever guest was last checked out from the calendar.
+  useEffect(() => {
+    if (focusGuestId) onClearFocusGuest?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusGuestId]);
 
   // Set default room for MultiKey properties on component mount
   useEffect(() => {
@@ -1315,9 +1322,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         onCheckoutClick={onNavigateToBilling}
         kitchenModuleEnabled={kitchenModuleEnabled}
         propertyGstin={propertyGstin}
+        focusGuestId={focusGuestId}
         propertyName={propertyName}
         propertyUpiId={propertyUpiId}
-        focusGuestId={focusBookingGuestId}
       />
     );
   }

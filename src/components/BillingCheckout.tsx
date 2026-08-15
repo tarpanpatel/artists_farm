@@ -878,6 +878,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           checkedInGuests={guests}
           propertyName={propertyName}
           propertyUpiId={propertyUpiId}
+          onCheckout={() => {
+            const guest = selectedGuestForDetails;
+            setSelectedGuestForDetails(null);
+            if (guest) handleEditAndCheckoutGuest(guest);
+          }}
         />
       )}
 

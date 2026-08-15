@@ -547,45 +547,40 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <p className="text-xs font-medium">{t('no_outstanding_issues', 'No outstanding issues or pending alerts.')}</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
                 {combinedAlerts.slice(0, 5).map(({ guest: g, severity, reasons }) => (
                   <div
                     key={g.id}
-                    className={`p-3 rounded-xl border flex flex-col justify-between gap-2 ${
-                      severity === 'red'
-                        ? 'border-red-200 bg-red-50/70 dark:border-red-900/60 dark:bg-red-950/30'
-                        : 'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30'
-                    }`}
+                    className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
                   >
-                    <div>
-                      <div className="flex items-center justify-between font-bold text-xs text-slate-900 dark:text-slate-100">
-                        <span>{g.guestName}</span>
-                        <span className="text-[10px] font-normal text-slate-500">{g.roomNumber}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                        <span className="truncate">{g.guestName}</span>
+                        <span className="text-[10px] font-normal text-slate-400 shrink-0">• {g.roomNumber}</span>
                       </div>
-                      <div className="mt-1 space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
                         {reasons.map((r, i) => (
-                          <div
+                          <span
                             key={i}
-                            className={`text-xs font-semibold ${
+                            className={`font-semibold ${
                               severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
                             }`}
                           >
-                            <div>{r.label}</div>
-                            <div className="text-[10px] opacity-80 font-normal">{r.detail}</div>
-                          </div>
+                            {r.label}{r.detail ? ` (${r.detail})` : ''}
+                          </span>
                         ))}
                       </div>
                     </div>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        onClick={() => setSelectedBooking(g)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg text-white transition-colors cursor-pointer whitespace-nowrap ${
-                          severity === 'red' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-                        }`}
-                      >
-                        {t('view_resolve_button', 'View & Resolve')}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setSelectedBooking(g)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs ${
+                        severity === 'red'
+                          ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                          : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
+                      }`}
+                    >
+                      {t('view_resolve_button', 'Resolve')}
+                    </button>
                   </div>
                 ))}
               </div>

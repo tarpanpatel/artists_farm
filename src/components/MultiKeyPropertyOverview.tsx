@@ -103,6 +103,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onAddInventoryItem: _onAddInventoryItem,
   onUpdateItemImage: _onUpdateItemImage,
   onDispatchTelegram,
+  onCheckout,
   activeMenuItemKey = '',
   onSetActiveMenuItemKey: _onSetActiveMenuItemKey,
   kitchenModuleEnabled = false,
@@ -239,6 +240,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   onCFormFiledUpdated={onCFormFiledUpdated}
                   onGuestCheckedIn={onGuestCheckedIn}
                   onDispatchTelegram={onDispatchTelegram}
+                  onCheckout={onCheckout}
                   activeMenuItemKey={activeMenuItemKey}
                   propertyName={property.name}
                   propertyMapsLink={property.google_maps_link || ''}

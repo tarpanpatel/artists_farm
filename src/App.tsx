@@ -1581,6 +1581,10 @@ ${itemsStr}
                   onGuestVerificationUpdated={handleGuestVerificationUpdated}
                   onCFormFiledUpdated={handleCFormFiledUpdated}
                   onGuestCheckedIn={handleGuestCheckedIn}
+                  onCheckout={(guestId) => {
+                    setFocusGuestId(guestId);
+                    handleNavigateTab('guests', 'all_bookings');
+                  }}
                   />
                 </ErrorBoundary>
               ) : null}
@@ -1644,6 +1648,10 @@ ${itemsStr}
                       onCFormFiledUpdated={handleCFormFiledUpdated}
                   onGuestCheckedIn={handleGuestCheckedIn}
                       serviceRequests={serviceRequests}
+                      onCheckout={(guestId) => {
+                        setFocusGuestId(guestId);
+                        handleNavigateTab('guests', 'all_bookings');
+                      }}
                       />
                     </ErrorBoundary>
                   </div>
