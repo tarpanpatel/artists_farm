@@ -18,6 +18,7 @@ import {
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { Tooltip } from './Tooltip';
 import {
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_CHECKED_OUT,
@@ -868,12 +869,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   </button>
                 )}
                 {otaBlock && (
-                  <div
-                    title={t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
-                    className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-help"
-                  >
-                    <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
-                  </div>
+                  <Tooltip content={t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')} className="w-full">
+                    <div className="rounded-md px-2 py-1.5 bg-slate-500 dark:bg-slate-600 text-white text-xs font-semibold flex flex-col justify-center shadow-xs truncate w-full cursor-help">
+                      <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                    </div>
+                  </Tooltip>
                 )}
               </div>
             );

@@ -4,6 +4,7 @@ import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
+import { Tooltip } from './Tooltip';
 
 interface TodayOverviewProps {
   guests: Guest[];
@@ -608,32 +609,32 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                         if (info.item.kind === 'ota') {
                           return (
-                            <div
-                              key={`ota-${idx}`}
-                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
-                              style={commonStyle}
-                              title={info.item.tooltip}
-                            >
-                              <span className="font-semibold truncate text-[11px] leading-none">{info.item.label}</span>
-                            </div>
+                            <Tooltip key={`ota-${idx}`} content={info.item.tooltip}>
+                              <div
+                                className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
+                                style={commonStyle}
+                              >
+                                <span className="font-semibold truncate text-[11px] leading-none">{info.item.label}</span>
+                              </div>
+                            </Tooltip>
                           );
                         }
 
                         const guest = info.item.guest;
                         return (
-                          <div
-                            key={`${guest.id}-${idx}`}
-                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
-                              guest.id,
-                              guest.status
-                            )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
-                            style={commonStyle}
-                            onClick={() => setSelectedGuest(guest)}
-                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
-                          >
-                            <span className="font-semibold truncate text-[11px] leading-none">{guest.guestName}</span>
-                            <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
-                          </div>
+                          <Tooltip key={`${guest.id}-${idx}`} content={`${guest.guestName} (₹${info.nightlyRate}/night)`}>
+                            <div
+                              className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
+                                guest.id,
+                                guest.status
+                              )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
+                              style={commonStyle}
+                              onClick={() => setSelectedGuest(guest)}
+                            >
+                              <span className="font-semibold truncate text-[11px] leading-none">{guest.guestName}</span>
+                              <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
+                            </div>
+                          </Tooltip>
                         );
                       })}
                     </div>
