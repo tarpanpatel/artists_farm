@@ -1609,6 +1609,10 @@ ${itemsStr}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         serviceRequests={serviceRequests}
+                        onCheckout={(guestId) => {
+                          setFocusGuestId(guestId);
+                          handleNavigateTab('guests', 'all_bookings');
+                        }}
                       />
                     </ErrorBoundary>
                     <ErrorBoundary section="Multi-Key Property Overview">

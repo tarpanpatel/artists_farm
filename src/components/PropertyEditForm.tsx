@@ -192,11 +192,12 @@ We look forward to welcoming you!`;
         </div>
         <div className="property-edit-form__field">
           <Input
-            type="text"
+            type="tel"
             label={t('tenant_contact_phone_label', 'Contact Phone')}
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder={t('contact_phone_placeholder', '99999 99999')}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder={t('contact_phone_placeholder', 'Enter 10-digit mobile number')}
+            maxLength={10}
           />
         </div>
       </div>

@@ -81,10 +81,11 @@
    - Cook confirms food with one tap.
    - Automatically added to the guest bill.
 
-8. **Zero Commission Direct Bookings:**
-   - No need to download any app.
+8. **Save 15–25% OTA Fees on Direct Bookings:**
+   - Save 15–25% commission paid to OTAs.
+   - Convert repeat guests with instant WhatsApp vouchers.
    - Keep 100% of your room earnings.
-   - Opens super fast on 3G/4G phones.
+   - Direct booking links open fast on phones.
 
 ---
 
@@ -117,6 +118,7 @@
 - ✅ *"Staff uses only Telegram with zero new apps."*
 - ✅ *"No stress of onboarding guards or cleaners."*
 - ✅ *"Share booking vouchers & bills directly on WhatsApp."*
+- ✅ *"Save 15–25% OTA fees on direct bookings."*
+- ✅ *"Keep 100% room earnings on repeat guests."*
 - ✅ *"What took hours now takes minutes."*
-- ✅ *"Zero commission on direct bookings."*
 - ✅ *"Total clarity on your daily floor operations."*

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Receipt,
   Building,
@@ -408,6 +408,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [adjType, setAdjType] = useState<'charge' | 'discount'>('charge');
   const [adjReasonCharge, setAdjReasonCharge] = useState('Misc');
   const [adjReasonDiscount, setAdjReasonDiscount] = useState('');
+  const [adjMiscNote, setAdjMiscNote] = useState('');
   const [adjAmount, setAdjAmount] = useState<number | ''>('');
 
   // Desk Cashier Handling
@@ -586,8 +587,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     e.preventDefault();
     if (!adjAmount || Number(adjAmount) <= 0) return;
 
-    const reasonText =
-      adjType === 'charge' ? adjReasonCharge : adjReasonDiscount.trim() || 'Service Rebate';
+    let reasonText = '';
+    if (adjType === 'charge') {
+      if (adjReasonCharge === 'Misc' || adjReasonCharge.toLowerCase().includes('misc')) {
+        reasonText = adjMiscNote.trim() ? `Misc (${adjMiscNote.trim()})` : 'Misc Charge';
+      } else {
+        reasonText = adjReasonCharge;
+      }
+    } else {
+      reasonText = adjReasonDiscount.trim() || 'Service Rebate';
+    }
 
     const newAdj: AdjustmentItem = {
       id: `adj-${Date.now()}`,
@@ -599,6 +608,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setAdjustments((prev) => [...prev, newAdj]);
     setAdjAmount('');
     setAdjReasonDiscount('');
+    setAdjMiscNote('');
   };
 
   const handleRemoveAdjustment = (id: string) => {
@@ -918,8 +928,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   label={t('contact_phone_label', 'Contact Phone Number *')}
                   type="tel"
                   value={phoneNumber}
-                  onChange={e => setPhoneNumber(e.target.value)}
-                  placeholder="Enter mobile number"
+                  onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="Enter 10-digit mobile number"
+                  maxLength={10}
                   required
                 />
               </div>
@@ -1616,27 +1627,58 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   </div>
 
                   {adjType === 'charge' ? (
-                    <div>
-                      <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                        Charge Category
-                      </label>
-                      <StyledSelect
-                        value={adjReasonCharge}
-                        onChange={setAdjReasonCharge}
-                        options={['Decoration Fees', 'Extra Housekeeping', 'Misc', 'Pet Stay Charges'].map((label) => {
-                          const Icon = getExpenseItemIcon(label);
-                          return {
-                            value: label,
-                            label: (
-                              <span className="flex items-center gap-2">
-                                <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span>{label}</span>
-                              </span>
-                            ),
-                            searchText: label,
-                          };
-                        })}
-                      />
+                    <div className="space-y-3">
+                      <div>
+                        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                          Charge Category
+                        </label>
+                        <StyledSelect
+                          value={adjReasonCharge}
+                          onChange={(val) => {
+                            setAdjReasonCharge(val);
+                            const found = (miscChargesList || []).find((m) => m.label === val);
+                            if (found && found.default_amount > 0) {
+                              setAdjAmount(found.default_amount);
+                            }
+                          }}
+                          options={(() => {
+                            const defaults = ['Decoration Fees', 'Extra Housekeeping', 'Pet Stay Charges', 'Misc'];
+                            const custom = (miscChargesList || []).map((m) => m.label);
+                            const allLabels = Array.from(new Set([...custom, ...defaults]));
+                            return allLabels.map((label) => {
+                              const Icon = getExpenseItemIcon(label);
+                              const found = (miscChargesList || []).find((m) => m.label === label);
+                              const amtLabel = found && found.default_amount > 0 ? ` (₹${found.default_amount})` : '';
+                              return {
+                                value: label,
+                                label: (
+                                  <span className="flex items-center gap-2">
+                                    <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>{label}{amtLabel}</span>
+                                  </span>
+                                ),
+                                searchText: label,
+                              };
+                            });
+                          })()}
+                        />
+                      </div>
+
+                      {(adjReasonCharge === 'Misc' || adjReasonCharge.toLowerCase().includes('misc')) && (
+                        <div>
+                          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                            Misc Explanation Note *
+                          </label>
+                          <Input
+                            label="Misc Explanation Note *"
+                            type="text"
+                            required
+                            value={adjMiscNote}
+                            onChange={(e) => setAdjMiscNote(e.target.value)}
+                            placeholder="Type note to explain misc charge (e.g. Broken glass)..."
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div>

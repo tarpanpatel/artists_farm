@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle } from 'lucide-react';
+import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -16,6 +16,7 @@ import {
   GUEST_STATUS_BOOKED,
   GUEST_STATUS_CONFIRMED_LEGACY,
   GUEST_STATUS_CHECKED_IN,
+  GUEST_STATUS_ACTIVE_LEGACY,
 } from '../constants/guestStatus';
 
 interface BookingDetailsModalProps {
@@ -32,6 +33,13 @@ interface BookingDetailsModalProps {
   propertyUpiId?: string;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
+  // Guest can be checked out and billed anytime during the stay, not just on
+  // the original expected checkout date - a premature settlement just means
+  // picking today's date in the checkout screen's own date picker instead of
+  // the original one, which already shortens the booking (and its calendar
+  // bar) correctly. Omit this prop to hide the button entirely (e.g. call
+  // sites that don't yet have a checkout screen wired up).
+  onCheckout?: () => void;
 }
 
 const formatDate = (dateStr: string) => {
@@ -65,6 +73,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyUpiId = '',
   onOpenIdVerification,
   onCheckedIn,
+  onCheckout,
 }) => {
   const { staff } = useStaff();
   const { showToast } = useToast();
@@ -326,7 +335,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('phone_label', 'Phone')}</label>
                 {isEditing ? (
-                  <Input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                  <Input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
+                    placeholder="10-digit mobile number"
+                  />
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {guest.phoneNumber || '—'}
@@ -554,6 +569,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
+                  </button>
+                )}
+
+                {onCheckout && (guest.status === GUEST_STATUS_CHECKED_IN || (guest.status as string) === GUEST_STATUS_ACTIVE_LEGACY) && (
+                  <button
+                    type="button"
+                    onClick={onCheckout}
+                    className="w-full h-9 px-3.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 col-span-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{t('checkout_settle_bill_button', 'Checkout & Settle Bill')}</span>
                   </button>
                 )}
 

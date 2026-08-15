@@ -37,6 +37,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   onAddBooking,
   onUpdateGuest,
   onDeleteGuest,
+  onCheckout,
   propertyName = '',
   propertyMapsLink = '',
   propertyPhone = '',
@@ -662,6 +663,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyUpiId={propertyUpiId}
+          onCheckout={onCheckout ? () => { onCheckout(selectedGuest.id); setSelectedGuest(null); } : undefined}
         />
       )}
     </div>
