@@ -66,6 +66,7 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
     { label: 'Data Export', tabKey: 'export', uniqueKey: 'data_export_center' },
     { label: 'Recipe Builder', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
+    { label: 'License Management', tabKey: 'licenses', uniqueKey: 'license_management' },
     { label: 'Custom URL', tabKey: 'custom', uniqueKey: '' },
   ];
 }

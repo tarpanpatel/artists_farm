@@ -22,6 +22,7 @@ import { MenuManager } from './components/MenuManager';
 import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { ServiceRequestsManagement } from './components/ServiceRequestsManagement';
 import { ICalSyncManager } from './components/ICalSyncManager';
+import { LicenseManagement } from './components/LicenseManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { EditPropertyPage } from './components/EditPropertyPage';
 import { GlobalModal } from './components/GlobalModal';
@@ -153,6 +154,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
         ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
+        license_management: { tab: 'licenses', key: 'license_management' },
       };
 
       if (hash && routeMap[hash]) {
@@ -359,6 +361,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       custom_css: 'custom_css',
       service_requests: 'service_requests',
       edit_property: 'edit_property',
+      licenses: 'license_management',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
@@ -861,7 +864,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
         'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
-        'service_requests', 'edit_property'
+        'service_requests', 'edit_property', 'license_management'
       ]);
 
       if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
@@ -917,6 +920,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         edit_property: { tab: 'edit_property', key: 'edit_property' },
+        license_management: { tab: 'licenses', key: 'license_management' },
       };
 
       // 404 or Invalid Route -> Try dynamic nav items from DB, then check if it's a room slug
@@ -1590,6 +1594,7 @@ ${itemsStr}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         serviceRequests={serviceRequests}
                       />
                     </ErrorBoundary>
@@ -1642,6 +1647,7 @@ ${itemsStr}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
                         propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
@@ -1682,6 +1688,7 @@ ${itemsStr}
                     propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                     propertyPhone={preloadedData.currentProperty?.phone || ''}
                     propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                    propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     onNavigateToBilling={(_guestId) => {
                       // Navigate to billing view for guest
                     }}
@@ -1861,6 +1868,12 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
+              {!selectedRoomSlugOverride && activeTab === 'licenses' && (
+                <ErrorBoundary section="License Management">
+                  <LicenseManagement onLogAudit={logAudit} />
+                </ErrorBoundary>
+              )}
+
               {!selectedRoomSlugOverride && activeTab === 'edit_property' && (
                 <ErrorBoundary section="Edit Property">
                   <EditPropertyPage property={preloadedData.currentProperty} />
@@ -1896,6 +1909,11 @@ ${itemsStr}
                 isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                 selectedRoomSlug={preloadedData.currentRoomSlug}
                 onClose={() => setIsAddBookingModalOpen(false)}
+                propertyName={preloadedData.currentProperty?.name || ''}
+                propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                propertyPhone={preloadedData.currentProperty?.phone || ''}
+                propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
               />
             </div>
           </div>

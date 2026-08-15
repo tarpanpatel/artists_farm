@@ -37,6 +37,7 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { UpiPaymentBlock } from '../utils/upiQrCode';
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -80,6 +81,7 @@ interface GuestManagementProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  propertyUpiId?: string;
 }
 
 
@@ -134,6 +136,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyUpiId = '',
 }) => {
   const { orders } = useKitchenContext();
   const { showToast } = useToast();
@@ -1277,6 +1280,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             rooms={rooms}
             checkedInGuests={guests}
             propertyName={propertyName}
+            propertyMapsLink={propertyMapsLink}
+            propertyPhone={propertyPhone}
+            propertyWhatsappTemplate={propertyWhatsappTemplate}
+            propertyUpiId={propertyUpiId}
           />
         )}
       </div>
@@ -1298,6 +1305,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         kitchenModuleEnabled={kitchenModuleEnabled}
         propertyGstin={propertyGstin}
         propertyName={propertyName}
+        propertyUpiId={propertyUpiId}
         focusGuestId={focusBookingGuestId}
       />
     );
@@ -1971,7 +1979,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {currentGuest && (
                 <a
                   href={`https://api.whatsapp.com/send?phone=${currentGuest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + currentGuest.phoneNumber.replace(/\D/g, '') : currentGuest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                     `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(new Date().toISOString())}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
+                     `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${currentGuest.guestName}\n🏠 *Room:* ${currentGuest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(currentGuest.checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(new Date().toISOString())}\n🏨 *Accommodation:* ₹${baseLodging.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2097,6 +2105,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <span>Grand Total Payable:</span>
                 <span className="summary-line summary-line--grand-total-payable">₹{grandTargetDue.toFixed(2)}</span>
               </div>
+
+              {/* UPI Payment (only when the property has a UPI ID configured) */}
+              <UpiPaymentBlock
+                upiId={propertyUpiId}
+                payeeName={propertyName || 'Bill Settlement'}
+                amount={grandTargetDue}
+                amountLabel="Grand Total"
+                note={`Bill - ${currentGuest?.guestName || ''}`}
+              />
             </div>
           </div>
         </div>
@@ -2135,6 +2152,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     advance_paid: (createdBooking.advanceAmount || 0).toFixed(2),
                     maps_link: propertyMapsLink,
                     contact_phone: propertyPhone,
+                    upi_id: propertyUpiId,
                   })
                 )}`}
                 target="_blank"
@@ -2218,6 +2236,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <span>₹{Math.max(0, (createdBooking.roomRate || 0) - (createdBooking.advanceAmount || 0)).toFixed(2)}</span>
                 </div>
               </div>
+
+              {/* UPI Payment (only when the property has a UPI ID configured) */}
+              <UpiPaymentBlock
+                upiId={propertyUpiId}
+                payeeName={propertyName || 'Booking Payment'}
+                amount={Math.max(0, (createdBooking.roomRate || 0) - (createdBooking.advanceAmount || 0))}
+                amountLabel="Balance Due"
+                note={`Booking - ${createdBooking.guestName}`}
+              />
 
               {/* Notes */}
               {createdBooking.notes && (

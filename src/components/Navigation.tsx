@@ -24,7 +24,8 @@ export type TabType =
   | 'custom_css'
   | 'ical_sync'
   | 'service_requests'
-  | 'edit_property';
+  | 'edit_property'
+  | 'licenses';
 
 interface NavigationProps {
   activeTab: TabType;

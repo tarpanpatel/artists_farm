@@ -70,4 +70,9 @@ AI_MARKET_RESEARCH_PROMPT.md
 # (menu/catalog images stay tracked - those are demo content, not guest data)
 php/uploads/images/id_documents/
 
+# Uploaded license/certificate documents - real property paperwork, same
+# never-version-controlled treatment as guest ID docs above.
+php/uploads/documents/*/
+!php/uploads/documents/.htaccess
+
 php/database/log.txt

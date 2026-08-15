@@ -17,6 +17,7 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 👥 *Number of Guests:* {guest_count}
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
+💳 *Pay via UPI:* {upi_id}
 📍 *Location:* {maps_link}
 📞 *Contact:* {contact_phone}
 ━━━━━━━━━━━━━━━━━
@@ -31,7 +32,7 @@ We look forward to welcoming you to {property_name}!`;
 export function renderWhatsappVoucherTemplate(
   template: string,
   values: Record<string, string>,
-  optionalTokens: string[] = ['{maps_link}', '{contact_phone}', '{checkin_time}', '{checkout_time}']
+  optionalTokens: string[] = ['{maps_link}', '{contact_phone}', '{checkin_time}', '{checkout_time}', '{upi_id}']
 ): string {
   const lines = template.split('\n');
   const keptLines = lines.filter((line) => {

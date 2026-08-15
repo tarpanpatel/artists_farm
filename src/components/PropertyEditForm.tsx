@@ -18,6 +18,7 @@ interface PropertyEditFormProps {
     email?: string;
     phone?: string;
     gstin?: string;
+    upi_id?: string;
     address?: string;
     google_maps_link?: string;
     instructions?: string;
@@ -43,6 +44,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [email, setEmail] = useState(property.email || '');
   const [phone, setPhone] = useState(property.phone || '');
   const [gstin, setGstin] = useState(property.gstin || '');
+  const [upiId, setUpiId] = useState(property.upi_id || '');
   const [address, setAddress] = useState(property.address || '');
   const [mapsLink, setMapsLink] = useState(property.google_maps_link || '');
   const [instructions, setInstructions] = useState(property.instructions || '');
@@ -103,6 +105,7 @@ We look forward to welcoming you!`;
       .replace(/\{google_maps_link\}|\{maps_link\}/g, mapsLink.trim() || '[Maps Link]')
       .replace(/\{instructions\}|\{other_notes\}/g, instructions.trim() || '[No additional notes]')
       .replace(/\{gstin\}/g, gstin.trim() || '[GSTIN]')
+      .replace(/\{upi_id\}/g, upiId.trim() || '[UPI ID]')
       .replace(/\{guest_name\}/g, sampleGuest.guest_name)
       .replace(/\{room_number\}/g, sampleGuest.room_number)
       .replace(/\{checkin_date\}/g, sampleGuest.checkin_date)
@@ -129,6 +132,7 @@ We look forward to welcoming you!`;
           email: email.trim(),
           phone: phone.trim(),
           gstin: gstin.trim().toUpperCase(),
+          upi_id: upiId.trim(),
           address: address.trim(),
           google_maps_link: mapsLink.trim(),
           instructions,
@@ -205,6 +209,17 @@ We look forward to welcoming you!`;
           onChange={(e) => setGstin(e.target.value.toUpperCase())}
           placeholder="27ABCDE1234F1Z5"
           helperText={t('gstin_help_text', 'Printed on GST tax invoices at checkout.')}
+        />
+      </div>
+
+      <div className="property-edit-form__field">
+        <Input
+          type="text"
+          label={t('upi_id_optional_label', 'UPI ID (optional)')}
+          value={upiId}
+          onChange={(e) => setUpiId(e.target.value)}
+          placeholder="yourproperty@okicici"
+          helperText={t('upi_id_help_text', 'A scannable UPI QR code and this ID are added to booking confirmation and bill messages shared over WhatsApp.')}
         />
       </div>
 
@@ -293,7 +308,7 @@ We look forward to welcoming you!`;
           {/* Quick variable insert buttons */}
           <div className="property-edit-form__tag-row mb-2 flex flex-wrap items-center gap-1.5">
             <span className="property-edit-form__tag-hint text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-1">Insert Tag:</span>
-             {['{guest_name}', '{property_name}', '{room_number}', '{checkin_date}', '{checkout_date}', '{checkin_time}', '{checkout_time}', '{google_maps_link}', '{property_phone}', '{total_amount}'].map((tag) => (
+             {['{guest_name}', '{property_name}', '{room_number}', '{checkin_date}', '{checkout_date}', '{checkin_time}', '{checkout_time}', '{google_maps_link}', '{property_phone}', '{total_amount}', '{upi_id}'].map((tag) => (
                <Button key={tag} variant="secondary" size="xs" className="px-2 py-0.5 font-mono border dark:border-slate-700 rounded-md" type="button" onClick={() => setWhatsappTemplate((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + tag)}>
                  + {tag}
                </Button>

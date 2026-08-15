@@ -96,6 +96,31 @@ if (!isSchemaVerified('schema_users_table_v2')) {
     markSchemaVerified('schema_users_table_v2');
 }
 
+// Self-healing column check for `properties` - upi_id/checkin_time/checkout_time
+// were referenced by update_property (this file) and PropertyEditForm.tsx's save
+// payload without ever being added to the table, so every "Save Changes" on Edit
+// Property failed with "Unknown column 'checkin_time'" the moment a form actually
+// submitted (checkin_time/checkout_time are always present in that payload, not
+// conditionally sent) - discovered while wiring up upi_id for the new UPI
+// QR/booking-confirmation feature. Same unconditional-at-boot pattern as the
+// `users` check above, so it self-heals wherever this code runs (prod's DB never
+// had these columns either) without a manual migration step.
+if (!isSchemaVerified('schema_properties_table_v2')) {
+    try {
+        $propertiesCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('upi_id', $propertiesCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `upi_id` VARCHAR(100) DEFAULT NULL AFTER `gstin`");
+        }
+        if (!in_array('checkin_time', $propertiesCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `checkin_time` VARCHAR(10) DEFAULT '14:00' AFTER `upi_id`");
+        }
+        if (!in_array('checkout_time', $propertiesCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `checkout_time` VARCHAR(10) DEFAULT '11:00' AFTER `checkin_time`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_table_v2');
+}
+
 /**
  * A property's "Super Admin" staff row is not an independent staff account -
  * it IS the tenant, and there is exactly one of them, always. This keeps
@@ -2137,6 +2162,10 @@ switch ($action) {
             if (array_key_exists('gstin', $input)) {
                 $sets[] = 'gstin = ?';
                 $params[] = trim($input['gstin']) ?: null;
+            }
+            if (array_key_exists('upi_id', $input)) {
+                $sets[] = 'upi_id = ?';
+                $params[] = trim($input['upi_id']) ?: null;
             }
             if (array_key_exists('telegram_template_customization_enabled', $input)) {
                 $sets[] = 'telegram_template_customization_enabled = ?';

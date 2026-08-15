@@ -13,6 +13,7 @@ import { useStaff } from '../contexts/StaffContext';
 import * as htmlToImage from 'html-to-image';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { UpiPaymentBlock } from '../utils/upiQrCode';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface ReceiptEditModalProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
+  propertyUpiId?: string;
 }
 
 interface GstRatesConfig {
@@ -85,6 +87,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
+  propertyUpiId = '',
 }) => {
   const { activeRole, currentUser } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
@@ -1268,7 +1271,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </button>
               <a
                 href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
-                  `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
+                  `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1409,6 +1412,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 <span>{t('grand_total_payable_label', 'Grand Total Payable:')}</span>
                 <span className="summary-line summary-line--grand-total-payable">₹{grandTargetDue.toFixed(2)}</span>
               </div>
+
+              {/* UPI Payment (only when the property has a UPI ID configured) */}
+              <UpiPaymentBlock
+                upiId={propertyUpiId}
+                payeeName={propertyName || 'Bill Settlement'}
+                amount={grandTargetDue}
+                amountLabel="Grand Total"
+                note={`Bill - ${guest.guestName}`}
+              />
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
   ChefHat,
   FolderCog,
   ArrowRight,
+  ScrollText,
 } from 'lucide-react';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
@@ -109,6 +110,14 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       description: t('beta_recipe_builder_desc', 'Define ingredient breakdown recipes for kitchen dishes to automate inventory deduction.'),
       icon: ChefHat,
       color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/60',
+    },
+    {
+      uniqueKey: 'license_management',
+      tabKey: 'licenses',
+      title: t('license_management_heading', 'License Management'),
+      description: t('license_management_desc', 'Track homestay, FSSAI, and other property licenses with automatic expiry reminders.'),
+      icon: ScrollText,
+      color: 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800/60',
     },
   ];
 

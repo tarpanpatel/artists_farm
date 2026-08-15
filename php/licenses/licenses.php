@@ -87,7 +87,7 @@ function getLicenses($pdo, $propertyId) {
         $stmt = $pdo->prepare("
             SELECT
                 id, license_type, license_name, license_number, issuing_authority,
-                start_date, end_date, status,
+                start_date, end_date, status, document_url,
                 DATEDIFF(end_date, CURDATE()) as days_remaining,
                 notes, created_at
             FROM property_licenses
@@ -121,8 +121,8 @@ function addLicense($pdo, $propertyId) {
     try {
         $stmt = $pdo->prepare("
             INSERT INTO property_licenses
-            (property_id, license_type, license_name, license_number, issuing_authority, start_date, end_date, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (property_id, license_type, license_name, license_number, issuing_authority, start_date, end_date, notes, document_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $propertyId,
@@ -132,7 +132,8 @@ function addLicense($pdo, $propertyId) {
             $input['issuing_authority'] ?? '',
             $input['start_date'] ?? date('Y-m-d'),
             $input['end_date'] ?? date('Y-m-d'),
-            $input['notes'] ?? ''
+            $input['notes'] ?? '',
+            $input['document_url'] ?? null
         ]);
 
         echo json_encode(['status' => 'success', 'message' => 'License added successfully', 'id' => $pdo->lastInsertId()]);
@@ -148,7 +149,7 @@ function updateLicense($pdo, $propertyId) {
         $stmt = $pdo->prepare("
             UPDATE property_licenses
             SET license_type = ?, license_name = ?, license_number = ?,
-                issuing_authority = ?, start_date = ?, end_date = ?, notes = ?
+                issuing_authority = ?, start_date = ?, end_date = ?, notes = ?, document_url = ?
             WHERE id = ? AND property_id = ?
         ");
         $stmt->execute([
@@ -159,6 +160,7 @@ function updateLicense($pdo, $propertyId) {
             $input['start_date'] ?? date('Y-m-d'),
             $input['end_date'] ?? date('Y-m-d'),
             $input['notes'] ?? '',
+            $input['document_url'] ?? null,
             $input['id'],
             $propertyId
         ]);

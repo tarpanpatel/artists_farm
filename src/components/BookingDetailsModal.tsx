@@ -29,6 +29,7 @@ interface BookingDetailsModalProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  propertyUpiId?: string;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
 }
@@ -61,6 +62,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyUpiId = '',
   onOpenIdVerification,
   onCheckedIn,
 }) => {
@@ -216,6 +218,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       advance_paid: advancePaid.toFixed(2),
       maps_link: propertyMapsLink,
       contact_phone: propertyPhone,
+      upi_id: propertyUpiId,
     });
     return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   };

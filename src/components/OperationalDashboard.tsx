@@ -59,6 +59,7 @@ interface OperationalDashboardProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  propertyUpiId?: string;
   propertyAddress?: string;
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
@@ -93,6 +94,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyUpiId = '',
   propertyAddress: _propertyAddress = '',
   propertyGoogleMapsLink: _propertyGoogleMapsLink = '',
   propertyInstructions: _propertyInstructions = '',
@@ -1001,6 +1003,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           propertyMapsLink={propertyMapsLink}
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
+          propertyUpiId={propertyUpiId}
           onOpenIdVerification={() => setShowCheckinVerification(true)}
           onCheckedIn={onGuestCheckedIn}
         />
@@ -1052,6 +1055,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               selectedRoomSlug={roomName}
               preSelectRoom={roomName}
               onClose={() => setShowAddGuestModal(false)}
+              propertyName={propertyName}
+              propertyMapsLink={propertyMapsLink}
+              propertyPhone={propertyPhone}
+              propertyWhatsappTemplate={propertyWhatsappTemplate}
+              propertyUpiId={propertyUpiId}
             />
           </div>
         </div>

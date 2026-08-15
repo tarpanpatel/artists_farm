@@ -31,6 +31,7 @@ interface MultiKeyProperty {
   google_maps_link?: string;
   whatsapp_voucher_template?: string;
   gstin?: string;
+  upi_id?: string;
   shared_data: {
     staff?: any[];
     kitchen?: any;
@@ -243,6 +244,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyMapsLink={property.google_maps_link || ''}
                   propertyPhone={property.phone || ''}
                   propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                  propertyUpiId={property.upi_id || ''}
                   onUpdateRoomName={async (newName) => {
                     try {
                       const response = await fetch('/php/api/router.php?action=update_room_name', {

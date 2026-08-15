@@ -21,6 +21,7 @@ import { PropertyTelegramConfig } from '../types';
 const _base = '';
 const API_BASE = `${_base}/php/api/router.php`;
 const UPLOAD_BASE = `${_base}/php/uploads/upload_image.php`;
+const DOCUMENT_UPLOAD_BASE = `${_base}/php/uploads/upload_document.php`;
 // Shared, route-independent base path for anything under /php/ (e.g. telescopeLogger's
 // error-reporting endpoint) - resolves correctly from any route (/root_dashboard/,
 // /tenant_dashboard/, /{tenant}/{property}/{room}/, etc.), unlike deriving it from the
@@ -150,7 +151,8 @@ export function getRoomSlugFromHash(validRoomSlugs?: string[]): string | null {
   // Reserved names that are NOT room slugs (tab names, etc.)
   const reserved = new Set([
     'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
-    'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync'
+    'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
+    'licenses', 'license_management'
   ]);
 
   if (reserved.has(hash.toLowerCase())) {
@@ -594,6 +596,33 @@ export async function uploadImageDB(image: File | string, folder: 'menu' | 'cata
     return null;
   } catch (err) {
     console.error('Failed to upload image:', err);
+    return null;
+  }
+}
+
+// Unlike uploadImageDB above, accepts PDFs as well as images and stores the
+// file as-is (php/uploads/upload_document.php does no resize/recompress) -
+// for legal/certificate documents (e.g. LicenseManagement) where the upload
+// has to stay byte-identical to what was scanned, not a compressed thumbnail.
+export async function uploadDocumentDB(file: File, folder: 'licenses' = 'licenses'): Promise<{ url: string; mime: string; size: number } | null> {
+  try {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('folder', folder);
+    const res = await apiFetch(DOCUMENT_UPLOAD_BASE, {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await res.json();
+    if (json.status === 'success' && json.url) {
+      // Same dev-proxy re-rooting as uploadImageDB - see its comment above.
+      const uploadsPath = json.url.replace(/^.*(\/php\/uploads\/.*)$/, '$1');
+      return { url: `${API_ROOT_BASE}${uploadsPath}`, mime: json.mime, size: json.size };
+    }
+    console.error('Document upload failed:', json.message);
+    return null;
+  } catch (err) {
+    console.error('Failed to upload document:', err);
     return null;
   }
 }

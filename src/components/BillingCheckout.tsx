@@ -39,6 +39,7 @@ interface BillingCheckoutProps {
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
+  propertyUpiId?: string;
   focusGuestId?: string | null;
 }
 
@@ -66,6 +67,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
+  propertyUpiId = '',
   focusGuestId = null,
 }) => {
   const { showToast } = useToast();
@@ -859,6 +861,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         kitchenModuleEnabled={kitchenModuleEnabled}
         propertyGstin={propertyGstin}
         propertyName={propertyName}
+        propertyUpiId={propertyUpiId}
       />
 
       {/* Standard Booking Details & Editing Modal */}
@@ -874,6 +877,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           rooms={rooms}
           checkedInGuests={guests}
           propertyName={propertyName}
+          propertyUpiId={propertyUpiId}
         />
       )}
 
@@ -901,6 +905,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 activeMenuItemKey="guest_registration"
                 isMultiKeyProperty={isMultiKeyProperty}
                 onClose={() => setShowAddBookingModal(false)}
+                propertyName={propertyName}
+                propertyUpiId={propertyUpiId}
               />
             </div>
           </div>

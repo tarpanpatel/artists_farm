@@ -23,6 +23,7 @@ interface TodayOverviewProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  propertyUpiId?: string;
   serviceRequests?: any[];
 }
 
@@ -40,6 +41,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyUpiId = '',
   serviceRequests = [],
 }) => {
   const today = useMemo(() => {
@@ -659,6 +661,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyMapsLink={propertyMapsLink}
           propertyPhone={propertyPhone}
           propertyWhatsappTemplate={propertyWhatsappTemplate}
+          propertyUpiId={propertyUpiId}
         />
       )}
     </div>

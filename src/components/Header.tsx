@@ -19,7 +19,7 @@ import { useKitchenContext } from '../contexts/KitchenContext';
 import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { Guest } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
-import { t } from '../i18n/en';
+import { t } from '../i18n';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   showInstallIcon = false,
   onInstallIconClick,
 }) => {
-  const { activeRole: _activeRole, setActiveRole: _setActiveRole, currentUser: _currentUser, isAuthenticated: _isAuthenticated } = useAuth();
+  useAuth();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
   const { pendingRequests } = useServiceRequestContext();
