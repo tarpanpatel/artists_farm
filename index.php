@@ -24,7 +24,7 @@ $app = isset($_GET['app']) ? htmlspecialchars($_GET['app']) : '';
 
 // If visiting the bare root URL (no tenant/property/app specified), serve the marketing landing page
 if (empty($tenantSlug) && empty($propertySlug) && empty($app)) {
-    $landing_page = __DIR__ . '/index3.html';
+    $landing_page = file_exists(__DIR__ . '/home.html') ? (__DIR__ . '/home.html') : (__DIR__ . '/index3.html');
     if (file_exists($landing_page)) {
         readfile($landing_page);
         exit();
