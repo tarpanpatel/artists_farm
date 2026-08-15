@@ -195,6 +195,28 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                         $stmtHist->execute([$input['itemName'], $input['unitCost'], $input['purchaseDate'], $propertyId]);
                     } catch (PDOException $eHist) {}
 
+                    // Post to the shared financial ledger - kitchen purchases are a real
+                    // operating cost and previously never reached financial_ledger at all,
+                    // so the P&L Statement's "Total Expenses" silently excluded every
+                    // grocery/gas/supplies bill regardless of how much was spent. Posted
+                    // unconditionally at record-time (like add_petty_cash does), not
+                    // gated on settlement_status - an unpaid vendor bill is still a real
+                    // incurred expense, it just hasn't been settled in cash yet.
+                    // $propertyId passed explicitly - postFinancialLedger() silently
+                    // defaults to property 1 otherwise (see CLAUDE.md).
+                    postFinancialLedger($pdo, [
+                        'entry_key' => 'kitchen_purchase:' . $input['id'],
+                        'direction' => 'debit',
+                        'amount' => $input['totalPrice'] ?? 0,
+                        'category' => 'Kitchen & Supplies',
+                        'payment_method' => $input['settlementMethod'] ?? 'Farm Cash',
+                        'party_type' => 'payee',
+                        'party_name' => $input['vendorName'] ?? 'Unassigned Vendor',
+                        'source_type' => 'kitchen_purchase',
+                        'source_id' => $input['id'],
+                        'description' => trim(($input['quantity'] ?? '') . ' ' . ($input['unit'] ?? '') . ' ' . ($input['itemName'] ?? '')),
+                    ], $propertyId);
+
                     echo json_encode(['status' => 'success', 'message' => 'Kitchen purchase logged & synced with Master Catalog']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -244,6 +266,13 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $stmtDel = $pdo->prepare("DELETE FROM kitchen_purchases_log WHERE id = ? AND property_id = ?");
                     $stmtDel->execute([$input['id'], $propertyId]);
+
+                    // Neutralise the ledger posting create_kitchen_purchase made -
+                    // otherwise a deleted purchase keeps counting as a real expense
+                    // in the P&L Statement forever. $propertyId passed explicitly
+                    // (see CLAUDE.md - postFinancialLedger()/reverseFinancialSource()
+                    // silently default to property 1 otherwise).
+                    reverseFinancialSource($pdo, 'kitchen_purchase', (string)$input['id'], 'Kitchen purchase deleted', $propertyId);
 
                     // Immutable Audit Log trace
                     try {
