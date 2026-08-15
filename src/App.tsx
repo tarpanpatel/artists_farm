@@ -339,10 +339,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
       setSelectedRoomForGuestRegistration(null);
     }
 
-    // When navigating to a menu tab, clear room selection
-    setSelectedRoomSlugOverride(null);
-    if (selectedRoomSlugOverrideRef) {
-      selectedRoomSlugOverrideRef.current = null;
+    // When navigating to a menu tab, clear room selection - EXCEPT
+    // 'edit_property': clicked while viewing a specific room, "Edit Property"
+    // should edit that room (name/check-in/check-out/tariff - it has its own
+    // values for all of these), not kick you out to the parent property.
+    if (menuItemKey !== 'edit_property' || !selectedRoomSlugOverrideRef.current) {
+      setSelectedRoomSlugOverride(null);
+      if (selectedRoomSlugOverrideRef) {
+        selectedRoomSlugOverrideRef.current = null;
+      }
     }
     setActiveTab(tab);
     const defaults: Record<TabType, string> = {
@@ -868,7 +873,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
       const hash = window.location.hash.replace('#', '').trim();
       if (!hash) return;
 
-      // If hash is a menu item (not a room), clear room override
+      // If hash is a menu item (not a room), clear room override - EXCEPT
+      // 'edit_property': while viewing a specific room, that hash should edit
+      // the room itself (it has its own name/checkin_time/checkout_time/
+      // default_tariff), not kick the user out to the parent property.
       const reserved = new Set([
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
@@ -878,7 +886,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
         'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
-        'service_requests', 'edit_property', 'license_management'
+        'service_requests', 'license_management'
       ]);
 
       if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
@@ -1495,7 +1503,7 @@ ${itemsStr}
         {isAuthenticated && (
           <Navigation
             activeTab={activeTab}
-            setActiveTab={(tab) => handleNavigateTab(tab)}
+            setActiveTab={(tab) => handleNavigateTab(tab, tab === 'edit_property' ? 'edit_property' : undefined)}
             activeMenuItemKey={activeMenuItemKey}
             setActiveMenuItemKey={setActiveMenuItemKey}
             guests={guests}
@@ -1534,8 +1542,8 @@ ${itemsStr}
 
         {/* Main Dashboard Container */}
         {isAuthenticated && (
-          <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-all duration-200`}>
-            <main className="flex-1 px-1 py-1 sm:px-6 sm:py-6 lg:px-8 lg:py-8 w-full space-y-2 sm:space-y-6">
+          <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
+            <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4">
 
               {/* Property setup wizard - shown at the top when setup is incomplete */}
               {preloadedData.currentProperty && (
