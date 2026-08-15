@@ -713,7 +713,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   useEffect(() => {
     const container = document.querySelector('.take-food-order-container');
     if (!container) return;
-    const onScroll = () => setShowScrollTop(container.scrollTop > 300);
+    const onScroll = () => setShowScrollTop(container.scrollTop > 600);
     container.addEventListener('scroll', onScroll, { passive: true });
     return () => container.removeEventListener('scroll', onScroll);
   }, [activeTab]);
@@ -1414,13 +1414,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* Mobile Scroll-to-Top Button */}
             {showScrollTop && (
               <button
+                type="button"
                 onClick={() => {
                   const c = document.querySelector('.take-food-order-container');
                   if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="fixed bottom-24 right-4 z-50 lg:hidden w-10 h-10 bg-slate-800/90 dark:bg-white/90 text-white dark:text-slate-800 rounded-lg shadow-lg flex items-center justify-center cursor-pointer transition-all active:scale-90 border border-slate-600 dark:border-slate-300"
+                className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
+                  cartItems.length > 0
+                    ? isCartDrawerExpanded
+                      ? 'bottom-[calc(50vh+16px)]'
+                      : 'bottom-48 sm:bottom-52'
+                    : 'bottom-6'
+                }`}
+                title="Scroll to top"
               >
-                <ArrowUp className="w-5 h-5" />
+                <ArrowUp className="w-5 h-5 stroke-[2.5]" />
               </button>
             )}
           </div>
