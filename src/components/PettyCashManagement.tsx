@@ -29,6 +29,7 @@ interface FormState {
   amount: number | '';
   paymentMode: string;
   paidBy: string;
+  paymentSource: 'property' | 'pocket' | 'split';
   showDrawerSplit: boolean;
   drawerAmount: number | '';
   staffAmount: number | '';
@@ -54,6 +55,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         amount: '',
         invoiceBillUrl: '',
         paymentScreenshotUrl: '',
+        paymentSource: 'property',
         showDrawerSplit: false,
         drawerAmount: '',
         staffAmount: '',
@@ -85,6 +87,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     amount: '',
     paymentMode: 'UPI / QR',
     paidBy: currentUserName,
+    paymentSource: 'property',
     showDrawerSplit: false,
     drawerAmount: '',
     staffAmount: '',
@@ -110,6 +113,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       dispatch({ type: 'SET_FIELD', field: 'paidBy', value: currentUserName });
     }
   }, [currentUserName]);
+
+  useEffect(() => {
+    if (formState.paymentSource === 'pocket') {
+      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount });
+      dispatch({ type: 'SET_FIELD', field: 'drawerAmount', value: 0 });
+    }
+  }, [formState.amount, formState.paymentSource]);
 
   // Property Cash in Hand split (redesigned 12 Aug 2026): the only thing
   // staff enters is "how much came out of your own pocket" - the property
@@ -564,11 +574,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'paymentSource', value: 'property' });
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
                     dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: 0 });
                   }}
                   className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                    !formState.showDrawerSplit && Number(formState.staffAmount || 0) === 0
+                    (formState.paymentSource || 'property') === 'property'
                       ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
@@ -579,11 +590,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'paymentSource', value: 'pocket' });
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
-                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount || 0 });
+                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount });
                   }}
                   className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                    !formState.showDrawerSplit && Number(formState.staffAmount || 0) > 0
+                    formState.paymentSource === 'pocket'
                       ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
@@ -594,10 +606,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'paymentSource', value: 'split' });
                     dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: true });
                   }}
                   className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                    formState.showDrawerSplit
+                    formState.paymentSource === 'split'
                       ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
