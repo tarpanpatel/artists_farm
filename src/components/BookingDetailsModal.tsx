@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut } from 'lucide-react';
+import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
 import { useStaff } from '../contexts/StaffContext';
@@ -172,11 +172,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         total_charge: newRoomRent,
         advanceAmount: newAdvance,
         advance_paid: newAdvance,
-        advanceReceivedBy: newAdvance > 0 ? editAdvanceReceivedBy : '',
-        advance_received_by: newAdvance > 0 ? editAdvanceReceivedBy : '',
+        advanceReceivedBy: editAdvanceReceivedBy,
+        advance_received_by: editAdvanceReceivedBy,
         pendingAmount: newPending,
-        pendingReceivedBy: newPending > 0 ? editPendingReceivedBy : '',
-        pending_received_by: newPending > 0 ? editPendingReceivedBy : '',
+        pendingReceivedBy: editPendingReceivedBy,
+        pending_received_by: editPendingReceivedBy,
         bookingSource: editBookingSource,
         notes: editShowNotes ? editNotes : '',
         isForeignGuest: editIsForeignGuest,
@@ -233,6 +233,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
+  const availableHandlers = financialHandlers.length > 0 ? financialHandlers : staff.map((s) => ({ value: s.name, label: s.name }));
 
   const fieldLabelClass = 'text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase';
   const inputClass = 'mt-1 w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30';
@@ -261,27 +262,54 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </h2>
           </div>
 
+          {/* Action Banner 1: Check-in ID Verification */}
           {onOpenIdVerification && !isEditing && (
-            <button
-              onClick={onOpenIdVerification}
-              className={`booking-details-modal__id-btn w-full mb-4 px-4 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+            <div
+              className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
                 guest.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
-                  : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
               }`}
             >
               <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-100">
-                <IdCard className="w-4 h-4 text-slate-500" />
+                <IdCard className="w-4 h-4 text-slate-500 shrink-0" />
                 {t('checkin_id_verification_label', 'Check-in ID Verification')}
               </span>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                guest.idVerificationStatus === 'Complete'
-                  ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200'
-              }`}>
-                {guest.idVerificationStatus === 'Complete' ? t('verification_complete_badge', 'Complete') : t('verification_pending_badge', 'Pending')}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={onOpenIdVerification}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
+                  guest.idVerificationStatus === 'Complete'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse hover:animate-none'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+              </button>
+            </div>
+          )}
+
+          {/* Action Banner 2: Unsettled Bill / Missing Payment Receiver */}
+          {!isEditing && (guest.pendingAmount > 0 || !g.advance_received_by || !g.pending_received_by) && (
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-red-900 dark:text-red-200">
+                <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                <span>
+                  {guest.pendingAmount > 0
+                    ? `Unsettled Bill: Owes ₹${guest.pendingAmount.toLocaleString('en-IN')}`
+                    : 'Payment Receiver Unassigned'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={startEditing}
+                className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Settle / Assign Receiver
+              </button>
+            </div>
           )}
 
           <div className="booking-details-modal__body space-y-4">
@@ -415,13 +443,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('advance_received_by', 'Advance Received By')}</label>
                 {isEditing ? (
-                  (parseFloat(editAdvance) || 0) > 0 ? (
-                    <div className="mt-1">
-                      <StyledSelect value={editAdvanceReceivedBy} onChange={setEditAdvanceReceivedBy} placeholder="-- Select Staff/User --" buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={financialHandlers} />
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-400 italic">—</p>
-                  )
+                  <div className="mt-1">
+                    <StyledSelect
+                      value={editAdvanceReceivedBy}
+                      onChange={setEditAdvanceReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
+                      options={availableHandlers}
+                    />
+                  </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {g.advance_received_by || guest.advanceReceivedBy || '—'}
@@ -441,13 +471,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div>
                 <label className={fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
                 {isEditing ? (
-                  pendingDisplay > 0 ? (
-                    <div className="mt-1">
-                      <StyledSelect value={editPendingReceivedBy} onChange={setEditPendingReceivedBy} placeholder="-- Select Staff/User --" buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30" options={financialHandlers} />
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-400 italic">—</p>
-                  )
+                  <div className="mt-1">
+                    <StyledSelect
+                      value={editPendingReceivedBy}
+                      onChange={setEditPendingReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      buttonClassName="w-full h-10 px-3.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30"
+                      options={availableHandlers}
+                    />
+                  </div>
                 ) : (
                   <div className="mt-1 w-full h-10 px-3.5 flex items-center bg-transparent border border-transparent text-slate-900 dark:text-white text-sm font-medium">
                     {g.pending_received_by || guest.pendingReceivedBy || t('pending_received_by_not_received', 'Not received')}
