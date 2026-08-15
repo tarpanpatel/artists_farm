@@ -611,14 +611,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           return (
                             <div
                               key={`ota-${idx}`}
-                              className="group relative px-2.5 rounded-md font-semibold cursor-help bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20"
+                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
                               style={commonStyle}
+                              title={info.item.tooltip}
                             >
                               <span className="font-semibold truncate text-[11px] leading-none">{info.item.label}</span>
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[99999] text-center border border-slate-700/60">
-                                {info.item.tooltip}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                              </div>
                             </div>
                           );
                         }
@@ -627,19 +624,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         return (
                           <div
                             key={`${guest.id}-${idx}`}
-                            className={`group relative px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all ${getGuestColor(
+                            className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${getGuestColor(
                               guest.id,
                               guest.status
-                            )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20`}
+                            )} pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}
                             style={commonStyle}
                             onClick={() => setSelectedGuest(guest)}
+                            title={`${guest.guestName} (₹${info.nightlyRate}/night)`}
                           >
                             <span className="font-semibold truncate text-[11px] leading-none">{guest.guestName}</span>
                             <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[99999] text-center border border-slate-700/60">
-                              {`${guest.guestName} (₹${info.nightlyRate}/night)`}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                            </div>
                           </div>
                         );
                       })}
