@@ -21,6 +21,9 @@ import { Guest } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { t } from '../i18n';
 
+import { requestPushNotificationPermission, getPushPermissionState } from '../services/webPushService';
+import { useToast } from './ToastContext';
+
 interface HeaderProps {
   onLogout?: () => void;
   onOpenTelegramModal: () => void;
@@ -59,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onInstallIconClick,
 }) => {
   useAuth();
+  const { showToast } = useToast();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
   const { pendingRequests } = useServiceRequestContext();
@@ -235,6 +239,26 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full">
                     {totalCount} updates
                   </span>
+                </div>
+
+                <div className="px-4 py-2 bg-blue-50/70 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                    Mobile Push Alerts
+                  </span>
+                  <button
+                    onClick={async () => {
+                      const granted = await requestPushNotificationPermission();
+                      if (granted) {
+                        showToast('Mobile Push Alerts enabled!', { type: 'success' });
+                      } else {
+                        showToast('Please enable notification permissions in your phone browser settings.', { type: 'warning' });
+                      }
+                    }}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shrink-0"
+                  >
+                    {getPushPermissionState() === 'granted' ? 'Enabled ✓' : 'Enable Alerts'}
+                  </button>
                 </div>
 
                 <div className="header__dropdown-body max-h-[calc(100vh-140px)] sm:max-h-[460px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">

@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'farm-pos-v5';
+const CACHE_NAME = 'farm-pos-v5';
 
 // 1. Install Event: Skip waiting to activate immediately
 self.addEventListener('install', event => {
@@ -60,5 +60,68 @@ self.addEventListener('fetch', event => {
                     return new Response(null, { status: 204, statusText: 'No Content' });
                 });
             })
+    );
+});
+
+// 4. Push Event: Handle background Web Push Notifications when app is closed
+self.addEventListener('push', event => {
+    let data = {
+        title: 'Ground Code Alert',
+        body: 'New alert received from your property.',
+        icon: '/icons/android-chrome-192x192.png',
+        badge: '/icons/favicon-32x32.png',
+        url: '/#dashboard',
+        tag: 'groundcode-alert'
+    };
+
+    if (event.data) {
+        try {
+            data = Object.assign({}, data, event.data.json());
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: data.icon || '/icons/android-chrome-192x192.png',
+        badge: data.badge || '/icons/favicon-32x32.png',
+        tag: data.tag || 'groundcode-notification',
+        renotify: true,
+        vibrate: [200, 100, 200, 100, 200],
+        data: {
+            url: data.url || '/#dashboard'
+        },
+        actions: [
+            { action: 'open', title: 'View Alert' },
+            { action: 'close', title: 'Dismiss' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+// 5. Notification Click Event: Focus or open the app when notification is tapped
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+
+    if (event.action === 'close') return;
+
+    const targetUrl = event.notification.data?.url || '/#dashboard';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            for (let client of windowClients) {
+                if ('focus' in client) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
     );
 });
