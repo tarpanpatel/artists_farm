@@ -1,6 +1,8 @@
 # Workspace Agent Rules & Recommended Personas
 
 - Do not open files in editor tabs when viewing or making code edits unless explicitly requested by the user.
+- Never deploy automatically unless explicitly requested by the user.
+- When explicitly asked to deploy, deploy ONLY to the Staging environment (`staging.artistic-sthan.com` via `.\deploy-staging.ps1`), never directly to Production unless Production deployment is explicitly requested by name.
 
 ---
 
