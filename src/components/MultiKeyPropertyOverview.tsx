@@ -4,7 +4,7 @@ import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
-import { EditPropertyPage } from './EditPropertyPage';
+import { PropertyEditForm } from './PropertyEditForm';
 
 interface Room {
   id: number;
@@ -292,17 +292,55 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
               )}
 
               {activeTab === 'edit_property' && (
-                <EditPropertyPage
-                  property={{
-                    id: selectedRoom.id,
-                    name: selectedRoom.name,
-                    slug: selectedRoom.slug,
-                    property_type: 'MULTI_KEY_ROOM',
-                    default_tariff: selectedRoom.default_tariff,
-                    checkin_time: selectedRoom.checkin_time,
-                    checkout_time: selectedRoom.checkout_time,
-                  }}
-                />
+                <div className="edit-room-page grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+                    <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
+                      {t('edit_room_page_heading', 'Edit Room')}
+                    </h2>
+                    <PropertyEditForm
+                      property={{
+                        id: selectedRoom.id,
+                        name: selectedRoom.name,
+                        property_type: 'MULTI_KEY_ROOM',
+                        default_tariff: selectedRoom.default_tariff,
+                        checkin_time: selectedRoom.checkin_time,
+                        checkout_time: selectedRoom.checkout_time,
+                      }}
+                      onSaved={() => window.location.reload()}
+                      isRoom
+                    />
+                  </div>
+                  <div className="edit-room-page__calendar-card">
+                    <OperationalDashboard
+                      guests={roomGuests}
+                      receipts={receipts}
+                      menu={menu}
+                      rooms={property.rooms}
+                      roomName={selectedRoom.name}
+                      roomId={selectedRoom.id}
+                      propertySlug={propertySlug}
+                      onNavigate={(tab) => setActiveTab?.(tab)}
+                      onOpenCheckin={() => setActiveTab?.('guests')}
+                      onAddGuest={onAddGuest}
+                      onCheckoutGuest={onCheckoutGuest}
+                      onUpdateBooking={onUpdateBooking}
+                      onDeleteBooking={onDeleteBooking}
+                      onGuestVerificationUpdated={onGuestVerificationUpdated}
+                      onCFormFiledUpdated={onCFormFiledUpdated}
+                      onGuestCheckedIn={onGuestCheckedIn}
+                      onDispatchTelegram={onDispatchTelegram}
+                      activeMenuItemKey={activeMenuItemKey}
+                      propertyName={property.name}
+                      propertyMapsLink={property.google_maps_link || ''}
+                      propertyPhone={property.phone || ''}
+                      propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                      propertyUpiId={property.upi_id || ''}
+                      kitchenModuleEnabled={kitchenModuleEnabled}
+                      serviceRequests={serviceRequests}
+                      minimalMode
+                    />
+                  </div>
+                </div>
               )}
             </>
           );

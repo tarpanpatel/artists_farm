@@ -5,7 +5,7 @@ import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
 
 interface EditPropertyPageProps {
-  onNavigateToRoom?: (roomSlug: string) => void;
+  onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
   property: {
     id: number;
     name?: string;

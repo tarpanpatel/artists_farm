@@ -41,12 +41,13 @@ interface RoomsManagementProps {
   propertySlug: string;
   propertyType?: string;
   onUpdated?: () => void;
-  // "Manage" navigates straight into that room's own dashboard - same
-  // direct-state-update callback every other room-navigation entry point in
-  // the app already uses (App.tsx's handleNavigateToRoom), rather than only
-  // setting window.location.hash and hoping the hashchange listener's own
-  // room-slug lookup (a separately-fetched room list) happens to match.
-  onNavigateToRoom?: (roomSlug: string) => void;
+  // "Manage" navigates straight into that room's own Edit Property form (name/
+  // tariff/checkin/checkout - see the 'edit_property' initialTab below), using
+  // the same direct-state-update callback every other room-navigation entry
+  // point in the app already uses (App.tsx's handleNavigateToRoom), rather
+  // than only setting window.location.hash and hoping the hashchange
+  // listener's own room-slug lookup (a separately-fetched room list) matches.
+  onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
 }
 
 export const RoomsManagement: React.FC<RoomsManagementProps> = ({
@@ -339,7 +340,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                     size="xs"
                     onClick={() => {
                       if (onNavigateToRoom) {
-                        onNavigateToRoom(room.slug);
+                        onNavigateToRoom(room.slug, 'edit_property');
                       } else {
                         window.location.href = `#${room.slug}`;
                       }
