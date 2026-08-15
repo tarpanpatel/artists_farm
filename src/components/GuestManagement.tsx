@@ -212,15 +212,87 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   }, [isMultiKeyProperty, rooms.length, selectedRoomSlug, preSelectRoom]);
 
+export interface BookingExtraChargeLine {
+  id: string;
+  category: string;
+  miscNote: string;
+  amount: number | '';
+}
+
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
   const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
-  const [bookingExtraChargeCategory, setBookingExtraChargeCategory] = useState<string>('Decoration Fees');
-  const [bookingExtraChargeMiscNote, setBookingExtraChargeMiscNote] = useState<string>('');
-  const [bookingExtraChargeAmount, setBookingExtraChargeAmount] = useState<number | ''>('');
+  const [showBookingExtraCharges, setShowBookingExtraCharges] = useState<boolean>(false);
+  const [bookingExtraChargesList, setBookingExtraChargesList] = useState<BookingExtraChargeLine[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
+
+  const calcTotalBookingExtraCharges = (list: BookingExtraChargeLine[], active: boolean): number => {
+    if (!active) return 0;
+    return list.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+  };
+
+  const handleToggleExtraChargesCheckbox = (checked: boolean) => {
+    setShowBookingExtraCharges(checked);
+    if (checked) {
+      if (bookingExtraChargesList.length === 0) {
+        const initialList: BookingExtraChargeLine[] = [
+          { id: `charge-${Date.now()}`, category: '', miscNote: '', amount: '' }
+        ];
+        setBookingExtraChargesList(initialList);
+        const totalExtra = calcTotalBookingExtraCharges(initialList, true);
+        setBookingPending(bookingRoomTariff + totalExtra - bookingAdvance);
+      }
+    } else {
+      setBookingExtraChargesList([]);
+      setBookingPending(bookingRoomTariff - bookingAdvance);
+    }
+  };
+
+  const handleAddBookingExtraChargeLine = () => {
+    const newLine: BookingExtraChargeLine = {
+      id: `charge-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      category: '',
+      miscNote: '',
+      amount: '',
+    };
+    const updated = [...bookingExtraChargesList, newLine];
+    setBookingExtraChargesList(updated);
+  };
+
+  const handleRemoveBookingExtraChargeLine = (id: string) => {
+    const updated = bookingExtraChargesList.filter((line) => line.id !== id);
+    setBookingExtraChargesList(updated);
+
+    // AUTO-UNCHECK RULE: If deleting this line leaves 0 lines, automatically uncheck checkbox!
+    if (updated.length === 0) {
+      setShowBookingExtraCharges(false);
+      setBookingPending(bookingRoomTariff - bookingAdvance);
+    } else {
+      const totalExtra = calcTotalBookingExtraCharges(updated, true);
+      setBookingPending(bookingRoomTariff + totalExtra - bookingAdvance);
+    }
+  };
+
+  const handleUpdateBookingExtraChargeLine = (id: string, field: keyof BookingExtraChargeLine, value: any) => {
+    const updated = bookingExtraChargesList.map((line) => {
+      if (line.id === id) {
+        const lineCopy = { ...line, [field]: value };
+        if (field === 'category') {
+          const matched = miscChargesList.find((m) => m.name.toLowerCase() === String(value).toLowerCase());
+          if (matched && matched.defaultPrice > 0) {
+            lineCopy.amount = matched.defaultPrice;
+          }
+        }
+        return lineCopy;
+      }
+      return line;
+    });
+    setBookingExtraChargesList(updated);
+    const totalExtra = calcTotalBookingExtraCharges(updated, showBookingExtraCharges);
+    setBookingPending(bookingRoomTariff + totalExtra - bookingAdvance);
+  };
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
     event_end: string;
@@ -1064,70 +1136,131 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Dynamic Extra Charges / Custom Incidentals */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="app-label block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {t('extra_charges_optional_label', 'Add Extra Charges / Incidentals (Optional)')}
-                </label>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">e.g. Pet Stay, Decoration, Misc</span>
-              </div>
+            {/* Checkboxes Row: Guest Notes, Foreign Guest, Additional Charges (Optional) */}
+            <div className="flex flex-wrap items-center gap-4 py-1">
+              <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showGuestNotes}
+                  onChange={(e) => setShowGuestNotes(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Guest Notes</span>
+              </label>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('charge_category_label', 'Charge Category')}</label>
-                  <StyledSelect
-                    value={bookingExtraChargeCategory}
-                    onChange={(val) => {
-                      setBookingExtraChargeCategory(val);
-                      const matched = miscChargesList.find((m) => m.name.toLowerCase() === val.toLowerCase());
-                      if (matched && matched.defaultPrice > 0) {
-                        const newAmt = matched.defaultPrice;
-                        setBookingExtraChargeAmount(newAmt);
-                        setBookingPending(bookingRoomTariff + newAmt - bookingAdvance);
-                      }
-                    }}
-                    options={[
-                      ...miscChargesList.map((m) => ({ value: m.name, label: `${m.name} (₹${m.defaultPrice})` })),
-                      { value: 'Decoration Fees', label: 'Decoration Fees' },
-                      { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
-                      { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
-                      { value: 'Misc', label: 'Misc (Custom Note)' },
-                    ]}
-                    buttonClassName="!h-[36px] !rounded-lg !text-xs"
-                  />
-                </div>
+              <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isForeignGuest}
+                  onChange={(e) => setIsForeignGuest(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Foreign National Guest</span>
+              </label>
 
-                <div>
-                  <Input
-                    label={t('extra_charge_amount_label', 'Extra Charge (₹)')}
-                    type="number"
-                    min="0"
-                    value={bookingExtraChargeAmount || ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      setBookingExtraChargeAmount(val);
-                      const extraAmt = Number(val) || 0;
-                      setBookingPending(bookingRoomTariff + extraAmt - bookingAdvance);
-                    }}
-                    placeholder="e.g. 500"
-                  />
-                </div>
-              </div>
-
-              {bookingExtraChargeCategory === 'Misc' && (
-                <div>
-                  <Input
-                    label={t('misc_explanation_note_label', 'Misc Explanation Note *')}
-                    type="text"
-                    value={bookingExtraChargeMiscNote}
-                    onChange={(e) => setBookingExtraChargeMiscNote(e.target.value)}
-                    placeholder="Explain the charge (e.g. Broken glass, late checkout)"
-                    required
-                  />
-                </div>
-              )}
+              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showBookingExtraCharges}
+                  onChange={(e) => handleToggleExtraChargesCheckbox(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>{t('extra_charges_optional_label', 'Additional Charges (Optional)')}</span>
+              </label>
             </div>
+
+            {/* Guest Notes Textarea (if checked) */}
+            {showGuestNotes && (
+              <div>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Enter guest preferences or notes..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  rows={2}
+                />
+              </div>
+            )}
+
+            {/* Multi-Line Additional Charges Block (if checked) */}
+            {showBookingExtraCharges && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/90 rounded-xl border border-blue-200 dark:border-blue-900/50 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleAddBookingExtraChargeLine}
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add Line
+                  </button>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">e.g. Pet Stay, Decoration, Misc</span>
+                </div>
+
+                <div className="space-y-2">
+                  {bookingExtraChargesList.map((line) => (
+                    <div key={line.id} className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {/* Charge Category Select */}
+                        <div className="flex-1">
+                          <StyledSelect
+                            value={line.category}
+                            onChange={(val) => handleUpdateBookingExtraChargeLine(line.id, 'category', val)}
+                            placeholder="-- Select Type --"
+                            options={[
+                              ...miscChargesList.map((m) => ({ value: m.name, label: `${m.name} (₹${m.defaultPrice})` })),
+                              { value: 'Decoration Fees', label: 'Decoration Fees' },
+                              { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
+                              { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
+                              { value: 'Misc', label: 'Misc (Custom Note)' },
+                            ]}
+                            buttonClassName="!h-[36px] !rounded-lg !text-xs"
+                          />
+                        </div>
+
+                        {/* Amount Input */}
+                        <div className="w-32">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={line.amount || ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? '' : Number(e.target.value);
+                              handleUpdateBookingExtraChargeLine(line.id, 'amount', val);
+                            }}
+                            placeholder="Amount (₹)"
+                            required
+                          />
+                        </div>
+
+                        {/* Delete Line Icon (Auto-unchecks checkbox if 0 lines left) */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBookingExtraChargeLine(line.id)}
+                          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+                          title="Delete Charge Line"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Misc Explanation Note if Misc is selected */}
+                      {line.category === 'Misc' && (
+                        <div>
+                          <Input
+                            type="text"
+                            value={line.miscNote}
+                            onChange={(e) => handleUpdateBookingExtraChargeLine(line.id, 'miscNote', e.target.value)}
+                            placeholder="Misc Explanation Note * (e.g. Broken lamp, late checkout)"
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Advance Paid + Advance Received By - one row, 2 columns. Advance
                 Paid shows once Room Tariff has a value; Advance Received By
