@@ -217,6 +217,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
   const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
+  const [bookingExtraChargeCategory, setBookingExtraChargeCategory] = useState<string>('Decoration Fees');
+  const [bookingExtraChargeMiscNote, setBookingExtraChargeMiscNote] = useState<string>('');
+  const [bookingExtraChargeAmount, setBookingExtraChargeAmount] = useState<number | ''>('');
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
   const [blockedDates, setBlockedDates] = useState<Array<{
     event_start: string;
@@ -889,6 +892,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               return;
             }
 
+            const extraNoteText = bookingExtraChargeCategory === 'Misc' && bookingExtraChargeMiscNote.trim()
+              ? `Misc (${bookingExtraChargeMiscNote.trim()})`
+              : bookingExtraChargeCategory;
+            const extraChargeDetail = (Number(bookingExtraChargeAmount) || 0) > 0
+              ? `Extra Charge: ${extraNoteText} - ₹${bookingExtraChargeAmount}`
+              : '';
+            const finalNotes = [showGuestNotes ? notes.trim() : '', extraChargeDetail].filter(Boolean).join(' | ');
+
             const guestObj: Guest = {
               id: Math.random().toString(36).substr(2, 9),
               guestName: guestName.trim(),
@@ -907,7 +918,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               advanceReceivedBy: bookingAdvance > 0 ? advanceReceivedBy : '',
               pendingAmount: bookingPending,
               pendingReceivedBy: bookingPending > 0 ? pendingReceivedBy : '',
-              notes: showGuestNotes ? notes : '',
+              notes: finalNotes,
               isForeignGuest,
             };
 
@@ -1051,6 +1062,71 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 value={bookingRoomTariff || ''}
                 onChange={e => handleTariffChange(Number(e.target.value))}
               />
+            </div>
+
+            {/* Dynamic Extra Charges / Custom Incidentals */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="app-label block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {t('extra_charges_optional_label', 'Add Extra Charges / Incidentals (Optional)')}
+                </label>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">e.g. Pet Stay, Decoration, Misc</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('charge_category_label', 'Charge Category')}</label>
+                  <StyledSelect
+                    value={bookingExtraChargeCategory}
+                    onChange={(val) => {
+                      setBookingExtraChargeCategory(val);
+                      const matched = miscChargesList.find((m) => m.name.toLowerCase() === val.toLowerCase());
+                      if (matched && matched.defaultPrice > 0) {
+                        const newAmt = matched.defaultPrice;
+                        setBookingExtraChargeAmount(newAmt);
+                        setBookingPending(bookingRoomTariff + newAmt - bookingAdvance);
+                      }
+                    }}
+                    options={[
+                      ...miscChargesList.map((m) => ({ value: m.name, label: `${m.name} (₹${m.defaultPrice})` })),
+                      { value: 'Decoration Fees', label: 'Decoration Fees' },
+                      { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
+                      { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
+                      { value: 'Misc', label: 'Misc (Custom Note)' },
+                    ]}
+                    buttonClassName="!h-[36px] !rounded-lg !text-xs"
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    label={t('extra_charge_amount_label', 'Extra Charge (₹)')}
+                    type="number"
+                    min="0"
+                    value={bookingExtraChargeAmount || ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      setBookingExtraChargeAmount(val);
+                      const extraAmt = Number(val) || 0;
+                      setBookingPending(bookingRoomTariff + extraAmt - bookingAdvance);
+                    }}
+                    placeholder="e.g. 500"
+                  />
+                </div>
+              </div>
+
+              {bookingExtraChargeCategory === 'Misc' && (
+                <div>
+                  <Input
+                    label={t('misc_explanation_note_label', 'Misc Explanation Note *')}
+                    type="text"
+                    value={bookingExtraChargeMiscNote}
+                    onChange={(e) => setBookingExtraChargeMiscNote(e.target.value)}
+                    placeholder="Explain the charge (e.g. Broken glass, late checkout)"
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {/* Advance Paid + Advance Received By - one row, 2 columns. Advance
