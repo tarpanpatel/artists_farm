@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { t } from '../i18n/en';
 import { PropertyEditForm } from './PropertyEditForm';
 import { RoomsManagement } from './RoomsManagement';
@@ -37,8 +38,19 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
   const isRoom = property.property_type === 'MULTI_KEY_ROOM';
 
   return (
-    <div className="edit-property-page max-w-7xl mx-auto">
-      <div className="edit-property-page__header mb-6">
+    <div className="edit-property-page max-w-7xl mx-auto space-y-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => { window.location.hash = '#dashboard'; }}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs group hover:border-slate-300"
+        >
+          <ArrowLeft className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:-translate-x-1 transition-transform" />
+          <span>Go Back</span>
+        </button>
+      </div>
+
+      <div className="edit-property-page__header mb-4">
         <PageHeader
           title={isRoom ? t('edit_room_page_heading', 'Edit Room') : t('edit_property_page_heading', 'Edit Property')}
           subtitle={`${property.name || t('property_details_subtitle', 'Property details & contact information')}${property.slug ? ` · ${property.slug}` : ''}`}

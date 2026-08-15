@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign } from 'lucide-react';
+import { Loader2, AlertCircle, Users, TrendingUp, BarChart3, DollarSign, ArrowLeft } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
@@ -292,8 +292,28 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
               )}
 
               {activeTab === 'edit_property' && (
-                <div className="edit-room-page grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+                <div className="edit-room-page space-y-4">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (_onBackToOverview) {
+                          _onBackToOverview();
+                        } else if (setActiveTab) {
+                          setActiveTab('dashboard');
+                        } else {
+                          window.location.hash = '#dashboard';
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-2xs group hover:border-slate-300"
+                    >
+                      <ArrowLeft className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:-translate-x-1 transition-transform" />
+                      <span>Go Back</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
                     <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
                       {t('edit_room_page_heading', 'Edit Room')}
                     </h2>
@@ -341,7 +361,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
             </>
           );
         })()}
