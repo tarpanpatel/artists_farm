@@ -58,13 +58,17 @@ DirectoryIndex index.php index.html
 </IfModule>
 
 <IfModule mod_headers.c>
-    # Set Cache-Control header for static assets
-    <FilesMatch "\.(css|js|png|jpg|jpeg|webp|svg|ico|woff2|woff|ttf)$">
+    # Set Cache-Control header for static assets (exclude service worker sw.js)
+    <FilesMatch "\.(css|png|jpg|jpeg|webp|svg|ico|woff2|woff|ttf)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 
-    # Never cache dynamic API responses
-    <FilesMatch "router\.php$">
+    <FilesMatch "^(?!sw\.js$).*\.js$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Never cache service worker or dynamic API responses
+    <FilesMatch "^(sw\.js|router\.php)$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
     </FilesMatch>
 </IfModule>
