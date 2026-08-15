@@ -170,8 +170,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
     const kitchenChildKeys = new Set([
       'take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests',
-      'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
-      'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock'
+      'deficit_shortfalls_log', 'edit_food_menu', 'edit_kitchen_stock'
     ]);
 
     visible.forEach(item => {
