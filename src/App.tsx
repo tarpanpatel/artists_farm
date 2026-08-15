@@ -140,7 +140,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
         fulfill_stock_req: { tab: 'inventory', key: 'fulfill_stock_req' },
         deficit_shortfalls_log: { tab: 'inventory', key: 'deficit_shortfalls_log' },
         stock_log: { tab: 'inventory', key: 'stock_log' },
-        kitchen_purchases: { tab: 'inventory', key: 'kitchen_purchases' },
+        // Kitchen Purchases page removed - logging now happens on the
+        // unified Expenses page instead, same redirect as the other
+        // route map below.
+        kitchen_purchases: { tab: 'petty_cash', key: 'expenses' },
         edit_kitchen_stock: { tab: 'inventory', key: 'edit_kitchen_stock' },
         inventory: { tab: 'inventory', key: 'stock_requests' },
         expenses: { tab: 'petty_cash', key: 'expenses' },
