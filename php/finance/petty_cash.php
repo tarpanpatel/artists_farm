@@ -13,15 +13,22 @@ if (file_exists($seedFile)) {
 function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
     require_once __DIR__ . '/../config/guest_status.php';
+
+    // Non-destructive column addition for time tracking
+    try {
+        $pdo->exec("ALTER TABLE farm_utility_expenses ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE petty_cash ADD COLUMN IF NOT EXISTS expense_time VARCHAR(10) DEFAULT NULL");
+    } catch (Exception $eCol) {}
+
     switch ($action) {
         case 'get_petty_cash':
             try {
-                $stmt = $pdo->prepare("SELECT id, expense_date as date, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses WHERE property_id = ? ORDER BY expense_date DESC");
+                $stmt = $pdo->prepare("SELECT id, expense_date as date, COALESCE(expense_time, TIME_FORMAT(created_at, '%H:%i')) as time, category, description, amount, payment_mode, vendor_name as vendor FROM farm_utility_expenses WHERE property_id = ? ORDER BY expense_date DESC, id DESC");
                 $stmt->execute([$propertyId]);
                 echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
             } catch (PDOException $e) {
                 try {
-                    $stmt = $pdo->prepare("SELECT id, date, category, amount, description, vendor_name as vendor FROM petty_cash WHERE property_id = ? ORDER BY date DESC");
+                    $stmt = $pdo->prepare("SELECT id, date, COALESCE(expense_time, TIME_FORMAT(created_at, '%H:%i')) as time, category, amount, description, vendor_name as vendor FROM petty_cash WHERE property_id = ? ORDER BY date DESC, id DESC");
                     $stmt->execute([$propertyId]);
                     echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
                 } catch (PDOException $e2) {
@@ -33,24 +40,27 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'add_petty_cash':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
+                $timeVal = !empty($input['time']) ? $input['time'] : date('H:i');
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO farm_utility_expenses (expense_date, category, description, amount, payment_mode, vendor_name, property_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO farm_utility_expenses (expense_date, expense_time, category, description, amount, payment_mode, vendor_name, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['date'] ?? date('Y-m-d'),
+                        $timeVal,
                         $input['category'] ?? 'Other',
                         $input['description'] ?? '',
                         $input['amount'] ?? 0,
-                        $input['payment_mode'] ?? 'Cash',
+                        $input['payment_mode'] ?? $input['paymentMode'] ?? 'Cash',
                         $input['vendor'] ?? $input['vendor_name'] ?? 'Manager',
                         $propertyId
                     ]);
                     $id = $pdo->lastInsertId();
                 } catch (PDOException $e) {
                     $id = 'EXP-' . time();
-                    $stmt = $pdo->prepare("INSERT INTO petty_cash (id, date, category, amount, description, vendor_name, approved_by, property_id) VALUES (?, ?, ?, ?, ?, ?, 'Manager', ?)");
+                    $stmt = $pdo->prepare("INSERT INTO petty_cash (id, date, expense_time, category, amount, description, vendor_name, approved_by, property_id) VALUES (?, ?, ?, ?, ?, ?, ?, 'Manager', ?)");
                     $stmt->execute([
                         $id,
                         $input['date'] ?? date('Y-m-d'),
+                        $timeVal,
                         $input['category'] ?? 'Other',
                         $input['amount'] ?? 0,
                         $input['description'] ?? '',

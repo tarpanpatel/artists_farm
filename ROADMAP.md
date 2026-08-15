@@ -6,6 +6,8 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## ðŸŸ¢ Open Items
 
+ 
+
 ### Security: open follow-ups from the 11 Aug 2026 auth audit
 
 Fixed and shipped, see git history for details on each: cross-tenant
