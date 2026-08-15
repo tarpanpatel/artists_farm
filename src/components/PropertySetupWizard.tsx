@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { MapPin, Users, DoorOpen, CheckCircle2, ArrowRight, Loader2, X } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { t } from '../i18n/en';
@@ -9,11 +9,6 @@ interface PropertySetupWizardProps {
   googleMapsLink: string;
   staffCount: number; // total staff rows for this property, including the tenant's own auto-seeded row
   isStaffLoading?: boolean;
-  // Step 3 (Rooms/Units) only applies to Multi-Key properties - a Single
-  // property IS the one bookable unit, there's nothing separate to add.
-  // Omit showRoomsStep (or pass false) for Single properties: the wizard
-  // becomes a 2-step checklist (Address, Staff) instead of 3, and neither
-  // roomCount nor onAddUnit are needed in that case.
   showRoomsStep?: boolean;
   roomCount?: number;
   onSaveLocation: (address: string, googleMapsLink: string) => Promise<boolean>;
@@ -21,13 +16,6 @@ interface PropertySetupWizardProps {
   onAddUnit?: () => void;
 }
 
-/**
- * Shown on a multi-key property's dashboard until all three setup steps are
- * satisfied, then renders nothing. Each step is independently checked off
- * and disappears on its own as soon as its condition is met - this isn't a
- * linear wizard you page through, it's a checklist that shrinks as the
- * property actually gets set up.
- */
 export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   address,
   googleMapsLink,
@@ -42,13 +30,33 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editAddress, setEditAddress] = useState(address);
   const [editMapsLink, setEditMapsLink] = useState(googleMapsLink);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dismissed_property_setup_wizard') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
-  // If staff list is still loading from backend, hold off rendering wizard to prevent initial layout flash
-  if (isStaffLoading) return null;
+  if (isDismissed) return null;
+
+  // Show a smooth skeleton loader while staff data is loading to prevent layout jump
+  if (isStaffLoading) {
+    return (
+      <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/40 dark:border-amber-800/40 p-4 h-36 animate-pulse flex flex-col justify-between">
+        <div className="flex justify-between items-center">
+          <div className="h-4 bg-amber-200/60 dark:bg-amber-800/50 rounded w-48"></div>
+          <div className="h-2 bg-amber-200/60 dark:bg-amber-800/50 rounded w-24"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-16 bg-white/60 dark:bg-slate-800/60 rounded-lg border border-amber-200/30"></div>
+          <div className="h-16 bg-white/60 dark:bg-slate-800/60 rounded-lg border border-amber-200/30"></div>
+        </div>
+      </div>
+    );
+  }
 
   const step1Done = !!address.trim();
-  // "minimum 1 user excluding the tenant" - the tenant's own auto-seeded row
-  // always exists once a property is created, so the real bar is staffCount > 1.
   const step2Done = staffCount > 1;
   const step3Done = (roomCount ?? 0) > 0;
 
@@ -68,17 +76,30 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   return (
-    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden property-setup-wizard">
-      <div className="px-6 py-4 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">
+    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 shadow-xs overflow-hidden property-setup-wizard transition-all duration-300 animate-in fade-in">
+      <div className="px-5 py-3.5 bg-amber-100 dark:bg-amber-900/50 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between">
         <div>
-          <h2 className="property-setup-wizard__title text-sm font-semibold text-amber-900 dark:text-amber-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
-          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
+          <h2 className="property-setup-wizard__title text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">{t('finish_setup_property_heading', 'Finish Setting Up This Property')}</h2>
+          <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">{stepsDone} {t('setup_steps_done_of_prefix', 'of')} {totalSteps} {t('setup_steps_done_suffix', 'steps done')}</p>
         </div>
-        <div className="w-32 h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-amber-500 dark:bg-amber-400 transition-all"
-            style={{ width: `${(stepsDone / totalSteps) * 100}%` }}
-          />
+        <div className="flex items-center gap-3">
+          <div className="w-28 sm:w-32 h-1.5 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-500"
+              style={{ width: `${(stepsDone / totalSteps) * 100}%` }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try { localStorage.setItem('dismissed_property_setup_wizard', 'true'); } catch {}
+              setIsDismissed(true);
+            }}
+            className="p-1 text-amber-700 dark:text-amber-300 hover:text-amber-950 dark:hover:text-white rounded-lg hover:bg-amber-200/70 dark:hover:bg-amber-800/70 transition-colors cursor-pointer"
+            title="Dismiss Setup Banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
