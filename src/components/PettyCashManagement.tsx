@@ -549,6 +549,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
                   Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
+              )}
             </div>
           </div>
 
