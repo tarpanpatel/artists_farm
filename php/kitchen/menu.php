@@ -36,6 +36,49 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
 
+                if (empty($rows)) {
+                    // Auto-seed standard starter menu items for new property
+                    $defaultMenu = [
+                        ['name' => 'OTC Pizza', 'category' => 'Pizza & Sandwich', 'price' => 198],
+                        ['name' => 'Paneer Pizza', 'category' => 'Pizza & Sandwich', 'price' => 298],
+                        ['name' => 'Veg Cheese Burger', 'category' => 'Pizza & Sandwich', 'price' => 140],
+                        ['name' => 'Paneer Tikka', 'category' => 'Starters', 'price' => 260],
+                        ['name' => 'Hara Bhara Kebab', 'category' => 'Starters', 'price' => 220],
+                        ['name' => 'Crispy Corn', 'category' => 'Starters', 'price' => 180],
+                        ['name' => 'Paneer Butter Masala', 'category' => 'Main Course', 'price' => 280],
+                        ['name' => 'Dal Tadka', 'category' => 'Main Course', 'price' => 210],
+                        ['name' => 'Butter Naan', 'category' => 'Rice & Roti', 'price' => 45],
+                        ['name' => 'Jeera Rice', 'category' => 'Rice & Roti', 'price' => 150],
+                        ['name' => 'Masala Chai', 'category' => 'Beverages', 'price' => 40],
+                        ['name' => 'Cold Coffee with Ice Cream', 'category' => 'Beverages', 'price' => 120],
+                        ['name' => 'Fresh Lime Soda', 'category' => 'Beverages', 'price' => 80],
+                        ['name' => 'Gulab Jamun (2 Pcs)', 'category' => 'Desserts', 'price' => 90],
+                    ];
+
+                    foreach ($defaultMenu as $item) {
+                        try {
+                            $stmt = $pdo->prepare("INSERT INTO menu_items (property_id, category_id, name, price, is_hidden, image_path) VALUES (?, 1, ?, ?, 0, '')");
+                            $stmt->execute([$propertyId, $item['name'], $item['price']]);
+                        } catch (Exception $seedErr) {
+                            try {
+                                $stmt = $pdo->prepare("INSERT INTO menu_items (property_id, name, category, price, available, image_path) VALUES (?, ?, ?, ?, 1, '')");
+                                $stmt->execute([$propertyId, $item['name'], $item['category'], $item['price']]);
+                            } catch (Exception $seedErr2) {}
+                        }
+                    }
+
+                    // Re-fetch after seeding
+                    try {
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([$propertyId]);
+                        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    } catch (PDOException $e1) {
+                        $stmt = $pdo->prepare("SELECT id, name, NULL AS category_id, category, price, available, image_path FROM menu_items WHERE property_id = ? ORDER BY category ASC, name ASC");
+                        $stmt->execute([$propertyId]);
+                        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                }
+
                 $data = array_map(function($r) {
                     return [
                         'id' => (int)$r['id'],

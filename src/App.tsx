@@ -74,6 +74,23 @@ interface AppBodyProps {
   preloadedData: PreloadedData;
 }
 
+const DEFAULT_MENU_ITEMS: MenuItem[] = [
+  { id: 1, name: 'OTC Pizza', category: 'Pizza & Sandwich', price: 198, available: true, imagePath: '' },
+  { id: 2, name: 'Paneer Pizza', category: 'Pizza & Sandwich', price: 298, available: true, imagePath: '' },
+  { id: 3, name: 'Veg Cheese Burger', category: 'Pizza & Sandwich', price: 140, available: true, imagePath: '' },
+  { id: 4, name: 'Paneer Tikka', category: 'Starters', price: 260, available: true, imagePath: '' },
+  { id: 5, name: 'Hara Bhara Kebab', category: 'Starters', price: 220, available: true, imagePath: '' },
+  { id: 6, name: 'Crispy Corn', category: 'Starters', price: 180, available: true, imagePath: '' },
+  { id: 7, name: 'Paneer Butter Masala', category: 'Main Course', price: 280, available: true, imagePath: '' },
+  { id: 8, name: 'Dal Tadka', category: 'Main Course', price: 210, available: true, imagePath: '' },
+  { id: 9, name: 'Butter Naan', category: 'Rice & Roti', price: 45, available: true, imagePath: '' },
+  { id: 10, name: 'Jeera Rice', category: 'Rice & Roti', price: 150, available: true, imagePath: '' },
+  { id: 11, name: 'Masala Chai', category: 'Beverages', price: 40, available: true, imagePath: '' },
+  { id: 12, name: 'Cold Coffee with Ice Cream', category: 'Beverages', price: 120, available: true, imagePath: '' },
+  { id: 13, name: 'Fresh Lime Soda', category: 'Beverages', price: 80, available: true, imagePath: '' },
+  { id: 14, name: 'Gulab Jamun (2 Pcs)', category: 'Desserts', price: 90, available: true, imagePath: '' },
+];
+
 function AppBody({ preloadedData }: AppBodyProps) {
   const { isEnabled: isModuleEnabled } = useModules();
   const [selectedRoomSlugOverride, setSelectedRoomSlugOverride] = useState<string | null>(null);
@@ -787,12 +804,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
           dedupMenuDB().then(() => {
             fetchMenuFromDB().then((clean) => {
               if (isStale()) return;
-              setMenu(clean && clean.length > 0 ? clean : []);
+              setMenu(clean && clean.length > 0 ? clean : DEFAULT_MENU_ITEMS);
             });
           });
         } else {
           if (isStale()) return;
-          setMenu(data && data.length > 0 ? data : []);
+          setMenu(data && data.length > 0 ? data : DEFAULT_MENU_ITEMS);
         }
       });
     }
