@@ -8,7 +8,7 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, bulkUpdateKitchenPurchasesDB, deleteKitchenPurchaseDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, toggleIngredientCategoryInDB, fetchPayeesFromDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -46,7 +46,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       <Loader2 className="w-4 h-4 animate-spin" /> {label}
     </div>
   );
-  const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'purchases' | 'fulfill' | 'catalog'>('stock_log');
+  const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'fulfill' | 'catalog'>('stock_log');
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
@@ -54,7 +54,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     else if (activeMenuItemKey === 'fulfill_stock_req') setActiveTab('fulfill');
     else if (activeMenuItemKey === 'deficit_shortfalls_log') setActiveTab('deficit');
     else if (activeMenuItemKey === 'stock_log') setActiveTab('stock_log');
-    else if (activeMenuItemKey === 'kitchen_purchases') setActiveTab('purchases');
     else if (activeMenuItemKey === 'edit_kitchen_stock') setActiveTab('catalog');
   }, [activeMenuItemKey]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
@@ -697,10 +696,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       setActiveTab('requisitions');
     } else if (activeMenuItemKey === 'kitchen_purchases') {
       setActiveTab('purchases');
-    } else if (activeMenuItemKey === 'edit_kitchen_stock') {
+    } else if (activeMenuItemKey === 'edit_kitchen_stock' || activeMenuItemKey === 'stock_log') {
       setActiveTab('catalog');
     } else {
-      setActiveTab('stock_log');
+      setActiveTab('catalog');
     }
   }, [activeMenuItemKey]);
   const [stockLogSearch, setStockLogSearch] = useState('');
@@ -732,35 +731,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [wastedReportedBy, setWastedReportedBy] = useState('Tarpan');
   const [wastedNotes, setWastedNotes] = useState('');
 
-  // Kitchen Purchases Ledger State
-  const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
-  // 14 Aug 2026: both "No wastage or spillage incidents recorded." and "No
-  // kitchen purchases recorded yet." rendered off length===0 before the
-  // fetches below resolved. Default true.
-  const [kitchenPurchasesLoading, setKitchenPurchasesLoading] = useState(true);
-  const [purDate, setPurDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [purItemName, setPurItemName] = useState('');
-  const [purSpec, setPurSpec] = useState('N/A');
-  const [purQty, setPurQty] = useState<number | ''>('');
-  const [purUnit, setPurUnit] = useState('Kg');
-  const [purTotalPrice, setPurTotalPrice] = useState<number | ''>('');
-  const [purRecordedBy, setPurRecordedBy] = useState(currentUser?.name || 'System');
-
-  // Bulk Finance Interceptor state
-  const [selectedPurIds, setSelectedPurIds] = useState<string[]>([]);
-  const [selectedVendorToPay, setSelectedVendorToPay] = useState('');
-  const [selectedPaidByStaff, setSelectedPaidByStaff] = useState(currentUser?.name || currentUser?.username || '');
-  const [settlementFarmCash, setSettlementFarmCash] = useState<number | ''>('');
-  const [settlementOutOfPocket, setSettlementOutOfPocket] = useState<number | ''>('');
-  const [purSearch, setPurSearch] = useState('');
-
-  useEffect(() => {
-    const total = kitchenPurchases.filter(p => selectedPurIds.includes(p.id)).reduce((s, p) => s + (Number(p.totalPrice) || 0), 0);
-    if (total > 0 && settlementFarmCash === '' && settlementOutOfPocket === '') {
-      setSettlementFarmCash(total);
-    }
-  }, [selectedPurIds]);
-
   useEffect(() => {
     fetchWastageLogsFromDB().then((logs) => {
       if (logs && logs.length > 0) {
@@ -768,23 +738,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       }
       setWastageLoading(false);
     });
-
-    fetchKitchenPurchasesFromDB().then((data) => {
-      if (data && data.length > 0) {
-        setKitchenPurchases(data);
-      }
-      setKitchenPurchasesLoading(false);
-    });
   }, []);
-
-  const filteredKitchenPurchases = useMemo(() => {
-    if (!purSearch.trim()) return kitchenPurchases;
-    const q = purSearch.toLowerCase().trim();
-    return kitchenPurchases.filter(p =>
-      p.itemName.toLowerCase().includes(q) ||
-      (p.vendorName || '').toLowerCase().includes(q)
-    );
-  }, [kitchenPurchases, purSearch]);
 
   const handleRecordWastage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2032,258 +1986,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     );
   }
 
-  if (activeTab === 'fulfill') {
-    return (
-      <div className="space-y-4">
-        {/* Header Title & Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="text-slate-800 font-semibold text-[10px] uppercase tracking-wider">
-            {t('stock_request_log_header')}
-          </div>
-          
-           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFulfillRangeOpen(true)}
-              className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 shadow-xs hover:border-slate-400 dark:hover:border-slate-500 transition-colors cursor-pointer"
-            >
-              <span className="inline-flex items-center gap-1">{formatDateDDMMYYYY(fulfillFromDraft)} <ArrowRight className="w-3 h-3" /> {formatDateDDMMYYYY(fulfillToDraft)}</span>
-            </button>
-            <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
-{t('enter_button')}
-            </button>
-          </div>
-        </div>
-
-        {fulfillRangeOpen && (
-          <DateRangePicker
-            isOpen={fulfillRangeOpen}
-            onClose={() => setFulfillRangeOpen(false)}
-            checkinDate={fulfillFromDraft}
-            checkoutDate={fulfillToDraft}
-            onCheckinChange={setFulfillFromDraft}
-            onCheckoutChange={setFulfillToDraft}
-            heading={t('stock_request_log_header')}
-            description={t('fulfill_stock_range_description', 'Pick a from/to range to filter requisitions below')}
-            fromLabel={t('from_label')}
-            toLabel={t('to_label')}
-          />
-        )}
-
-         {/* Table */}
-         <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-             <DataTable
-                columns={[
-                  {
-                    name: t('requested_at_column_header'),
-                    selector: (row: any) => row.date,
-                   sortable: true,
-                   grow: 1,
-                   cell: (row: any) => <span className="text-xs font-semibold text-slate-500">{formatDateTimeDDMMYYYY(row.date)}</span>,
-                 },
-                  {
-                    name: t('material_selections_summary_column_header'),
-                    selector: (row: any) => Array.isArray(row.items) ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ') : '',
-                   sortable: true,
-                   grow: 2,
-                   cell: (row: any) => (
-                     <span className="text-xs font-semibold text-slate-700">
-                       {Array.isArray(row.items) && row.items.filter((i: string) => Boolean(i && i.trim())).length > 0
-                         ? row.items.filter((i: string) => Boolean(i && i.trim())).join(', ')
-                         : row.status === 'FULFILLED' || row.status === 'PARTIALLY FULFILLED'
-                           ? <span className="italic text-slate-400 font-normal">Fulfilled — no item details recorded</span>
-                           : <span className="italic text-slate-400 font-normal">No items</span>
-                       }
-                     </span>
-                   ),
-                 },
-                  {
-                    name: t('status_column_header'),
-                    selector: (row: any) => row.status,
-                   sortable: true,
-                   center: true,
-                   cell: (row: any) => (
-                     <span className={`font-semibold text-[10px] px-2 py-1 rounded-md ${
-                       row.status === 'PENDING'
-                         ? 'bg-amber-100 text-amber-700'
-                         : row.status === 'FULFILLED'
-                           ? 'bg-emerald-100 text-emerald-700'
-                           : 'bg-slate-100 text-slate-700'
-                     }`}>
-                       {row.status}
-                     </span>
-                   ),
-                 },
-                  {
-                    name: t('actions_column_header'),
-                    center: true,
-                     cell: (row: any) => (
-                     <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => handleEditFulfill(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200">
-                          <Pencil className="w-3.5 h-3.5" /> {t('edit_button')}
-                        </button>
-                        {row.status === 'PENDING' && (
-                          <button onClick={() => handleQuickComplete(row)} className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> {t('complete_button')}
-                          </button>
-                        )}
-                      </div>
-                   ),
-                 },
-               ]}
-               data={filteredFulfillSheets.filter((row) => {
-                 if (!fulfillSearch.trim()) return true;
-                 const term = fulfillSearch.toLowerCase();
-                 const itemsStr = Array.isArray(row.items) ? row.items.join(' ').toLowerCase() : '';
-                 return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
-               })}
-                subHeader={
-                  <div className="w-full flex items-center gap-2 py-2">
-                    <Input
-                      type="text"
-                      placeholder={t('search_by_date_status_material_placeholder')}
-                      value={fulfillSearch}
-                      onChange={(e) => setFulfillSearch(e.target.value)}
-                      className="w-full max-w-sm"
-                    />
-                 </div>
-               }
-               pagination
-               paginationPerPage={10}
-               paginationRowsPerPageOptions={[10, 15, 25, 50]}
-               highlightOnHover
-               pointerOnHover
-               dense
-                progressPending={stockRequestsLoading}
-                progressComponent={tableLoadingIndicator('Loading stock requests...')}
-                noDataComponent={
-                  <div className="p-8 text-center text-slate-400 text-sm">{t('no_stock_request_sheets_message')}</div>
-                }
-                customStyles={{
-                  subHeader: {
-                    style: {
-                      padding: 0,
-                      minHeight: 0,
-                      backgroundColor: 'transparent',
-                    },
-                  },
-                  headCells: {
-                    style: {
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: '#94a3b8',
-                      backgroundColor: '#f8fafc',
-                      borderBottom: '1px solid #e2e8f0',
-                      paddingLeft: '12px',
-                    },
-                  },
-                  cells: {
-                    style: {
-                      paddingTop: '12px',
-                      paddingBottom: '12px',
-                      paddingLeft: '12px',
-                    },
-                  },
-                  rows: {
-                    style: {
-                      minHeight: '48px',
-                      borderBottomStyle: 'solid',
-                      borderBottomWidth: '1px',
-                      borderBottomColor: '#f1f5f9',
-                    },
-                  },
-                }}
-             />
-           </div>
-
-        {/* Fulfill Edit Modal */}
-        {selectedFulfillSheet && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="inventory-management__subtitle font-semibold text-slate-700 text-sm tracking-wide uppercase">
-                  {t('modify_stock_request_header')}
-                </h3>
-                <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                <div className="pt-2">
-                  <h4 className="inventory-management__caption text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header')}</h4>
-                  
-                  <div className="space-y-5">
-                    {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
-                      const namePart = itemStr.split(' (x')[0];
-                      const data = fulfillData[namePart] || { qty: 0, cost: 0, size: 1, unit: 'Kg' };
-                      
-                      return (
-                        <div key={idx} className="space-y-2">
-                          <h5 className="inventory-management__label font-semibold text-slate-800 text-sm">{namePart}</h5>
-                          <div className="grid grid-cols-4 gap-3">
-                            <div>
-                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label')}</label>
-                              <Input 
-                                type="number" 
-                                value={data.qty}
-                                onChange={(e) => updateFulfillData(namePart, 'qty', parseInt(e.target.value) || 0)}
-                                className="w-full text-center"
-                              />
-                            </div>
-                            <div>
-                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_price_label')}</label>
-                              <Input 
-                                type="number" 
-                                value={data.cost}
-                                onChange={(e) => updateFulfillData(namePart, 'cost', parseInt(e.target.value) || 0)}
-                                className="w-full text-center"
-                              />
-                            </div>
-                            <div>
-                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('size_label')}</label>
-                              <Input 
-                                type="number" 
-                                value={data.size}
-                                onChange={(e) => updateFulfillData(namePart, 'size', parseInt(e.target.value) || 1)}
-                                className="w-full text-center"
-                              />
-                            </div>
-                            <div>
-                              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_format_label')}</label>
-                              <StyledSelect
-                                value={data.unit}
-                                onChange={(val) => updateFulfillData(namePart, 'unit', val)}
-                                options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pack', 'Pcs', 'Box'].map(u => ({ value: u, label: u }))}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-semibold text-white bg-slate-500 rounded-lg hover:bg-slate-600 transition-colors shadow-xs cursor-pointer">
-                  {t('cancel_button')}
-                </button>
-                <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 transition-colors shadow-xs cursor-pointer">
-                  {t('save_commit_updates_button')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  if (activeTab === 'requisitions') {
+  if (activeTab === 'requisitions' || activeTab === 'fulfill') {
     const filteredCatalog = stockCatalog.filter((item) => {
       const matchesSearch = item.name.toLowerCase().includes(reqSearch.toLowerCase().trim());
       const matchesCategory = reqCategory === 'All Items' || item.category === reqCategory;
@@ -2298,10 +2001,147 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const totalReqCount = reqBasket.reduce((sum, b) => sum + b.qty, 0);
     const totalReqSum = reqBasket.reduce((sum, b) => sum + ((b.rate || 0) * b.qty), 0);
     const visibleReqDrawerItems = isReqCartDrawerExpanded ? [...reqBasket].reverse() : [...reqBasket].slice(-3).reverse();
+    const pendingSheetsCount = recentSheets.filter(s => s.status === 'PENDING').length;
 
     return (
       <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col space-y-4 lg:pb-0">
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+        {/* Consolidated Sub-Nav Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('requisitions')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'requisitions'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Boxes className="w-4 h-4" />
+              <span>📝 Request Materials</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('fulfill')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'fulfill'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>✅ Fulfill & Pending Approvals ({pendingSheetsCount})</span>
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'fulfill' ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="font-semibold text-slate-800 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Pending Material Requisitions & Approvals</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+              <DataTable
+                columns={[
+                  {
+                    name: 'Sheet ID',
+                    selector: (row: any) => row.id,
+                    sortable: true,
+                    width: '90px',
+                    cell: (row: any) => <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-xs">#{row.id}</span>,
+                  },
+                  {
+                    name: 'Request Date & Time',
+                    selector: (row: any) => row.date,
+                    sortable: true,
+                    width: '180px',
+                    cell: (row: any) => <span className="font-mono text-slate-500 text-xs">{row.date}</span>,
+                  },
+                  {
+                    name: 'Requested Material Items',
+                    selector: (row: any) => Array.isArray(row.items) ? row.items.join(', ') : row.items,
+                    grow: 3,
+                    cell: (row: any) => (
+                      <div className="py-2 space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(row.items) && row.items.map((itemStr: string, idx: number) => (
+                            <span key={idx} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
+                              {itemStr}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    name: 'Status',
+                    selector: (row: any) => row.status,
+                    sortable: true,
+                    center: true,
+                    cell: (row: any) => (
+                      <span className={`font-semibold text-[10px] px-2 py-1 rounded-md ${
+                        row.status === 'PENDING'
+                          ? 'bg-amber-100 text-amber-700'
+                          : row.status === 'FULFILLED'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {row.status}
+                      </span>
+                    ),
+                  },
+                  {
+                    name: 'Actions',
+                    center: true,
+                    cell: (row: any) => (
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button onClick={() => handleEditFulfill(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200">
+                          <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
+                        </button>
+                        {row.status === 'PENDING' && (
+                          <button onClick={() => handleQuickComplete(row)} className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                          </button>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+                data={filteredFulfillSheets.filter((row) => {
+                  if (!fulfillSearch.trim()) return true;
+                  const term = fulfillSearch.toLowerCase();
+                  const itemsStr = Array.isArray(row.items) ? row.items.join(' ').toLowerCase() : '';
+                  return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
+                })}
+                subHeader={
+                  <div className="w-full flex items-center gap-2 py-2">
+                    <Input
+                      type="text"
+                      placeholder="Search requests by item name, status..."
+                      value={fulfillSearch}
+                      onChange={(e) => setFulfillSearch(e.target.value)}
+                      className="w-full max-w-sm"
+                    />
+                  </div>
+                }
+                pagination
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                highlightOnHover
+                dense
+                progressPending={stockRequestsLoading}
+                progressComponent={tableLoadingIndicator('Loading stock requests...')}
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 text-sm">No material requisition sheets found.</div>
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
           <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
             {/* Sticky Search & Category Pills Bar */}
@@ -2606,8 +2446,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         )}
       </div>
-    );
-  }
 
   const stockLogColumns = [
     {
@@ -2736,7 +2574,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="text-center p-8 text-slate-400 font-semibold text-xs">
               {inventory.length === 0 ? 'No inventory items found.' : 'No items match your search.'}
             </div>
-          }
         />
       </div>
 
@@ -2836,7 +2673,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     label={t('min_threshold_column_header')}
                     type="number"
                     value={minThreshold}
-                    onChange={(e) => setMinThreshold(Number(e.target.value))}
+                    onChange={(e) => setCurrentStock(Number(e.target.value))}
                   />
                 </div>
 
