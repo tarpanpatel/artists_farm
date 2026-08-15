@@ -1254,12 +1254,12 @@ export interface ServiceRequest {
 
 export interface StaleServiceRequestItem {
   id: number;
-  request_type: string;
+  requestType: string;
   description: string;
-  requested_by: string;
-  room_name: string;
-  elapsed_minutes: number;
-  scheduled_at: string | null;
+  requestedBy: string;
+  roomName: string;
+  elapsedMinutes: number;
+  scheduledAt: string | null;
 }
 
 export interface ServiceRequestType {

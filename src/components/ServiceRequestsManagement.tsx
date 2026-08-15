@@ -174,13 +174,13 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       const stale = await checkStaleServiceRequests(REMINDER_THRESHOLD_MINUTES);
       for (const item of stale) {
         const reminderVars: Record<string, string> = {
-          request_type: item.request_type,
-          room_name: item.room_name,
+          request_type: item.requestType,
+          room_name: item.roomName,
           description: item.description || '(none)',
-          requested_by: item.requested_by,
+          requested_by: item.requestedBy,
         };
         const resolved = await resolveTelegramTemplate('service_request_created', reminderVars);
-        const fallbackMsg = `⏰ <b>SERVICE REQUEST STILL PENDING</b>\n━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${item.request_type}\n🚪 <b>Room:</b> ${item.room_name}\n⏱️ <b>Pending for:</b> ${item.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please action or mark fulfilled.</i>`;
+        const fallbackMsg = `⏰ <b>SERVICE REQUEST STILL PENDING</b>\n━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${item.requestType}\n🚪 <b>Room:</b> ${item.roomName}\n⏱️ <b>Pending for:</b> ${item.elapsedMinutes} min\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please action or mark fulfilled.</i>`;
         const replyMarkup = { inline_keyboard: [[{ text: '✅ Mark Fulfilled', callback_data: `fulfill_request_${item.id}` }]] };
         onDispatchTelegram?.('Service Request Reminder (Auto)', resolved || fallbackMsg, 'admin', replyMarkup, 'service_request_created');
         updateServiceRequestReminderTimestamp(item.id);

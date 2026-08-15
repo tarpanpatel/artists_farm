@@ -266,7 +266,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
 
                 $pendingStmt = $pdo->prepare("
                     SELECT oi.id as item_id, o.id as order_id, m.name as dish_name, oi.quantity,
-                           COALESCE(rp.name, 'N/A') as table_no, o.order_time,
+                           COALESCE(rp.name, 'N/A') as room_no, o.order_time,
                            TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) as elapsed_minutes
                     FROM order_items oi
                     JOIN orders o ON oi.order_id = o.id

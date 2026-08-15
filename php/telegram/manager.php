@@ -166,16 +166,16 @@ $defaultTemplates = [
         'title' => 'Kitchen Order Reminder',
         'category' => 'Kitchen & Ordering',
         'description' => 'Manual nudge sent to the kitchen when an order item has been pending too long.',
-        'available_variables' => '{order_id},{qty},{dish_name},{table_no},{elapsed_minutes}',
-        'content' => "⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({table_no})\n⏱️ <b>Pending for:</b> {elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>"
+        'available_variables' => '{order_id},{qty},{dish_name},{room_no},{elapsed_minutes}',
+        'content' => "⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({room_no})\n⏱️ <b>Pending for:</b> {elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>"
     ],
     'kitchen_pickup_reminder' => [
         'template_key' => 'kitchen_pickup_reminder',
         'title' => 'Ready-for-Pickup Reminder',
         'category' => 'Kitchen & Ordering',
         'description' => 'Manual nudge sent to Admin when a ready dish has not been collected/served yet.',
-        'available_variables' => '{order_id},{qty},{dish_name},{table_no},{ready_since}',
-        'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({table_no})\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
+        'available_variables' => '{order_id},{qty},{dish_name},{room_no},{ready_since}',
+        'content' => "⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name} ({room_no})\n⏱️ <b>Ready since:</b> {ready_since}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>"
     ],
     'checkin_verification_complete' => [
         'template_key' => 'checkin_verification_complete',
