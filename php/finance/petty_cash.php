@@ -325,55 +325,27 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
-        case 'get_misc_catalog':
+        case 'get_system_expense_catalog':
             try {
-                // Ensure table has is_system_default column
-
-                // Add is_system_default column if it doesn't exist
-                if (!isSchemaVerified('schema_misc_catalog_system_default')) {
-                    try {
-                        $pdo->exec("ALTER TABLE miscellaneous_catalog ADD COLUMN is_system_default BOOLEAN DEFAULT FALSE");
-                    } catch (PDOException $e) {
-                        // Column already exists
-                    }
-                    markSchemaVerified('schema_misc_catalog_system_default');
-                }
-
-                // All properties share ONE centralized expense catalog (system_expenses)
-                // No per-property duplication
                 $stmt = $pdo->query("
                     SELECT id, label, default_amount, category, description
                     FROM system_expenses
                     ORDER BY category ASC, label ASC
                 ");
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                // Group by category
                 $grouped = [];
                 foreach ($data as $item) {
                     $cat = $item['category'];
-                    if (!isset($grouped[$cat])) {
-                        $grouped[$cat] = [];
-                    }
+                    if (!isset($grouped[$cat])) $grouped[$cat] = [];
                     $grouped[$cat][] = $item;
                 }
-
                 echo json_encode(['status' => 'success', 'data' => $grouped, 'grouped' => true]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             }
             break;
 
-        case 'add_misc_charge_template':
-            // Writes to system_expenses now, not miscellaneous_catalog. That table
-            // is genuinely global (label UNIQUE, no property_id column at all) and
-            // is the ONLY table get_misc_catalog actually reads - it's what every
-            // property's Misc Charges page and the Root Admin Default Expenses page
-            // both display. miscellaneous_catalog is a legacy per-property-copy
-            // table nothing reads for display anymore; every add/edit here was
-            // silently writing to it while the UI kept showing system_expenses
-            // unchanged - "add" and "edit" both looked like they worked (success
-            // toast) but never actually took effect anywhere visible.
+        case 'add_system_expense_item':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
@@ -384,8 +356,6 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     $id = $input['id'] ?? null;
 
                     if ($id) {
-                        // Editing an existing item - match by id, not label, so
-                        // renaming an item's label doesn't insert a stray duplicate.
                         $stmt = $pdo->prepare("
                             UPDATE system_expenses SET label = ?, default_amount = ?, category = ?, description = ?
                             WHERE id = ?
@@ -400,6 +370,102 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                         ");
                         $stmt->execute([$label, $amount, $category, $description]);
                     }
+                    echo json_encode(['status' => 'success', 'message' => 'System expense item saved successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_system_expense_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM system_expenses WHERE id = ? OR label = ?");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    echo json_encode(['status' => 'success', 'message' => 'System expense item deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'get_misc_catalog':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` INT NOT NULL DEFAULT 1,
+                    `label` VARCHAR(255) NOT NULL,
+                    `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    `category` VARCHAR(100) NOT NULL DEFAULT 'Services',
+                    `description` TEXT,
+                    `is_system_default` BOOLEAN DEFAULT FALSE,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY `unique_item_label_prop` (property_id, label)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM miscellaneous_catalog WHERE property_id = ?");
+                $cntStmt->execute([$propertyId]);
+                if ($cntStmt->fetchColumn() == 0) {
+                    $defaultGuestCharges = [
+                        ['label' => 'Extra Bed / Mattress', 'default_amount' => 500.00, 'category' => 'Guest Charges'],
+                        ['label' => 'Late Check-out Fee', 'default_amount' => 1000.00, 'category' => 'Guest Charges'],
+                        ['label' => 'Early Check-in Fee', 'default_amount' => 500.00, 'category' => 'Guest Charges'],
+                        ['label' => 'Airport / Station Pick-up', 'default_amount' => 1500.00, 'category' => 'Transport'],
+                        ['label' => 'Airport / Station Drop', 'default_amount' => 1500.00, 'category' => 'Transport'],
+                        ['label' => 'Decoration & Event Setup', 'default_amount' => 2000.00, 'category' => 'Event & Services'],
+                        ['label' => 'Pet Stay Fee', 'default_amount' => 500.00, 'category' => 'Guest Charges'],
+                        ['label' => 'Extra Housekeeping', 'default_amount' => 300.00, 'category' => 'Services'],
+                        ['label' => 'Laundry Service', 'default_amount' => 250.00, 'category' => 'Services'],
+                        ['label' => 'Room Damage / Replacement', 'default_amount' => 0.00, 'category' => 'Incidentals'],
+                        ['label' => 'Miscellaneous Charge', 'default_amount' => 0.00, 'category' => 'Incidentals'],
+                    ];
+                    $ins = $pdo->prepare("INSERT IGNORE INTO miscellaneous_catalog (property_id, label, default_amount, category, is_system_default) VALUES (?, ?, ?, ?, TRUE)");
+                    foreach ($defaultGuestCharges as $chg) {
+                        $ins->execute([$propertyId, $chg['label'], $chg['default_amount'], $chg['category']]);
+                    }
+                }
+
+                $stmt = $pdo->prepare("
+                    SELECT id, label, default_amount, category, description, is_system_default
+                    FROM miscellaneous_catalog
+                    WHERE property_id = ? OR property_id = 1
+                    ORDER BY category ASC, label ASC
+                ");
+                $stmt->execute([$propertyId]);
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_misc_charge_template':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $label = trim($input['label'] ?? '');
+                    $amount = $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00;
+                    $category = $input['category'] ?? 'Services';
+                    $description = $input['description'] ?? '';
+                    $id = $input['id'] ?? null;
+
+                    if ($id) {
+                        $stmt = $pdo->prepare("
+                            UPDATE miscellaneous_catalog SET label = ?, default_amount = ?, category = ?, description = ?
+                            WHERE id = ? AND (property_id = ? OR property_id = 1)
+                        ");
+                        $stmt->execute([$label, $amount, $category, $description, $id, $propertyId]);
+                    } else {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO miscellaneous_catalog (property_id, label, default_amount, category, description)
+                            VALUES (?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                            default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description)
+                        ");
+                        $stmt->execute([$propertyId, $label, $amount, $category, $description]);
+                    }
                     echo json_encode(['status' => 'success', 'message' => 'Charge template saved successfully']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -408,13 +474,11 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'delete_misc_charge_template':
-            // Same fix - deletes from system_expenses (genuinely global, so no
-            // property_id filter needed or possible) instead of miscellaneous_catalog.
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("DELETE FROM system_expenses WHERE id = ? OR label = ?");
-                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    $stmt = $pdo->prepare("DELETE FROM miscellaneous_catalog WHERE (id = ? OR label = ?) AND (property_id = ? OR property_id = 1)");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null, $propertyId]);
                     echo json_encode(['status' => 'success', 'message' => 'Charge template deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

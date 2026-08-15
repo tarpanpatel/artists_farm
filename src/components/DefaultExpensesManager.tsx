@@ -41,7 +41,7 @@ export const DefaultExpensesManager: React.FC = () => {
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/php/api/router.php?action=get_misc_catalog', {
+      const response = await fetch('/php/api/router.php?action=get_system_expense_catalog', {
         credentials: 'include',
       });
       const data = await response.json();
@@ -65,7 +65,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
     try {
       setSaving(true);
-      const response = await fetch('/php/api/router.php?action=add_misc_charge_template', {
+      const response = await fetch('/php/api/router.php?action=add_system_expense_item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -98,7 +98,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
     try {
       setSaving(true);
-      const response = await fetch('/php/api/router.php?action=add_misc_charge_template', {
+      const response = await fetch('/php/api/router.php?action=add_system_expense_item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -136,7 +136,7 @@ export const DefaultExpensesManager: React.FC = () => {
 
     try {
       setSaving(true);
-      const response = await fetch('/php/api/router.php?action=delete_misc_charge_template', {
+      const response = await fetch('/php/api/router.php?action=delete_system_expense_item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
