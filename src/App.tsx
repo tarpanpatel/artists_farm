@@ -93,7 +93,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (hash) {
         const isRoomSlug = multiKeyRoomsRef.current.some((r: any) => r.slug === hash);
         if (isRoomSlug && selectedRoomSlugOverride !== hash) {
-          setActiveTab('dashboard');
+          setActiveTab((prev) => (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard'));
           setActiveMenuItemKey(hash);
           setSelectedRoomSlugOverride(hash);
         }
@@ -866,17 +866,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
   // Guard Effect 2: Trigger whenever user types a URL hash in the browser bar
   useEffect(() => {
-    const handleUrlChange = () => {
+    const handleUrlChange = (event?: Event) => {
       if (typeof window === 'undefined') return;
       if (!isAuthenticated) return;
 
       const hash = window.location.hash.replace('#', '').trim();
       if (!hash) return;
 
-      // If hash is a menu item (not a room), clear room override - EXCEPT
-      // 'edit_property': while viewing a specific room, that hash should edit
-      // the room itself (it has its own name/checkin_time/checkout_time/
-      // default_tariff), not kick the user out to the parent property.
+      // If hash is a menu item (not a room), clear room override.
       const reserved = new Set([
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
@@ -889,7 +886,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'service_requests', 'license_management'
       ]);
 
-      if (reserved.has(hash) && selectedRoomSlugOverrideRef.current) {
+      // 'edit_property' is deliberately NOT in `reserved` above - clicking it
+      // from inside a room (Navigation.tsx's sidebar link, which only ever
+      // fires 'hashchange', never 'popstate') should edit that room itself,
+      // not kick the user to the parent property. But the browser Back/
+      // Forward buttons ALSO land on this same literal hash when backing out
+      // of a room's edit view to the parent's own Edit Property page, and
+      // those fire 'popstate' (real history navigation) alongside
+      // 'hashchange' - so on popstate specifically, 'edit_property' clears
+      // room override same as every other reserved key, letting Back
+      // actually leave the room instead of silently re-showing it.
+      const isRealHistoryNavigation = event?.type === 'popstate';
+      const shouldClearRoomOverride = reserved.has(hash) || (hash === 'edit_property' && isRealHistoryNavigation);
+      if (shouldClearRoomOverride && selectedRoomSlugOverrideRef.current) {
         setSelectedRoomSlugOverride(null);
       }
 
@@ -957,8 +966,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
           // Check if hash is a room slug from multi-key property
           const isRoomSlug = multiKeyRoomsRef.current?.some((r: any) => r.slug === hash);
           if (isRoomSlug) {
-            // Restore room view
-            setActiveTab('dashboard');
+            // Restore room view. This fires on EVERY hashchange to a bare
+            // room-slug hash, including the one handleNavigateToRoom itself
+            // triggers right after already setting activeTab explicitly
+            // (e.g. 'edit_property' when "Manage" jumps straight to editing
+            // a room) - defaulting to 'dashboard' unconditionally here was
+            // clobbering that back every time. Only default to 'dashboard'
+            // when landing on this hash fresh (typed/bookmarked URL, no
+            // prior in-app navigation already picked a valid in-room tab).
+            setActiveTab((prev) => (['dashboard', 'guests', 'edit_property'].includes(prev) ? prev : 'dashboard'));
             setActiveMenuItemKey(hash);
             setSelectedRoomSlugOverride(hash);
           } else {
@@ -972,20 +988,28 @@ function AppBody({ preloadedData }: AppBodyProps) {
       }
 
       const targetRoute = routeMap[hash];
+      // Still viewing a room only if we didn't just decide to clear it above
+      // - selectedRoomSlugOverrideRef.current itself is stale here (it's
+      // synced from state via its own effect, which hasn't run yet this
+      // tick), so a plain ref read would still see the OLD room slug and
+      // wrongly skip updating activeMenuItemKey below, leaving it stuck on
+      // the room slug - which then fails the RBAC check in Guard Effect 1
+      // and falls back to Dashboard, undoing this navigation entirely.
+      const stillViewingRoom = !!selectedRoomSlugOverrideRef.current && !shouldClearRoomOverride;
       // Check RBAC permission for route target
       const allowed = isRouteAllowed(targetRoute.key, activeRole, visibleNavItems);
       if (allowed) {
         setActiveTab(targetRoute.tab);
         // Only update activeMenuItemKey if NOT viewing a room
         // If viewing a room, keep the room slug as the active menu item
-        if (!selectedRoomSlugOverrideRef.current) {
+        if (!stillViewingRoom) {
           setActiveMenuItemKey(targetRoute.key);
         }
       } else {
         // Forbidden route attempt -> Redirect to homepage #dashboard
         setActiveTab('dashboard');
         // Only update activeMenuItemKey if NOT viewing a room
-        if (!selectedRoomSlugOverrideRef.current) {
+        if (!stillViewingRoom) {
           setActiveMenuItemKey('dashboard');
         }
         window.location.hash = '#dashboard';
@@ -1793,6 +1817,7 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
                 <ErrorBoundary section="Petty Cash Management">
                   <PettyCashManagement
+                    activeRole={activeRole}
                     onDispatchTelegram={dispatchTelegramAlert}
                   />
                 </ErrorBoundary>

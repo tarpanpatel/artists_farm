@@ -6,6 +6,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { PageHeader } from './PageHeader';
 import { DatePicker } from './DatePicker';
@@ -66,6 +67,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const { staff } = useStaff();
   const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { showToast } = useToast();
+  const { activeRole: authRole } = useAuth();
+
+  const effectiveRole = (activeRole || authRole || '').toLowerCase().trim();
+  const canManageExpense = effectiveRole === 'admin' || effectiveRole === 'super admin' || effectiveRole === 'root admin' || effectiveRole === 'root_admin';
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
     category: 'Other',
@@ -268,7 +273,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     if (!formState.description || !formState.amount) return;
 
     // Security Gate check for Salaries
-    if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin') {
+    if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && !canManageExpense) {
       showToast('Access Denied: Only Admins or Super Admins are authorized to record Salary payments.', { type: 'error' });
       return;
     }
@@ -330,7 +335,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Double click cell to edit inline
   const handleCellDoubleClick = (entryId: string, field: 'date' | 'amount', currentValue: any) => {
-    if (activeRole !== 'Admin' && activeRole !== 'Super Admin') return;
+    if (!canManageExpense) return;
     setEditingCell({ id: entryId, field });
     setEditValue(String(currentValue));
   };
@@ -442,7 +447,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   placeholder={t('select_staff_beneficiary_placeholder', '-- Select Staff Beneficiary --')}
                   options={staff.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
                 />
-                {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && activeRole !== 'Admin' && activeRole !== 'Super Admin' && (
+                {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && !canManageExpense && (
                   <p className="text-red-500 font-semibold text-[10px] mt-1">{t('salary_access_warning_message', 'Warning: You are not logged in as Admin. Salary submission will be blocked.')}</p>
                 )}
               </div>
@@ -760,7 +765,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 </span>
               ),
             },
-            ...((activeRole === 'Admin' || activeRole === 'Super Admin') ? [{
+            ...(canManageExpense ? [{
               name: t('actions_column', 'Actions'),
               width: '120px',
               center: true as const,
