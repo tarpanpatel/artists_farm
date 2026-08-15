@@ -1455,7 +1455,7 @@ ${itemsStr}
             (preloadedData.currentProperty as any).instructions = instructions;
           }
         }
-        showToast(t('location_saved_success', 'Property address saved successfully!'), { type: 'success' });
+        showToast('Property address saved successfully!', { type: 'success' });
         return true;
       }
       showToast(data.error || data.message || 'Failed to save address', { type: 'error' });
