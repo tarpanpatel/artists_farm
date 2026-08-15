@@ -1205,7 +1205,8 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                             <Button
                                               onClick={() => {
                                                 setPropertySlugManuallyEdited(false);
-                                                setEditingProperty({ ...room, slug: slugify(room.slug || room.name) });
+                                                const initialSlug = (room.slug && room.slug.trim() !== '') ? slugify(room.slug) : slugify(room.name || '');
+                                                setEditingProperty({ ...room, slug: initialSlug });
                                                 setShowPropertyModal('edit');
                                               }}
                                               className="text-blue-600 dark:text-blue-400"
