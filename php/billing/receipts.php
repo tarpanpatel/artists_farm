@@ -56,6 +56,10 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
+                    // Same reasoning as add_guest in guests.php: the receipt row and its
+                    // settlement ledger entry must land together or not at all, or a
+                    // checkout can end up "paid" on the bill but missing from the books.
+                    $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount, gst_tax_type, gst_igst, guest_gstin, guest_billing_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount), gst_tax_type=VALUES(gst_tax_type), gst_igst=VALUES(gst_igst), guest_gstin=VALUES(guest_gstin), guest_billing_name=VALUES(guest_billing_name)");
                     $stmt->execute([
                         $input['id'] ?? 'REC-' . time(),
@@ -109,8 +113,9 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                             'source_type' => 'billing_receipt',
                             'source_id' => $input['id'] ?? '',
                             'description' => 'Balance collected on checkout',
-                        ]);
+                        ], $propertyId);
                     }
+                    $pdo->commit();
 
                     // Also log to audit trail
                     try {
@@ -125,6 +130,9 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
 
                     echo json_encode(['status' => 'success', 'message' => 'Receipt saved successfully']);
                 } catch (PDOException $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
             }

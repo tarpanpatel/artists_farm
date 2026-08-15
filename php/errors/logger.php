@@ -41,6 +41,77 @@ if (!class_exists('TelescopeLogger')) {
             ], $extraData);
 
             self::appendLog($entry);
+            self::maybeAlertAdmin($portal, $severity, $msg, $origin);
+        }
+
+        /**
+         * Best-effort Telegram ping to the platform admin for the severities that mean
+         * "something is actually broken" (as opposed to a routine 404 or deprecation
+         * notice). Previously, a Fatal Error/SQL Error only ever reached logs.json - the
+         * only way to find out was opening Telescope and looking, which for something
+         * like a broken guest check-in could mean hours before anyone noticed.
+         *
+         * Deliberately does NOT go through telegram/sender.php - that file itself
+         * require_once's this logger.php (for its own error logging), so requiring it
+         * back from here would be a circular include. Talks to the Telegram Bot API
+         * directly instead, which only needs the two constants below.
+         *
+         * Silently does nothing if TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_CHAT_ID aren't set
+         * (e.g. local XAMPP, which loads no .env - see CLAUDE.md's Telegram section) -
+         * this is expected there, not a failure.
+         */
+        private static function maybeAlertAdmin($portal, $severity, $msg, $origin) {
+            $alertWorthy = ['Fatal Error', 'Exception', 'SQL Error'];
+            if (!in_array($severity, $alertWorthy, true)) {
+                return;
+            }
+
+            try {
+                require_once __DIR__ . '/../telegram/config.php';
+            } catch (\Throwable $e) {
+                return;
+            }
+            if (empty(TELEGRAM_BOT_TOKEN) || empty(TELEGRAM_ADMIN_CHAT_ID)) {
+                return;
+            }
+
+            // Cooldown so a broken deploy fatal-erroring on every single request
+            // doesn't spam dozens of identical Telegram messages per minute - one
+            // alert every 2 minutes is still "found out immediately", not hours later.
+            $cooldownFile = __DIR__ . '/last_alert.txt';
+            $now = time();
+            if (file_exists($cooldownFile)) {
+                $last = (int) @file_get_contents($cooldownFile);
+                if ($now - $last < 120) {
+                    return;
+                }
+            }
+            @file_put_contents($cooldownFile, (string) $now, LOCK_EX);
+
+            $text = "🚨 *{$severity}* on " . ($_SERVER['HTTP_HOST'] ?? 'artists-farm') . "\n"
+                  . "Portal: {$portal}\n"
+                  . "Origin: {$origin}\n"
+                  . "Message: " . mb_substr((string) $msg, 0, 500);
+
+            $url = 'https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage';
+            $payload = http_build_query([
+                'chat_id' => TELEGRAM_ADMIN_CHAT_ID,
+                'text' => $text,
+                'parse_mode' => 'Markdown',
+            ]);
+
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                    'content' => $payload,
+                    'timeout' => 3, // never let a Telegram hiccup stall the real request
+                ],
+            ]);
+
+            // @-suppressed and result ignored on purpose - this must never throw back
+            // into the error logger it's being called from, or fail the original request.
+            @file_get_contents($url, false, $context);
         }
 
         private static function appendLog($entry) {

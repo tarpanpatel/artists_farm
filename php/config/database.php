@@ -22,6 +22,7 @@ $allowed_origins = [
     'http://localhost', 'http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080',
     'http://127.0.0.1', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:8080',
     'https://artistic-sthan.com', 'https://www.artistic-sthan.com',
+    'https://staging.artistic-sthan.com',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://artistic-sthan.com'));
@@ -73,6 +74,12 @@ $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // Check if running on local environment (localhost or 127.0.0.1)
 $__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.');
+// Staging (staging.artistic-sthan.com) is deployed from the exact same public_html codebase
+// as production (see deploy-staging.ps1's rsync step), so without this check it fell into the
+// same "anything that isn't local" branch as real production and connected to the SAME
+// `groundcode` database - every test booking/checkout/delete done on staging was landing
+// directly in live tenant data. Confirmed 15 Aug 2026.
+$__is_staging_env = $server_name === 'staging.artistic-sthan.com';
 // Shared local/live flag for anything outside DB credentials that needs the same distinction
 // (e.g. cookie 'secure' flag - must be false on local plain-HTTP or the session cookie never
 // gets set/sent and login silently fails). database.php is require_once'd by every endpoint
@@ -85,6 +92,28 @@ if ($__is_local_env) {
     $live_db = 'artists_farm_resort';
     $db_user = 'root';
     $db_pass = '';
+} elseif ($__is_staging_env) {
+    // Isolated staging database - separate from production `groundcode`. `staging_groundcode`
+    // was created on the server (15 Aug 2026) with the same `groundcode` DB user/credentials
+    // granted access to it. STAGING_DB_PASSWORD falls back to the production
+    // DB_PASSWORD/db_pass.php so this works immediately with the shared credentials already in
+    // place - set STAGING_DB_PASSWORD explicitly later if staging is ever given its own
+    // rotated password, so a leaked staging credential can't also unlock production.
+    $db_host = 'localhost';
+    $live_db = 'staging_groundcode';
+    $db_user = 'groundcode'; // confirmed by user 15 Aug 2026: same DB user/credentials as production
+    $db_pass = getenv('STAGING_DB_PASSWORD')
+        ?: getenv('DB_PASSWORD')
+        ?: (file_exists(__DIR__ . '/db_pass.php') ? require __DIR__ . '/db_pass.php' : null);
+    if ($db_pass === null) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Staging database credentials not configured. Set STAGING_DB_PASSWORD env var.']);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('sql', 'SQL Error', 'Staging DB password missing: set STAGING_DB_PASSWORD env var', 'Database Config');
+        }
+        error_log('Staging DB password missing: set STAGING_DB_PASSWORD env var');
+        exit();
+    }
 } else {
     // Online Production Credentials
     // SECURITY/CORRECTNESS (12 Aug 2026): was apartment_site - a database

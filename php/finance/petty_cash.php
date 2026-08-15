@@ -81,7 +81,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     'source_type' => 'expense',
                     'source_id' => $id,
                     'description' => $input['description'] ?? '',
-                ]);
+                ], $propertyId);
 
                 // Attach invoice / payment-screenshot proof straight to the
                 // finance Telegram chat on submit. Images arrive as base64
@@ -180,7 +180,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     'source_type' => 'expense',
                     'source_id' => $input['id'],
                     'description' => $input['description'] ?? '',
-                ]);
+                ], $propertyId);
 
                 echo json_encode(['status' => 'success', 'message' => 'Expense entry updated in database']);
             }
@@ -554,7 +554,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                         'source_id' => $newId,
                         'description' => $input['notes'] ?? '',
                         'metadata' => ['handed_to' => $input['handed_to'] ?? null],
-                    ]);
+                    ], $propertyId);
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Cash drawer entry recorded']);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -608,7 +608,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     'source_type' => 'salary_payment',
                     'source_id' => $paymentId,
                     'description' => $input['description'] ?? '',
-                ]);
+                ], $propertyId);
                 echo json_encode(['status' => 'success', 'id' => $paymentId]);
             }
             break;
@@ -629,7 +629,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     'source_type' => 'out_of_pocket',
                     'source_id' => $creditId,
                     'description' => $input['description'] ?? 'Kitchen purchase paid out of pocket',
-                ]);
+                ], $propertyId);
                 echo json_encode(['status' => 'success', 'id' => $creditId]);
             }
             break;

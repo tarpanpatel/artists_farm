@@ -1,6 +1,7 @@
 import React, { ReactNode, ErrorInfo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { t } from '../i18n/en';
+import { recordTelescopeLog } from '../utils/telescopeLogger';
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`[ErrorBoundary] ${this.props.section || t('error_boundary_component_section_fallback')} error:`, error, errorInfo);
+    const section = this.props.section || t('error_boundary_component_section_fallback');
+    console.error(`[ErrorBoundary] ${section} error:`, error, errorInfo);
+
+    // Report to Telescope - previously this only went to the browser console,
+    // so a caught screen crash was invisible unless someone had DevTools open
+    // on that exact device at that exact moment. This is the primary signal
+    // for "a whole screen broke for a tenant", so it must reach the server log.
+    recordTelescopeLog({
+      portal: 'js',
+      severity: 'ERROR',
+      msg: `[ErrorBoundary] ${section}: ${error.message}`,
+      origin: section,
+      details: { stack: error.stack, componentStack: errorInfo.componentStack },
+    });
   }
 
   render() {

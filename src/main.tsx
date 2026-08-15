@@ -4,22 +4,22 @@ import { App } from './App';
 import './index.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 
-// Smart error filtering - only log REAL user errors, not development issues
+// Error filtering - skip genuine noise only. This list previously also
+// matched "Cannot read property/properties" (the single most common real JS
+// crash), "is not defined", "not a constructor", "Invalid hook call", and
+// "dynamic import" (assumed to be webpack bundling chatter, but this app is
+// on Vite, where that phrase is part of "Failed to fetch dynamically
+// imported module" - the real error a stale tab throws after a deploy) -
+// meaning most real production bugs were silently discarded before ever
+// reaching Telescope. Only truly environmental/non-actionable noise belongs
+// here.
 const shouldLogError = (message: string, _filename?: string): boolean => {
-  // Skip development-only errors
-  const devOnlyPatterns = [
-    'is not defined',           // Component import issues
-    'Cannot read property',     // Typical dev errors
-    'Cannot read properties',   // Typical dev errors
-    'dynamic import',           // Webpack bundling info
-    'not a constructor',        // Module issues
-    'Invalid hook call',        // React dev-only errors
-    'warning',                  // Console warnings
-    'chrome-extension',         // Browser extension errors
-    'ResizeObserver loop limit', // Browser API errors
+  const noisePatterns = [
+    'chrome-extension',          // Browser extension errors, not our code
+    'ResizeObserver loop limit', // Harmless browser API quirk
   ];
 
-  return !devOnlyPatterns.some(pattern =>
+  return !noisePatterns.some(pattern =>
     message.toLowerCase().includes(pattern.toLowerCase())
   );
 };
@@ -43,8 +43,12 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   const reason = String(event.reason);
 
-  // Skip network/API errors that are already handled elsewhere
-  if (reason.includes('NetworkError') || reason.includes('fetch') || reason.includes('404')) {
+  // Skip only genuine connectivity blips (e.g. a spotty 3G/4G connection
+  // dropping mid-request) - previously this matched any reason text
+  // *containing* "fetch" or "404" anywhere, which also silently dropped
+  // unrelated bugs like "Cannot read properties of undefined (reading
+  // 'fetchData')" purely by coincidental substring match.
+  if (/^(TypeError: )?(Failed to fetch|NetworkError when attempting to fetch resource)/i.test(reason.trim())) {
     return;
   }
 

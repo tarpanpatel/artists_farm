@@ -253,7 +253,7 @@ export const strings: Record<string, string> = {
   special_requests_optional_placeholder: "Special/Seasonal Requests (optional)...",
   dispatch_requirement_button: "Dispatch Requirement",
   collapse_button: "Collapse",
-  expand_cart_button: "Expand Cart (50%)",
+  expand_cart_button: "Expand Cart",
   showing_last_3_items_prefix: "Showing Last 3 Added Items (Click Expand for all",
   showing_last_3_items_suffix: "items)",
   image_column_header: "Image",

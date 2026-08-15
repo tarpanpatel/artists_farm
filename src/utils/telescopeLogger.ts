@@ -71,29 +71,56 @@ export function recordTelescopeLog(
     // works correctly regardless of which page/route triggered the log (root_dashboard,
     // tenant_dashboard, any property/room route, etc). Entirely fire-and-forget: the
     // local log above has already succeeded by this point regardless of what happens here.
+    //
+    // A real-world gap confirmed 15 Aug 2026: a genuine crash (the circular i18n import
+    // stack overflow) logged fine to this browser's localStorage but never reached
+    // logs.json at all - the badge that's supposed to surface it server-side stayed at
+    // 0. The suspected cause is exactly the scenario `fetch` handles worst: an error
+    // that's actively tearing the page down (crash loop, HMR reload, tab close) aborts
+    // an in-flight fetch before it lands. `sendBeacon` exists specifically for "fire
+    // this on the way out" and survives page unload where fetch does not - use it as
+    // the primary transport, falling back to fetch (still keepalive) only when
+    // sendBeacon is unavailable or the browser rejects the send outright.
     try {
-      fetch(`${API_ROOT_BASE}/php/errors/index.php?action=log_event`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          portal: newLog.portal,
-          severity: newLog.severity,
-          msg: newLog.msg,
-          origin: newLog.origin,
-          extra: newLog.details || {},
-        }),
-        keepalive: true,
-      }).then((resp) => {
-        if (!resp.ok) {
-          resp.text().then((text) => {
-            console.warn('Telescope log_event failed:', resp.status, text);
-          }).catch(() => {
-            console.warn('Telescope log_event failed:', resp.status);
-          });
-        }
-      }).catch((err) => {
-        console.warn('Telescope log_event network error:', err);
+      const payload = JSON.stringify({
+        portal: newLog.portal,
+        severity: newLog.severity,
+        msg: newLog.msg,
+        origin: newLog.origin,
+        extra: newLog.details || {},
       });
+      const url = `${API_ROOT_BASE}/php/errors/index.php?action=log_event`;
+
+      let sent = false;
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        try {
+          // application/json Blob, not a raw string - a plain string send defaults to
+          // text/plain, which is harmless here (PHP reads php://input regardless of
+          // Content-Type) but the Blob form is the documented/correct way to send JSON.
+          sent = navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+        } catch (err) {
+          sent = false;
+        }
+      }
+
+      if (!sent) {
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).then((resp) => {
+          if (!resp.ok) {
+            resp.text().then((text) => {
+              console.warn('Telescope log_event failed:', resp.status, text);
+            }).catch(() => {
+              console.warn('Telescope log_event failed:', resp.status);
+            });
+          }
+        }).catch((err) => {
+          console.warn('Telescope log_event network error:', err);
+        });
+      }
     } catch (err) {
       console.warn('Telescope log_event setup error:', err);
     }

@@ -284,6 +284,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     break;
                 }
                 try {
+                    // Wrap the guest INSERT + advance ledger post as one unit - previously
+                    // these were two independent writes, so a failure between them (e.g. a
+                    // dropped connection) could leave a real guest/booking row on the books
+                    // with its advance payment silently missing from the ledger. Telegram/
+                    // WhatsApp sends stay outside the transaction below - those are
+                    // best-effort notifications, not data that needs atomicity, and a
+                    // failed send must never roll back an already-successful booking.
+                    $pdo->beginTransaction();
                     // add_guest never actually wrote room_id - every booking landed
                     // in guests with room_id NULL regardless of which room the admin
                     // picked in the form, which is why bookings piled up under
@@ -348,8 +356,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'source_type' => 'guest_registration',
                             'source_id' => $newId,
                             'description' => 'Advance collected at guest registration',
-                        ]);
+                        ], $propertyId);
                     }
+                    $pdo->commit();
 
                     // Send Telegram notification for new guest booking
                     require_once __DIR__ . '/../telegram/sender.php';
@@ -388,6 +397,9 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     echo json_encode(['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully']);
                 } catch (PDOException $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to register guest: ' . $e->getMessage()]);
                 }

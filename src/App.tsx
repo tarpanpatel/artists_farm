@@ -434,7 +434,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // receipts/menu already get via their own re-fetch effect below.
   useEffect(() => {
     if (preloadedData.navItems && preloadedData.navItems.length > 0) {
-      setNavItems((prev) => (prev.length > 0 ? prev : preloadedData.navItems));
+      setNavItems(preloadedData.navItems);
     }
   }, [preloadedData.navItems]);
 
