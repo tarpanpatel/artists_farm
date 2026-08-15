@@ -1053,6 +1053,105 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           }, 750);
         };
 
+        const renderFoodCard = (item: MenuItem) => {
+          const isRecentlyAdded = recentlyAddedId === item.id;
+          const existingCartItem = cartItems.find((i) => i.menuItem.id === item.id);
+          const inCartQty = existingCartItem ? existingCartItem.quantity : 0;
+
+          return (
+            <div
+              key={item.id}
+              className={`pos-food-card bg-white dark:bg-slate-800 rounded-xl border p-2 flex flex-col justify-between gap-2 transition-all ${
+                inCartQty > 0
+                  ? 'border-emerald-500/80 dark:border-emerald-600 bg-emerald-50/30 dark:bg-emerald-950/20 shadow-2xs ring-1 ring-emerald-500/30'
+                  : isRecentlyAdded
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-2xs'
+                  : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
+              }`}
+            >
+              <div className="space-y-1.5">
+                <div className="relative w-full h-20 sm:h-16 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500">
+                  {item.imagePath ? (
+                    <img
+                      src={item.imagePath}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <UtensilsCrossed className="w-5 h-5 text-slate-300 dark:text-slate-500" />
+                  )}
+
+                  {/* In-Cart Badge over image */}
+                  {inCartQty > 0 && (
+                    <span className="absolute top-1.5 right-1.5 bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-md">
+                      {inCartQty} in cart
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-[11px] leading-tight line-clamp-2 min-h-[28px]">
+                    {item.name}
+                  </h4>
+                  <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
+                    ₹{item.price}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile-First Touch Stepper / ADD Button */}
+              <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                {inCartQty > 0 ? (
+                  <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/80 rounded-lg p-0.5 w-full shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleUpdateCartQuantity(item.id, -1); }}
+                      className="w-7 h-7 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 active:scale-90 transition-all cursor-pointer shadow-2xs"
+                      title="Decrease quantity"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-extrabold text-emerald-800 dark:text-emerald-300 text-xs px-1">
+                      {inCartQty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleAddToCartWithFeedback(item); }}
+                      className="w-7 h-7 rounded-md bg-emerald-600 text-white font-bold text-xs flex items-center justify-center hover:bg-emerald-700 active:scale-90 transition-all cursor-pointer shadow-2xs"
+                      title="Increase quantity"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleAddToCartWithFeedback(item)}
+                    className={`btn-add-to-cart w-full py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1 cursor-pointer min-h-[34px] ${
+                      isRecentlyAdded
+                        ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 shadow-md'
+                        : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-300 dark:border-emerald-700/60 active:scale-95 shadow-2xs'
+                    }`}
+                  >
+                    {isRecentlyAdded ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>ADDED</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>ADD</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        };
+
         // Items to display in collapsed bottom drawer on mobile (Last 3 added items, newest on top)
         const visibleDrawerItems = isCartDrawerExpanded ? [...cartItems].reverse() : [...cartItems].slice(-3).reverse();
 
@@ -1137,43 +1236,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           <span className="text-slate-400 dark:text-slate-500 font-semibold normal-case tracking-normal">({items.length})</span>
                         </h4>
                         <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                          {items.map((item) => {
-                            const isRecentlyAdded = recentlyAddedId === item.id;
-                            return (
-                                <div
-                                  key={item.id}
-                                  className={`pos-food-card bg-white dark:bg-slate-800 rounded-lg border p-1.5 flex flex-col gap-1.5 transition-all ${
-                                    isRecentlyAdded
-                                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-xs'
-                                      : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
-                                  }`}
-                                >
-                                  <div className="w-full h-14 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[8px]">
-                                    {item.imagePath ? (
-                                      <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                                    ) : (
-                                      <UtensilsCrossed className="w-4 h-4 text-slate-300" />
-                                    )}
-                                  </div>
-                                  <div className="flex items-start justify-between gap-1">
-                                    <div className="min-w-0 flex-1">
-                                      <h4 className="kitchen-management__caption font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
-                                      <p className="text-emerald-700 dark:text-emerald-400 font-semibold text-[10px] mt-0.5">₹{item.price}</p>
-                                    </div>
-                                    <button
-                                      onClick={() => handleAddToCartWithFeedback(item)}
-                                      className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
-                                        isRecentlyAdded
-                                          ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
-                                          : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
-                                      }`}
-                                    >
-                                      {isRecentlyAdded ? <Check className="w-3 h-3" /> : <span>+</span>}
-                                    </button>
-                                  </div>
-                                </div>
-                            );
-                          })}
+                          {items.map((item) => renderFoodCard(item))}
                         </div>
                       </div>
                     ))}
@@ -1181,43 +1244,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 ) : (
                   /* Flat grid when a specific category is selected */
                   <div className="pos-menu-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {filteredPosMenuItems.map((item) => {
-                      const isRecentlyAdded = recentlyAddedId === item.id;
-                      return (
-                          <div
-                            key={item.id}
-                            className={`pos-food-card bg-white dark:bg-slate-800 rounded-lg border p-1.5 flex flex-col gap-1.5 transition-all ${
-                              isRecentlyAdded
-                                ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-xs'
-                                : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
-                            }`}
-                          >
-                            <div className="w-full h-14 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500 font-semibold text-[8px]">
-                              {item.imagePath ? (
-                                <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                              ) : (
-                                <UtensilsCrossed className="w-4 h-4 text-slate-300" />
-                              )}
-                            </div>
-                            <div className="flex items-start justify-between gap-1">
-                              <div className="min-w-0 flex-1">
-                                <h4 className="kitchen-management__caption font-semibold text-slate-700 dark:text-slate-300 text-[10px] leading-tight truncate">{item.name}</h4>
-                                <p className="text-emerald-700 dark:text-emerald-400 font-semibold text-[10px] mt-0.5">₹{item.price}</p>
-                              </div>
-                              <button
-                                onClick={() => handleAddToCartWithFeedback(item)}
-                                className={`btn-add-to-cart shrink-0 px-1.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 flex items-center justify-center cursor-pointer min-h-[24px] min-w-[40px] ${
-                                  isRecentlyAdded
-                                    ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 animate-pulse shadow-md'
-                                    : 'bg-slate-50 dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-600 hover:border-emerald-400 active:scale-90 shadow-2xs'
-                                }`}
-                              >
-                                {isRecentlyAdded ? <Check className="w-3 h-3" /> : <span>+</span>}
-                              </button>
-                            </div>
-                          </div>
-                      );
-                    })}
+                    {filteredPosMenuItems.map((item) => renderFoodCard(item))}
                   </div>
                 )}
               </div>
