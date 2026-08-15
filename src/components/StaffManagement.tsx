@@ -35,6 +35,8 @@ interface StaffManagementProps {
   onAddDrawerEntry?: (entry: any) => Promise<boolean>;
   tenantId?: number;
   propertyId?: number | string;
+  autoOpenAddModal?: boolean;
+  onClearAutoOpenAddModal?: () => void;
 }
 
 export const StaffManagement: React.FC<StaffManagementProps> = ({
@@ -45,6 +47,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   onAddDrawerEntry,
   tenantId,
   propertyId,
+  autoOpenAddModal,
+  onClearAutoOpenAddModal,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -123,6 +127,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [userFormTab, setUserFormTab] = useState<'create' | 'update'>('create');
   const [isTeamMemberModalOpen, setIsTeamMemberModalOpen] = useState(false);
   const [isPayeeModalOpen, setIsPayeeModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (autoOpenAddModal) {
+      setUserFormTab('create');
+      setNewFullName('');
+      setNewUsername('');
+      setNewPasscode('');
+      setNewQrCodeUrl('');
+      setNewIsFinancialHandler(false);
+      setNewAccessAllProperties(false);
+      setNewDailyWage('');
+      setIsTeamMemberModalOpen(true);
+      onClearAutoOpenAddModal?.();
+    }
+  }, [autoOpenAddModal, onClearAutoOpenAddModal]);
 
   // Attendance Calendar State
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

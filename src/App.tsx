@@ -196,6 +196,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const initialActive = getInitialActiveState();
   const [activeTab, setActiveTab] = useState<TabType>(initialActive.tab);
   const [activeMenuItemKey, setActiveMenuItemKey] = useState<string>(initialActive.key);
+  const [autoOpenAddStaffModal, setAutoOpenAddStaffModal] = useState<boolean>(false);
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
@@ -1547,7 +1548,10 @@ ${itemsStr}
                     showRoomsStep={!!preloadedData.isMultiKeyProperty}
                     roomCount={preloadedData.currentProperty?.rooms?.length || 0}
                     onSaveLocation={handleSavePropertyLocation}
-                    onGoToStaff={() => handleNavigateTab('staff', 'team_overview')}
+                    onGoToStaff={() => {
+                      setAutoOpenAddStaffModal(true);
+                      handleNavigateTab('staff', 'staff_permissions');
+                    }}
                     onAddUnit={() => handleNavigateTab('dashboard', 'dashboard')}
                   />
                 </ErrorBoundary>
@@ -1798,6 +1802,8 @@ ${itemsStr}
                     onDispatchTelegram={dispatchTelegramAlert}
                     tenantId={preloadedData.currentProperty?.tenant_id}
                     propertyId={preloadedData.currentProperty?.id}
+                    autoOpenAddModal={autoOpenAddStaffModal}
+                    onClearAutoOpenAddModal={() => setAutoOpenAddStaffModal(false)}
                   />
                 </ErrorBoundary>
               )}
