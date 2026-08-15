@@ -1334,7 +1334,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             {/* Step 1: Assign Vendor */}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-semibold text-slate-700 text-xs w-12">{t('vendor_to_pay_label')}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs shrink-0 min-w-[70px] whitespace-nowrap">{t('vendor_to_pay_label')}</span>
               <StyledSelect
                 className="max-w-xs w-full"
                 value={selectedVendorToPay}
@@ -1352,7 +1352,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Step 2: Settlement Engine */}
             <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-semibold text-slate-700 text-xs w-12">{t('paid_by_label')}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs shrink-0 min-w-[70px] whitespace-nowrap">{t('paid_by_label')}</span>
               {currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Super Admin') ? (
                 <StyledSelect
                   className="max-w-xs w-full"
