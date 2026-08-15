@@ -1,42 +1,54 @@
-const CACHE_NAME = 'farm-pos-v6';
+const CACHE_NAME = 'farm-pos-v7';
 
-// 1. Install Event: Skip waiting and cache root SPA entrypoints
+// Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
+// These must NEVER be cached by the SW; the browser cache handles them natively
+// via the 1-year immutable Cache-Control headers set in .htaccess.
+// Caching them in the SW causes stale asset failures after every new deployment.
+const HASHED_ASSET_RE = /\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(js|css|png|woff2?)(\?.*)?$/;
+
+// 1. Install Event: Skip waiting (no pre-caching of JS/CSS bundles)
 self.addEventListener('install', event => {
     self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(['/', '/dist/', '/dist/index.html', '/index.html']).catch(() => {});
-        })
-    );
 });
 
-// 2. Activate Event: Clean up old cache storage and claim clients
+// 2. Activate Event: Wipe ALL old caches and claim clients immediately
 self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cache => {
-                    if (cache !== CACHE_NAME) {
-                        return caches.delete(cache);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        caches.keys().then(cacheNames =>
+            Promise.all(cacheNames.map(c => caches.delete(c)))
+        ).then(() => self.clients.claim())
     );
 });
 
-// 3. Fetch Event: Network-First strategy (GET requests only)
+// 3. Fetch Event: Network-First, but bypass SW entirely for hashed assets
 self.addEventListener('fetch', event => {
-    // PASS-THROUGH: Ignore non-GET requests (POST, PUT, DELETE) and non-HTTP URLs
+    // PASS-THROUGH: non-GET or non-HTTP requests
     if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+        return;
+    }
+
+    const url = new URL(event.request.url);
+
+    // PASS-THROUGH: Vite hashed assets — let browser HTTP cache handle these
+    if (HASHED_ASSET_RE.test(url.pathname)) {
+        return;
+    }
+
+    // PASS-THROUGH: PHP API calls
+    if (url.pathname.includes('/php/') || url.pathname.includes('/api/')) {
         return;
     }
 
     event.respondWith(
         fetch(event.request)
             .then(networkResponse => {
-                // Cache successful HTML & main asset GET requests for offline availability
-                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                // Only cache HTML navigations (index.html / SPA shell)
+                if (
+                    networkResponse &&
+                    networkResponse.status === 200 &&
+                    networkResponse.type === 'basic' &&
+                    event.request.headers.get('accept')?.includes('text/html')
+                ) {
                     const responseToCache = networkResponse.clone();
                     caches.open(CACHE_NAME).then(cache => {
                         cache.put(event.request, responseToCache).catch(() => {});
@@ -45,18 +57,16 @@ self.addEventListener('fetch', event => {
                 return networkResponse;
             })
             .catch(() => {
-                // SILENT FALLBACK: Check cache first, then SPA HTML fallback, then offline recovery screen
+                // OFFLINE FALLBACK: cached HTML → offline recovery card
                 return caches.match(event.request).then(async cachedResponse => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    
-                    // For HTML page navigations during offline mode, try cached SPA entrypoint
+                    if (cachedResponse) return cachedResponse;
+
                     if (event.request.headers.get('accept')?.includes('text/html')) {
-                        const spaFallback = await caches.match('/dist/index.html') || await caches.match('/index.html') || await caches.match('/');
-                        if (spaFallback) {
-                            return spaFallback;
-                        }
+                        const spaFallback =
+                            await caches.match('/dist/index.html') ||
+                            await caches.match('/index.html') ||
+                            await caches.match('/');
+                        if (spaFallback) return spaFallback;
 
                         return new Response(
                             '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Offline — GroundCode Resort PMS</title>' +
@@ -69,13 +79,10 @@ self.addEventListener('fetch', event => {
                             '<div class="card"><div class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg></div>' +
                             '<h2>You are currently offline</h2><p>Please check your internet connection and reload the application.</p>' +
                             '<button class="btn" onclick="window.location.reload()">Retry Connection</button></div></body></html>',
-                            {
-                                status: 200,
-                                headers: { 'Content-Type': 'text/html' }
-                            }
+                            { status: 200, headers: { 'Content-Type': 'text/html' } }
                         );
                     }
-                    
+
                     return new Response(null, { status: 204, statusText: 'No Content' });
                 });
             })
