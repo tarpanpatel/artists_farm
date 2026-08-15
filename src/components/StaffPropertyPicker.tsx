@@ -81,7 +81,7 @@ export const StaffPropertyPicker: React.FC<StaffPropertyPickerProps> = ({
     };
     localStorage.setItem(`artists_farm_authenticated_${slug}`, 'true');
     localStorage.setItem(`artists_farm_user_${slug}`, JSON.stringify(staffMember));
-    window.location.href = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/`;
+    window.location.href = `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`;
   };
 
   return (

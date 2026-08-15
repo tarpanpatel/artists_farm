@@ -527,8 +527,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 const roomCount = property.room_count ?? 0;
                 const tenantSlug = tenantInfo?.slug ?? '';
                 const dashboardUrl = tenantSlug
-                  ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/`
-                  : `${API_ROOT_BASE}/${property.slug}/`;
+                  ? `${API_ROOT_BASE}/${tenantSlug}/${property.slug}/#dashboard`
+                  : `${API_ROOT_BASE}/${property.slug}/#dashboard`;
 
                 return (
                   <div
