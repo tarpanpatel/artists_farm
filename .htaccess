@@ -62,9 +62,35 @@ DirectoryIndex index.php index.html
     <FilesMatch "\.(css|js|png|jpg|jpeg|webp|svg|ico|woff2|woff|ttf)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
-    
+
     # Never cache dynamic API responses
     <FilesMatch "router\.php$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    </FilesMatch>
+</IfModule>
+
+# Response Compression (SITE_PERFORMANCE_OPTIMIZATION_PLAN.md, corrected 15 Aug 2026): the
+# plan's own proposal for this used PHP's ob_gzhandler() in database.php instead, which this
+# deliberately avoids - that file is require_once'd by nearly every endpoint including ones
+# TelescopeLogger's set_exception_handler/register_shutdown_function can still emit output
+# from after a fatal error, and stacking that behind an active gzip output buffer is untested
+# here. mod_deflate at the Apache layer compresses the exact same responses (including the
+# 786KB-gzipped main JS/CSS bundle and every router.php JSON payload) with zero PHP changes
+# and zero interaction with the app's own output handling - same result, lower risk.
+#
+# Deliberately NOT AddOutputFilterByType (confirmed locally 15 Aug 2026: that directive is
+# actually implemented by mod_filter, not mod_deflate - with mod_deflate loaded but mod_filter
+# not, it throws "Invalid command 'AddOutputFilterByType'" and 500s EVERY request on this
+# entire vhost, not just a silent no-compression fallback. Using SetOutputFilter scoped to
+# file extension instead needs only mod_deflate itself, so it can't fail this way even if
+# mod_filter's availability on the real host is ever in doubt. Static asset extensions cover
+# JS/CSS/HTML/SVG; .php covers every router.php JSON response and index.php's HTML - this app
+# never returns raw binary from PHP, so compressing all .php output is safe.
+<IfModule mod_deflate.c>
+    <FilesMatch "\.(js|css|html|xml|svg|json)$">
+        SetOutputFilter DEFLATE
+    </FilesMatch>
+    <FilesMatch "\.php$">
+        SetOutputFilter DEFLATE
     </FilesMatch>
 </IfModule>
