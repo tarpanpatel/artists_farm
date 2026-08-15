@@ -70,7 +70,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const { activeRole: authRole } = useAuth();
 
   const effectiveRole = (activeRole || authRole || '').toLowerCase().trim();
-  const canManageExpense = effectiveRole === 'admin' || effectiveRole === 'super admin' || effectiveRole === 'root admin' || effectiveRole === 'root_admin';
+  const canManageExpense = effectiveRole.includes('admin') || effectiveRole.includes('root');
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
     category: 'Other',
