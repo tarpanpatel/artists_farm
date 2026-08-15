@@ -212,8 +212,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setActiveMenuItemKey('multikey_property_overview');
   };
 
-  const handleNavigateToRoom = (roomSlug: string) => {
-    setActiveTab('dashboard');
+  const handleNavigateToRoom = (roomSlug: string, initialTab: TabType = 'dashboard') => {
+    setActiveTab(initialTab);
     setActiveMenuItemKey(roomSlug);
     setSelectedRoomSlugOverride(roomSlug);
     // Update URL to include room slug so it persists on refresh
