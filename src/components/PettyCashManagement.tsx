@@ -4,7 +4,8 @@ import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
-import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit } from '../services/api';
+import { useInventoryContext } from '../contexts/InventoryContext';
+import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
@@ -36,6 +37,12 @@ interface FormState {
   isOutofPocketChecked?: boolean;
   invoiceBillUrl: string;
   paymentScreenshotUrl: string;
+  // Only used when category === 'Kitchen' - the item picker replaces the
+  // free-text description with a Master Catalog selection, and quantity is
+  // needed alongside it (unlike every other category, a kitchen purchase
+  // also needs to sync req_catalog stock - see handleSubmit).
+  kitchenQuantity: number | '';
+  kitchenUnit: string;
 }
 
 type FormAction =
@@ -60,6 +67,8 @@ function formReducer(state: FormState, action: FormAction): FormState {
         drawerAmount: '',
         staffAmount: '',
         isOutofPocketChecked: false,
+        kitchenQuantity: '',
+        kitchenUnit: '',
       };
     default:
       return state;
@@ -93,9 +102,38 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     staffAmount: '',
     invoiceBillUrl: '',
     paymentScreenshotUrl: '',
+    kitchenQuantity: '',
+    kitchenUnit: '',
   }));
   const isAmountEntered = Boolean(formState.amount && Number(formState.amount) > 0);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
+  const { inventory } = useInventoryContext();
+
+  // Vendors from database (payee_entities) - same source Kitchen Purchases
+  // (InventoryManagement.tsx) already uses for its "Assign Vendor" picker,
+  // so Kitchen & Supplies expenses logged here suggest the same registered
+  // vendors instead of this field staying free text.
+  const [dbVendors, setDbVendors] = useState<{ id: string; name: string; type: string }[]>([]);
+  useEffect(() => {
+    fetchPayeesFromDB().then((payees) => {
+      if (payees && payees.length > 0) setDbVendors(payees);
+    });
+  }, []);
+
+  // Kitchen & Supplies entries submitted from this page are stored in
+  // kitchen_purchases_log (via create_kitchen_purchase), not
+  // farm_utility_expenses, so req_catalog stock keeps syncing correctly -
+  // see handleSubmit below. Fetched and merged into the Cost Logs list so
+  // they don't disappear from view the moment they're saved; that's the
+  // whole point of centralizing expense entry onto this one page.
+  const [kitchenPurchases, setKitchenPurchases] = useState<any[]>([]);
+  const [kitchenPurchasesLoading, setKitchenPurchasesLoading] = useState(true);
+  useEffect(() => {
+    fetchKitchenPurchasesFromDB().then((data) => {
+      setKitchenPurchases(data || []);
+      setKitchenPurchasesLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     fetchStaffUsersFromDB().then((users) => {
@@ -295,6 +333,67 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     e.preventDefault();
     if (!formState.description || !formState.amount) return;
 
+    // Kitchen & Supplies routes through create_kitchen_purchase instead of
+    // add_petty_cash - unlike every other category, this one also has to
+    // sync req_catalog stock and inventory_price_history (see
+    // php/inventory/inventory.php), so it can't just be a plain ledger row.
+    if (formState.category === 'Kitchen') {
+      if (!formState.kitchenQuantity || Number(formState.kitchenQuantity) <= 0) return;
+
+      const totalPrice = Number(formState.amount);
+      const qty = Number(formState.kitchenQuantity);
+      const unitCost = qty > 0 ? Number((totalPrice / qty).toFixed(2)) : totalPrice;
+      const unit = formState.kitchenUnit || inventory.find((i) => i.name === formState.description)?.unit || 'Unit';
+      const vendorName = formState.paidBy && formState.paidBy !== currentUserName ? formState.paidBy : 'Unassigned Vendor';
+      const isFullyOutOfPocket = totalPrice > 0 && Number(formState.staffAmount || 0) >= totalPrice;
+
+      const purchase = {
+        id: `pur-${Date.now().toString().slice(-4)}`,
+        purchaseDate: formState.expenseDate,
+        itemName: formState.description,
+        specification: 'N/A',
+        quantity: qty,
+        unit,
+        totalPrice,
+        unitCost,
+        recordedBy: currentUserName,
+        vendorName,
+        settlementStatus: 'Paid',
+        settlementMethod: isFullyOutOfPocket ? 'Paid Out of Pocket' : (formState.paymentMode || 'Farm Cash'),
+        paidByStaff: isFullyOutOfPocket ? currentUserName : '',
+      };
+
+      setKitchenPurchases((prev) => [purchase, ...prev]);
+      createKitchenPurchaseDB(purchase);
+
+      const handler = financialHandlers.find((h: any) => h.name === formState.paidBy);
+      if (formState.drawerAmount && Number(formState.drawerAmount) > 0) {
+        addDrawerEntryToDB({
+          staff_id: handler?.id || '',
+          staff_name: handler?.name || handler?.username || currentUserName,
+          type: 'handover',
+          amount: Number(formState.drawerAmount),
+          notes: `Drawer paid for ${qty} ${unit} of ${formState.description} (Kitchen & Supplies)`,
+        });
+      }
+      if (formState.staffAmount && Number(formState.staffAmount) > 0) {
+        recordOutOfPocketCredit({
+          staff_id: handler?.id || '',
+          staff_name: handler?.name || handler?.username || currentUserName,
+          amount: Number(formState.staffAmount),
+          description: `Out-of-pocket for ${qty} ${unit} of ${formState.description} (Kitchen & Supplies)`,
+        });
+      }
+
+      if (onDispatchTelegram) {
+        const msg = `<b>🍳 KITCHEN PURCHASE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📦 <b>Item:</b> ${qty} ${unit} ${formState.description}\n🏪 <b>Vendor:</b> ${vendorName}\n💰 <b>Total:</b> ₹${totalPrice.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+        onDispatchTelegram('Expense', msg, 'finance');
+      }
+
+      dispatch({ type: 'RESET_FORM' });
+      return;
+    }
+
     // Security Gate check for Salaries
     if ((formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && !canManageExpense) {
       showToast('Access Denied: Only Admins or Super Admins are authorized to record Salary payments.', { type: 'error' });
@@ -358,8 +457,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   };
 
   // Double click cell to edit inline
-  const handleCellDoubleClick = (entryId: string, field: 'date' | 'amount', currentValue: any) => {
-    if (!canManageExpense) return;
+  const handleCellDoubleClick = (entryId: string, field: 'date' | 'amount', currentValue: any, source?: string) => {
+    // Kitchen-sourced rows live in kitchen_purchases_log, not pettyCash -
+    // handleCellSave below looks up/writes pettyCash by id, so editing one
+    // inline here would silently no-op rather than actually saving anything.
+    if (!canManageExpense || source === 'kitchen') return;
     setEditingCell({ id: entryId, field });
     setEditValue(String(currentValue));
   };
@@ -402,13 +504,53 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   };
 
-  // Filter entries
-  const filteredEntries = pettyCash.filter(e => {
-    const matchesMonth = e.date.startsWith(selectedMonth);
-    const text = (e.description + ' ' + (e.category || e.costCategory || '') + ' ' + (e.paidBy || '') + ' ' + e.amount).toLowerCase();
-    const matchesSearch = text.includes(searchQuery.toLowerCase());
-    return matchesMonth && matchesSearch;
+  // Kitchen-sourced rows live in kitchen_purchases_log, not pettyCash, so
+  // this goes through deleteKitchenPurchaseDB (which also reverses the
+  // financial_ledger posting server-side) instead of deletePettyCash.
+  const handleDeleteKitchenPurchase = (id: string, itemName: string) => {
+    (window as any).showConfirm(`Delete kitchen purchase "${itemName}"? This cannot be undone.`, async () => {
+      setKitchenPurchases((prev) => prev.filter((p) => p.id !== id));
+      deleteKitchenPurchaseDB({ id, itemName, user: currentUserName });
+    });
+  };
+
+  // Kitchen purchases logged from this page (via create_kitchen_purchase)
+  // live in kitchen_purchases_log, not pettyCash - mapped into the same
+  // shape the Cost Logs table already renders so they show up alongside
+  // regular expenses instead of only being visible on the Inventory >
+  // Kitchen Purchases screen. `source: 'kitchen'` marks these rows so the
+  // Actions column can avoid firing update_petty_cash/delete_petty_cash
+  // against an id that doesn't exist in that table.
+  const mappedKitchenEntries = kitchenPurchases.map((kp: any) => {
+    const isOutOfPocket = kp.settlementMethod === 'Paid Out of Pocket';
+    const total = Number(kp.totalPrice) || 0;
+    return {
+      id: kp.id,
+      date: kp.purchaseDate,
+      time: '12:00',
+      category: 'Kitchen',
+      costCategory: 'Kitchen',
+      description: `${kp.quantity} ${kp.unit} ${kp.itemName}`.trim(),
+      moreInfoNotes: kp.specification && kp.specification !== 'N/A' ? kp.specification : undefined,
+      vendor: kp.vendorName && kp.vendorName !== 'Unassigned Vendor' ? kp.vendorName : undefined,
+      paidBy: kp.vendorName && kp.vendorName !== 'Unassigned Vendor' ? kp.vendorName : undefined,
+      amount: total,
+      paymentMode: isOutOfPocket ? undefined : (kp.settlementMethod || 'Cash'),
+      staffAmount: isOutOfPocket ? total : 0,
+      drawerAmount: isOutOfPocket ? 0 : total,
+      source: 'kitchen' as const,
+    };
   });
+
+  // Filter entries
+  const filteredEntries = [...pettyCash, ...mappedKitchenEntries]
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .filter(e => {
+      const matchesMonth = e.date.startsWith(selectedMonth);
+      const text = (e.description + ' ' + (e.category || e.costCategory || '') + ' ' + (e.paidBy || '') + ' ' + e.amount).toLowerCase();
+      const matchesSearch = text.includes(searchQuery.toLowerCase());
+      return matchesMonth && matchesSearch;
+    });
 
   return (    <div className="expenses-page-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
       {/* Datalist for Details Descriptions Autocomplete */}
@@ -471,26 +613,48 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_descriptions_label', 'Details Descriptions *')}</label>
-            <div className="relative">
-              <Input
-                type="text"
-                required
+          {formState.category === 'Kitchen' ? (
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Item (from Master Catalog) *</label>
+              <StyledSelect
+                searchable
                 value={formState.description}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                onChange={e => {
-                  handleDescriptionChange(e.target.value);
-                  setShowSuggestions(true);
+                onChange={val => {
+                  dispatch({ type: 'SET_FIELD', field: 'description', value: val });
+                  const matched = inventory.find(i => i.name === val);
+                  dispatch({ type: 'SET_FIELD', field: 'kitchenUnit', value: matched?.unit || '' });
+                  if (!formState.kitchenQuantity) {
+                    dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: 1 });
+                  }
                 }}
-                placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
+                placeholder="Select an item from the kitchen catalog..."
+                options={inventory.map(i => ({ value: i.name, label: i.name }))}
               />
-                
-                {/* Interactive Auto-suggestions Dropdown Menu */}
-                {showSuggestions && (
+              {formState.kitchenUnit && (
+                <p className="text-[10px] text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_descriptions_label', 'Details Descriptions *')}</label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  required
+                  value={formState.description}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  onChange={e => {
+                    handleDescriptionChange(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
+                />
+
+                {/* Interactive Auto-suggestions Dropdown Menu (only for 'Other' category) */}
+                {showSuggestions && formState.category === 'Other' && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    {expenseItems.filter(item => 
+                    {expenseItems.filter(item =>
                       item.toLowerCase().includes(formState.description.toLowerCase().trim())
                     ).map(item => (
                       <div
@@ -509,7 +673,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         )}
                       </div>
                     ))}
-                    {expenseItems.filter(item => 
+                    {expenseItems.filter(item =>
                       item.toLowerCase().includes(formState.description.toLowerCase().trim())
                     ).length === 0 && (
                       <div className="p-3 text-slate-400 italic text-center">
@@ -520,23 +684,40 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 )}
               </div>
             </div>
+          )}
 
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('more_information_label', '& More Information (If Any)')}</label>
-            <Textarea
+            <Input
+              label={t('more_information_label', '& More Information (If Any)')}
+              type="text"
               value={formState.moreInfoNotes}
               onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
               placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
-              className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white h-20 font-medium"
+              className="font-medium"
             />
           </div>
 
           {/* Always 2 columns, even on mobile - same reasoning as the
-              date/category row above. */}
+              date/category row above. Kitchen & Supplies uses the second
+              column for Quantity instead of leaving it empty. */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {formState.category === 'Kitchen' && (
+              <div>
+                <Input
+                  label="Quantity *"
+                  type="number"
+                  step="any"
+                  min="0.001"
+                  required
+                  value={formState.kitchenQuantity}
+                  onChange={e => dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: e.target.value === '' ? '' : Number(e.target.value) })}
+                  placeholder="1"
+                />
+              </div>
+            )}
             <div>
               <Input
-                label={t('expense_amount_rupees_required_label', 'Amount (₹) *')}
+                label={formState.category === 'Kitchen' ? 'Total Price (₹) *' : t('expense_amount_rupees_required_label', 'Amount (₹) *')}
                 type="number"
                 step="0.01"
                 required
@@ -545,7 +726,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 placeholder={t('expense_amount_placeholder', 'e.g., 450')}
                 className="font-semibold"
               />
-              {formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
+              {formState.category !== 'Kitchen' && formState.description.trim() && itemPrices[formState.description.trim()] !== undefined && (
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
                   Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
@@ -673,13 +854,26 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <Input
-                  label="Vendor / Payee Name (Optional)"
-                  type="text"
-                  value={formState.paidBy === currentUserName ? '' : formState.paidBy}
-                  onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value || currentUserName })}
-                  placeholder="e.g. Transport Co, Hardware Store"
-                />
+                {formState.category === 'Kitchen' ? (
+                  <>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
+                    <StyledSelect
+                      searchable
+                      value={formState.paidBy === currentUserName ? '' : formState.paidBy}
+                      onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
+                      placeholder="Select a registered vendor..."
+                      options={dbVendors.filter(v => v.type === 'Vendor').map(v => ({ value: v.name, label: v.name }))}
+                    />
+                  </>
+                ) : (
+                  <Input
+                    label="Vendor / Payee Name (Optional)"
+                    type="text"
+                    value={formState.paidBy === currentUserName ? '' : formState.paidBy}
+                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value || currentUserName })}
+                    placeholder="e.g. Transport Co, Hardware Store"
+                  />
+                )}
               </div>
             </div>
 
@@ -789,7 +983,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   <Input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus />
                 ) : (
                   <div>
-                    <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-700 dark:text-slate-200 font-bold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
+                    <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-700 dark:text-slate-200 font-bold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
                     <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 pl-1">
                       <Clock className="w-2.5 h-2.5 inline shrink-0" /> {entry.time || '12:00'}
                     </div>
@@ -849,7 +1043,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 return isEditingAmount ? (
                   <Input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus className="w-24" />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
+                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'amount', entry.amount, entry.source)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono font-semibold text-slate-950 dark:text-white text-sm border-b border-dashed border-slate-400" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>₹{entry.amount.toFixed(2)}</span>
                 );
               },
             },
@@ -894,7 +1088,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               name: t('actions_column', 'Actions'),
               width: '150px',
               center: true as const,
-              cell: (entry: any) => (
+              cell: (entry: any) => entry.source === 'kitchen' ? (
+                <div className="flex items-center justify-center whitespace-nowrap">
+                  <button onClick={() => handleDeleteKitchenPurchase(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-2xs">
+                    {t('delete_button', 'Delete')}
+                  </button>
+                </div>
+              ) : (
                 <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                   <button onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} className="bg-slate-100 hover:bg-blue-50 dark:bg-slate-700 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-600 whitespace-nowrap shadow-2xs">
                     <Edit2 className="w-3 h-3" /> {t('edit_button', 'Edit')}
@@ -916,7 +1116,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">
                 {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
-              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading ? '…' : filteredEntries.length} {t('entries_label', 'entries')}</span>
+              <span className="text-slate-400 font-semibold text-xs">{pettyCashLoading || kitchenPurchasesLoading ? '…' : filteredEntries.length} {t('entries_label', 'entries')}</span>
             </div>
           }
           customStyles={{
@@ -925,7 +1125,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             cells: { style: { fontSize: '12px', color: '#334155', paddingLeft: '12px' } },
             rows: { style: { minHeight: '52px' } },
           }}
-          progressPending={pettyCashLoading}
+          progressPending={pettyCashLoading || kitchenPurchasesLoading}
           progressComponent={
             <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...
