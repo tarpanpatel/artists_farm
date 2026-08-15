@@ -3,14 +3,33 @@
   Commit-and-deploy pipeline for Artists Farm Staging Environment (staging.artistic-sthan.com).
 
 .DESCRIPTION
-  Builds the React frontend and syncs PHP backend to the staging subdomain folder on cPanel.
+  Builds the React frontend and updates the PHP backend on the staging subdomain, from the SAME
+  committed source as production - but independently, so staging can get AHEAD of production for
+  testing before you promote (see deploy.ps1's "Promote to Live" - same script, no -Target
+  needed, since GitHub already has the commits pushed here).
   1. Pushes local commits to GitHub (multi-tenant branch).
-  2. Syncs PHP backend files to ~/staging.artistic-sthan.com on the server.
+  2. `git pull`s on ~/staging.artistic-sthan.com directly (own git checkout, independent of
+     ~/public_html - NOT an rsync mirror of whatever's already live on production. This was the
+     bug in the original version of this script: rsyncing FROM public_html meant staging could
+     only ever mirror production, never get ahead of it, defeating the entire point of a staging
+     environment. Fixed 15 Aug 2026.
   3. Stashes any uncommitted local changes.
   4. Runs `npm run build` from clean state.
   5. Restores working tree stash.
   6. Packages dist/, uploads, and swaps into place at ~/staging.artistic-sthan.com/dist/.
   7. Verifies live staging bundle response.
+
+.ONE-TIME SERVER SETUP REQUIRED
+  ~/staging.artistic-sthan.com must be its own git checkout of this repo (branch multi-tenant)
+  before step 2 above will work - it currently is NOT (confirmed 15 Aug 2026: plain rsync'd
+  files, `git status` reports "not a git repository"). Someone with server access needs to run,
+  once:
+    cd ~/staging.artistic-sthan.com
+    # back up anything not in git first (uploaded images/documents, db_pass.php, .env) -
+    # `git clone` into a non-empty directory will fail, so those need moving aside and back.
+    git clone -b multi-tenant https://github.com/tarpanpatel/artists_farm.git .
+    # then restore db_pass.php / .env / php/uploads/* into place - these are gitignored on
+    # purpose (secrets, tenant files) and a fresh clone won't have them.
 
 .USAGE
   .\deploy-staging.ps1
@@ -86,10 +105,13 @@ try {
         Write-Ok "Nothing to push - already up to date with origin."
     }
 
-    # 2. Sync PHP backend on cPanel to staging directory
+    # 2. Update PHP backend on staging via its own git pull - NOT synced from production.
+    #    Staging is meant to run ahead of production for testing, so it needs its own
+    #    independent checkout of the same branch. See .ONE-TIME SERVER SETUP REQUIRED above -
+    #    this step fails loudly (not silently) if that hasn't been done yet.
     if (-not $SkipPhpSync -and -not $DryRun) {
-        Write-Step "Syncing PHP backend to staging directory on cPanel"
-        Invoke-Ssh "rsync -av --exclude 'dist' --exclude 'node_modules' --exclude '.git' ~/public_html/ ~/staging.artistic-sthan.com/"
+        Write-Step "Syncing PHP backend on staging (git pull)"
+        Invoke-Ssh "cd $RemoteDir && git pull origin multi-tenant"
         Write-Ok "Staging PHP backend is in sync."
     }
 
