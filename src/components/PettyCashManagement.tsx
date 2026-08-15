@@ -69,7 +69,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const { staff } = useStaff();
   const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { showToast } = useToast();
-  const { activeRole: authRole } = useAuth();
+  const { activeRole: authRole, currentUser } = useAuth();
+  const currentUserName = currentUser?.name || currentUser?.username || 'Staff';
 
   const effectiveRole = (activeRole || authRole || '').toLowerCase().trim();
   const canManageExpense = effectiveRole.includes('admin') || effectiveRole.includes('root');
@@ -81,7 +82,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     moreInfoNotes: '',
     amount: '',
     paymentMode: 'UPI / QR',
-    paidBy: 'Tarpan',
+    paidBy: currentUserName,
     showDrawerSplit: false,
     drawerAmount: '',
     staffAmount: '',
@@ -100,6 +101,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (currentUserName && (!formState.paidBy || formState.paidBy === 'Tarpan')) {
+      dispatch({ type: 'SET_FIELD', field: 'paidBy', value: currentUserName });
+    }
+  }, [currentUserName]);
 
   // Property Cash in Hand split (redesigned 12 Aug 2026): the only thing
   // staff enters is "how much came out of your own pocket" - the property
@@ -542,76 +549,117 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 <p className="text-[10px] text-emerald-600 font-semibold mt-1">
                   Last input price auto-filled: ₹{itemPrices[formState.description.trim()]} (Editable)
                 </p>
-              )}
-            </div>
-
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
-              <StyledSelect
-                value={formState.paymentMode}
-                onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
-                options={[
-                  { value: 'UPI / QR', label: t('payment_mode_upi_qr_label', 'UPI / QR') },
-                  { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
-                  { value: 'Mixed', label: t('payment_mode_mixed_label', 'Mixed') },
-                ]}
-              />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 dark:text-slate-400 font-semibold">
-            <input
-              type="checkbox"
-              checked={formState.showDrawerSplit}
-              onChange={e => {
-                dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: e.target.checked });
-              }}
-            />
-            <span className="flex items-center gap-1">
-              <Landmark size={14} className="text-slate-500" /> {t('from_property_cash_in_hand_label', 'From Property Cash in Hand')}
-            </span>
-          </label>
-
-          {/* Redesigned 12 Aug 2026: staff only ever types the out-of-pocket
-              portion - the property-cash-in-hand portion is always just the
-              remainder (total - out of pocket), computed in the useEffect
-              above, never a second free-typed field the two could drift out
-              of sync with. Shown read-only so it's still visible, just not
-              directly editable. */}
-          {formState.showDrawerSplit && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Input
-                  label={t('paid_from_own_pocket_rupees_label', 'If Out of Your Own Pocket? (₹)')}
-                  type="number"
-                  min="0"
-                  max={formState.amount === '' ? undefined : formState.amount}
-                  value={formState.staffAmount}
-                  onChange={e => {
-                    const val = e.target.value === '' ? '' : Number(e.target.value);
-                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
+          {/* Streamlined 2-Step Payment Source Selection */}
+          <div className="space-y-3 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div>
+              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">1. Where did the money come from?</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
+                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: 0 });
                   }}
-                  placeholder="0"
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    !formState.showDrawerSplit && Number(formState.staffAmount || 0) === 0
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>🏛️ Property Funds</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: false });
+                    dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: formState.amount || 0 });
+                  }}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    !formState.showDrawerSplit && Number(formState.staffAmount || 0) > 0
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>👤 My Own Pocket</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: 'SET_FIELD', field: 'showDrawerSplit', value: true });
+                  }}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    formState.showDrawerSplit
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>⚖️ Split</span>
+                </button>
+              </div>
+            </div>
+
+            {formState.showDrawerSplit && (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Input
+                    label={t('paid_from_own_pocket_rupees_label', 'If Out of Your Own Pocket? (₹)')}
+                    type="number"
+                    min="0"
+                    max={formState.amount === '' ? undefined : formState.amount}
+                    value={formState.staffAmount}
+                    onChange={e => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      dispatch({ type: 'SET_FIELD', field: 'staffAmount', value: val });
+                    }}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label={t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}
+                    type="number"
+                    value={formState.drawerAmount}
+                    disabled
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">2. Payment Mode</label>
+                <StyledSelect
+                  value={formState.paymentMode}
+                  onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
+                  options={[
+                    { value: 'UPI / QR', label: t('payment_mode_upi_qr_label', 'UPI / QR') },
+                    { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
+                    { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
+                    { value: 'Card', label: t('payment_mode_card_label', 'Card') },
+                  ]}
                 />
               </div>
+
               <div>
                 <Input
-                  label={t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}
-                  type="number"
-                  value={formState.drawerAmount}
-                  disabled
+                  label="Vendor / Payee Name (Optional)"
+                  type="text"
+                  value={formState.paidBy === currentUserName ? '' : formState.paidBy}
+                  onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value || currentUserName })}
+                  placeholder="e.g. Transport Co, Hardware Store"
                 />
               </div>
             </div>
-          )}
 
-          <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('expense_paid_by_label', 'Paid By')}</label>
-            <StyledSelect
-              value={formState.paidBy}
-              onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val })}
-              options={financialHandlers.map(h => ({ value: h.name, label: h.name }))}
-            />
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pt-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span>Logged by logged-in staff member: <strong>{currentUserName}</strong></span>
+            </div>
           </div>
 
           {/* Proof uploads */}
@@ -748,13 +796,20 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               selector: (entry: any) => entry.description,
               sortable: true,
               grow: 2,
-              cell: (entry: any) => (
-                <div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{entry.description}</div>
-                  {entry.moreInfoNotes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>}
-                  <p className="text-[10px] text-slate-500 mt-0.5">{t('paid_by_prefix', 'Paid by:')} <strong>{entry.paidBy || entry.vendor}</strong></p>
-                </div>
-              ),
+              cell: (entry: any) => {
+                const payer = entry.paidBy || entry.vendor;
+                return (
+                  <div className="py-1">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{entry.description}</div>
+                    {entry.moreInfoNotes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.moreInfoNotes}</p>}
+                    {payer && payer !== currentUserName && (
+                      <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                        <span className="text-slate-400">Vendor / Payee:</span> <strong className="text-slate-700 dark:text-slate-300">{payer}</strong>
+                      </p>
+                    )}
+                  </div>
+                );
+              },
             },
             {
               name: t('total_column', 'Total'),
@@ -772,16 +827,41 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               },
             },
             {
-              name: t('mode_column', 'Mode'),
+              name: t('source_column', 'Source & Mode'),
               selector: (entry: any) => entry.paymentMode || 'Online',
               sortable: true,
-              width: '80px',
+              width: '140px',
               center: true,
-              cell: (entry: any) => (
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${entry.paymentMode === 'Cash' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
-                  {entry.paymentMode || 'Online'}
-                </span>
-              ),
+              cell: (entry: any) => {
+                const isOutofPocket = entry.staffAmount && Number(entry.staffAmount) > 0 && Number(entry.staffAmount) === Number(entry.amount);
+                const isSplit = entry.staffAmount && Number(entry.staffAmount) > 0 && entry.drawerAmount && Number(entry.drawerAmount) > 0;
+
+                if (isSplit) {
+                  return (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs whitespace-nowrap" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
+                      ⚖️ Split (Till + Pocket)
+                    </span>
+                  );
+                }
+
+                if (isOutofPocket) {
+                  return (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap">
+                      👤 Out of Pocket
+                    </span>
+                  );
+                }
+
+                return (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${
+                    entry.paymentMode === 'Cash'
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                  }`}>
+                    🏛️ Property ({entry.paymentMode || 'UPI'})
+                  </span>
+                );
+              },
             },
             ...(canManageExpense ? [{
               name: t('actions_column', 'Actions'),
