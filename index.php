@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Ground Code Resort & Kitchen Management System
  * Main Production Entry Point for XAMPP / Apache / cPanel PHP Hosting
@@ -20,6 +20,16 @@ header("Pragma: no-cache");
 // Get tenant and property slugs from URL (for React)
 $tenantSlug = isset($_GET['tenant_slug']) ? htmlspecialchars($_GET['tenant_slug']) : '';
 $propertySlug = isset($_GET['property_slug']) ? htmlspecialchars($_GET['property_slug']) : '';
+$app = isset($_GET['app']) ? htmlspecialchars($_GET['app']) : '';
+
+// If visiting the bare root URL (no tenant/property/app specified), serve the marketing landing page
+if (empty($tenantSlug) && empty($propertySlug) && empty($app)) {
+    $landing_page = __DIR__ . '/index3.html';
+    if (file_exists($landing_page)) {
+        readfile($landing_page);
+        exit();
+    }
+}
 
 if (file_exists($dist_index)) {
     // Serve the production single-page application built from React
