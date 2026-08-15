@@ -791,10 +791,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['guest_id'] ?? null, 'guest_id');
                 if ($guestId === null) break;
                 try {
-                    $guestIndex = InputValidator::validateInteger($input['guest_index'] ?? null, 1, 100);
+                    $guestIndex = InputValidator::validateInteger($input['guest_index'] ?? null, 0, 100);
                 } catch (Exception $e) {
                     http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'guest_index must be a positive integer']);
+                    echo json_encode(['status' => 'error', 'message' => 'guest_index must be an integer between 0 and 100']);
                     break;
                 }
                 $filePath = $input['file_path'] ?? null;
