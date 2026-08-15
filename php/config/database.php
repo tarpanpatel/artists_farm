@@ -207,6 +207,28 @@ try {
             try { $pdo->exec($sql); } catch (PDOException $e) {}
         }
 
+        // Compound indexes for the property-scoped list/filter queries every dashboard runs
+        // on load (SITE_PERFORMANCE_OPTIMIZATION_PLAN.md, corrected 15 Aug 2026 against the
+        // live schema - the plan's own version used tenant_id/check_in_date/kitchen_menu_items,
+        // none of which exist; this app scopes everything by property_id, not tenant_id, and
+        // the real columns/table are checkin_date and menu_items). property_id alone is
+        // already indexed on all four tables (FK-backed), but a single-column index can't
+        // serve a query that also filters on status/date in one pass - these compound indexes
+        // let MySQL satisfy the WHERE+ORDER BY together instead of index-scanning by
+        // property_id then filesorting the rest. try/catch (not "ADD INDEX IF NOT EXISTS":
+        // narrower MySQL/MariaDB version support than the ADD COLUMN form already used above)
+        // so a duplicate-key-name error on repeat runs is silently a no-op, same pattern as
+        // every other self-heal block in this file.
+        $compoundIndexes = [
+            "ALTER TABLE `guests` ADD INDEX `idx_property_status_checkin` (`property_id`, `status`, `checkin_date`)",
+            "ALTER TABLE `kitchen_orders` ADD INDEX `idx_property_status_ordertime` (`property_id`, `status`, `order_time`)",
+            "ALTER TABLE `menu_items` ADD INDEX `idx_property_category_hidden` (`property_id`, `category_id`, `is_hidden`)",
+            "ALTER TABLE `audit_logs` ADD INDEX `idx_property_timestamp` (`property_id`, `timestamp`)",
+        ];
+        foreach ($compoundIndexes as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+
         if (function_exists('initializeDatabaseTables')) {
             initializeDatabaseTables($pdo);
         }
