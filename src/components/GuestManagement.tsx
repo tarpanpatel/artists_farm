@@ -53,6 +53,13 @@ interface Room {
   default_tariff?: number | null;
 }
 
+export interface BookingExtraChargeLine {
+  id: string;
+  category: string;
+  miscNote: string;
+  amount: number | '';
+}
+
 interface GuestManagementProps {
   guests: Guest[];
   receipts: BillingReceipt[];
@@ -211,13 +218,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       }
     }
   }, [isMultiKeyProperty, rooms.length, selectedRoomSlug, preSelectRoom]);
-
-export interface BookingExtraChargeLine {
-  id: string;
-  category: string;
-  miscNote: string;
-  amount: number | '';
-}
 
   // Registration Form State
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
