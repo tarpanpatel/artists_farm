@@ -143,7 +143,6 @@ export const ServiceRequestTypesManager: React.FC = () => {
     } else {
       await saveServiceRequestTypeInDB(
         {
-          id: rt.id > 0 ? rt.id : undefined,
           type_id: rt.typeId,
           category: editingCategory.trim(),
           label: editingLabel.trim(),

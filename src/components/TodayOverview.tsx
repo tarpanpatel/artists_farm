@@ -97,7 +97,29 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // freely scroll through past and future months with the native
   // horizontal scrollbar, no arrow-clicking needed for typical use - the
   // arrows just page the whole window further out for longer trips.
-  const COLUMN_WIDTH = 64; // px - matches the w-16 column classes below
+  // BUG (found 14 Aug 2026): this used to be a hardcoded `64` (the nominal
+  // px value of the day columns' `w-16` Tailwind class at the default 16px
+  // root font-size). This app's root font-size is actually 14px, so `w-16`
+  // (4rem) renders at 56px, not 64 - every place that did day-index*64 math
+  // (capsule left/width, the visible-month-label calc) silently drifted
+  // further and further from where the day columns actually are the more
+  // days out from the window start it measured, while the columns
+  // themselves (plain CSS, unaffected) rendered correctly. That's what
+  // made checked-out bookings look like they were sitting near "today"
+  // instead of where they actually are, and made the month label fail to
+  // pick up the next month even once it was well into view. Now measured
+  // from the real rendered column below instead of assumed.
+  const [columnWidth, setColumnWidth] = useState(64);
+  const columnWidthRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const w = columnWidthRef.current?.getBoundingClientRect().width;
+      if (w) setColumnWidth(w);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
   const PAST_BUFFER_DAYS = 60;
   const FUTURE_BUFFER_DAYS = 89;
   const WINDOW_DAYS = PAST_BUFFER_DAYS + FUTURE_BUFFER_DAYS + 1; // + today itself
@@ -135,10 +157,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const updateVisibleMonthLabel = (days: Date[]) => {
     const el = scrollRef.current;
     if (!el || days.length === 0) return;
-    const startIdx = Math.max(0, Math.floor(el.scrollLeft / COLUMN_WIDTH));
+    const startIdx = Math.max(0, Math.floor(el.scrollLeft / columnWidth));
     const endIdx = Math.min(
       days.length - 1,
-      Math.max(startIdx, Math.ceil((el.scrollLeft + el.clientWidth) / COLUMN_WIDTH) - 1)
+      Math.max(startIdx, Math.ceil((el.scrollLeft + el.clientWidth) / columnWidth) - 1)
     );
     const startDate = days[startIdx];
     const endDate = days[endIdx];
@@ -196,20 +218,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       .sort((a, b) => new Date(a.checkinDate).getTime() - new Date(b.checkinDate).getTime());
   };
 
-  const getGuestColor = (guestId: any, status?: any) => {
+  const getGuestColor = (_guestId: any, status?: any) => {
     if (isCheckedOutStatus(status)) {
-      return 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 border border-slate-400/40 dark:border-slate-500/40';
+      return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
     }
-    const colors = [
-      'bg-teal-600 dark:bg-teal-600 hover:bg-teal-700 text-white border border-teal-700/30',
-      'bg-emerald-600 dark:bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700/30',
-      'bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 text-white border border-blue-700/30',
-      'bg-indigo-600 dark:bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-700/30',
-      'bg-purple-600 dark:bg-purple-600 hover:bg-purple-700 text-white border border-purple-700/30',
-      'bg-cyan-600 dark:bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-700/30',
-    ];
-    const numId = parseInt(String(guestId), 10) || 0;
-    return colors[numId % colors.length];
+    return 'bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 text-white border border-blue-700/30';
   };
 
   const daysArray = useMemo(
@@ -412,7 +425,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         <div className="min-w-max">
           {/* Date Header */}
           <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">
-            <div className="w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30">
+            <div className="w-24 min-w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30 shrink-0">
               {t('room_column', 'Room')}
             </div>            {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
@@ -421,8 +434,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               return (
                 <div
                   key={day.toISOString()}
-                  ref={idx === scrollTargetIdx ? scrollTargetRef : undefined}
-                  className={`w-16 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold ${
+                  ref={(el) => {
+                    if (idx === scrollTargetIdx) scrollTargetRef.current = el;
+                    if (idx === 0) columnWidthRef.current = el;
+                  }}
+                  className={`w-16 min-w-16 shrink-0 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold ${
                     isToday
                       ? 'bg-teal-500 dark:bg-teal-600 text-white'
                       : 'text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800'
@@ -440,23 +456,42 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             rooms.filter((r) => r.id !== undefined).map((room) => {
               const roomGuests = getGuestsForRoom(room.id, room.name);
 
+              const parseLocalDate = (dateVal: any): Date => {
+                if (dateVal instanceof Date) {
+                  const d = new Date(dateVal);
+                  d.setHours(0, 0, 0, 0);
+                  return d;
+                }
+                const str = String(dateVal || '').split(' ')[0].split('T')[0];
+                const parts = str.split('-');
+                if (parts.length === 3) {
+                  const y = parseInt(parts[0], 10);
+                  const m = parseInt(parts[1], 10) - 1;
+                  const d = parseInt(parts[2], 10);
+                  return new Date(y, m, d, 0, 0, 0, 0);
+                }
+                const fallback = new Date(dateVal);
+                fallback.setHours(0, 0, 0, 0);
+                return fallback;
+              };
+
+              const getDaysDiff = (a: Date, b: Date): number => {
+                const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+                const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+                return Math.round((utcA - utcB) / (24 * 60 * 60 * 1000));
+              };
+
               // Filter guests overlapping the visible rolling window
               const activeWindowGuests = roomGuests.filter((guest) => {
-                const checkinDate = new Date(guest.checkinDate);
-                const checkoutDate = new Date(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate);
+                const checkinDate = parseLocalDate(guest.checkinDate);
+                const checkoutDate = parseLocalDate(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate);
                 return checkinDate <= windowEnd && checkoutDate >= windowStart;
               });
 
-              // OTA-synced blocks for THIS room specifically (Airbnb/Booking.com/
-              // etc via a connected iCal feed) that overlap the visible window -
-              // laid out in the exact same lane-packing pass as real guest
-              // bookings below (not a separate row), so a block can never
-              // visually collide with a real booking even if their dates
-              // happen to touch.
               const roomBlockedDates = blockedDates.filter((bd) => {
                 if (Number(bd.room_id) !== Number(room.id)) return false;
-                const start = new Date(bd.event_start.split(' ')[0].split('T')[0]);
-                const end = new Date(bd.event_end.split(' ')[0].split('T')[0]);
+                const start = parseLocalDate(bd.event_start);
+                const end = parseLocalDate(bd.event_end);
                 return start <= windowEnd && end >= windowStart;
               });
 
@@ -467,14 +502,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               const timelineItems: TimelineItem[] = [
                 ...activeWindowGuests.map((guest): TimelineItem => ({
                   kind: 'guest',
-                  start: new Date(guest.checkinDate),
-                  end: new Date(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate),
+                  start: parseLocalDate(guest.checkinDate),
+                  end: parseLocalDate(guest.expectedCheckout || guest.checkoutDate || guest.checkinDate),
                   guest,
                 })),
                 ...roomBlockedDates.map((bd): TimelineItem => ({
                   kind: 'ota',
-                  start: new Date(bd.event_start.split(' ')[0].split('T')[0]),
-                  end: new Date(bd.event_end.split(' ')[0].split('T')[0]),
+                  start: parseLocalDate(bd.event_start),
+                  end: parseLocalDate(bd.event_end),
                   label: bd.source_label || bd.source || t('ota_blocked_label', 'Blocked'),
                   tooltip: t('ota_blocked_tooltip', 'Blocked via {{source}} - not yet a booking in this system').replace('{{source}}', bd.source_label || bd.source || 'external calendar'),
                 })),
@@ -484,18 +519,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               timelineItems.sort((a, b) => a.start.getTime() - b.start.getTime());
 
               // Lane assignment algorithm for non-overlapping vertical alignment
-              const dayMs = 24 * 60 * 60 * 1000;
               const laneEndDates: Date[] = [];
               const timelineLanesInfo = timelineItems.map((item) => {
-                // Clamp to the visible window, then convert to a 1-indexed
-                // column position (matching the `(startCol - 1) * 64` pixel
-                // offset used below) - was previously the raw day-of-month
-                // number, now a position relative to windowStart since the
-                // window can span a month boundary.
                 const clampedStart = item.start < windowStart ? windowStart : item.start;
-                const clampedEnd = item.end > windowEnd ? new Date(windowEnd.getTime() + dayMs) : item.end;
-                const startCol = Math.round((clampedStart.getTime() - windowStart.getTime()) / dayMs) + 1;
-                const endCol = Math.round((clampedEnd.getTime() - windowStart.getTime()) / dayMs) + 1;
+                const clampedEnd = item.end > windowEnd ? new Date(windowEnd.getFullYear(), windowEnd.getMonth(), windowEnd.getDate() + 1) : item.end;
+                const startCol = getDaysDiff(clampedStart, windowStart) + 1;
+                const endCol = getDaysDiff(clampedEnd, windowStart) + 1;
 
                 const span = Math.max(1, endCol - startCol);
 
@@ -542,19 +571,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   style={{ height: `${dynamicHeight}px` }}
                 >
                   {/* Room Name */}
-                  <div className="w-24 min-w-[6rem] px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
+                  <div className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
                     {room.name}
                   </div>
 
                   {/* Days Grid - Background with diagonal stripes */}
-                  <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * 64}px`, minWidth: `${daysArray.length * 64}px` }}>
+                  <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
                     {daysArray.map((day) => {
                       const isToday = isSameDate(day, today);
                       return (
                         <div
                           key={`bg-${day.toISOString()}`}
-                          className={`w-16 border-r border-slate-100 dark:border-slate-700/50 transition ${
-                            isToday ? 'bg-teal-50/60 dark:bg-teal-900/15' : 'bg-white dark:bg-slate-800/30'
+                          className={`w-16 min-w-16 shrink-0 border-r border-slate-100 dark:border-slate-700/50 transition ${
+                            isToday ? 'bg-blue-50/60 dark:bg-blue-900/15' : 'bg-white dark:bg-slate-800/30'
                           }`}
                           style={{
                             backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(203, 213, 225, 0.08) 8px, rgba(203, 213, 225, 0.08) 16px)'
@@ -568,8 +597,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       {timelineLanesInfo.map((info, idx) => {
                         const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
                         const commonStyle = {
-                          left: `${(info.startCol - 1) * 64 + 3}px`,
-                          width: `${Math.max(48, info.span * 64 - 6)}px`,
+                          left: `${(info.startCol - 1) * columnWidth + 3}px`,
+                          width: `${Math.max(48, info.span * columnWidth - 6)}px`,
                           top: `${topOffset}px`,
                           height: `${capsuleHeight}px`,
                         };
@@ -578,7 +607,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           return (
                             <div
                               key={`ota-${idx}`}
-                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-500 dark:bg-slate-600 text-white pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
+                              className="px-2.5 rounded-md font-semibold cursor-help absolute bg-slate-700 dark:bg-slate-700 text-white border border-slate-600 pointer-events-auto shadow-xs flex items-center z-20 overflow-hidden"
                               style={commonStyle}
                               title={info.item.tooltip}
                             >

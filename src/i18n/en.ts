@@ -1,4 +1,4 @@
-﻿export const strings: Record<string, string> = {
+export const strings: Record<string, string> = {
   // Navigation / Sidebar Menu Keys (uniqueKey)
   dashboard: "Overview Dashboard",
   guest_registration: "Register New Guest",
@@ -1053,6 +1053,8 @@
   checkout_today_badge: "Checkout Today",
   upcoming_booking_badge: "Upcoming Booking",
   past_booking_badge: "Past Booking",
+  c_form_filed_badge: "C-Form Filed",
+  c_form_pending_badge: "C-Form Pending",
   no_contact: "No contact",
   same_day_stay: "Same day stay",
   tomorrow_label: "Tomorrow",
@@ -1142,14 +1144,14 @@
   proceed_handover_button: "Proceed Handover",
 
   // Login Page
-  login_subtitle: "Mobile & Passcode Terminal Login",
+  login_subtitle: "Hospitality & Resort Management Portal",
   mobile_username_label: "Mobile Number / Username",
-  mobile_number_placeholder: "10-digit Mobile Number",
-  pin_passcode_label: "6-Digit PIN Passcode",
-  forgot_password_link: "Forgot Password?",
+  mobile_number_placeholder: "10-digit mobile number",
+  pin_passcode_label: "6-Digit Security Passcode",
+  forgot_password_link: "Forgot Passcode?",
   authenticating_button: "Authenticating...",
-  login_button: "Log In",
-  login_footer_copyright: "Â© 2026 Ground Code Resort & Kitchen Management System",
+  login_button: "Sign In to Terminal",
+  login_footer_copyright: "© 2026 Ground Code. All rights reserved.",
   back_to_home_link: "Back to Home",
   forgot_passcode_title: "Forgot Your Passcode?",
   forgot_passcode_description: "Enter your mobile number and we'll email your login details to the address on file.",
@@ -1508,6 +1510,9 @@
   reserved_badge: "Reserved",
   financial_ledger_column: "Financial Ledger",
   bill_field: "Bill:",
+  adv_short_label: "Adv:",
+  paid_label: "Paid",
+  due_label: "Due",
   c_form_filing_column: "C-Form Filing",
   na_indian_national_label: "N/A (Indian National)",
   filed_badge: "Filed",

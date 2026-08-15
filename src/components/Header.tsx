@@ -237,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
 
-                <div className="header__dropdown-body max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
+                <div className="header__dropdown-body max-h-[calc(100vh-140px)] sm:max-h-[460px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
                   {/* 1. Kitchen Module Orders */}
                   {kitchenModuleEnabled && kitchenDisplayOrders.length > 0 && (
                     <div className="header__section header__section--kitchen p-3 space-y-2">

@@ -44,6 +44,8 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `payee_entities` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `staff_attendance` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `sync_interval` INT NOT NULL DEFAULT 0",
+        "ALTER TABLE `farm_utility_expenses` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         // Real fix (14 Aug 2026), not demo-only: staff_users.id is a
         // non-numeric string (e.g. "DEMO-abc123", "usr-1723..."), but
         // staff_attendance.user_id was declared int(11) - inserting any
@@ -208,11 +210,31 @@ function generateDemoData($pdo, $propertyId) {
         $windowDays = 37;
 
         // Generate bookings per room: ~70% occupancy, 6-9 stays, 2-5 nights each
+        // BUG (found 14 Aug 2026): only 15 names, cycled with % across up to 45
+        // total bookings (5 rooms x up to 9 stays each) - the same name (and
+        // since a room's nightly rate is fixed, often the same displayed
+        // price too) necessarily repeated multiple times across the
+        // property's calendar. Made it genuinely hard to tell two completely
+        // different stays apart at a glance, which read as a bug even when
+        // the underlying dates/status were correct. Expanded well past the
+        // realistic max (60 names for a 45-booking ceiling) and shuffled once
+        // per generate so every booking on the property gets its own unique
+        // name, with a different shuffle order each reset.
         $guestNames = [
             'Arjun Mehta', 'Priya Sharma', 'Rahul Verma', 'Sneha Kapoor', 'Vikram Singh',
             'Ananya Iyer', 'Karthik Reddy', 'Divya Nair', 'Rohan Joshi', 'Meera Pillai',
-            'Siddharth Rao', 'Kavya Menon', 'Aditya Varma', 'Pooja Bhatt', 'Varun Malhotra'
+            'Siddharth Rao', 'Kavya Menon', 'Aditya Varma', 'Pooja Bhatt', 'Varun Malhotra',
+            'Rajesh Nair', 'Sunita Rao', 'Manoj Pillai', 'Deepika Iyer', 'Vivek Menon',
+            'Anjali Reddy', 'Suresh Kumar', 'Neha Malhotra', 'Amit Sharma', 'Ritu Verma',
+            'Sanjay Kapoor', 'Pallavi Singh', 'Nikhil Joshi', 'Shreya Varma', 'Rohit Bhatt',
+            'Kiran Rao', 'Tanvi Mehta', 'Gaurav Nair', 'Isha Pillai', 'Abhishek Menon',
+            'Nandini Reddy', 'Pranav Kumar', 'Swati Malhotra', 'Harsh Sharma', 'Divya Verma',
+            'Yash Kapoor', 'Ritika Singh', 'Manish Joshi', 'Preeti Varma', 'Sameer Bhatt',
+            'Anushka Rao', 'Deepak Mehta', 'Kavita Nair', 'Rakesh Pillai', 'Simran Menon',
+            'Ajay Reddy', 'Meenal Kumar', 'Vikas Malhotra', 'Radhika Sharma', 'Naveen Verma',
+            'Sonal Kapoor', 'Tarun Singh', 'Payal Joshi', 'Karan Varma', 'Ishita Bhatt',
         ];
+        shuffle($guestNames);
 
         $allBookings = [];
         $nameIndex = 0;
@@ -642,12 +664,21 @@ function generateDemoData($pdo, $propertyId) {
         }
 
         foreach ($demoExpenses as $exp) {
-            $expId = 'EXP-' . uniqid();
+            // BUG (found 14 Aug 2026): the real Expenses page (get_petty_cash/
+            // add_petty_cash in this same file) reads and writes
+            // `farm_utility_expenses`, not `petty_cash` - the latter appears to
+            // be a dead/legacy table nothing else in the app actually uses
+            // (get_petty_cash only ever falls back to it if the
+            // farm_utility_expenses query itself throws, which it doesn't).
+            // So every demo property's Expenses page showed empty regardless
+            // of how much "petty cash" activity this seeded, since it was all
+            // landing in a table the page never reads. Seed the real table.
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO petty_cash (id, property_id, date, category, amount, description, vendor_name, approved_by, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Rajesh Kumar', 1)
+                INSERT INTO farm_utility_expenses (property_id, expense_date, category, description, amount, payment_mode, vendor_name, is_demo)
+                VALUES (?, ?, ?, ?, ?, 'Cash', ?, 1)
             ");
-            $stmt->execute([$expId, $propertyId, $exp['date'], $exp['category'], $exp['amount'], $exp['desc'], $exp['vendor']]);
+            $stmt->execute([$propertyId, $exp['date'], $exp['category'], $exp['desc'], $exp['amount'], $exp['vendor']]);
+            $expId = $pdo->lastInsertId();
 
             // Every real expense is also an accounting debit (see add_petty_cash
             // in petty_cash.php) - without this the P&L/Cash Flow never see a
@@ -730,7 +761,15 @@ function generateDemoData($pdo, $propertyId) {
             $type = rand(1, 100) <= 80 ? 'handover' : 'manual_adjustment';
             $staffPick = $demoUsers[array_rand($demoUsers)];
             $drawerAmount = rand(500, 8000);
-            $drawerStaffId = 'DEMO-CASH-' . uniqid();
+            // BUG (found 14 Aug 2026): this used to be a throwaway
+            // 'DEMO-CASH-'.uniqid() with no relation to any real staff_users
+            // row, so get_cash_drawer_summary's per-staff handover total
+            // (WHERE staff_id = <the real staff_users.id>, see
+            // petty_cash.php) could never match any of these rows - "Total
+            // Handed Over" silently showed ₹0 regardless of how much demo
+            // handover activity existed. Use the real id this staff member
+            // actually got from section 1 above instead.
+            $drawerStaffId = $demoUserIdsByName[$staffPick['name']] ?? ('DEMO-CASH-' . uniqid());
             $drawerNotes = $type === 'handover' ? 'End of shift handover' : 'Petty cash top-up';
             $drawerAt = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(18, 22), rand(0, 59));
             $stmt = $pdo->prepare("
@@ -764,17 +803,19 @@ function generateDemoData($pdo, $propertyId) {
         }
 
         // 6f. Demo Staff Attendance - every demo staff member gets a mark for
-        // (almost) every day in the past window, matching how attendance is
-        // actually kept in practice (marked daily, not bursty like purchase
-        // logs). Mostly Present, with a realistic scattering of Half Day/Paid
-        // Leave/Absent - Rajesh Kumar (Manager) marks everyone, including
-        // himself, same as a real property's shift lead would.
+        // (almost) every day over the past 14 days (today + prior 13), matching
+        // how attendance is actually kept in practice (marked daily, not bursty
+        // like purchase logs). Mostly Present, with a realistic scattering of
+        // Half Day/Paid Leave/Absent - statuses match the StaffManagement.tsx
+        // attendance grid exactly; "Unpaid Leave" was previously seeded but the
+        // UI doesn't render it (showed as an unmarked dash), so it's dropped.
+        // Rajesh Kumar (Manager) marks everyone, including himself, same as a
+        // real property's shift lead would.
         $attendanceStatusWeights = [
-            ['status' => 'Present', 'weight' => 78],
+            ['status' => 'Present', 'weight' => 80],
             ['status' => 'Half Day', 'weight' => 8],
             ['status' => 'Paid Leave', 'weight' => 7],
             ['status' => 'Absent', 'weight' => 5],
-            ['status' => 'Unpaid Leave', 'weight' => 2],
         ];
         $pickAttendanceStatus = function () use ($attendanceStatusWeights) {
             $roll = rand(1, 100);
@@ -789,7 +830,8 @@ function generateDemoData($pdo, $propertyId) {
             INSERT IGNORE INTO staff_attendance (property_id, attendance_date, user_id, staff_name, status, marked_by, is_demo)
             VALUES (?, ?, ?, ?, ?, 'Rajesh Kumar', 1)
         ");
-        for ($d = clone $windowStart; $d <= $today; $d->modify('+1 day')) {
+        $attendanceWindowStart = (clone $today)->modify('-13 days');
+        for ($d = clone $attendanceWindowStart; $d <= $today; $d->modify('+1 day')) {
             // A day off here and there for the whole property (skeleton
             // crew / quiet day) - not literally every single staff member
             // marked every single day, which would look too mechanically
@@ -814,6 +856,8 @@ function generateDemoData($pdo, $propertyId) {
         $otaWindowStart = (clone $today)->modify('-20 days');
         $otaWindowEnd = (clone $today)->modify('+30 days');
 
+        $guestNames = ['John Doe', 'Jane Smith', 'Priya Sharma', 'Carlos Mendez', 'Aisha Patel', 'Liam O\'Brien'];
+
         foreach ($otaRooms as $otaRoom) {
             $otaRoomId = $otaRoom['id'];
             if (!$otaRoomId) continue;
@@ -827,10 +871,11 @@ function generateDemoData($pdo, $propertyId) {
             $feeds = [
                 [
                     'service_type' => 'airbnb',
+                    'channel' => 'Airbnb',
+                    'sync_interval' => 15,
                     'service_name' => 'Airbnb - ' . $otaRoom['name'],
                     'ical_url' => 'https://www.airbnb.com/calendar/ical/' . rand(10000000, 99999999) . '.ics?s=' . substr(md5('airbnb' . $otaRoomId), 0, 32),
                     'uid_suffix' => '@airbnb.com',
-                    'event_title' => 'Reserved',
                 ],
                 [
                     // enum('google','airbnb','ical','other') has no distinct
@@ -840,10 +885,11 @@ function generateDemoData($pdo, $propertyId) {
                     // ical_sync.php), so 'ical' here still reads correctly
                     // as "Booking.com" throughout the UI.
                     'service_type' => 'ical',
+                    'channel' => 'Booking.com',
+                    'sync_interval' => 30,
                     'service_name' => 'Booking.com - ' . $otaRoom['name'],
                     'ical_url' => 'https://ical.booking.com/v1/export?t=' . substr(md5('booking' . $otaRoomId), 0, 8) . '-' . substr(md5('booking2' . $otaRoomId), 0, 4) . '-' . substr(md5('booking3' . $otaRoomId), 0, 4) . '-' . substr(md5('booking4' . $otaRoomId), 0, 12),
                     'uid_suffix' => '@booking.com',
-                    'event_title' => 'CLOSED - Not available',
                 ],
             ];
 
@@ -851,10 +897,10 @@ function generateDemoData($pdo, $propertyId) {
                 $lastSyncAt = (clone $today)->modify('-' . rand(0, 6) . ' hours')->format('Y-m-d H:i:s');
                 $syncCount = rand(15, 60);
                 $configStmt = $pdo->prepare("
-                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, last_sync, sync_count, is_demo)
-                    VALUES (?, ?, ?, ?, 1, 'import', ?, ?, 1)
+                    INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_interval, sync_enabled, sync_direction, last_sync, sync_count, is_demo)
+                    VALUES (?, ?, ?, ?, ?, 1, 'import', ?, ?, 1)
                 ");
-                $configStmt->execute([$otaRoomId, $feed['service_type'], $feed['service_name'], $feed['ical_url'], $lastSyncAt, $syncCount]);
+                $configStmt->execute([$otaRoomId, $feed['service_type'], $feed['service_name'], $feed['ical_url'], $feed['sync_interval'], $lastSyncAt, $syncCount]);
                 $syncConfigId = $pdo->lastInsertId();
 
                 // 2-3 blocked ranges, each checked against every existing
@@ -886,13 +932,14 @@ function generateDemoData($pdo, $propertyId) {
 
                     $placedRanges[] = ['start' => $blockStart, 'end' => $blockEnd];
                     $externalId = 'demo-' . uniqid() . '-' . $syncConfigId . $feed['uid_suffix'];
+                    $eventTitle = $feed['channel'] . ' Reservation - ' . $guestNames[array_rand($guestNames)];
                     $eventData = json_encode(['source' => $feed['service_type'], 'source_label' => $feed['service_name']]);
                     $eventStmt = $pdo->prepare("
                         INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)
                         VALUES (?, ?, ?, ?, ?, ?, 'synced')
                     ");
                     $eventStmt->execute([
-                        $syncConfigId, $externalId, $feed['event_title'],
+                        $syncConfigId, $externalId, $eventTitle,
                         $blockStart->format('Y-m-d 00:00:00'), $blockEnd->format('Y-m-d 00:00:00'),
                         $eventData,
                     ]);
@@ -1119,8 +1166,15 @@ function clearDemoData($pdo, $propertyId) {
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
-        // Delete demo petty cash entries
+        // Delete demo petty cash entries - legacy table, nothing writes here
+        // anymore (see the 14 Aug 2026 note in generateDemoData), kept only
+        // to clean up any rows a pre-fix run left behind.
         $stmt = $pdo->prepare("DELETE FROM petty_cash WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo expenses (the real table the Expenses page actually reads)
+        $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE property_id = ? AND is_demo = 1");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 

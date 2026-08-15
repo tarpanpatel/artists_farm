@@ -435,18 +435,37 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 $summaries = [];
                 foreach ($staffMembers as $s) {
                     $staffId = $s['id'];
-                    $staffName = $s['username'];
+                    // BUG (found 14 Aug 2026): this was $s['username'] (the
+                    // login, e.g. a phone number) - but every place that
+                    // actually WRITES advance_received_by/pending_received_by/
+                    // food_received_by/vendor_name (e.g. BookingDetailsModal.tsx's
+                    // "Advance Received By" dropdown: `staff.filter(isFinancialHandler)
+                    // .map(s => ({ value: s.name, ... }))`) stores the staff
+                    // member's full NAME, never their username. Steps 2 and 3
+                    // below compare against this value, so they could never
+                    // match anyone - "Total Cash Collected" silently showed ₹0
+                    // for every property, real or demo, regardless of how much
+                    // cash staff had actually collected.
+                    $staffName = $s['full_name'] ?: $s['username'];
 
                     // Step 2: Cash collected from guests (advance + pending + food)
+                    // BUG (found 14 Aug 2026): only ever matched the LEGACY
+                    // status string ('CheckedOut', no space) - a real checkout
+                    // (see guests.php's checkout handler) writes
+                    // GUEST_STATUS_CHECKED_OUT ('Checked Out', with a space)
+                    // instead, so this has been silently returning 0 for
+                    // every property's actual checkouts, not just demo data.
+                    // Check both so genuinely-old rows still written with the
+                    // legacy value keep counting too.
                     $cashIn = 0;
                     try {
                         $sqlIn = "SELECT
                             COALESCE(SUM(CASE WHEN advance_received_by = :name THEN advance_paid ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN pending_received_by = :name2 THEN pending_amount ELSE 0 END), 0) +
                             COALESCE(SUM(CASE WHEN food_received_by = :name3 THEN total_food ELSE 0 END), 0) as total_cash_in
-                             FROM guests WHERE status = :status AND property_id = :property_id";
+                             FROM guests WHERE status IN (:status, :status_legacy) AND property_id = :property_id";
                         $stmtIn = $pdo->prepare($sqlIn);
-                        $stmtIn->execute([':status' => GUEST_STATUS_CHECKEDOUT_LEGACY, ':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName, ':property_id' => $propertyId]);
+                        $stmtIn->execute([':status' => GUEST_STATUS_CHECKED_OUT, ':status_legacy' => GUEST_STATUS_CHECKEDOUT_LEGACY, ':name' => $staffName, ':name2' => $staffName, ':name3' => $staffName, ':property_id' => $propertyId]);
                         $cashIn = (float)$stmtIn->fetchColumn();
                     } catch (PDOException $e) {}
 

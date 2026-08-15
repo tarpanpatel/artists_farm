@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -338,13 +338,27 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
             </button>
           </div>
 
-          <div className="pt-4 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="px-2.5 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{t('logged_in_as_label', 'Logged in as')}</p>
-              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                {/^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername}
-              </p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">{activeRole}</p>
+          <div className="pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
+                <UserRound className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                  {(() => {
+                    if (typeof window !== 'undefined') {
+                      try {
+                        const raw = localStorage.getItem('artists_farm_user_session');
+                        if (raw) {
+                          const parsed = JSON.parse(raw);
+                          if (parsed?.name) return parsed.name;
+                        }
+                      } catch (e) {}
+                    }
+                    return /^\+?\d{7,15}$/.test((displayUsername || '').replace(/[\s-]/g, '')) ? 'Root Admin' : displayUsername;
+                  })()}
+                </div>
+              </div>
             </div>
             <button
               onClick={handleLogout}

@@ -9,7 +9,6 @@ import {
   Globe,
   Clock,
   CheckCircle2,
-  Share2,
   ShieldCheck,
   Search,
   Layers} from 'lucide-react';
@@ -738,7 +737,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
                         onClick={() => copyToClipboard(roomExportUrl, room.id)}
                         className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition text-[11px] cursor-pointer"
                       >
-                        {isCopied ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
+                        {copiedUrls.has(room.id) ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
                       </button>
                     </div>
                   </div>

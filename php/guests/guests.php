@@ -108,12 +108,22 @@ function validateGuestIdOrRespond($value, string $fieldName = 'id') {
 // demo property on every request) and only ever touches is_demo=1 rows - a
 // real tenant's real checkout is a real business event a human performs, not
 // something this should ever silently flip.
+//
+// Checkout cutoff is noon on the checkout date, not midnight (found 14 Aug
+// 2026): expected_checkout is stored as that date's 00:00:00, so a plain
+// `<= NOW()` comparison flipped a guest to Checked Out the instant the clock
+// ticked past midnight on their own checkout day - showing them as already
+// gone at 1am while they're presumably still asleep in the room. Real
+// hospitality checkout convention is "by noon", so add 12 hours before
+// comparing: a guest checking out today stays Checked In until noon today,
+// then flips - matching how a prospective client would actually expect a
+// running property to look, not just "date has changed".
 function reconcileDemoGuestStatuses($pdo, $propertyId) {
     try {
         $pdo->prepare("
             UPDATE guests
             SET status = ?
-            WHERE property_id = ? AND is_demo = 1 AND status = ? AND expected_checkout <= NOW()
+            WHERE property_id = ? AND is_demo = 1 AND status = ? AND (expected_checkout + INTERVAL 12 HOUR) <= NOW()
         ")->execute([GUEST_STATUS_CHECKED_OUT, $propertyId, GUEST_STATUS_CHECKED_IN]);
     } catch (PDOException $e) {}
 }

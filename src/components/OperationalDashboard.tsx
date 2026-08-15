@@ -313,7 +313,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
       <div className={`operational-dashboard__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
         {/* Arrivals Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--arrivals bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--arrivals stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-blue-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/35 text-blue-600 dark:text-blue-400 shrink-0">
               <Calendar className="w-5 h-5" />
@@ -321,23 +321,23 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Arrivals:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysArrivalsCount}</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{todaysArrivalsCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking in today</span>
               </div>
             </div>
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
             title="View Bookings"
           >
             <span>Bookings</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
 
         {/* Departures Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--departures bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--departures stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-amber-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
               <LogOut className="w-5 h-5" />
@@ -345,24 +345,24 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Departures:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{todaysDeparturesCount}</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{todaysDeparturesCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">checking out today</span>
               </div>
             </div>
           </div>
           <button
             onClick={() => onNavigate('guests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
             title="View Bookings"
           >
             <span>Bookings</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
 
         {/* Guests in-house Block (Only for multi-key property) */}
         {isMultiKeyProperty && (
-          <div className="operational-dashboard__metric operational-dashboard__metric--inhouse bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+          <div className="operational-dashboard__metric operational-dashboard__metric--inhouse stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-emerald-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/35 text-emerald-600 dark:text-emerald-400 shrink-0">
                 <User className="w-5 h-5" />
@@ -370,24 +370,24 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Guests In-House:</span>
-                  <span className="text-sm font-extrabold text-slate-900 dark:text-white">{inHouseCount}</span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{inHouseCount}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active guests</span>
                 </div>
               </div>
             </div>
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Bookings"
             >
               <span>Guests</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           </div>
         )}
 
         {/* Service Requests Block */}
-        <div className="operational-dashboard__metric operational-dashboard__metric--service-requests bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+        <div className="operational-dashboard__metric operational-dashboard__metric--service-requests stat-card-elevated bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-rose-500 shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
               <Bell className="w-5 h-5" />
@@ -395,18 +395,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Service Requests:</span>
-                <span className="text-sm font-extrabold text-slate-900 dark:text-white">{pendingRequestsCount}</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{pendingRequestsCount}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 truncate">active requests</span>
               </div>
             </div>
           </div>
           <button
             onClick={() => onNavigate('service_requests')}
-            className="operational-dashboard__metric-action px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            className="operational-dashboard__metric-action px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
             title="View Service Requests"
           >
             <span>Requests</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
       </div>

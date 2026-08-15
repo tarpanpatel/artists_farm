@@ -1,15 +1,15 @@
-# Auto-Seeding Code Audit
+﻿# Auto-Seeding Code Audit
 
 **Date:** 2026-08-02  
-**Status:** ✅ Documented
+**Status:** âœ… Documented
 
 This document lists all locations where the system automatically inserts default/demo data.
 
 ---
 
-## 1. **REMOVED: Stock Requisitions** ❌ DELETED
+## 1. **REMOVED: Stock Requisitions** âŒ DELETED
 **File:** `php/inventory/inventory.php:69-77`  
-**Status:** ✅ REMOVED  
+**Status:** âœ… REMOVED  
 **What was inserted:**
 - 3 default stock requisition entries (IDs: 1166, 1165, 1164)
 - Items: Green Pea, Hari Mirchi, Black Pepper, Basmati Rice, Ajino Moto
@@ -25,7 +25,7 @@ This document lists all locations where the system automatically inserts default
 **Type:** Function include (not data insertion)  
 **What:** Loads `php/seed/default_expenses.php` which contains 20 expense categories + 160+ items  
 **When:** When MultiKey properties are created or when expense items are requested  
-**Impact:** ✅ **INTENDED** - System default expenses should populate for all MultiKey properties
+**Impact:** âœ… **INTENDED** - System default expenses should populate for all MultiKey properties
 
 ---
 
@@ -44,7 +44,7 @@ This document lists all locations where the system automatically inserts default
 **What:** Creates seed guest records:
 - 3 demo guests with check-in dates, room numbers, etc.  
 **Condition:** When `get_guests` is called and table structure needs initialization  
-**Impact:** ⚠️ **ISSUE** - New properties get 3 fake guest records
+**Impact:** âš ï¸ **ISSUE** - New properties get 3 fake guest records
 
 **Demo Guests:**
 ```php
@@ -62,7 +62,7 @@ This document lists all locations where the system automatically inserts default
 **Type:** Conditional seeding  
 **What:** Creates seed kitchen orders and order items  
 **Condition:** When `get_orders` is called  
-**Impact:** ⚠️ **ISSUE** - New properties get 3 fake orders + items
+**Impact:** âš ï¸ **ISSUE** - New properties get 3 fake orders + items
 
 **Demo Orders:**
 - Order 1001: Butter Chicken (2x), Garlic Naan (3x)
@@ -75,7 +75,7 @@ This document lists all locations where the system automatically inserts default
 **File:** `php/kitchen/orders.php:32-44` (inside order seeding)  
 **Type:** Conditional seeding  
 **What:** Creates seed menu items  
-**Impact:** ⚠️ **ISSUE** - Menu gets pre-populated with items
+**Impact:** âš ï¸ **ISSUE** - Menu gets pre-populated with items
 
 ---
 
@@ -91,7 +91,7 @@ This document lists all locations where the system automatically inserts default
 - Eve Davis (Assistant, Active)
 ```
 **Condition:** Only in testing mode  
-**Impact:** ✅ **SAFE** - Only in test mode
+**Impact:** âœ… **SAFE** - Only in test mode
 
 ---
 
@@ -100,7 +100,7 @@ This document lists all locations where the system automatically inserts default
 **Type:** Conditional seeding (test-mode only)  
 **What:** Creates 3 demo payees  
 **Condition:** Only in testing mode  
-**Impact:** ✅ **SAFE** - Only in test mode
+**Impact:** âœ… **SAFE** - Only in test mode
 
 ---
 
@@ -109,7 +109,7 @@ This document lists all locations where the system automatically inserts default
 **Type:** Conditional seeding (test-mode only)  
 **What:** Creates demo attendance logs  
 **Condition:** Only in testing mode  
-**Impact:** ✅ **SAFE** - Only in test mode
+**Impact:** âœ… **SAFE** - Only in test mode
 
 ---
 
@@ -125,7 +125,7 @@ This document lists all locations where the system automatically inserts default
 - Spices & Seasonings
 ```
 **Condition:** When inventory is accessed and categories table is empty  
-**Impact:** ✅ **INTENDED** - Kitchen categories should exist
+**Impact:** âœ… **INTENDED** - Kitchen categories should exist
 
 ---
 
@@ -133,9 +133,9 @@ This document lists all locations where the system automatically inserts default
 **File:** `php/config/database.php:64-85`  
 **Type:** One-time setup (INSERT IGNORE)  
 **What:** Creates 2 default properties (if they don't exist):
-- 'Artists Farm Jaipur' (slug: jaipur)
-- 'Artists Farm Goa' (slug: goa)
-**Impact:** ✅ **SAFE** - Uses INSERT IGNORE, won't overwrite existing
+- 'Ground Code Jaipur' (slug: jaipur)
+- 'Ground Code Goa' (slug: goa)
+**Impact:** âœ… **SAFE** - Uses INSERT IGNORE, won't overwrite existing
 
 ---
 
@@ -146,7 +146,7 @@ This document lists all locations where the system automatically inserts default
 ```php
 INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, 'kitchen', 1)
 ```
-**Impact:** ✅ **INTENDED** - Kitchen should be enabled by default
+**Impact:** âœ… **INTENDED** - Kitchen should be enabled by default
 
 ---
 
@@ -154,7 +154,7 @@ INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, '
 **File:** `php/api/router.php:362`  
 **Type:** On property creation  
 **What:** Creates Super Admin staff user for new property  
-**Impact:** ✅ **INTENDED** - Property needs admin user
+**Impact:** âœ… **INTENDED** - Property needs admin user
 
 ---
 
@@ -162,21 +162,21 @@ INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, '
 
 | Type | File | Data | Status | Impact |
 |------|------|------|--------|--------|
-| Stock Requisitions | inventory.php | 3 fake orders | ❌ REMOVED | Clean |
-| Guests | guests.php | 3 demo guests | ⚠️ REVIEW | Messy |
-| Kitchen Orders | orders.php | 3 demo orders | ⚠️ REVIEW | Messy |
-| Kitchen Menu | orders.php | Items | ⚠️ REVIEW | Messy |
-| Staff Users | staff.php | 5 users | ✅ TEST ONLY | Safe |
-| Payees | staff.php | 3 payees | ✅ TEST ONLY | Safe |
-| Attendance | staff.php | Logs | ✅ TEST ONLY | Safe |
-| Inventory Categories | inventory.php | 5 categories | ✅ INTENDED | Good |
-| Default Properties | database.php | 2 properties | ✅ SAFE | Good |
-| Property Modules | router.php | Kitchen enabled | ✅ INTENDED | Good |
-| Admin User | router.php | Super Admin | ✅ INTENDED | Good |
+| Stock Requisitions | inventory.php | 3 fake orders | âŒ REMOVED | Clean |
+| Guests | guests.php | 3 demo guests | âš ï¸ REVIEW | Messy |
+| Kitchen Orders | orders.php | 3 demo orders | âš ï¸ REVIEW | Messy |
+| Kitchen Menu | orders.php | Items | âš ï¸ REVIEW | Messy |
+| Staff Users | staff.php | 5 users | âœ… TEST ONLY | Safe |
+| Payees | staff.php | 3 payees | âœ… TEST ONLY | Safe |
+| Attendance | staff.php | Logs | âœ… TEST ONLY | Safe |
+| Inventory Categories | inventory.php | 5 categories | âœ… INTENDED | Good |
+| Default Properties | database.php | 2 properties | âœ… SAFE | Good |
+| Property Modules | router.php | Kitchen enabled | âœ… INTENDED | Good |
+| Admin User | router.php | Super Admin | âœ… INTENDED | Good |
 
 ---
 
-## ⚠️ Issues Requiring Fix
+## âš ï¸ Issues Requiring Fix
 
 ### Issue 1: Guest Records Auto-Seeding
 **File:** `php/guests/guests.php:13-44`  
@@ -195,16 +195,16 @@ INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, '
 
 ---
 
-## ✅ Fixed
+## âœ… Fixed
 
-- ✅ **Stock Requisitions** - REMOVED (section 1)
-- ✅ **Guest Records** - REMOVED (section 4)  
-- ✅ **Kitchen Orders** - REMOVED (section 5)
-- ✅ **Kitchen Menu Items** - REMOVED (section 6)
+- âœ… **Stock Requisitions** - REMOVED (section 1)
+- âœ… **Guest Records** - REMOVED (section 4)  
+- âœ… **Kitchen Orders** - REMOVED (section 5)
+- âœ… **Kitchen Menu Items** - REMOVED (section 6)
 
 ---
 
-## 📋 Action Summary
+## ðŸ“‹ Action Summary
 
 **Files Modified:**
 1. `php/inventory/inventory.php` - Removed stock requisition seeding
@@ -212,5 +212,6 @@ INSERT INTO property_modules (property_id, module_slug, is_enabled) VALUES (?, '
 3. `php/kitchen/orders.php` - Removed 11 demo orders + 25 order items
 
 **Result:** 
-✅ New properties now start completely clean with **zero demo/fake data**
+âœ… New properties now start completely clean with **zero demo/fake data**
+
 

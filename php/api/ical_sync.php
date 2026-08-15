@@ -17,15 +17,33 @@ class ICalSyncManager {
     // every property's connected feeds (IDs included) to every other property's
     // iCal Sync Manager page, which also made the unscoped update/delete/test
     // actions below exploitable by ID once a client had seen a foreign ID here.
+    //
+    // BUG (found 14 Aug 2026): a MULTI_KEY parent's own iCal Sync Manager page
+    // always showed "0 Connected Feeds" even when every one of its rooms had
+    // real feeds connected - each room is its own row in `properties` and a
+    // feed is always connected to one specific room (see createICalSync),
+    // never to the parent directly, but this query only ever matched the
+    // exact id it was called with. getBlockedDates() below already expands a
+    // parent to include its rooms for the calendar's sake; do the same here
+    // so the management list a user actually sees when they open "iCal Sync"
+    // from the parent property isn't just permanently empty.
     public function getICalSyncs($propertyId) {
+        $scopeIds = [(int)$propertyId];
+        $roomStmt = $this->pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+        $roomStmt->execute([$propertyId]);
+        foreach ($roomStmt->fetchAll(PDO::FETCH_COLUMN) as $roomId) {
+            $scopeIds[] = (int)$roomId;
+        }
+        $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+
         $query = "SELECT sc.*, p.name as property_name
                   FROM ical_sync_configs sc
                   LEFT JOIN properties p ON sc.property_id = p.id
-                  WHERE sc.property_id = :property_id
+                  WHERE sc.property_id IN ($placeholders)
                   ORDER BY sc.created_at DESC";
 
         $stmt = $this->pdo->prepare($query);
-        $stmt->execute([':property_id' => $propertyId]);
+        $stmt->execute($scopeIds);
         $syncs = $stmt->fetchAll();
         return ['status' => 'success', 'data' => $syncs];
     }

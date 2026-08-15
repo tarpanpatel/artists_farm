@@ -140,7 +140,7 @@ try {
             $_SESSION['is_platform_admin'] = $is_platform_admin;
             $_SESSION['default_tenant_id'] = $user['default_tenant_id'] ?? null;
 
-            setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+            appSetSessionCookie(session_id());
             $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
             echo json_encode([
@@ -212,7 +212,7 @@ try {
                 // Deliberately not setting $_SESSION['property_id'] here - see
                 // access_control.php.
 
-                setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                appSetSessionCookie(session_id());
                 $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                 echo json_encode([
@@ -237,7 +237,7 @@ try {
             $_SESSION['role'] = $staff['role'] ?: 'Staff';
             $_SESSION['property_id'] = $staff['property_id'];
 
-            setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+            appSetSessionCookie(session_id());
             $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
             echo json_encode([
@@ -268,7 +268,7 @@ try {
         $_SESSION['role'] = 'root_admin';
         $_SESSION['is_platform_admin'] = true;
 
-        setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+        appSetSessionCookie(session_id());
         $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
         echo json_encode([

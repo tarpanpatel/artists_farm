@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from 'react-data-table-component';
 import {
   Calendar,
   CheckCircle2,
@@ -8,6 +9,9 @@ import {
   Building,
   Plus,
   ArrowRight,
+  Phone,
+  Home,
+  Loader2,
 } from 'lucide-react';
 import { Guest, BillingReceipt } from '../types';
 import { t } from '../i18n/en';
@@ -19,7 +23,8 @@ import { useToast } from './ToastContext';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateDDMMYY } from '../utils/dateUtils';
+import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
   guests: Guest[];
@@ -72,6 +77,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const [guestForReceipt, setGuestForReceipt] = useState<Guest | null>(null);
   const [modalMode, setModalMode] = useState<'edit-only' | 'edit-and-checkout'>('edit-only');
   const [selectedGuestForDetails, setSelectedGuestForDetails] = useState<Guest | null>(null);
+  const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -329,6 +335,22 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     setSelectedGuestForDetails(guest);
   };
 
+  // C-Form filing toggle for the Past Bookings table (moved here from the
+  // removed GuestHistory/"Past Guests" page - same API call, same instant-
+  // mutate-then-bubble-up pattern BookingDetailsModal already uses).
+  const handleToggleCForm = async (guest: Guest, newFiledState: boolean) => {
+    setSavingCFormId(guest.id);
+    const ok = await markCFormFiled(guest.id, newFiledState);
+    if (ok) {
+      const filedAt = newFiledState ? new Date().toISOString() : null;
+      onUpdateGuest?.({ ...guest, cFormFiledAt: filedAt });
+      showToast(newFiledState ? `C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
+    } else {
+      showToast('Failed to update C-Form status', { type: 'error' });
+    }
+    setSavingCFormId(null);
+  };
+
   // Handle edit and checkout
   const handleEditAndCheckoutGuest = (guest: Guest) => {
     setGuestForReceipt(guest);
@@ -371,25 +393,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         return (
           <div
             key={`${group.roomId}-${group.roomSlug}`}
-            className="billing-checkout__room-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between"
+            className="billing-checkout__room-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between"
           >
             {/* Room Header */}
-            <div className="billing-checkout__room-card-header bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-slate-700 dark:to-slate-700/50 px-4 py-3 border-b border-blue-200/60 dark:border-slate-600 flex justify-between items-center">
+            <div className="billing-checkout__room-card-header bg-slate-50 dark:bg-slate-800/80 px-4 py-3 border-b border-slate-200/80 dark:border-slate-700 flex justify-between items-center">
               <div className="min-w-0 flex-1">
-                <h3 className="billing-checkout__room-card-title text-base font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                  <Building className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                  <Building className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
                   {group.roomName}
                 </h3>
-                <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                   {roomStatusLabel}
                 </p>
               </div>
               {(() => {
                 const groupTotal = group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0);
-                // Same "Refund Due" relabeling as the per-guest card below -
-                // a raw negative number here read as a bug, not a refund.
                 return (
-                  <span className="summary-line summary-line--group-total text-[11px] font-semibold bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-full border border-blue-200 dark:border-slate-600 shrink-0 shadow-2xs">
+                  <span className="summary-line summary-line--group-total text-xs font-bold tabular-nums bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs">
                     {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
                   </span>
                 );
@@ -397,7 +417,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             </div>
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className="billing-checkout__room-card-body p-4 space-y-4">
+            <div className="billing-checkout__room-card-body p-3.5 space-y-3.5">
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
@@ -408,7 +428,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 return (
                   <div
                     key={guest.id}
-                    className="billing-checkout__guest-card bg-slate-50/80 dark:bg-slate-900/50 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-400 dark:hover:border-blue-500/50 transition-all flex flex-col justify-between space-y-3"
+                    className="billing-checkout__guest-card bg-slate-50/70 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 transition-all flex flex-col justify-between space-y-3"
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
@@ -421,16 +441,38 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             {guest.phoneNumber || t('no_contact', 'No contact')}
                           </p>
                         </div>
-                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
                           {stayStatus.label}
                         </span>
                       </div>
 
+                      {/* C-Form Filing Status - foreign guests only (regulatory: Foreigner
+                          Registration Office reporting). Was previously only visible on the
+                          removed "Past Guests" archive page; the actual filing toggle lives in
+                          BookingDetailsModal (Edit Booking), this is just the at-a-glance
+                          indicator so a pending filing isn't only discoverable by opening every
+                          card one by one. */}
+                      {guest.isForeignGuest && (
+                        <div className="mt-1.5">
+                          {guest.cFormFiledAt ? (
+                            <Badge variant="success" size="sm">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {t('c_form_filed_badge', 'C-Form Filed')}
+                            </Badge>
+                          ) : (
+                            <Badge variant="warning" size="sm">
+                              <AlertCircle className="w-3 h-3" />
+                              {t('c_form_pending_badge', 'C-Form Pending')}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
                       {/* Stay Dates */}
                       <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
-                          <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span className="inline-flex items-center gap-1">{formatDate(guest.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatDate(guest.expectedCheckout)}</span>
+                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="inline-flex items-center gap-1 tabular-nums">{formatDate(guest.checkinDate)} <ArrowRight className="w-3 h-3 text-slate-400" /> {formatDate(guest.expectedCheckout)}</span>
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
                           {nightsDisplay}
@@ -443,26 +485,26 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       {(guest.totalAmount || guest.roomRate) ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="summary-line summary-line--room-rate font-semibold text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
+                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
                         </div>
                       ) : null}
                       {guest.foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="summary-line summary-line--food-bill font-semibold text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
+                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
                         </div>
                       )}
                       {guest.advanceAmount > 0 && (
-                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400 text-[11px]">
+                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
-                          <span className="summary-line summary-line--advance-paid font-semibold">-₹{guest.advanceAmount.toFixed(2)}</span>
+                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-₹{guest.advanceAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                        <span className="text-slate-700 dark:text-slate-300">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">
                           {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
                         </span>
-                        <span className={`summary-line summary-line--amount-due ${amountDue > 0 ? "text-amber-600 dark:text-amber-400 text-sm" : "text-emerald-600 dark:text-emerald-400 text-sm"}`}>
+                        <span className="summary-line summary-line--amount-due font-bold text-slate-900 dark:text-white text-sm tabular-nums">
                           ₹{Math.abs(amountDue).toFixed(2)}
                         </span>
                       </div>
@@ -474,15 +516,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
                           {t('edit_button', 'Edit')}
                         </button>
                         <button
                           onClick={() => handleEditAndCheckoutGuest(guest)}
                           disabled={isProcessing}
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           {t('checkout_button', 'Checkout')}
@@ -493,9 +535,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <button
                           onClick={() => handleEditGuest(guest)}
                           disabled={isProcessing}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs cursor-pointer"
+                          className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
                           {t('edit_booking_button', 'Edit Booking')}
                         </button>
                       </div>
@@ -503,9 +545,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
                     {/* Guest Notes */}
                     {guest.notes && (
-                      <div className="p-2 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg flex gap-1.5 text-[10px]">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                        <p className="text-amber-800 dark:text-amber-200 line-clamp-2">
+                      <div className="p-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg flex gap-1.5 text-[10px]">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
                           <span className="font-semibold">{t('notes_prefix', 'Notes:')}</span> {guest.notes}
                         </p>
                       </div>
@@ -519,6 +561,158 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       })}
     </div>
   );
+
+  // Past Bookings: a flat searchable/sortable/paginated table (matching the
+  // removed "Past Guests" archive page's format) rather than the room-grid
+  // cards Today/Upcoming use - once a stay is history, scanning/sorting a
+  // large flat list beats hunting through per-room cards, and this is also
+  // where C-Form filing status needs to be visible at a glance across every
+  // past guest at once, not one room-card at a time.
+  const pastBookingsTableStyles = {
+    subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+    headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+    headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+    cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+    rows: { style: { minHeight: '52px' } },
+  };
+
+  const pastBookingsColumns = [
+    {
+      name: t('guest_details_column', 'Guest Details'),
+      selector: (row: Guest) => row.guestName,
+      sortable: true,
+      grow: 2,
+      cell: (row: Guest) => (
+        <div className="flex flex-col py-2">
+          <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+            <span>{row.guestName}</span>
+            {row.isForeignGuest && (
+              <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 rounded-sm">
+                {t('passport_badge', 'Passport')}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+            <Phone className="w-3 h-3 text-slate-400" />
+            <span>{row.phoneNumber || t('no_contact', 'No contact')}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: t('stay_dates_column', 'Stay Dates'),
+      selector: (row: Guest) => row.checkinDate,
+      sortable: true,
+      grow: 2,
+      cell: (row: Guest) => (
+        <div className="flex flex-col py-2">
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <span className="text-[10px] uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1 py-0.5 rounded-sm">{t('checkin_badge', 'IN')}</span>
+            <span>{formatDateDDMMYY(row.checkinDate)}</span>
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
+            <span className="text-[10px] uppercase text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1 py-0.5 rounded-sm">{t('checkout_badge', 'OUT')}</span>
+            <span>{formatDateDDMMYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: t('cottage_room_column', 'Cottage / Room'),
+      selector: (row: Guest) => row.roomNumber,
+      sortable: true,
+      grow: 1,
+      cell: (row: Guest) => (
+        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+          <Home className="w-3.5 h-3.5 text-slate-400" />
+          <span>{row.roomNumber || t('unassigned_label', 'Unassigned')}</span>
+        </div>
+      ),
+    },
+    {
+      name: t('stay_status_column', 'Stay Status'),
+      selector: (row: Guest) => row.status,
+      sortable: true,
+      width: '130px',
+      cell: (row: Guest) => {
+        const status = getGuestStayStatus(row);
+        return (
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${status.color}`}>
+            {status.label}
+          </span>
+        );
+      },
+    },
+    {
+      name: t('financial_ledger_column', 'Financial Ledger'),
+      selector: (row: Guest) => calculateGuestTotal(row),
+      sortable: true,
+      grow: 2,
+      cell: (row: Guest) => (
+        <div className="flex flex-col py-2">
+          <div className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
+            <span>{t('bill_field', 'Bill:')}</span>
+            <span className="text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap gap-x-2">
+            <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
+            <span>•</span>
+            <span className={calculateGuestTotal(row) <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-amber-600 dark:text-amber-400 font-semibold'}>
+              {calculateGuestTotal(row) <= 0 ? t('paid_label', 'Paid') : t('due_label', 'Due')}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: t('c_form_filing_column', 'C-Form Filing'),
+      selector: (row: Guest) => row.cFormFiledAt || '',
+      sortable: true,
+      grow: 2,
+      cell: (row: Guest) => {
+        if (!row.isForeignGuest) {
+          return <span className="text-slate-400 dark:text-slate-600 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
+        }
+        const isFiled = !!row.cFormFiledAt;
+        const isSaving = savingCFormId === row.id;
+        return (
+          <label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
+            <input
+              type="checkbox"
+              checked={isFiled}
+              disabled={isSaving}
+              onChange={(e) => handleToggleCForm(row, e.target.checked)}
+              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+            />
+            <span className={`font-semibold ${isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
+              {isFiled ? (
+                <span className="flex items-center gap-1">
+                  <span>{t('filed_badge', 'Filed')}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
+                </span>
+              ) : (
+                <span>{t('pending_filing_badge', 'Pending Filing')}</span>
+              )}
+            </span>
+            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+          </label>
+        );
+      },
+    },
+    {
+      name: t('actions_column', 'Actions'),
+      width: '130px',
+      cell: (row: Guest) => (
+        <button
+          onClick={() => handleEditGuest(row)}
+          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-2xs cursor-pointer"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+          {t('edit_booking_button', 'Edit Booking')}
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="billing-checkout space-y-6">
@@ -545,10 +739,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         {/* Navigation Tabs */}
         <div className="billing-checkout__tab-list flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
           <Button
-            variant={activeTab === 'today' ? 'success' : 'ghost'}
+            variant={activeTab === 'today' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setActiveTab('today')}
-            rightIcon={<Badge variant="success">{tabCounts.today}</Badge>}
+            rightIcon={<Badge variant="neutral">{tabCounts.today}</Badge>}
           >
             {t('today_tab', 'Today')}
           </Button>
@@ -557,13 +751,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             variant={activeTab === 'upcoming' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setActiveTab('upcoming')}
-            rightIcon={<Badge variant="info">{tabCounts.upcoming}</Badge>}
+            rightIcon={<Badge variant="neutral">{tabCounts.upcoming}</Badge>}
           >
             {t('upcoming_tab', 'Upcoming')}
           </Button>
 
           <Button
-            variant={activeTab === 'past_bookings' ? 'secondary' : 'ghost'}
+            variant={activeTab === 'past_bookings' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setActiveTab('past_bookings')}
             rightIcon={<Badge variant="neutral">{tabCounts.past_bookings}</Badge>}
@@ -601,12 +795,35 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             </div>
           ))}
         </div>
+      ) : activeTab === 'past_bookings' ? (
+        <div className="billing-checkout__past-table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+          <DataTable
+            columns={pastBookingsColumns}
+            data={searchedGuests}
+            customStyles={pastBookingsTableStyles}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
+            noDataComponent={
+              <div className="p-12 text-center">
+                <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                  {t('no_guest_records_found', 'No Guest Records Found')}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
+                </p>
+              </div>
+            }
+          />
+        </div>
       ) : (
         renderRoomGroupsGrid(filteredGroups)
       )}
 
-      {/* Empty Search Result */}
-      {filteredGroups.length === 0 && (
+      {/* Empty Search Result - Today/Upcoming room-grid only; the Past
+          Bookings table has its own noDataComponent above. */}
+      {activeTab !== 'past_bookings' && filteredGroups.length === 0 && (
         <div className="billing-checkout__empty-state bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-12 text-center">
           <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">

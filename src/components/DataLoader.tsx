@@ -99,22 +99,46 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           return null;
         });
 
-        // If it's a MultiKey property, fetch full data with rooms
+        // BUG (found 15 Aug 2026, still reproducing live after the 13 Aug fixes below):
+        // this rooms fetch had its own try/catch that silently swallowed failures with
+        // NO retry at all - unlike the realDataPromise fetches further down, it isn't even
+        // inside the timeout race, so the existing "timed out -> retry in background" fix
+        // never covered it. A cold PHP-FPM worker / cold DB connection on the first couple
+        // of requests in a fresh browser session can make this genuinely ERROR (not just
+        // run slow) within the time budget - Promise timing there was never the issue, a
+        // plain fetch failure was. When it failed, `property` silently kept whatever
+        // get_current_property returned (no `.rooms` at all), so roomCount fell back to 0
+        // for the rest of that page load: sidebar nav truncated, "Finish Setting Up"
+        // wrongly showing "Create your first unit" as not done, calendar reading "No rooms
+        // available" - self-correcting only on a real refresh, which lands on warm
+        // connections. Same root issue as the nav/guests/receipts/menu fetches below
+        // (transient failure silently caught into an empty default, no retry), just not
+        // caught by that fix since this call sits outside the race entirely. Fixed the same
+        // way: on failure, keep going with what we have so first paint isn't blocked, but
+        // retry in the background and patch the real rooms in once they arrive.
+        const fetchMultiKeyRooms = (propertyId: number) =>
+          apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`)
+            .then(response => response.json())
+            .then(json => {
+              if (!json.success) throw new Error('get_multikey_property returned success:false');
+              return json.data;
+            });
+
+        let roomsFetchFailed = false;
         if (property && property.property_type === 'MULTI_KEY') {
           try {
-            const response = await apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${property.id}`);
-            const data = await response.json();
-            if (data.success) {
-              property = data.data;
-            }
+            property = await fetchMultiKeyRooms(property.id);
           } catch (err) {
             console.error('Failed to fetch MultiKey property details:', err);
+            roomsFetchFailed = true;
           }
         }
 
         // Fetch property modules first to check feature toggles (kitchen, etc.)
+        let modulesFetchFailed = false;
         const modules = await fetchPropertyModulesFromDB().catch(err => {
           console.error('Failed to fetch modules:', err);
+          modulesFetchFailed = true;
           return [];
         });
 
@@ -140,44 +164,53 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // "Finish Setting Up" state only appearing after a refresh, never on
         // the first load post-login.
         //
-        // Fix: still race for the first paint, but if the timeout won, keep
-        // awaiting the real fetch in the background and apply its result on
-        // top once it resolves - self-correcting instead of getting stuck.
-        const realDataPromise = Promise.all([
-          fetchNavMenuFromDB().catch(err => {
-            console.error('Failed to fetch nav items:', err);
-            return [];
-          }),
-          fetchTelegramConfigDB().catch(err => {
-            console.error('Failed to fetch telegram config:', err);
-            return null;
-          }),
-          fetchGuestsFromDB().catch(err => {
-            console.error('Failed to fetch preloaded guests:', err);
-            return [];
-          }),
-          fetchReceiptsFromDB().catch(err => {
-            console.error('Failed to fetch preloaded receipts:', err);
-            return [];
-          }),
+        // BUG (found 15 Aug 2026): that fix only retried when the TIMER won the
+        // race (timedOut). It missed the equally-routine case where an individual
+        // fetch below genuinely errors (same cold-start causes as above) but still
+        // resolves - via its own .catch() - well inside the 6s budget: Promise.all
+        // still "succeeds" on schedule with an empty value baked in for that one
+        // entry, timedOut stays false, and the retry block never ran. Indistinguishable
+        // from a real empty result once caught, so nothing downstream could tell the
+        // difference either. Each fetch below now reports whether IT failed
+        // (safeFetch), so a failure can trigger the same retry path as a timeout.
+        const safeFetch = async <T,>(fn: () => Promise<T>, fallback: T, label: string): Promise<{ value: T; failed: boolean }> => {
+          try {
+            return { value: await fn(), failed: false };
+          } catch (err) {
+            console.error(`Failed to fetch ${label}:`, err);
+            return { value: fallback, failed: true };
+          }
+        };
+
+        const runRealDataFetches = () => Promise.all([
+          safeFetch(fetchNavMenuFromDB, [] as any[], 'nav items'),
+          safeFetch(fetchTelegramConfigDB, null as any, 'telegram config'),
+          safeFetch(fetchGuestsFromDB, [] as any[], 'preloaded guests'),
+          safeFetch(fetchReceiptsFromDB, [] as any[], 'preloaded receipts'),
           isKitchenEnabled
-            ? fetchMenuFromDB().catch(err => {
-                console.error('Failed to fetch preloaded menu:', err);
-                return [];
-              })
-            : Promise.resolve([]),
+            ? safeFetch(fetchMenuFromDB, [] as any[], 'preloaded menu')
+            : Promise.resolve({ value: [] as any[], failed: false }),
         ]);
+
+        const realDataPromise = runRealDataFetches();
 
         let timedOut = false;
         const results = await Promise.race([
           realDataPromise,
           timeoutPromise.then(() => {
             timedOut = true;
-            return [[], null, [], [], []]; // Default values on timeout
+            const timedOutEntry = { value: [] as any, failed: true };
+            return [timedOutEntry, { value: null, failed: true }, timedOutEntry, timedOutEntry, timedOutEntry];
           }),
         ]);
 
-        const [navItems, telegramConfig, initialGuests, initialReceipts, initialMenu] = results as any[];
+        const [navItemsR, telegramConfigR, initialGuestsR, initialReceiptsR, initialMenuR] = results as Array<{ value: any; failed: boolean }>;
+        const navItems = navItemsR.value;
+        const telegramConfig = telegramConfigR.value;
+        const initialGuests = initialGuestsR.value;
+        const initialReceipts = initialReceiptsR.value;
+        const initialMenu = initialMenuR.value;
+        const anyRealDataFetchFailed = timedOut || [navItemsR, telegramConfigR, initialGuestsR, initialReceiptsR, initialMenuR].some((r) => r.failed);
 
         if (!property || (typeof property === 'object' && Object.keys(property).length === 0)) {
           if (isStale()) return;
@@ -211,19 +244,43 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
         });
 
-        // See the note above realDataPromise: the timeout won, so the values
-        // just rendered are the empty defaults - patch in the real data on
-        // top as soon as it actually arrives instead of leaving it stuck.
-        if (timedOut) {
-          realDataPromise.then(([realNavItems, realTelegramConfig, realGuests, realReceipts, realMenu]) => {
+        // Rooms fetch failed above (see BUG note near fetchMultiKeyRooms) - retry once in
+        // the background and patch the real rooms into currentProperty once they land.
+        if (roomsFetchFailed && property?.id) {
+          fetchMultiKeyRooms(property.id)
+            .then((fullProperty) => {
+              if (isStale()) return;
+              setData((prev) => prev ? { ...prev, currentProperty: fullProperty } : prev);
+            })
+            .catch((err) => console.error('Retry for MultiKey property details also failed:', err));
+        }
+
+        // Modules fetch failed above - same treatment, retry once in the background.
+        if (modulesFetchFailed) {
+          fetchPropertyModulesFromDB()
+            .then((freshModules) => {
+              if (isStale() || !Array.isArray(freshModules) || freshModules.length === 0) return;
+              setData((prev) => prev ? { ...prev, modules: freshModules } : prev);
+            })
+            .catch((err) => console.error('Retry for property modules also failed:', err));
+        }
+
+        // See the notes above realDataPromise: either the timeout won, or an individual
+        // fetch genuinely failed within budget - either way, the values just rendered
+        // include empty defaults. Issue a fresh retry (timedOut can safely keep awaiting
+        // the same in-flight promise; a genuine failure already resolved, so it needs a
+        // brand-new call, not another .then() on the same settled promise) and patch in
+        // whatever comes back instead of leaving it stuck.
+        if (anyRealDataFetchFailed) {
+          (timedOut ? realDataPromise : runRealDataFetches()).then(([realNav, realTelegram, realGuests, realReceipts, realMenu]) => {
             if (isStale()) return;
             setData((prev) => prev ? {
               ...prev,
-              navItems: Array.isArray(realNavItems) ? realNavItems : prev.navItems,
-              telegramConfig: realTelegramConfig ?? prev.telegramConfig,
-              initialGuests: Array.isArray(realGuests) ? realGuests : prev.initialGuests,
-              initialReceipts: Array.isArray(realReceipts) ? realReceipts : prev.initialReceipts,
-              initialMenu: Array.isArray(realMenu) ? realMenu : prev.initialMenu,
+              navItems: !realNav.failed && Array.isArray(realNav.value) ? realNav.value : prev.navItems,
+              telegramConfig: !realTelegram.failed ? realTelegram.value : prev.telegramConfig,
+              initialGuests: !realGuests.failed && Array.isArray(realGuests.value) ? realGuests.value : prev.initialGuests,
+              initialReceipts: !realReceipts.failed && Array.isArray(realReceipts.value) ? realReceipts.value : prev.initialReceipts,
+              initialMenu: !realMenu.failed && Array.isArray(realMenu.value) ? realMenu.value : prev.initialMenu,
             } : prev);
           });
         }

@@ -1,9 +1,12 @@
 import React from 'react';
 
 type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
+type BadgeSize = 'sm' | 'md';
 
 interface BadgeProps {
   variant?: BadgeVariant;
+  size?: BadgeSize;
+  dot?: boolean;
   children: React.ReactNode;
   className?: string;
 }
@@ -16,21 +19,46 @@ const variantClasses: Record<BadgeVariant, string> = {
   neutral: 'bg-[var(--badge-neutral-bg)] text-[var(--badge-neutral-text)] border-[var(--badge-neutral-border)]',
 };
 
+const dotVariantClasses: Record<BadgeVariant, string> = {
+  success: 'bg-emerald-500',
+  danger: 'bg-rose-500',
+  warning: 'bg-amber-500',
+  info: 'bg-sky-500',
+  neutral: 'bg-slate-400',
+};
+
+const sizeClasses: Record<BadgeSize, string> = {
+  sm: 'text-[11px] px-2 py-0.5',
+  md: 'text-xs px-2.5 py-0.5',
+};
+
 export const Badge: React.FC<BadgeProps> = ({
   variant = 'neutral',
+  size = 'sm',
+  dot = false,
   children,
   className = '',
 }) => {
   const classes = [
     'app-badge',
     `app-badge-${variant}`,
-    'inline-flex items-center',
-    'text-[11px] font-semibold px-2 py-0.5 rounded-full border',
+    'inline-flex items-center gap-1.5 font-semibold rounded-full border shadow-2xs select-none tabular-nums',
+    sizeClasses[size],
     variantClasses[variant],
     className,
   ]
     .filter(Boolean)
     .join(' ');
 
-  return <span className={classes + ' badge'}>{children}</span>;
+  return (
+    <span className={classes + ' badge'}>
+      {dot && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotVariantClasses[variant]}`}
+          aria-hidden="true"
+        />
+      )}
+      {children}
+    </span>
+  );
 };

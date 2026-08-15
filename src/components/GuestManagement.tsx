@@ -39,7 +39,6 @@ import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { BillingCheckout } from './BillingCheckout';
 import { TodayOverview } from './TodayOverview';
-import { GuestHistory } from './GuestHistory';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -123,7 +122,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   selectedRoomSlug,
   preSelectRoom,
   onClose,
-  onCFormFiledUpdated,
+  // No longer used within this component (was only for the now-removed
+  // GuestHistory/"Past Guests" archive view) - kept in the prop interface
+  // since MultiKeyPropertyOverview/OperationalDashboard still forward it
+  // down from App.tsx, and BookingDetailsModal (opened via Edit Booking)
+  // handles C-Form filing on its own now.
+  onCFormFiledUpdated: _onCFormFiledUpdated,
   kitchenModuleEnabled = true,
   propertyGstin = '',
   propertyName = '',
@@ -774,10 +778,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
-
-  if (activeMenuItemKey === 'guest_history') {
-    return <GuestHistory guests={guests} onCFormFiledUpdated={onCFormFiledUpdated} />;
-  }
 
   if (activeMenuItemKey === 'guest_registration') {
     return (

@@ -442,16 +442,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               },
             ].map((metric) => {
               const Icon = metric.icon;
-              const colorClasses: Record<string, { bg: string; text: string; btn: string }> = {
-                blue: { bg: 'bg-blue-50 dark:bg-blue-900/35', text: 'text-blue-600 dark:text-blue-400', btn: 'bg-blue-600 hover:bg-blue-700' },
-                amber: { bg: 'bg-amber-50 dark:bg-amber-900/35', text: 'text-amber-600 dark:text-amber-400', btn: 'bg-amber-600 hover:bg-amber-700' },
-                emerald: { bg: 'bg-emerald-50 dark:bg-emerald-900/35', text: 'text-emerald-600 dark:text-emerald-400', btn: 'bg-emerald-600 hover:bg-emerald-700' },
-                red: { bg: 'bg-red-50 dark:bg-red-900/35', text: 'text-red-600 dark:text-red-400', btn: 'bg-red-600 hover:bg-red-700' },
+              const colorClasses: Record<string, { bg: string; text: string; btn: string; border: string }> = {
+                blue: { bg: 'bg-blue-50 dark:bg-blue-900/35', text: 'text-blue-600 dark:text-blue-400', btn: 'bg-blue-600 hover:bg-blue-700', border: 'border-l-blue-500' },
+                amber: { bg: 'bg-amber-50 dark:bg-amber-900/35', text: 'text-amber-600 dark:text-amber-400', btn: 'bg-amber-600 hover:bg-amber-700', border: 'border-l-amber-500' },
+                emerald: { bg: 'bg-emerald-50 dark:bg-emerald-900/35', text: 'text-emerald-600 dark:text-emerald-400', btn: 'bg-emerald-600 hover:bg-emerald-700', border: 'border-l-emerald-500' },
+                red: { bg: 'bg-red-50 dark:bg-red-900/35', text: 'text-red-600 dark:text-red-400', btn: 'bg-red-600 hover:bg-red-700', border: 'border-l-rose-500' },
               };
               const colors = colorClasses[metric.color] || colorClasses.blue;
               const targetProp = properties.find((p) => p.slug === getPropertySlug()) || properties[0];
               return (
-                <div key={metric.label} className="tenant-dashboard__metric-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
+                <div key={metric.label} className={`tenant-dashboard__metric-card stat-card-elevated bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/80 border-l-4 ${colors.border} shadow-2xs p-3 md:p-4 flex items-center justify-between gap-3`}>
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className={`p-2.5 rounded-xl ${colors.bg} ${colors.text} shrink-0`}>
                       <Icon className="w-5 h-5" />
@@ -459,7 +459,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{metric.label}</span>
-                        <span className="text-sm font-extrabold text-slate-900 dark:text-white">{metric.count}</span>
+                        <span className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums">{metric.count}</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{metric.sub}</span>
                       </div>
                     </div>
@@ -474,7 +474,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                         window.location.href = url;
                       }
                     }}
-                    className={`px-3 py-1.5 ${colors.btn} text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1`}
+                    className={`px-3 py-1.5 ${colors.btn} text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs`}
                     title={metric.btnLabel}
                   >
                     <span>{metric.btnLabel}</span>

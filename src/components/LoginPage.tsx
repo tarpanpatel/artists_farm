@@ -1,7 +1,6 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
-import { Input } from './Input';
 
 interface LoginPageProps {
   onLoginSuccess: (userData: {
@@ -217,22 +216,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   if (showForgotPassword) {
     return (
-      <div className="login-page login-page--forgot min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-md">
-              <Mail className="w-8 h-8 text-white" />
+      <div className="login-page login-page--forgot min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+        {/* Ambient Backdrop Aura */}
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+          <div className="flex justify-center mb-5">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
+              <Mail className="w-7 h-7 text-white" />
             </div>
           </div>
 
-          <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
-            {t('forgot_passcode_title', 'Forgot Your Passcode?')}
-          </h1>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
-            {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
-          </p>
+          <div className="text-center mb-6">
+            <h1 className="login-page__page-title text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {t('forgot_passcode_title', 'Forgot Your Passcode?')}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+              {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
+            </p>
+          </div>
 
-          <form onSubmit={handleRequestLoginInfo} className="app-form app-form--request-login-info space-y-5">
+          <form onSubmit={handleRequestLoginInfo} className="app-form app-form--request-login-info space-y-4">
             {forgotResult && (
               <div className={`flex gap-3 p-3 rounded-xl border ${
                 forgotResult.type === 'success'
@@ -240,9 +245,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
               }`}>
                 {forgotResult.type === 'success' ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 )}
                 <p className={`text-xs font-medium ${
                   forgotResult.type === 'success' ? 'text-emerald-800 dark:text-emerald-300' : 'text-red-800 dark:text-red-300'
@@ -253,23 +258,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 {t('mobile_username_label', 'Mobile Number / Username')}
               </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
-                  <Phone className="w-4 h-4" />
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
+                  <Phone className="w-4 h-4 text-slate-400" />
                   <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
                 </div>
-                <Input
+                <input
                   type="tel"
                   value={forgotMobile}
                   onChange={(e) => {
                     setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
                     setForgotResult(null);
                   }}
-                  placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
-                  className="pl-16"
+                  placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSendingLoginInfo}
                   autoFocus
                 />
@@ -279,7 +284,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isSendingLoginInfo || forgotMobile.length === 0}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
               {isSendingLoginInfo ? (
                 <>
@@ -295,13 +300,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
             <button
               onClick={() => {
                 setShowForgotPassword(false);
                 setForgotResult(null);
               }}
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> {t('back_to_login_button', 'Back to Login')}
             </button>
@@ -313,63 +318,75 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   if (mustChangePasscode) {
     return (
-      <div className="login-page login-page--set-passcode min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-md">
-              <ShieldCheck className="w-8 h-8 text-white" />
+      <div className="login-page login-page--set-passcode min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+        {/* Ambient Backdrop Aura */}
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 dark:bg-amber-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-orange-500/10 dark:bg-orange-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+          <div className="flex justify-center mb-5">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg shadow-amber-500/25 ring-4 ring-amber-500/10">
+              <ShieldCheck className="w-7 h-7 text-white" />
             </div>
           </div>
 
-          <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
-            {t('set_new_passcode_title', 'Set a New Passcode')}
-          </h1>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center mb-8">
-            You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
-          </p>
+          <div className="text-center mb-6">
+            <h1 className="login-page__page-title text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {t('set_new_passcode_title', 'Set a New Passcode')}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+              You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
+            </p>
+          </div>
 
-          <form onSubmit={handleSetNewPasscode} className="app-form app-form--set-passcode space-y-5">
+          <form onSubmit={handleSetNewPasscode} className="app-form app-form--set-passcode space-y-4">
             {error && (
               <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <p className="text-xs font-medium text-red-800 dark:text-red-300">{error}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 {t('new_passcode_label', 'New 6-Digit Passcode')}
               </label>
-              <div className="relative">
-                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-                <Input
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
+                  <KeyRound className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">PIN</span>
+                </div>
+                <input
                   type="password"
                   value={newPasscode}
                   onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="• • • • • •"
+                  placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
                   autoFocus
-                  className="pl-10 text-center"
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSavingPasscode}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 {t('confirm_new_passcode_label', 'Confirm New Passcode')}
               </label>
-              <div className="relative">
-                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-                <Input
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
+                  <KeyRound className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">PIN</span>
+                </div>
+                <input
                   type="password"
                   value={confirmPasscode}
                   onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="• • • • • •"
+                  placeholder="••••••"
                   maxLength={6}
                   inputMode="numeric"
-                  className="pl-10 text-center"
+                  className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                   disabled={isSavingPasscode}
                 />
               </div>
@@ -378,7 +395,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={isSavingPasscode || newPasscode.length !== 6 || confirmPasscode.length !== 6}
-              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 active:from-amber-800 active:to-orange-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
               {isSavingPasscode ? (
                 <>
@@ -399,76 +416,68 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   }
 
   return (
-    <div className="login-page min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
-      <div className="login-page__card max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-md">
-            <Building2 className="w-8 h-8 text-white" />
+    <div className="login-page min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      {/* Ambient Backdrop Aura */}
+      <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="login-page__card relative max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-950/60 border border-slate-200/80 dark:border-slate-800 p-8 sm:p-9 transition-all">
+        {/* Brand Icon */}
+        <div className="flex justify-center mb-5">
+          <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
+            <Building2 className="w-8 h-8 text-white stroke-[2.2]" />
           </div>
         </div>
 
-        {/* Title */}
-        <h1 className="login-page__page-title text-2xl font-semibold text-slate-900 dark:text-white text-center tracking-tight">
-          Ground Code
-        </h1>
-        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 text-center mb-8 uppercase tracking-wider">
-          {t('login_subtitle', 'Mobile & Passcode Terminal Login')}
-        </p>
+        {/* Title & Subtitle */}
+        <div className="text-center mb-7">
+          <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Ground Code
+          </h1>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+            {t('login_subtitle', 'Hospitality & Resort Management Portal')}
+          </p>
+        </div>
 
         {/* Login Form */}
-         <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-5">
+        <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-4">
           {/* Error Message */}
           {error && (
             <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
               <p className="text-xs font-medium text-red-800 dark:text-red-300">{error}</p>
             </div>
           )}
 
           {/* Mobile Number Input */}
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               {t('mobile_username_label', 'Mobile Number / Username')}
             </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
-                <Phone className="w-4 h-4" />
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
+                <Phone className="w-4 h-4 text-slate-400" />
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">+91</span>
               </div>
-               <Input
-                 type="tel"
-                 value={mobileNumber}
-                 onChange={handleMobileChange}
-                 placeholder={t('mobile_number_placeholder', '10-digit Mobile Number')}
-                 className="pl-16"
-                 disabled={isLoading}
-                 autoFocus
-                 ref={mobileInputRef}
-               />
+              <input
+                type="tel"
+                value={mobileNumber}
+                onChange={handleMobileChange}
+                placeholder={t('mobile_number_placeholder', '10-digit mobile number')}
+                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
+                disabled={isLoading}
+                autoFocus
+                ref={mobileInputRef}
+              />
             </div>
           </div>
 
           {/* 6-Digit Passcode Input */}
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-              {t('pin_passcode_label', '6-Digit PIN Passcode')}
-            </label>
-            <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-               <Input
-                 type="password"
-                 value={passcode}
-                 onChange={handlePasscodeChange}
-                 placeholder="• • • • • •"
-                 maxLength={6}
-                 inputMode="numeric"
-                 className="pl-10 text-center"
-                 disabled={isLoading}
-                 ref={passcodeInputRef}
-               />
-            </div>
-            <div className="text-right mt-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {t('pin_passcode_label', '6-Digit Security Passcode')}
+              </label>
               <button
                 type="button"
                 onClick={() => {
@@ -476,47 +485,66 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   setForgotResult(null);
                   setShowForgotPassword(true);
                 }}
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer"
               >
-                {t('forgot_password_link', 'Forgot Password?')}
+                {t('forgot_password_link', 'Forgot Passcode?')}
               </button>
+            </div>
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
+                <KeyRound className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 border-r border-slate-200 dark:border-slate-700 pr-2">PIN</span>
+              </div>
+              <input
+                type="password"
+                value={passcode}
+                onChange={handlePasscodeChange}
+                placeholder="••••••"
+                maxLength={6}
+                inputMode="numeric"
+                className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
+                disabled={isLoading}
+                ref={passcodeInputRef}
+              />
             </div>
           </div>
 
-          {/* Login Button */}
-          <button
-            type="submit"
-            disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('authenticating_button', 'Authenticating...')}</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4" />
-                <span>{t('login_button', 'Log In')}</span>
-              </>
-            )}
-          </button>
+          {/* Sign In Button */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isLoading || mobileNumber.length === 0 || passcode.length === 0}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t('authenticating_button', 'Authenticating...')}</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>{t('login_button', 'Sign In to Terminal')}</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
 
-        {/* Footer */}
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">
-          {t('login_footer_copyright', 'Â© 2026 Ground Code Resort & Kitchen Management System')}
-        </p>
-
-        {/* Back Button */}
-        <div className="mt-4 text-center">
-          <a
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            {t('back_to_home_link', 'Back to Home')}
-          </a>
+        {/* Footer & Back Link */}
+        <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800/80 text-center space-y-2.5">
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            {t('login_footer_copyright', '© 2026 Ground Code. All rights reserved.')}
+          </p>
+          <div>
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {t('back_to_home_link', 'Back to Home')}
+            </a>
+          </div>
         </div>
       </div>
     </div>

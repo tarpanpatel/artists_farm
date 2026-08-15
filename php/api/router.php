@@ -438,20 +438,6 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
         }
     }
 
-    // 4. Fallback: X-Admin-Username header (sent by frontend when isPlatformAdmin=true,
-    //    covers Vite dev proxy setups where PHP session cookie may not round-trip correctly)
-    $headerUsername = $_SERVER['HTTP_X_ADMIN_USERNAME'] ?? '';
-    if ($headerUsername) {
-        try {
-            $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE username = ? LIMIT 1");
-            $stmt->execute([$headerUsername]);
-            $u = $stmt->fetch();
-            if ($u && (!empty($u['is_platform_admin']) || strtolower($u['role'] ?? '') === 'root_admin')) {
-                return true;
-            }
-        } catch (Exception $e) {}
-    }
-
     if (!$requestedTenantId) return false;
     $requestedTenantId = (int)$requestedTenantId;
     foreach (resolveCallerTenantIds($pdo) as $tid) {
@@ -792,7 +778,7 @@ switch ($action) {
                     $_SESSION['default_tenant_id'] = $user['default_tenant_id'] ?? null;
                     $_SESSION['full_name'] = $user['full_name'] ?: $user['username'];
 
-                    setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                    appSetSessionCookie(session_id());
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                     TelescopeLogger::log(
@@ -882,7 +868,7 @@ switch ($action) {
                         // isPropertyAccessAllowed() (access_control.php) sets it as a
                         // side effect once they actually navigate into a property.
 
-                        setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                        appSetSessionCookie(session_id());
                         $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                         echo json_encode([
@@ -910,7 +896,7 @@ switch ($action) {
                     $_SESSION['property_id'] = $staff['property_id'];
                     $_SESSION['full_name'] = $staff['full_name'] ?: $staff['username'];
 
-                    setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                    appSetSessionCookie(session_id());
                     $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                     echo json_encode([
@@ -939,7 +925,7 @@ switch ($action) {
                 $_SESSION['is_platform_admin'] = true;
                 $_SESSION['full_name'] = $rawIdentifier ?: 'admin';
 
-                setcookie('artists_farm_session', session_id(), time() + 86400 * 7, '/', '', false, true);
+                appSetSessionCookie(session_id());
                 $rateLimiter->resetAttempts($rateLimitClientId, 'login_user');
 
                 echo json_encode([
@@ -1386,16 +1372,32 @@ switch ($action) {
             exit;
         }
         try {
+            // Perf (14 Aug 2026, auditdb.md): was a correlated subquery re-run
+            // for every tenant row (and a nested correlated subquery inside
+            // that, for every MULTI_KEY property) - O(N*M). Rewritten as a
+            // single-pass LEFT JOIN with room counts pre-aggregated once,
+            // O(N). Verified equivalent by hand across every case (zero
+            // properties, MULTI_KEY with/without rooms, mixed single+
+            // multi-key tenants) before applying - same slots_used total
+            // either way.
             $stmt = $pdo->query("
                 SELECT t.*,
-                (SELECT COALESCE(SUM(
-                    CASE
-                        WHEN p.property_type = 'MULTI_KEY' THEN
-                            (SELECT COUNT(*) FROM properties r WHERE r.parent_property_id = p.id AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0)
-                        ELSE 1
-                    END
-                ), 0) FROM properties p WHERE p.tenant_id = t.id AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM') AND p.is_active = 1) AS slots_used
-                FROM tenants t 
+                    COALESCE(SUM(
+                        CASE
+                            WHEN p.property_type = 'MULTI_KEY' THEN COALESCE(r.room_count, 0)
+                            WHEN p.id IS NOT NULL THEN 1
+                            ELSE 0
+                        END
+                    ), 0) AS slots_used
+                FROM tenants t
+                LEFT JOIN properties p ON p.tenant_id = t.id AND (p.property_type IS NULL OR p.property_type != 'MULTI_KEY_ROOM') AND p.is_active = 1
+                LEFT JOIN (
+                    SELECT parent_property_id, COUNT(*) AS room_count
+                    FROM properties
+                    WHERE property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
+                    GROUP BY parent_property_id
+                ) r ON r.parent_property_id = p.id
+                GROUP BY t.id
                 ORDER BY t.name ASC
             ");
             $tenants = $stmt->fetchAll();

@@ -72,7 +72,15 @@ require_once __DIR__ . "/../database/migrations.php";
 $server_name = $_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // Check if running on local environment (localhost or 127.0.0.1)
-if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.')) {
+$__is_local_env = $server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains($server_name, '192.168.');
+// Shared local/live flag for anything outside DB credentials that needs the same distinction
+// (e.g. cookie 'secure' flag - must be false on local plain-HTTP or the session cookie never
+// gets set/sent and login silently fails). database.php is require_once'd by every endpoint
+// that sets the session cookie, so this is defined exactly once, consistently.
+if (!defined('APP_IS_LOCAL_ENV')) {
+    define('APP_IS_LOCAL_ENV', $__is_local_env);
+}
+if ($__is_local_env) {
     $db_host = 'localhost';
     $live_db = 'artists_farm_resort';
     $db_user = 'root';
@@ -95,6 +103,26 @@ if ($server_name === 'localhost' || $server_name === '127.0.0.1' || str_contains
         }
         error_log('Production DB password missing: set DB_PASSWORD env var or php/config/db_pass.php');
         exit();
+    }
+}
+
+// SECURITY (14 Aug 2026, auditcode.md): the 8 setcookie() call sites for the session cookie
+// (authenticate.php x4, router.php x4) used the old positional signature with 'secure'
+// hardcoded false and no SameSite attribute at all - meaning the session cookie would still be
+// sent over plain HTTP even on the live HTTPS site, and had no cross-site request protection.
+// Centralized here (rather than fixed at each call site) so all 8 stay in sync automatically.
+// 'secure' must stay false on local plain-HTTP XAMPP or the cookie is silently dropped by the
+// browser and login breaks - hence tying it to the same local/live check as the DB credentials.
+if (!function_exists('appSetSessionCookie')) {
+    function appSetSessionCookie(string $sessionId): void {
+        setcookie('artists_farm_session', $sessionId, [
+            'expires' => time() + 86400 * 7,
+            'path' => '/',
+            'domain' => '',
+            'secure' => !APP_IS_LOCAL_ENV,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 }
 
