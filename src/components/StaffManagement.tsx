@@ -1882,8 +1882,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       onChange={(e) => setNewAccessAllProperties(e.target.checked)}
                       className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                     />
-                    <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                      {t('access_all_properties_label', 'Access All Properties')}
+                    <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
+                      <span>{t('access_all_properties_label', 'Access All Properties')}</span>
+                      <div className="relative group inline-flex items-center">
+                        <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </span>
+                        <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
+                          Grants this team member full multi-property access across all properties under this tenant workspace.
+                          <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                        </div>
+                      </div>
                     </label>
                   </div>
                   <div>
@@ -2013,8 +2022,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
                           className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                         />
-                        <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                          {t('access_all_properties_label', 'Access All Properties')}
+                        <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
+                          <span>{t('access_all_properties_label', 'Access All Properties')}</span>
+                          <div className="relative group inline-flex items-center">
+                            <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </span>
+                            <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
+                              Grants this team member full multi-property access across all properties under this tenant workspace.
+                              <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                            </div>
+                          </div>
                         </label>
                       </div>
                     </>
