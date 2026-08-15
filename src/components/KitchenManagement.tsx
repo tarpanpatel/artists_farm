@@ -1061,13 +1061,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className={`pos-food-card bg-white dark:bg-slate-800 rounded-xl border p-2 flex flex-col justify-between gap-2 transition-all ${
-                inCartQty > 0
-                  ? 'border-emerald-500/80 dark:border-emerald-600 bg-emerald-50/30 dark:bg-emerald-950/20 shadow-2xs ring-1 ring-emerald-500/30'
-                  : isRecentlyAdded
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-2xs'
-                  : 'border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs'
-              }`}
+              className="pos-food-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs p-2 flex flex-col justify-between gap-2 transition-all"
             >
               <div className="space-y-1.5">
                 <div className="relative w-full h-20 sm:h-16 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500">
@@ -1103,7 +1097,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Mobile-First Touch Stepper / ADD Button */}
               <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
                 {inCartQty > 0 ? (
-                  <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/80 rounded-lg p-0.5 w-full shadow-2xs">
+                  <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 w-full">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleUpdateCartQuantity(item.id, -1); }}
