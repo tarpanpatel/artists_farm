@@ -44,7 +44,7 @@ $ErrorActionPreference = 'Continue'
 
 # Configuration for Staging
 $SshKey      = "C:\Users\Tarpan Patel\Documents\Downloads\github_cpanel"
-$SshHost     = "artistic-sthan.com"
+$SshHost     = "91.238.163.173"
 $SshPort     = 88
 $SshUser     = "apartment"
 $RemoteDir   = "~/staging.artistic-sthan.com"
@@ -66,7 +66,7 @@ function Write-Err($msg) {
 }
 
 function Invoke-Ssh([string]$Command) {
-    & ssh -p $SshPort -i $SshKey "$SshUser@$SshHost" $Command
+    & ssh -p $SshPort -i $SshKey -o StrictHostKeyChecking=no "$SshUser@$SshHost" $Command
     if ($LASTEXITCODE -ne 0) {
         throw "SSH command failed (exit $LASTEXITCODE): $Command"
     }
