@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2 } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
@@ -22,6 +22,7 @@ interface PettyCashManagementProps {
 
 interface FormState {
   expenseDate: string;
+  expenseTime: string;
   category: string;
   description: string;
   moreInfoNotes: string;
@@ -46,6 +47,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case 'RESET_FORM':
       return {
         ...state,
+        expenseTime: new Date().toTimeString().slice(0, 5),
         description: '',
         moreInfoNotes: '',
         amount: '',
@@ -73,6 +75,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const canManageExpense = effectiveRole.includes('admin') || effectiveRole.includes('root');
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
     expenseDate: new Date().toISOString().split('T')[0],
+    expenseTime: new Date().toTimeString().slice(0, 5),
     category: 'Other',
     description: '',
     moreInfoNotes: '',
@@ -283,6 +286,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     const entry: PettyCashEntry = {
       id: `pc-${Date.now().toString().slice(-4)}`,
       date: formState.expenseDate,
+      time: formState.expenseTime || new Date().toTimeString().slice(0, 5),
       costCategory: formState.category,
       category: formState.category,
       description: finalDescription,
@@ -412,7 +416,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           {/* Always 2 columns, even on mobile - date and category are short
               enough to sit side by side on any screen; the previous
               grid-cols-1 stacked them there for no real reason. */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <DatePicker
                 label={t('expense_date_label', 'Expense Date')}
@@ -423,6 +427,15 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <div>
+              <Input
+                label={t('expense_time_label', 'Time')}
+                type="time"
+                value={formState.expenseTime}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'expenseTime', value: e.target.value })}
+              />
+            </div>
+
+            <div className="col-span-2 sm:col-span-1">
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_category_group_label', 'Cost Category Group')}</label>
               <StyledSelect
                 value={formState.category}
@@ -694,13 +707,18 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               name: t('date_column', 'Date'),
               selector: (entry: any) => entry.date,
               sortable: true,
-              width: '110px',
+              width: '120px',
               cell: (entry: any) => {
                 const isEditingDate = editingCell?.id === entry.id && editingCell.field === 'date';
                 return isEditingDate ? (
                   <Input type="date" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => handleCellSave(entry.id)} onKeyDown={e => e.key === 'Enter' && handleCellSave(entry.id)} autoFocus />
                 ) : (
-                  <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-500 font-semibold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
+                  <div>
+                    <span onDoubleClick={() => handleCellDoubleClick(entry.id, 'date', entry.date)} className="cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-950 px-1 py-0.5 rounded transition-all font-mono text-[11px] text-slate-700 dark:text-slate-200 font-bold" title={t('double_click_to_edit_tooltip', 'Double click to edit')}>{formatDateDDMMYYYY(entry.date)}</span>
+                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 pl-1">
+                      <Clock className="w-2.5 h-2.5 inline shrink-0" /> {entry.time || '12:00'}
+                    </div>
+                  </div>
                 );
               },
             },
@@ -767,14 +785,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             },
             ...(canManageExpense ? [{
               name: t('actions_column', 'Actions'),
-              width: '120px',
+              width: '150px',
               center: true as const,
               cell: (entry: any) => (
-                <div className="flex items-center justify-center gap-1">
-                  <button onClick={() => setEditingEntry(entry)} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <button onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} className="bg-slate-100 hover:bg-blue-50 dark:bg-slate-700 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-600 whitespace-nowrap shadow-2xs">
                     <Edit2 className="w-3 h-3" /> {t('edit_button', 'Edit')}
                   </button>
-                  <button onClick={() => handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                  <button onClick={() => handleDeleteExpense(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-2xs">
                     {t('delete_button', 'Delete')}
                   </button>
                 </div>
@@ -830,13 +848,20 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense space-y-4">
-              <div>
+              <div className="grid grid-cols-2 gap-3">
                 <Input
                   label={t('expense_date_label', 'Expense Date')}
                   type="date"
                   required
                   value={editingEntry.date}
                   onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                />
+                <Input
+                  label={t('expense_time_label', 'Expense Time')}
+                  type="time"
+                  required
+                  value={editingEntry.time || '12:00'}
+                  onChange={e => setEditingEntry({ ...editingEntry, time: e.target.value })}
                 />
               </div>
 

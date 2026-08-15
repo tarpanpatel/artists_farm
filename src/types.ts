@@ -178,6 +178,7 @@ export interface Requisition {
 export interface PettyCashEntry {
   id: string;
   date: string;
+  time?: string;
   costCategory?: 'Salaries' | 'Other' | 'Bills' | string;
   category?: string;
   selectedStaffName?: string;
