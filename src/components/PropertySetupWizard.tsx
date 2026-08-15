@@ -47,21 +47,14 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   // If setup is already complete, return null IMMEDIATELY - no skeleton flash!
   if (step1Done && step2Done && (!showRoomsStep || step3Done)) return null;
 
-  // Show a smooth skeleton loader while staff data is loading ONLY if setup is actually incomplete
-  if (isStaffLoading) {
-    return (
-      <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/40 dark:border-amber-800/40 p-4 h-36 animate-pulse flex flex-col justify-between">
-        <div className="flex justify-between items-center">
-          <div className="h-4 bg-amber-200/60 dark:bg-amber-800/50 rounded w-48"></div>
-          <div className="h-2 bg-amber-200/60 dark:bg-amber-800/50 rounded w-24"></div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="h-16 bg-white/60 dark:bg-slate-800/60 rounded-lg border border-amber-200/30"></div>
-          <div className="h-16 bg-white/60 dark:bg-slate-800/60 rounded-lg border border-amber-200/30"></div>
-        </div>
-      </div>
-    );
-  }
+  // While staff is still loading we can't yet tell whether step 2 is done,
+  // so step2Done reads false regardless of how long the property has
+  // actually had staff. Rendering a skeleton here defaults to "assume
+  // incomplete" and flashes it on every load for the common case
+  // (an established property that finished setup ages ago) - render
+  // nothing instead and let the real wizard pop in only if staff data
+  // comes back and setup turns out to genuinely be incomplete.
+  if (isStaffLoading) return null;
 
   const applicableSteps = showRoomsStep ? [step1Done, step2Done, step3Done] : [step1Done, step2Done];
   const totalSteps = applicableSteps.length;
