@@ -15,7 +15,8 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  HelpCircle
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
@@ -1848,8 +1849,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
                         className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                       />
-                      <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                        {t('cash_handling_user_label', 'Cash Handling User')}
+                      <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1">
+                        <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
+                        <span
+                          className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 cursor-help transition-colors"
+                          title="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements."
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -1981,8 +1988,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
                             className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
                           />
-                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs">
-                            {t('cash_handling_user_label', 'Cash Handling User')}
+                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1">
+                            <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
+                            <span
+                              className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 cursor-help transition-colors"
+                              title="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements."
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </span>
                           </label>
                         </div>
                       </div>
