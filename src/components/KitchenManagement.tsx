@@ -1094,53 +1094,50 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
 
-              {/* Mobile-First Touch Stepper / ADD Button */}
+              {/* Mobile-First Touch Stepper (Always showing minus, quantity, plus) */}
               <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                {inCartQty > 0 ? (
-                  <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 w-full">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleUpdateCartQuantity(item.id, -1); }}
-                      className="w-7 h-7 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold text-xs flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 active:scale-90 transition-all cursor-pointer shadow-2xs"
-                      title="Decrease quantity"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="font-extrabold text-emerald-800 dark:text-emerald-300 text-xs px-1">
-                      {inCartQty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleAddToCartWithFeedback(item); }}
-                      className="w-7 h-7 rounded-md bg-emerald-600 text-white font-bold text-xs flex items-center justify-center hover:bg-emerald-700 active:scale-90 transition-all cursor-pointer shadow-2xs"
-                      title="Increase quantity"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
+                <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 w-full">
                   <button
                     type="button"
-                    onClick={() => handleAddToCartWithFeedback(item)}
-                    className={`btn-add-to-cart w-full py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1 cursor-pointer min-h-[34px] ${
-                      isRecentlyAdded
-                        ? 'bg-emerald-600 text-white border border-emerald-600 scale-95 shadow-md'
-                        : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-300 dark:border-emerald-700/60 active:scale-95 shadow-2xs'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (inCartQty > 0) {
+                        handleUpdateCartQuantity(item.id, -1);
+                      }
+                    }}
+                    disabled={inCartQty === 0}
+                    className={`w-7 h-7 rounded-md font-bold text-xs flex items-center justify-center transition-all shadow-2xs ${
+                      inCartQty === 0
+                        ? 'bg-slate-200/60 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 active:scale-90 cursor-pointer'
                     }`}
+                    title="Decrease quantity"
                   >
-                    {isRecentlyAdded ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>ADDED</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>ADD</span>
-                      </>
-                    )}
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                )}
+                  <span className={`font-extrabold text-xs px-1 ${
+                    inCartQty > 0
+                      ? 'text-emerald-800 dark:text-emerald-300'
+                      : 'text-slate-400 dark:text-slate-500'
+                  }`}>
+                    {inCartQty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCartWithFeedback(item);
+                    }}
+                    className={`w-7 h-7 rounded-md font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
+                      isRecentlyAdded
+                        ? 'bg-emerald-600 text-white scale-95 animate-pulse'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    }`}
+                    title="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           );
