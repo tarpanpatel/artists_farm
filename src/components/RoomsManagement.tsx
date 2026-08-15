@@ -39,6 +39,12 @@ interface RoomsManagementProps {
   propertySlug: string;
   propertyType?: string;
   onUpdated?: () => void;
+  // "Manage" navigates straight into that room's own dashboard - same
+  // direct-state-update callback every other room-navigation entry point in
+  // the app already uses (App.tsx's handleNavigateToRoom), rather than only
+  // setting window.location.hash and hoping the hashchange listener's own
+  // room-slug lookup (a separately-fetched room list) happens to match.
+  onNavigateToRoom?: (roomSlug: string) => void;
 }
 
 export const RoomsManagement: React.FC<RoomsManagementProps> = ({
@@ -46,6 +52,7 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   propertySlug: _propertySlug,
   propertyType,
   onUpdated,
+  onNavigateToRoom,
 }) => {
   const [property, setProperty] = useState<Property | null>(null);
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -328,7 +335,13 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                   <Button
                     variant="secondary"
                     size="xs"
-                    onClick={() => window.location.href = `#${room.slug}`}
+                    onClick={() => {
+                      if (onNavigateToRoom) {
+                        onNavigateToRoom(room.slug);
+                      } else {
+                        window.location.href = `#${room.slug}`;
+                      }
+                    }}
                   >
                     {t('manage_button', 'Manage')}
                   </Button>

@@ -1922,7 +1922,7 @@ ${itemsStr}
 
               {!selectedRoomSlugOverride && activeTab === 'edit_property' && (
                 <ErrorBoundary section="Edit Property">
-                  <EditPropertyPage property={preloadedData.currentProperty} />
+                  <EditPropertyPage property={preloadedData.currentProperty} onNavigateToRoom={handleNavigateToRoom} />
                 </ErrorBoundary>
               )}
 

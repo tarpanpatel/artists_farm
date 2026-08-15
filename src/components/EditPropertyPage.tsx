@@ -5,6 +5,7 @@ import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
 
 interface EditPropertyPageProps {
+  onNavigateToRoom?: (roomSlug: string) => void;
   property: {
     id: number;
     name?: string;
@@ -22,7 +23,7 @@ interface EditPropertyPageProps {
   };
 }
 
-export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property }) => {
+export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, onNavigateToRoom }) => {
   if (!property) {
     return (
       <div className="edit-property-page__not-found text-center py-8 text-slate-500 text-sm">
@@ -48,6 +49,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property }) 
             propertySlug={property.slug || ''}
             propertyType={property.property_type}
             onUpdated={() => window.location.reload()}
+            onNavigateToRoom={onNavigateToRoom}
           />
         </div>
       )}
