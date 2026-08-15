@@ -89,6 +89,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     invoiceBillUrl: '',
     paymentScreenshotUrl: '',
   }));
+  const isAmountEntered = Boolean(formState.amount && Number(formState.amount) > 0);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
 
   useEffect(() => {
@@ -620,14 +621,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     placeholder="0"
                   />
                 </div>
-                <div>
-                  <Input
-                    label={t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}
-                    type="number"
-                    value={formState.drawerAmount}
-                    disabled
-                  />
-                </div>
+            <div>
+              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('property_cash_in_hand_rupees_label', 'Property Cash in Hand (₹)')}</label>
+              <div className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold text-sm font-mono shadow-2xs h-[38px] flex items-center px-3">
+                ₹{Number(formState.drawerAmount || 0).toFixed(2)}
+              </div>
+            </div>
               </div>
             )}
 
