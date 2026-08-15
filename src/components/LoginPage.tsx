@@ -1,18 +1,29 @@
 import React, { useState, useRef } from 'react';
-import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
+import { AlertCircle, Lock, Phone, KeyRound, Building2, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2, Delete } from 'lucide-react';
 import { t } from '../i18n/en';
 
 interface LoginPageProps {
-  onLoginSuccess: (userData: {
-    username: string;
-    name?: string;
-    role: string;
-    is_platform_admin: boolean;
-    default_tenant_id?: number;
-  }) => void;
+  // 'management': tenant/platform admin login - redirects to a dashboard on success.
+  // 'terminal': property staff login (front desk, kitchen, etc.) - stays in place and
+  // hands off to a staff session instead of navigating away. Defaults to 'management'.
+  variant?: 'management' | 'terminal';
+  // Raw `data.user` from the login_user API response, passed through unmodified - the
+  // two variants need completely different post-login handling (redirect+tenant session
+  // vs in-place staff-context login), so that's left entirely to the caller rather than
+  // this component trying to know both.
+  onLoginSuccess: (user: any) => void;
+  // terminal-only: logs a failed attempt against the property's audit trail.
+  onLoginFailed?: (username: string) => void;
+  // terminal-only: called instead of onLoginSuccess when the authenticated account has
+  // access_all_properties set (see php/security/access_control.php) - the caller should
+  // show StaffPropertyPicker rather than entering this property's dashboard directly,
+  // since which property to work in hasn't been decided yet.
+  onNeedsPropertySelection?: (info: { tenantId: number; tenantSlug: string; user: any }) => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', onLoginSuccess, onLoginFailed, onNeedsPropertySelection }) => {
+  const isTerminal = variant === 'terminal';
+
   const [mobileNumber, setMobileNumber] = useState('');
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -21,116 +32,139 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const passcodeInputRef = useRef<HTMLInputElement>(null);
   const loginFormRef = useRef<HTMLFormElement>(null);
 
-  // First-login mandatory passcode change - set when the account was created
-  // with a temporary passcode (e.g. new tenant welcome emails/WhatsApp
-  // shares) and hasn't been changed yet.
+  // First-login mandatory passcode change - set when the account was created with a
+  // temporary passcode (e.g. new tenant welcome emails/WhatsApp shares) and hasn't been
+  // changed yet. Previously only enforced in 'management' mode (LoginPage.tsx) - the old
+  // separate LoginModal.tsx never checked must_change_passcode at all, so a staff account
+  // with a still-temporary PIN could log into a property terminal without ever being
+  // forced onto a real one. Sharing this flow across both variants fixes that gap.
   const [mustChangePasscode, setMustChangePasscode] = useState(false);
-  const [pendingSession, setPendingSession] = useState<Parameters<LoginPageProps['onLoginSuccess']>[0] | null>(null);
+  const [pendingUser, setPendingUser] = useState<any | null>(null);
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [isSavingPasscode, setIsSavingPasscode] = useState(false);
 
-  // "Forgot Password?" - emails the account's current username + passcode
-  // to the tenant's email on file (passcodes are plaintext throughout this
-  // app, so there's no reset-link/token flow, just a lookup + send).
+  // "Forgot Password?" - emails the account's current username + passcode to the
+  // tenant's email on file. Only surfaced in 'management' mode's UI below (unconfirmed
+  // whether staff accounts have an email on file for this to actually reach), but the
+  // flow itself stays shared so there's one implementation either way.
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotMobile, setForgotMobile] = useState('');
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numeric digits, max 10
-    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+    const rawVal = e.target.value;
+    const val = (rawVal === 'admin' || rawVal === 'root') ? rawVal : rawVal.replace(/\D/g, '').slice(0, 10);
     setMobileNumber(val);
     setError(null);
-    // Auto-focus the password field once 10 digits (or 'admin'/'root') are typed
+    // Auto-focus passcode field when 10 digits (or 'admin'/'root') are entered
     if (val.length === 10 || val === 'admin' || val === 'root') {
-      passcodeInputRef.current?.focus();
-      // Move cursor to end of the password input
-      const passInput = passcodeInputRef.current;
-      if (passInput) {
-        const len = passInput.value.length;
-        passInput.setSelectionRange(len, len);
-      }
+      setTimeout(() => {
+        passcodeInputRef.current?.focus();
+        const passInput = passcodeInputRef.current;
+        if (passInput) {
+          const len = passInput.value.length;
+          passInput.setSelectionRange(len, len);
+        }
+      }, 30);
     }
   };
 
   const handlePasscodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numeric digits, max 6
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPasscode(val);
     setError(null);
-    // Auto-submit once 6 digits are entered and the form is valid
+    // Auto-submit when 6 digits are entered and mobile number is valid
     if (val.length === 6 && !isLoading) {
       const validMobile = mobileNumber.length === 10 || mobileNumber === 'admin' || mobileNumber === 'root';
       if (validMobile) {
-        loginFormRef.current?.requestSubmit();
+        setTimeout(() => {
+          loginFormRef.current?.requestSubmit();
+        }, 50);
       }
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasscodeKey = (num: string) => {
+    if (passcode.length < 6) {
+      const nextPasscode = passcode + num;
+      setPasscode(nextPasscode);
+      setError(null);
+
+      // Auto-submit when 6 digits are reached via keypad
+      if (nextPasscode.length === 6 && !isLoading) {
+        const validMobile = mobileNumber.length === 10 || mobileNumber === 'admin' || mobileNumber === 'root';
+        if (validMobile) {
+          setTimeout(() => {
+            loginFormRef.current?.requestSubmit();
+          }, 100);
+        }
+      }
+    }
+  };
+
+  const handleBackspace = () => {
+    setPasscode((prev) => prev.slice(0, -1));
+    setError(null);
+  };
+
+  const handleClear = () => {
+    setPasscode('');
+    setError(null);
+  };
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
 
     if (mobileNumber.length > 0 && mobileNumber.length < 10 && mobileNumber !== 'admin' && mobileNumber !== 'root') {
-      setError('Please enter a valid 10-digit mobile number');
+      setError(t('enter_10_digit_mobile_error'));
       return;
     }
-
     if (passcode.length < 6 && passcode !== '123456' && passcode !== 'admin') {
-      setError('Please enter your 6-digit PIN passcode');
+      setError(t('enter_6_digit_passcode_error'));
       return;
     }
 
     setIsLoading(true);
-
     try {
       const response = await fetch('/php/api/router.php?action=login_user', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include',
-        body: JSON.stringify({
-          mobile_number: mobileNumber,
-          passcode: passcode,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile_number: mobileNumber, passcode }),
       });
-
       const data = await response.json();
 
       if (data.success && data.user) {
-        const sessionData = {
-          username: data.user.username,
-          name: data.user.name,
-          role: data.user.role,
-          is_platform_admin: data.user.is_platform_admin,
-          default_tenant_id: data.user.default_tenant_id,
-        };
-
         if (data.user.must_change_passcode) {
-          // Don't establish the session yet - hold onto it until a new
-          // passcode is set, matching the "temporary credentials can't be
-          // used past first login" requirement.
-          setPendingSession(sessionData);
+          // Don't hand off the session yet - hold onto it until a new passcode is set,
+          // matching "temporary credentials can't be used past first login".
+          setPendingUser(data.user);
           setMustChangePasscode(true);
           setIsLoading(false);
           return;
         }
 
-        // Store session
-        localStorage.setItem('artists_farm_user_session', JSON.stringify(sessionData));
+        if (isTerminal && data.user.access_all_properties && onNeedsPropertySelection) {
+          onNeedsPropertySelection({
+            tenantId: data.user.tenant_id,
+            tenantSlug: data.user.tenant_slug,
+            user: data.user,
+          });
+          return;
+        }
 
-        // Call success callback with session data (will trigger redirect)
-        onLoginSuccess(sessionData);
+        onLoginSuccess(data.user);
       } else {
-        setError(data.message || 'Login failed. Please check your credentials.');
+        setError(data.message || t('login_failed_error'));
         setPasscode('');
+        if (isTerminal && onLoginFailed) onLoginFailed(mobileNumber);
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Login failed. Please try again.');
+      setError(t('network_auth_error'));
       setPasscode('');
     } finally {
       setIsLoading(false);
@@ -161,16 +195,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          username: pendingSession?.username || mobileNumber,
+          username: pendingUser?.username || mobileNumber,
           current_passcode: passcode,
           new_passcode: newPasscode,
         }),
       });
       const data = await response.json();
 
-      if (data.success && pendingSession) {
-        localStorage.setItem('artists_farm_user_session', JSON.stringify(pendingSession));
-        onLoginSuccess(pendingSession);
+      if (data.success && pendingUser) {
+        onLoginSuccess({ ...pendingUser, must_change_passcode: false });
       } else {
         setError(data.message || 'Failed to set new passcode. Please try again.');
       }
@@ -217,7 +250,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   if (showForgotPassword) {
     return (
       <div className="login-page login-page--forgot min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-        {/* Ambient Backdrop Aura */}
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -319,7 +351,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   if (mustChangePasscode) {
     return (
       <div className="login-page login-page--set-passcode min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-        {/* Ambient Backdrop Aura */}
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 dark:bg-amber-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-orange-500/10 dark:bg-orange-600/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -335,7 +366,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               {t('set_new_passcode_title', 'Set a New Passcode')}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-              You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingSession?.name ? `, ${pendingSession.name}` : ''}.
+              You're using a temporary passcode. Choose a new 6-digit passcode to continue{pendingUser?.name ? `, ${pendingUser.name}` : ''}.
             </p>
           </div>
 
@@ -417,7 +448,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="login-page min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50/60 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Ambient Backdrop Aura */}
       <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -425,23 +455,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         {/* Brand Icon */}
         <div className="flex justify-center mb-5">
           <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25 ring-4 ring-blue-500/10">
-            <Building2 className="w-8 h-8 text-white stroke-[2.2]" />
+            {isTerminal ? (
+              <Lock className="w-8 h-8 text-white stroke-[2.2]" />
+            ) : (
+              <Building2 className="w-8 h-8 text-white stroke-[2.2]" />
+            )}
           </div>
         </div>
 
         {/* Title & Subtitle */}
         <div className="text-center mb-7">
           <h1 className="login-page__page-title text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Ground Code
+            {isTerminal ? t('login_modal_brand') : 'Ground Code'}
           </h1>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-            {t('login_subtitle', 'Hospitality & Resort Management Portal')}
+            {isTerminal ? t('terminal_authorization_subtitle') : t('login_subtitle', 'Hospitality & Resort Management Portal')}
           </p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleLogin} ref={loginFormRef} className="app-form app-form--login space-y-4">
-          {/* Error Message */}
           {error && (
             <div className="flex gap-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
@@ -478,17 +511,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 {t('pin_passcode_label', '6-Digit Security Passcode')}
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotMobile(mobileNumber);
-                  setForgotResult(null);
-                  setShowForgotPassword(true);
-                }}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer"
-              >
-                {t('forgot_password_link', 'Forgot Passcode?')}
-              </button>
+              {!isTerminal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotMobile(mobileNumber);
+                    setForgotResult(null);
+                    setShowForgotPassword(true);
+                  }}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                >
+                  {t('forgot_password_link', 'Forgot Passcode?')}
+                </button>
+              )}
             </div>
             <div className="relative flex items-center">
               <div className="absolute left-3.5 z-10 flex items-center gap-1.5 text-slate-400 dark:text-slate-500 pointer-events-none select-none">
@@ -509,6 +544,43 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
 
+          {/* Touch Keypad - terminal only: fast PIN entry on a shared front-desk device */}
+          {isTerminal && (
+            <div className="login-page__keypad grid grid-cols-3 gap-2 pt-1">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handlePasscodeKey(num)}
+                  className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleClear}
+                className="login-page__key login-page__key--clear py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors cursor-pointer"
+              >
+                {t('clear_keypad_button')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePasscodeKey('0')}
+                className="login-page__key login-page__key--number py-3 text-lg font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 hover:text-blue-600 transition-colors active:scale-95 cursor-pointer"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={handleBackspace}
+                className="login-page__key login-page__key--backspace py-3 text-xs font-semibold bg-slate-50/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 transition-colors cursor-pointer"
+              >
+                <Delete className="w-4 h-4 mx-auto" />
+              </button>
+            </div>
+          )}
+
           {/* Sign In Button */}
           <div className="pt-2">
             <button
@@ -524,30 +596,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>{t('login_button', 'Sign In to Terminal')}</span>
+                  <span>{isTerminal ? t('login_to_terminal_button') : t('login_button', 'Sign In to Terminal')}</span>
                 </>
               )}
             </button>
           </div>
         </form>
 
-        {/* Footer & Back Link */}
-        <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800/80 text-center space-y-2.5">
-          <p className="text-[11px] text-slate-400 dark:text-slate-500">
-            {t('login_footer_copyright', '© 2026 Ground Code. All rights reserved.')}
-          </p>
-          <div>
-            <a
-              href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              {t('back_to_home_link', 'Back to Home')}
-            </a>
+        {/* Footer & Back Link - management only, terminal is embedded in a property's own device */}
+        {!isTerminal && (
+          <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800/80 text-center space-y-2.5">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              {t('login_footer_copyright', '© 2026 Ground Code. All rights reserved.')}
+            </p>
+            <div>
+              <a
+                href="/"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                {t('back_to_home_link', 'Back to Home')}
+              </a>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
-
