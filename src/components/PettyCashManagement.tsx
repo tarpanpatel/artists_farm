@@ -462,9 +462,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 onChange={val => dispatch({ type: 'SET_FIELD', field: 'category', value: val })}
                 options={[
                   { value: 'Other', label: t('category_other_label', 'Other') },
-                  { value: 'Salaries', label: t('category_salaries_manual_label', 'Salaries (Manual)') },
-                  { value: 'Salary (Auto)', label: t('category_salary_auto_label', 'Salary (Auto)') },
-                  { value: 'Bills', label: t('category_bills_label', 'Bills') },
+                  { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
+                  { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
+                  { value: 'Maintenance', label: t('category_maintenance_label', 'Maintenance & Repairs') },
+                  { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                 ]}
               />
             </div>
@@ -472,32 +473,19 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
           <div>
             <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_descriptions_label', 'Details Descriptions *')}</label>
-            {formState.category === 'Salaries' || formState.category === 'Salary (Auto)' ? (
-              <div>
-                <StyledSelect
-                  value={formState.description}
-                  onChange={handleDescriptionChange}
-                  placeholder={t('select_staff_beneficiary_placeholder', '-- Select Staff Beneficiary --')}
-                  options={staff.map(s => ({ value: s.name, label: `${s.name} (${s.role})` }))}
-                />
-                {(formState.category === 'Salaries' || formState.category === 'Salary (Auto)') && !canManageExpense && (
-                  <p className="text-red-500 font-semibold text-[10px] mt-1">{t('salary_access_warning_message', 'Warning: You are not logged in as Admin. Salary submission will be blocked.')}</p>
-                )}
-              </div>
-            ) : (
-              <div className="relative">
-                <Input
-                  type="text"
-                  required
-                  value={formState.description}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  onChange={e => {
-                    handleDescriptionChange(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
-                />
+            <div className="relative">
+              <Input
+                type="text"
+                required
+                value={formState.description}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onChange={e => {
+                  handleDescriptionChange(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
+              />
                 
                 {/* Interactive Auto-suggestions Dropdown Menu */}
                 {showSuggestions && (
@@ -531,8 +519,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
 
           <div>
             <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('more_information_label', '& More Information (If Any)')}</label>
@@ -992,9 +979,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   onChange={val => setEditingEntry({ ...editingEntry, category: val, costCategory: val })}
                   options={[
                     { value: 'Other', label: t('category_other_label', 'Other') },
-                    { value: 'Salaries', label: t('category_salaries_manual_label', 'Salaries (Manual)') },
-                    { value: 'Salary (Auto)', label: t('category_salary_auto_label', 'Salary (Auto)') },
-                    { value: 'Bills', label: t('category_bills_label', 'Bills') },
+                    { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
+                    { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
+                    { value: 'Maintenance', label: t('category_maintenance_label', 'Maintenance & Repairs') },
+                    { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                   ]}
                 />
               </div>
