@@ -3,13 +3,15 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Textarea } from './Textarea';
 import { WhatsAppEditor } from './WhatsAppEditor';
 
 /**
- * Shared "Edit Property" form. Renders every editable property field (name,
- * email, phone, GSTIN, address, Google Maps link, instructions, WhatsApp
- * voucher template, Telegram toggle) and saves via `update_property`.
+ * Shared "Edit Property" form - property details only (name, contact,
+ * GSTIN/UPI, address, check-in/out times, default tariff, maps link,
+ * notes), saved via `update_property`. Guest WhatsApp messaging and the
+ * Telegram customization toggle live in WhatsAppTemplateSettings.tsx (the
+ * Telegram/messaging settings tab) instead - this page is property details
+ * only, not guest/staff notification config.
  */
 interface PropertyEditFormProps {
   property: {
@@ -22,8 +24,6 @@ interface PropertyEditFormProps {
     address?: string;
     google_maps_link?: string;
     instructions?: string;
-    whatsapp_voucher_template?: string;
-    telegram_template_customization_enabled?: number | boolean;
     property_type?: string;
     default_tariff?: number | null;
   };
@@ -55,66 +55,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [defaultTariff, setDefaultTariff] = useState(
     property.default_tariff != null ? String(property.default_tariff) : ''
   );
-  const [whatsappTemplate, setWhatsappTemplate] = useState(property.whatsapp_voucher_template || '');
-  const [telegramCustomization, setTelegramCustomization] = useState(
-    !!property.telegram_template_customization_enabled
-  );
-  const [previewTab, setPreviewTab] = useState<'whatsapp' | 'email'>('whatsapp');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const sampleGuest = {
-    guest_name: 'Tarpan Patel',
-    room_number: 'Room 101',
-    checkin_date: '08 Aug 2026',
-    checkout_date: '11 Aug 2026',
-    checkin_time: '14:00',
-    checkout_time: '11:00',
-    total_amount: '₹4,500',
-    booking_id: 'BK-7892',
-  };
-
-  const defaultTemplate = `Hello {guest_name}! 👋
-
-Thank you for booking with *{property_name}*! Your reservation is confirmed.
-
-📋 *Booking Details:*
-• Booking ID: {booking_id}
-• Room: {room_number}
-• Check-in: {checkin_date} from {checkin_time}
-• Check-out: {checkout_date} until {checkout_time}
-• Total Amount: {total_amount}
-
-📍 *Address:* {property_address}
-📞 *Contact:* {property_phone}
-🗺️ *Google Maps:* {google_maps_link}
-
-📝 *Important Notes:*
-{instructions}
-
-We look forward to welcoming you!`;
-
-  const getInterpolatedText = () => {
-    const raw = whatsappTemplate.trim() || defaultTemplate;
-    return raw
-      .replace(/\{property_name\}/g, name.trim() || '[Property Name]')
-      .replace(/\{property_email\}|\{email\}/g, email.trim() || '[Property Email]')
-      .replace(/\{property_phone\}|\{phone\}/g, phone.trim() || '[Property Phone]')
-      .replace(/\{property_address\}|\{address\}/g, address.trim() || '[Property Address]')
-      .replace(/\{google_maps_link\}|\{maps_link\}/g, mapsLink.trim() || '[Maps Link]')
-      .replace(/\{instructions\}|\{other_notes\}/g, instructions.trim() || '[No additional notes]')
-      .replace(/\{gstin\}/g, gstin.trim() || '[GSTIN]')
-      .replace(/\{upi_id\}/g, upiId.trim() || '[UPI ID]')
-      .replace(/\{guest_name\}/g, sampleGuest.guest_name)
-      .replace(/\{room_number\}/g, sampleGuest.room_number)
-      .replace(/\{checkin_date\}/g, sampleGuest.checkin_date)
-      .replace(/\{checkout_date\}/g, sampleGuest.checkout_date)
-      .replace(/\{checkin_time\}/g, sampleGuest.checkin_time)
-      .replace(/\{checkout_time\}/g, sampleGuest.checkout_time)
-      .replace(/\{total_amount\}/g, sampleGuest.total_amount)
-      .replace(/\{booking_id\}/g, sampleGuest.booking_id);
-  };
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -139,8 +82,6 @@ We look forward to welcoming you!`;
           checkin_time: checkinTime,
           checkout_time: checkoutTime,
           default_tariff: defaultTariff,
-          whatsapp_voucher_template: whatsappTemplate,
-          telegram_template_customization_enabled: telegramCustomization,
         }),
       });
       const data = await res.json();
@@ -289,100 +230,6 @@ We look forward to welcoming you!`;
           rows={4}
         />
         <p className="property-edit-form__field-help text-xs text-slate-400 dark:text-slate-500 mt-1">{t('other_notes_help', 'Supports WhatsApp formatting: *bold*, _italic_, ~strikethrough~, bullet lists, quotes, code.')}</p>
-      </div>
-
-      <label className="property-edit-form__telegram-toggle flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={telegramCustomization}
-          onChange={(e) => setTelegramCustomization(e.target.checked)}
-          className="property-edit-form__telegram-checkbox w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer"
-        />
-        <span className="property-edit-form__telegram-label block text-sm font-semibold text-slate-700 dark:text-slate-300">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</span>
-      </label>
-
-      <div className="property-edit-form__whatsapp-section pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
-        <div>
-          <p className="property-edit-form__section-heading text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>
-          <p className="property-edit-form__section-help text-xs text-slate-400 dark:text-slate-500 mb-3">{t('whatsapp_share_help_text', 'Included in the "Share via WhatsApp" message on the booking voucher. Left blank, the built-in default template is used.')}</p>
-          
-          {/* Quick variable insert buttons */}
-          <div className="property-edit-form__tag-row mb-2 flex flex-wrap items-center gap-1.5">
-            <span className="property-edit-form__tag-hint text-[11px] font-medium text-slate-500 dark:text-slate-400 mr-1">Insert Tag:</span>
-             {['{guest_name}', '{property_name}', '{room_number}', '{checkin_date}', '{checkout_date}', '{checkin_time}', '{checkout_time}', '{google_maps_link}', '{property_phone}', '{total_amount}', '{upi_id}'].map((tag) => (
-               <Button key={tag} variant="secondary" size="xs" className="px-2 py-0.5 font-mono border dark:border-slate-700 rounded-md" type="button" onClick={() => setWhatsappTemplate((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + tag)}>
-                 + {tag}
-               </Button>
-             ))}
-          </div>
-
-          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('whatsapp_voucher_template_label', 'WhatsApp Voucher Template')}</label>
-          <Textarea
-            value={whatsappTemplate}
-            onChange={(e) => setWhatsappTemplate(e.target.value)}
-            placeholder={t('whatsapp_voucher_template_placeholder', 'e.g. Welcome to {property_name}! Your booking is confirmed…')}
-            rows={4}
-            className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
-          />
-        </div>
-
-        {/* Live Guest Message Preview Box */}
-        <div className="mt-4 border border-slate-200 dark:border-slate-700/80 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                💬
-              </span>
-              <div>
-                <h4 className="property-edit-form__caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">Updates live as you edit property details & template</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded-lg text-xs">
-              <button
-                type="button"
-                onClick={() => setPreviewTab('whatsapp')}
-                className={`px-2.5 py-1 rounded-md transition font-medium ${
-                  previewTab === 'whatsapp' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                }`}
-              >
-                WhatsApp
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewTab('email')}
-                className={`px-2.5 py-1 rounded-md transition font-medium ${
-                  previewTab === 'email' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                }`}
-              >
-                Email
-              </button>
-            </div>
-          </div>
-
-          {previewTab === 'whatsapp' ? (
-            <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-xl max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
-              <div className="bg-white dark:bg-[#202c33] p-3 rounded-lg shadow-xs text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
-                {getInterpolatedText()}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
-              <div className="bg-indigo-600 p-3 text-white">
-                <p className="text-[10px] uppercase tracking-wider text-indigo-200">Guest Booking Confirmation</p>
-                <h3 className="property-edit-form__subtitle text-sm font-semibold mt-0.5">{name.trim() || 'Property Name'}</h3>
-                <p className="text-xs text-indigo-100 mt-1">{email.trim() || 'contact@property.com'} · {phone.trim() || '+91 99999 99999'}</p>
-              </div>
-              <div className="p-4 text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
-                {getInterpolatedText()}
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                <span>To: Tarpan Patel</span>
-                <span>Sent via Guest Voucher System</span>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

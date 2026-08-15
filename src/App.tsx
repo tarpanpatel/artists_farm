@@ -25,6 +25,7 @@ import { ICalSyncManager } from './components/ICalSyncManager';
 import { LicenseManagement } from './components/LicenseManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { EditPropertyPage } from './components/EditPropertyPage';
+import { WhatsAppTemplateSettings } from './components/WhatsAppTemplateSettings';
 import { GlobalModal } from './components/GlobalModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
@@ -1873,18 +1874,38 @@ ${itemsStr}
               )}
 
               {!selectedRoomSlugOverride && activeTab === 'telegram' && (
-                <TelegramNotificationModal
-                  isOpen={true}
-                  onClose={() => setIsTelegramModalOpen(false)}
-                  telegramConfig={telegramConfig}
-                  onUpdateConfig={setTelegramConfig}
-                  dispatchLogs={telegramLogs}
-                  onSendTestNotification={handleSendTestNotification}
-                  isEmbedded={true}
-                  onLogAudit={logAudit}
-                  kitchenModuleEnabled={kitchenEnabled}
-                  templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
-                />
+                <div className="space-y-6">
+                  <ErrorBoundary section="WhatsApp Template Settings">
+                    <WhatsAppTemplateSettings
+                      property={{
+                        id: preloadedData.currentProperty?.id,
+                        name: preloadedData.currentProperty?.name,
+                        email: preloadedData.currentProperty?.email,
+                        phone: preloadedData.currentProperty?.phone,
+                        gstin: preloadedData.currentProperty?.gstin,
+                        upi_id: preloadedData.currentProperty?.upi_id,
+                        address: preloadedData.currentProperty?.address,
+                        google_maps_link: preloadedData.currentProperty?.google_maps_link,
+                        instructions: preloadedData.currentProperty?.instructions,
+                        whatsapp_voucher_template: preloadedData.currentProperty?.whatsapp_voucher_template,
+                        telegram_template_customization_enabled: preloadedData.currentProperty?.telegram_template_customization_enabled,
+                      }}
+                      onSaved={() => window.location.reload()}
+                    />
+                  </ErrorBoundary>
+                  <TelegramNotificationModal
+                    isOpen={true}
+                    onClose={() => setIsTelegramModalOpen(false)}
+                    telegramConfig={telegramConfig}
+                    onUpdateConfig={setTelegramConfig}
+                    dispatchLogs={telegramLogs}
+                    onSendTestNotification={handleSendTestNotification}
+                    isEmbedded={true}
+                    onLogAudit={logAudit}
+                    kitchenModuleEnabled={kitchenEnabled}
+                    templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+                  />
+                </div>
               )}
 
               {!selectedRoomSlugOverride && activeTab === 'ical_sync' && (
