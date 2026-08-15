@@ -20,6 +20,8 @@ interface EditPropertyPageProps {
     telegram_template_customization_enabled?: number | boolean;
     property_type?: string;
     default_tariff?: number | null;
+    checkin_time?: string | null;
+    checkout_time?: string | null;
   };
 }
 
@@ -32,11 +34,13 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
     );
   }
 
+  const isRoom = property.property_type === 'MULTI_KEY_ROOM';
+
   return (
     <div className="edit-property-page max-w-7xl mx-auto">
       <div className="edit-property-page__header mb-6">
         <PageHeader
-          title={t('edit_property_page_heading', 'Edit Property')}
+          title={isRoom ? t('edit_room_page_heading', 'Edit Room') : t('edit_property_page_heading', 'Edit Property')}
           subtitle={`${property.name || t('property_details_subtitle', 'Property details & contact information')}${property.slug ? ` · ${property.slug}` : ''}`}
         />
       </div>
@@ -58,6 +62,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
           <PropertyEditForm
             property={property}
             onSaved={() => window.location.reload()}
+            isRoom={isRoom}
           />
         </div>
       </div>

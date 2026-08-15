@@ -14,6 +14,8 @@ interface Room {
   is_active: number;
   created_at: string;
   default_tariff: number | null;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
 }
 
 interface Property {

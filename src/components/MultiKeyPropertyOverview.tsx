@@ -4,6 +4,7 @@ import { apiFetch } from '../services/api';
 import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
+import { EditPropertyPage } from './EditPropertyPage';
 
 interface Room {
   id: number;
@@ -12,6 +13,9 @@ interface Room {
   room_order: number;
   is_active: number;
   created_at: string;
+  default_tariff?: number | null;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
 }
 
 interface MultiKeyProperty {
@@ -284,6 +288,20 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   isMultiKeyProperty={true}
                   rooms={property.rooms}
                   selectedRoomSlug={selectedRoomSlug}
+                />
+              )}
+
+              {activeTab === 'edit_property' && (
+                <EditPropertyPage
+                  property={{
+                    id: selectedRoom.id,
+                    name: selectedRoom.name,
+                    slug: selectedRoom.slug,
+                    property_type: 'MULTI_KEY_ROOM',
+                    default_tariff: selectedRoom.default_tariff,
+                    checkin_time: selectedRoom.checkin_time,
+                    checkout_time: selectedRoom.checkout_time,
+                  }}
                 />
               )}
             </>
