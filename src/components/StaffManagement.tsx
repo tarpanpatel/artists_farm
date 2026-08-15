@@ -1855,9 +1855,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                             <HelpCircle className="w-3.5 h-3.5" />
                           </span>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-center border border-slate-700/50">
+                          <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
                             Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                            <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
                           </div>
                         </div>
                       </label>
@@ -1997,9 +1997,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                               <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                                 <HelpCircle className="w-3.5 h-3.5" />
                               </span>
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-center border border-slate-700/50">
+                              <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
                                 Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
+                                <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
                               </div>
                             </div>
                           </label>

@@ -505,13 +505,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         // header's 0-64px band, just visually pushed down with padding. That
         // was invisible while the sidebar sat BELOW the header (z-30 < z-50):
         // the header always won that shared band. Once the sidebar was raised
-        // to z-[56] (12 Aug 2026, for the mobile-drawer-vs-dropdown fix
-        // above), the sidebar's own white background started painting OVER
-        // the header's left edge in that band instead - "sidebar overlapping
-        // header". Fix: start the sidebar's box below the header (top-16) and
-        // shrink its height to match, so the two elements' boxes never
-        // occupy the same space - z-order between them no longer matters.
-        className={`navigation fixed top-16 left-0 z-[56] h-[calc(100vh-4rem)] transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
+        className={`navigation fixed top-0 left-0 h-screen pt-16 z-40 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen
