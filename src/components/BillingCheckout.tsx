@@ -381,18 +381,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
     <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
       {groups.map((group) => {
-        const checkedInInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'staying').length;
-        const upcomingInRoom = group.guests.filter((g) => getGuestStayStatus(g).key === 'upcoming').length;
-
-        let roomStatusLabel = '';
-        if (checkedInInRoom > 0) {
-          roomStatusLabel = `${checkedInInRoom} checked in${upcomingInRoom > 0 ? ` (${upcomingInRoom} upcoming)` : ''}`;
-        } else if (upcomingInRoom > 0) {
-          roomStatusLabel = `Vacant today (${upcomingInRoom} upcoming)`;
-        } else {
-          roomStatusLabel = `${group.guests.length} booking(s)`;
-        }
-
         return (
           <div
             key={`${group.roomId}-${group.roomSlug}`}
@@ -400,23 +388,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           >
             {/* Room Header */}
             <div className="billing-checkout__room-card-header bg-slate-50 dark:bg-slate-800/80 px-4 py-3 border-b border-slate-200/80 dark:border-slate-700 flex justify-between items-center">
-              <div className="min-w-0 flex-1">
-                <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                  <Building className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                  {group.roomName}
-                </h3>
-                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  {roomStatusLabel}
-                </p>
-              </div>
-              {(() => {
-                const groupTotal = group.guests.reduce((sum, g) => sum + calculateGuestTotal(g), 0);
-                return (
-                  <span className="summary-line summary-line--group-total text-xs font-bold tabular-nums bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs">
-                    {groupTotal < 0 ? `Refund: ₹${Math.abs(groupTotal).toFixed(2)}` : `Total: ₹${groupTotal.toFixed(2)}`}
-                  </span>
-                );
-              })()}
+              <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                <Building className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                {group.roomName}
+              </h3>
             </div>
 
             {/* Guest Card(s) stacked inside Room Column */}
@@ -439,6 +414,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
                             {guest.guestName}
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
+                              ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
+                            </span>
                             {guest.otaSource && (
                               <span
                                 className="billing-checkout__ota-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[9px] font-semibold shrink-0"
