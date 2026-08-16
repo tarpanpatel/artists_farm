@@ -811,45 +811,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Payment Methods Share */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
-              <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
-            </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-              <div>
-                <ReactApexChart options={paymentMethodPieOptions} series={paymentMethodPieSeries} type="donut" height={320} />
-              </div>
-              <div className="space-y-3.5">
-                {paymentMethodPieLabels.map((label, index) => {
-                  const val = paymentMethodPieSeries[index] || 0;
-                  const totalVal = paymentMethodPieSeries.reduce((s, v) => s + v, 0) || 1;
-                  const pct = (val / totalVal) * 100;
-                  return (
-                    <div key={label}>
-                      <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                        <span>{label}</span>
-                        <span className="font-extrabold">₹{val.toLocaleString('en-IN')} ({pct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${pct}%`,
-                            backgroundColor: paymentMethodPieOptions.colors[index % paymentMethodPieOptions.colors.length]
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                {paymentMethodPieSeries.length === 0 && (
-                  <p className="text-slate-400 text-center py-4">{t('no_payment_data', 'No payment records for this period.')}</p>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1188,6 +1149,45 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 </div>
               );
             })()}
+          </div>
+
+          {/* Payment Methods Share */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
+              <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+              <div>
+                <ReactApexChart options={paymentMethodPieOptions} series={paymentMethodPieSeries} type="donut" height={320} />
+              </div>
+              <div className="space-y-3.5">
+                {paymentMethodPieLabels.map((label, index) => {
+                  const val = paymentMethodPieSeries[index] || 0;
+                  const totalVal = paymentMethodPieSeries.reduce((s, v) => s + v, 0) || 1;
+                  const pct = (val / totalVal) * 100;
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                        <span>{label}</span>
+                        <span className="font-extrabold">₹{val.toLocaleString('en-IN')} ({pct.toFixed(1)}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: paymentMethodPieOptions.colors[index % paymentMethodPieOptions.colors.length]
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {paymentMethodPieSeries.length === 0 && (
+                  <p className="text-slate-400 text-center py-4">{t('no_payment_data', 'No payment records for this period.')}</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
