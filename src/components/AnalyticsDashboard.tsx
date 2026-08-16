@@ -437,6 +437,54 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
   };
 
+  // P&L Income Chart
+  const pLIncomeSeries: number[] = pLIncomeGroups.map(([_, amount]) => Number(amount));
+  const pLIncomeLabels: string[] = pLIncomeGroups.map(([cat]) => cat);
+  const pLIncomeChartOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: pLIncomeLabels,
+    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
+  // P&L Expense Chart
+  const pLExpenseSeries: number[] = pLExpenseGroups.map(([_, amount]) => Number(amount));
+  const pLExpenseLabels: string[] = pLExpenseGroups.map(([cat]) => cat);
+  const pLExpenseChartOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: pLExpenseLabels,
+    colors: ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
+  // Cash Inflow Chart
+  const cashInflowSeries: number[] = cashInflowGroups.map(([_, amount]) => Number(amount));
+  const cashInflowLabels: string[] = cashInflowGroups.map(([cat]) => cat);
+  const cashInflowChartOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: cashInflowLabels,
+    colors: ['#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
+  // Cash Outflow Chart
+  const cashOutflowSeries: number[] = cashOutflowGroups.map(([_, amount]) => Number(amount));
+  const cashOutflowLabels: string[] = cashOutflowGroups.map(([cat]) => cat);
+  const cashOutflowChartOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: cashOutflowLabels,
+    colors: ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
   return (
     <div className="analytics-dashboard-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
       <PageHeader
@@ -684,36 +732,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <ReactApexChart options={bookingsGuestOptions} series={bookingsGuestSeries} type="line" height={320} />
               </div>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--overview">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                  <tr className="analytics-dashboard__table-header-row">
-                    <th className="p-3 analytics-dashboard__table-header-cell">{t('month_column', 'Month')}</th>
-                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
-                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
-                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('guests_column', 'Guests')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                  {sortedBookingsByMonth.map(([month, data]) => (
-                    <tr key={month} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{month}</td>
-                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.bookings}</td>
-                      <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
-                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-amber-600">{data.guests}</td>
-                    </tr>
-                  ))}
-                  {sortedBookingsByMonth.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                        {t('no_bookings_recorded_message', 'No bookings recorded for the selected period.')}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -782,39 +800,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <BedDouble className="w-4 h-4 text-blue-600" /> {t('room_by_room_performance_heading', 'Room-by-Room Performance Comparison')}
               </h3>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <ReactApexChart options={roomRevenueBarOptions} series={roomRevenueBarSeries} type="bar" height={320} />
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--bookings">
-                    <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                      <tr className="analytics-dashboard__table-header-row">
-                        <th className="p-3 analytics-dashboard__table-header-cell">{t('room_column', 'Room')}</th>
-                        <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('bookings_column', 'Bookings')}</th>
-                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('revenue_rupees_column', 'Revenue (₹)')}</th>
-                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('occupancy_column', 'Occupancy')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                      {roomPerformance.map((room) => (
-                        <tr key={room.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{room.name}</td>
-                          <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{room.bookings}</td>
-                          <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{room.revenue.toLocaleString('en-IN')}</td>
-                          <td className="analytics-dashboard__cell p-3 text-right font-semibold text-amber-600">
-                            {room.occupancyRate === null ? '—' : `${room.occupancyRate.toFixed(0)}%`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {periodDays === null && (
-                    <p className="text-[10px] text-slate-400 mt-2">{t('occupancy_needs_date_range_help', 'Occupancy % needs a specific date range — pick Today, Week, Month, or Year above to see it.')}</p>
-                  )}
-                </div>
+              <div className="w-full">
+                <ReactApexChart options={roomRevenueBarOptions} series={roomRevenueBarSeries} type="bar" height={360} />
               </div>
             </div>
           )}
@@ -854,55 +841,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             {/* Side-by-Side Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-              {/* Chart A: Food Menu Performance (60% width on desktop) */}
-              <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('food_menu_performance_heading', 'Food Menu Performance & Most Popular Dish Analytics')}</h4>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('food_menu_performance_heading', 'Food Menu Performance')}</h4>
                 <ReactApexChart options={foodBarOptions} series={foodBarSeries} type="bar" height={300} />
               </div>
 
-              {/* Chart B: Kitchen Sales vs Purchases (40% width on desktop) */}
-              <div className="lg:col-span-5 bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('kitchen_sales_vs_purchases_heading', 'Sales vs Purchases Outflow')}</h4>
                 <ReactApexChart options={kitchenBarOptions} series={kitchenBarSeries} type="bar" height={300} />
-              </div>
-            </div>
-
-            {/* Unified Table Section */}
-            <div className="space-y-3">
-              <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-4">{t('popular_dishes_ranking_heading', 'Popular Dishes Sales Ranking')}</h4>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                <table className="datatable w-full text-left border-collapse analytics-dashboard__table">
-                  <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                    <tr className="analytics-dashboard__table-header-row">
-                      <th className="p-3 analytics-dashboard__table-header-cell">{t('rank_column', 'Rank')}</th>
-                      <th className="p-3 analytics-dashboard__table-header-cell">{t('dish_name_column', 'Dish Name')}</th>
-                      <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('times_ordered_column', 'Times Ordered')}</th>
-                      <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_revenue_rupees_column', 'Total Revenue (₹)')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                    {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
-                      <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <td className="analytics-dashboard__cell p-3 font-semibold text-slate-400">#{index + 1}</td>
-                        <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{itemName}</td>
-                        <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count}</td>
-                        <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
-                      </tr>
-                    ))}
-                    {sortedMenuItems.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                          {ordersLoading ? (
-                            <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading orders...</span>
-                          ) : (
-                            t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
@@ -917,43 +864,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               {t('expense_items_cost_breakdown_heading', '🛒 Expense Items - Total Cost Breakdown')}
             </h3>
 
-            <div className="grid grid-cols-1 gap-6">
-              <div>
-                <ReactApexChart options={expensesBarOptions} series={expensesBarSeries} type="bar" height={360} />
-              </div>
-
-              <div className="overflow-x-auto">
-              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--kitchen">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                  <tr className="analytics-dashboard__table-header-row">
-                    <th className="p-3 analytics-dashboard__table-header-cell">#</th>
-                    <th className="p-3 analytics-dashboard__table-header-cell">{t('item_description_column', 'Item Description')}</th>
-                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
-                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_cost_rupees_column', 'Total Cost (₹)')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                    {sortedExpenseItems.map(([name, data], idx) => {
-                      const itemData = data as { count: number; category: string; totalCost: number };
-                      return (
-                        <tr key={name} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <td className="analytics-dashboard__cell p-3 font-mono text-slate-400 text-[10px]">{idx + 1}</td>
-                          <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{name}</td>
-                          <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{itemData.category}</td>
-                          <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-red-600">₹{itemData.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        </tr>
-                      );
-                    })}
-                    {sortedExpenseItems.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                          {t('no_expenses_recorded_message', 'No expenses recorded for the selected period.')}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="w-full">
+              <ReactApexChart options={expensesBarOptions} series={expensesBarSeries} type="bar" height={380} />
             </div>
           </div>
         </div>
@@ -995,45 +907,25 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--profit-loss">
-                      <thead className="analytics-dashboard__table-header">
-                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('type_column', 'Type')}</th>
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                        {pLIncomeGroups.map(([cat, amount]) => (
-                          <tr key={`inc-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
-                            <td className="analytics-dashboard__cell p-2 text-emerald-600 dark:text-emerald-400 font-semibold uppercase text-[10px]">Income</td>
-                            <td className="p-2 font-mono font-bold text-right text-emerald-600">
-                              +₹{amount.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))}
-                        {pLExpenseGroups.map(([cat, amount]) => (
-                          <tr key={`exp-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
-                            <td className="analytics-dashboard__cell p-2 text-red-500 dark:text-red-400 font-semibold uppercase text-[10px]">Expense</td>
-                            <td className="p-2 font-mono font-bold text-right text-red-500">
-                              -₹{amount.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))}
-                        {ledgerData.length === 0 && (
-                          <tr><td colSpan={3} className="analytics-dashboard__cell p-6 text-center text-slate-400">
-                            {ledgerLoading ? (
-                              <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
-                            ) : (
-                              t('no_ledger_entries_message', 'No ledger entries for this month.')
-                            )}
-                          </td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Donut Chart: Income Categories */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('revenue_streams_breakdown_label', 'Income Sources Distribution')}</h4>
+                      {pLIncomeSeries.length > 0 ? (
+                        <ReactApexChart options={pLIncomeChartOptions} series={pLIncomeSeries} type="donut" height={280} />
+                      ) : (
+                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_income_data', 'No income recorded for this period.')}</p>
+                      )}
+                    </div>
+                    {/* Donut Chart: Expense Categories */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('expense_categories_breakdown_label', 'Expense Categories Distribution')}</h4>
+                      {pLExpenseSeries.length > 0 ? (
+                        <ReactApexChart options={pLExpenseChartOptions} series={pLExpenseSeries} type="donut" height={280} />
+                      ) : (
+                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_expense_data', 'No expenses recorded for this period.')}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1080,45 +972,25 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <p className={`text-xl font-extrabold mt-1 ${netCash >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>{netCash >= 0 ? '+' : '-'}₹{Math.abs(netCash).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--balance-sheet">
-                      <thead className="analytics-dashboard__table-header">
-                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('flow_direction_column', 'Flow')}</th>
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                        {cashInflowGroups.map(([cat, amount]) => (
-                          <tr key={`inflow-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
-                            <td className="analytics-dashboard__cell p-2 text-emerald-600 dark:text-emerald-400 font-semibold uppercase text-[10px]">Inflow</td>
-                            <td className="p-2 font-mono font-bold text-right text-emerald-600">
-                              +₹{amount.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))}
-                        {cashOutflowGroups.map(([cat, amount]) => (
-                          <tr key={`outflow-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
-                            <td className="analytics-dashboard__cell p-2 text-red-500 dark:text-red-400 font-semibold uppercase text-[10px]">Outflow</td>
-                            <td className="p-2 font-mono font-bold text-right text-red-500">
-                              -₹{amount.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))}
-                        {ledgerData.length === 0 && (
-                          <tr><td colSpan={3} className="analytics-dashboard__cell p-6 text-center text-slate-400">
-                            {ledgerLoading ? (
-                              <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
-                            ) : (
-                              t('no_ledger_entries_message', 'No ledger entries for this month.')
-                            )}
-                          </td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Donut Chart: Cash Inflow Categories */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('cash_inflow_breakdown_label', 'Inflow Sources Distribution')}</h4>
+                      {cashInflowSeries.length > 0 ? (
+                        <ReactApexChart options={cashInflowChartOptions} series={cashInflowSeries} type="donut" height={280} />
+                      ) : (
+                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_inflow_data', 'No inflow recorded for this period.')}</p>
+                      )}
+                    </div>
+                    {/* Donut Chart: Cash Outflow Categories */}
+                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('cash_outflow_breakdown_label', 'Outflow Categories Distribution')}</h4>
+                      {cashOutflowSeries.length > 0 ? (
+                        <ReactApexChart options={cashOutflowChartOptions} series={cashOutflowSeries} type="donut" height={280} />
+                      ) : (
+                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_outflow_data', 'No outflow recorded for this period.')}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
