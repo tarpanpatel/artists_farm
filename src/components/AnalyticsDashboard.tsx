@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  IndianRupee, 
-  PieChart, 
-  Utensils, 
-  ShoppingBag, 
-  Calendar, 
+import {
+  BarChart3,
+  TrendingUp,
+  IndianRupee,
+  PieChart,
+  Utensils,
+  ShoppingBag,
+  Calendar,
   Filter,
   BedDouble,
-  Loader2,
-  Clock
+  Clock,
+  CalendarClock,
+  Users,
+  Zap
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt } from '../types';
+import { GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY } from '../constants/guestStatus';
 import { 
   fetchKitchenPurchasesFromDB, 
   fetchFinancialLedger, 
@@ -53,9 +56,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   isMultiKeyProperty = false,
   rooms = [],
 }) => {
-  const { orders, ordersLoading } = useKitchenContext();
+  const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'kitchen' | 'expenses' | 'profit_loss' | 'cash_flow'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
 
@@ -78,7 +81,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // Starts false, not true: the fetch below only fires once activeTab is one
   // of the ledger tabs, so defaulting true would leave it stuck "loading"
   // forever on every other tab (Overview, Kitchen, etc. never flip it false).
-  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [, setLedgerLoading] = useState(false);
   const [ledgerMonth, setLedgerMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -212,6 +215,120 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   const sortedBookingsByMonth = Object.entries(bookingsByMonth).sort((a, b) => a[0].localeCompare(b[0]));
 
+  const monthKeyOf = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // Bills & Utilities Analytics - Cost Category Group 'Bills' (Electricity,
+  // Water, Internet, etc. - see PettyCashManagement.tsx). Trended by month so
+  // a spike (e.g. a bad power bill) is visible over time, and broken down by
+  // bill type for the selected period so it's clear WHICH bill is driving cost.
+  const billsExpenses = filteredExpenses.filter((e: any) => (e.category || e.costCategory) === 'Bills' && e.type === 'Expense');
+  const billsByMonth = billsExpenses.reduce((acc: Record<string, number>, e: any) => {
+    const key = monthKeyOf(e.date);
+    acc[key] = (acc[key] || 0) + (Number(e.amount) || 0);
+    return acc;
+  }, {} as Record<string, number>);
+  const sortedBillsByMonth = Object.entries(billsByMonth).sort((a, b) => a[0].localeCompare(b[0]));
+  const billsByType = billsExpenses.reduce((acc: Record<string, number>, e: any) => {
+    const label = e.description || 'Other Bill';
+    acc[label] = (acc[label] || 0) + (Number(e.amount) || 0);
+    return acc;
+  }, {} as Record<string, number>);
+  const sortedBillsByType = Object.entries(billsByType).sort((a, b) => Number(b[1]) - Number(a[1]));
+  const totalBillsThisPeriod = sortedBillsByType.reduce((s, [, v]) => s + v, 0);
+
+  // Labor Cost as % of Revenue - trended monthly. Labor cost is drawn from
+  // the same 'Salaries' category petty-cash entries generateSalaryEntry()
+  // posts (StaffManagement/CashDrawerManager's "Pay Now"), so this reads
+  // real payouts, not projected payroll. Revenue-per-month reuses the same
+  // room + kitchen definition as totalGrossRevenue above, just bucketed.
+  const laborByMonth = filteredExpenses
+    .filter((e: any) => (e.category || e.costCategory) === 'Salaries' && e.type === 'Expense')
+    .reduce((acc: Record<string, number>, e: any) => {
+      const key = monthKeyOf(e.date);
+      acc[key] = (acc[key] || 0) + (Number(e.amount) || 0);
+      return acc;
+    }, {} as Record<string, number>);
+  const kitchenRevenueByMonth = filteredOrders.reduce((acc: Record<string, number>, o: any) => {
+    const key = monthKeyOf(o.orderTime);
+    acc[key] = (acc[key] || 0) + (Number(o.totalAmount) || 0);
+    return acc;
+  }, {} as Record<string, number>);
+  const laborMonthKeys = Array.from(new Set([
+    ...Object.keys(bookingsByMonth),
+    ...Object.keys(kitchenRevenueByMonth),
+    ...Object.keys(laborByMonth),
+  ])).sort();
+  const laborCostRatioByMonth = laborMonthKeys.map((key) => {
+    const revenue = (bookingsByMonth[key]?.revenue || 0) + (kitchenRevenueByMonth[key] || 0);
+    const labor = laborByMonth[key] || 0;
+    const pct = revenue > 0 ? (labor / revenue) * 100 : 0;
+    return { key, revenue, labor, pct };
+  });
+  const latestLaborRatio = laborCostRatioByMonth[laborCostRatioByMonth.length - 1];
+
+  // Forward-Looking Pace/Pickup - "what's on the books" for the next 90 days,
+  // independent of the retrospective dateFilter above (that filter looks
+  // backward; pace is inherently forward, so it always uses the full,
+  // unfiltered `guests` list). No historical snapshot data exists to compare
+  // against "the same point last cycle" (guests/bookings aren't timestamped
+  // with when the reservation was MADE, only stay dates), so this shows
+  // current on-the-books demand rather than true pace-vs-last-year - still
+  // the number that actually drives "should I discount this week" calls.
+  const paceToday = new Date();
+  paceToday.setHours(0, 0, 0, 0);
+  const CANCELLED_STATUSES = new Set(['Cancelled', GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY]);
+  const upcomingGuests = guests.filter((g: any) => {
+    if (CANCELLED_STATUSES.has(g.status)) return false;
+    const checkin = new Date(g.checkinDate);
+    if (isNaN(checkin.getTime())) return false;
+    checkin.setHours(0, 0, 0, 0);
+    const daysOut = Math.round((checkin.getTime() - paceToday.getTime()) / 86400000);
+    return daysOut >= 0 && daysOut <= 90;
+  });
+  const nightsFor = (g: any): number => {
+    const ci = new Date(g.checkinDate);
+    const co = new Date(g.expectedCheckout || g.checkoutDate || g.checkinDate);
+    const n = Math.round((co.getTime() - ci.getTime()) / 86400000);
+    return n > 0 ? n : 1;
+  };
+  const paceBucketDefs = [
+    { key: 'next30', label: t('pace_next_30_days_label', 'Next 30 Days'), from: 0, to: 30 },
+    { key: 'next60', label: t('pace_31_60_days_label', '31-60 Days'), from: 31, to: 60 },
+    { key: 'next90', label: t('pace_61_90_days_label', '61-90 Days'), from: 61, to: 90 },
+  ];
+  const paceBuckets = paceBucketDefs.map((b) => {
+    const inBucket = upcomingGuests.filter((g: any) => {
+      const checkin = new Date(g.checkinDate);
+      checkin.setHours(0, 0, 0, 0);
+      const daysOut = Math.round((checkin.getTime() - paceToday.getTime()) / 86400000);
+      return daysOut >= b.from && daysOut <= b.to;
+    });
+    const nights = inBucket.reduce((s: number, g: any) => s + nightsFor(g), 0);
+    const revenue = inBucket.reduce((s: number, g: any) => s + (Number(g.roomRate) || 0) * nightsFor(g), 0);
+    return { ...b, bookings: inBucket.length, nights, revenue };
+  });
+  // Weekly breakdown for the next 12 weeks - the actual "which week is
+  // looking empty" view, since the 3 buckets above are too coarse to spot a
+  // single slow week hiding inside "Next 30 Days".
+  const paceWeeks = Array.from({ length: 12 }, (_, i) => {
+    const weekStart = new Date(paceToday);
+    weekStart.setDate(weekStart.getDate() + i * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const inWeek = upcomingGuests.filter((g: any) => {
+      const checkin = new Date(g.checkinDate);
+      checkin.setHours(0, 0, 0, 0);
+      return checkin >= weekStart && checkin <= weekEnd;
+    });
+    const nights = inWeek.reduce((s: number, g: any) => s + nightsFor(g), 0);
+    const revenue = inWeek.reduce((s: number, g: any) => s + (Number(g.roomRate) || 0) * nightsFor(g), 0);
+    const label = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
+    return { label, bookings: inWeek.length, nights, revenue };
+  });
+
   // Room-by-room comparison (multi-key properties only) — how each sub-key
   // room is performing against its siblings under the same parent property.
   const activeRooms = rooms.filter((r) => r.is_active !== 0);
@@ -307,6 +424,63 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Guests', data: sortedBookingsByMonth.map(([, data]) => data.guests) }
   ];
 
+  const laborRatioOptions: any = {
+    chart: { type: 'line', height: 300, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    stroke: { width: 3, curve: 'smooth' },
+    colors: [dangerColor],
+    xaxis: { categories: laborCostRatioByMonth.map((m) => m.key) },
+    yaxis: { labels: { formatter: (val: number) => `${val.toFixed(0)}%` } },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+    tooltip: { y: { formatter: (val: number) => `${val.toFixed(1)}% of revenue` } },
+  };
+
+  const laborRatioSeries = [
+    { name: 'Labor Cost % of Revenue', data: laborCostRatioByMonth.map((m) => Number(m.pct.toFixed(1))) }
+  ];
+
+  const billsTrendOptions: any = {
+    chart: { type: 'bar', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
+    colors: [warningColor],
+    xaxis: { categories: sortedBillsByMonth.map(([month]) => month) },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  };
+
+  const billsTrendSeries = [
+    { name: 'Bills & Utilities', data: sortedBillsByMonth.map(([, total]) => total) }
+  ];
+
+  const billsByTypeOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: sortedBillsByType.map(([label]) => label),
+    colors: [brandColor, brandSecondary, successColor, warningColor, dangerColor, '#8b5cf6', '#ec4899'],
+    plotOptions: { pie: { donut: { size: '65%' } } },
+    dataLabels: { enabled: false },
+    legend: { position: 'bottom', fontSize: '11px' },
+    stroke: { show: false },
+  };
+
+  const billsByTypeSeries = sortedBillsByType.map(([, total]) => total);
+
+  const paceWeeklyOptions: any = {
+    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
+    colors: [brandColor],
+    xaxis: { categories: paceWeeks.map((w) => w.label), title: { text: t('pace_week_starting_axis', 'Week starting') } },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+    tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
+  };
+
+  const paceWeeklySeries = [
+    { name: 'Expected Revenue', data: paceWeeks.map((w) => w.revenue) }
+  ];
+
   const foodBarOptions: any = {
     chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
@@ -366,8 +540,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
-      }, {})
-  ).sort((a, b) => b[1] - a[1]);
+      }, {} as Record<string, number>)
+  ).sort((a, b) => Number(b[1]) - Number(a[1]));
 
   const pLExpenseGroups = Object.entries(
     ledgerData
@@ -377,8 +551,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
-      }, {})
-  ).sort((a, b) => b[1] - a[1]);
+      }, {} as Record<string, number>)
+  ).sort((a, b) => Number(b[1]) - Number(a[1]));
 
   const cashInflowGroups = Object.entries(
     ledgerData
@@ -388,8 +562,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
-      }, {})
-  ).sort((a, b) => b[1] - a[1]);
+      }, {} as Record<string, number>)
+  ).sort((a, b) => Number(b[1]) - Number(a[1]));
 
   const cashOutflowGroups = Object.entries(
     ledgerData
@@ -399,8 +573,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
-      }, {})
-  ).sort((a, b) => b[1] - a[1]);
+      }, {} as Record<string, number>)
+  ).sort((a, b) => Number(b[1]) - Number(a[1]));
 
   // Hospitality BI calculations
   const adr = (() => {
@@ -706,6 +880,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <Calendar className="w-4 h-4" />
           <span>{t('bookings_tab_label', 'Bookings')}</span>
         </button>
+        <button
+          onClick={() => setActiveTab('pace')}
+          className={`btn-analytics-tab-pace px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'pace'
+              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <CalendarClock className="w-4 h-4" />
+          <span>{t('pace_tab_label', 'Pace')}</span>
+        </button>
         {kitchenModuleEnabled && (
           <button
             onClick={() => setActiveTab('kitchen')}
@@ -811,6 +996,27 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Users className="w-4 h-4 text-red-600" /> {t('labor_cost_ratio_heading', 'Labor Cost as % of Revenue (Trended)')}
+              </h3>
+              {latestLaborRatio && (
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${latestLaborRatio.pct > 30 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                  {t('latest_month_label', 'Latest month')}: {latestLaborRatio.pct.toFixed(1)}%
+                </span>
+              )}
+            </div>
+            {laborCostRatioByMonth.length > 0 ? (
+              <ReactApexChart options={laborRatioOptions} series={laborRatioSeries} type="line" height={300} />
+            ) : (
+              <p className="text-slate-400 text-center py-8">{t('no_salary_data', 'No salary payouts recorded yet for this period.')}</p>
+            )}
+            <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              {t('labor_cost_ratio_note', 'Labor cost = actual "Pay Now" salary payouts recorded in Finances. Revenue = room + kitchen revenue for the same month. A rising trend means staffing cost is outpacing revenue growth.')}
+            </p>
+          </div>
         </div>
       )}
 
@@ -906,6 +1112,35 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 3: PACE / PICKUP - forward-looking, not gated by the retrospective
+          dateFilter dropdown above (see paceToday/upcomingGuests comment). */}
+      {activeTab === 'pace' && (
+        <div className="analytics-pace space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {paceBuckets.map((b) => (
+              <div key={b.key} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{b.label}</p>
+                <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center">
+                  <IndianRupee className="w-5 h-5 text-blue-600" />
+                  {b.revenue.toLocaleString('en-IN')}
+                </p>
+                <p className="text-[10px] text-slate-500 mt-1">{b.bookings} {t('pace_bookings_label', 'bookings')} · {b.nights} {t('pace_room_nights_label', 'room-nights')}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-blue-600" /> {t('pace_weekly_heading', 'On-the-Books Revenue by Week (Next 12 Weeks)')}
+            </h3>
+            <ReactApexChart options={paceWeeklyOptions} series={paceWeeklySeries} type="bar" height={320} />
+            <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <strong>{t('pace_note_label', 'Note:')}</strong> {t('pace_note_text', 'This shows current confirmed bookings by arrival week, not a comparison against the same period last year - the system does not yet record when a reservation was originally made, only its stay dates.')}
+            </p>
+          </div>
         </div>
       )}
 
@@ -1021,6 +1256,31 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <ReactApexChart options={costBarOptions} series={costChartSeries} type="bar" height={200} />
               </div>
             </div>
+          </div>
+
+          <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-600" /> {t('bills_utilities_heading', 'Bills & Utilities Analytics')}
+              </h3>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                {t('this_period_total_label', 'This period')}: ₹{totalBillsThisPeriod.toLocaleString('en-IN')}
+              </span>
+            </div>
+            {sortedBillsByType.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('bills_monthly_trend_label', 'Monthly Trend')}</h4>
+                  <ReactApexChart options={billsTrendOptions} series={billsTrendSeries} type="bar" height={280} />
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('bills_by_type_label', 'Which Bill Costs the Most')}</h4>
+                  <ReactApexChart options={billsByTypeOptions} series={billsByTypeSeries} type="donut" height={280} />
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400 text-center py-8">{t('no_bills_data', 'No "Bills" category expenses recorded yet for this period.')}</p>
+            )}
           </div>
         </div>
       )}

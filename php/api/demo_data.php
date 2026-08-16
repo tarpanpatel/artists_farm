@@ -702,42 +702,70 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $item['item_name'], $stock, $item['unit_label'], $catId, $imageUrl]);
         }
 
-        // 6. Demo Petty Cash Entries - bursty across the -30..0 window (expenses
-        // are logged as they happen, not future-dated), matching how a real
-        // property actually spends: quiet days, ordinary days, and the
-        // occasional big-shopping-run day.
+        // 6. Demo Petty Cash Entries - structured operational spend + bursty daily expenses
+        // Realistic hotel monthly expenses: Staff Payroll (~₹95k) + Utility Bills (~₹40k) + Raw Materials & Maintenance (~₹60k)
         $demoExpenses = [];
-        $categories = ['Kitchen Purchase', 'Maintenance', 'Staff Advance', 'Miscellaneous', 'Utilities', 'Transport'];
-        $vendors = ['Local Market', 'Hardware Store', 'Cash Advance', 'Utilities', 'Transport Co', 'Online'];
+        
+        // 6a. Monthly Staff Payroll Debits (First week of month)
+        $salaryPayouts = [
+            ['name' => 'Vikram Malhotra', 'role' => 'Admin', 'salary' => 25000],
+            ['name' => 'Rajesh Kumar', 'role' => 'Manager', 'salary' => 22000],
+            ['name' => 'Sunil Yadav', 'role' => 'Chef', 'salary' => 20000],
+            ['name' => 'Neha Gupta', 'role' => 'Receptionist', 'salary' => 18000],
+            ['name' => 'Lakshmi Devi', 'role' => 'Housekeeping', 'salary' => 14000],
+        ];
+        $salaryDate = (clone $today)->modify('-15 days')->format('Y-m-d');
+        foreach ($salaryPayouts as $sal) {
+            $demoExpenses[] = [
+                'date' => $salaryDate,
+                'category' => 'Staff Advance',
+                'amount' => $sal['salary'],
+                'vendor' => $sal['name'],
+                'desc' => 'Monthly Salary Payout - ' . $sal['name'] . ' (' . $sal['role'] . ')',
+            ];
+        }
+
+        // 6b. Recurring Utility & Operating Bills
+        $monthlyBills = [
+            ['cat' => 'Utilities', 'desc' => 'State Commercial Electricity Bill', 'amt' => 22500, 'vendor' => 'State Electricity Board'],
+            ['cat' => 'Utilities', 'desc' => 'Commercial LPG Gas Cylinders (6 Pcs)', 'amt' => 8400, 'vendor' => 'Coastal Gas Agency'],
+            ['cat' => 'Utilities', 'desc' => 'High-Speed Fiber Internet & Landline', 'amt' => 3500, 'vendor' => 'Telecom Co'],
+            ['cat' => 'Utilities', 'desc' => 'Water Tanker Supply (Resort Tanks)', 'amt' => 6500, 'vendor' => 'City Water Supply'],
+            ['cat' => 'Maintenance', 'desc' => 'Swimming Pool Cleaning & Chemical Maintenance', 'amt' => 8500, 'vendor' => 'Blue Wave Pool Services'],
+            ['cat' => 'Maintenance', 'desc' => 'Linen & Laundry Dry Cleaning Services', 'amt' => 12000, 'vendor' => 'Rapid Laundry Solutions'],
+        ];
+        $billDate = (clone $today)->modify('-20 days')->format('Y-m-d');
+        foreach ($monthlyBills as $bill) {
+            $demoExpenses[] = [
+                'date' => $billDate,
+                'category' => $bill['cat'],
+                'amount' => $bill['amt'],
+                'vendor' => $bill['vendor'],
+                'desc' => $bill['desc'],
+            ];
+        }
+
+        // 6c. Daily Kitchen Supplies & Operational Expenses (bursty)
+        $categories = ['Kitchen Purchase', 'Maintenance', 'Miscellaneous', 'Transport'];
+        $vendors = ['Local Produce Market', 'Hardware Store', 'Local Vendor', 'Transport Co'];
         $descs = [
-            'Fresh vegetables and groceries',
-            'Repair supplies',
-            'Advance to staff member',
-            'Phone bill recharge',
-            'Local transport',
-            'Cleaning supplies',
+            'Fresh vegetables, fruits, and daily grocery staples',
+            'Plumbing repair supplies and electrical fittings',
+            'Guest amenity replacements & room cleaning items',
+            'Local transport and cargo freight charges',
         ];
         foreach (burstyDayList($windowStart, $today, 45) as $day) {
             $catIdx = array_rand($categories);
             $demoExpenses[] = [
                 'date' => $day->format('Y-m-d'),
                 'category' => $categories[$catIdx],
-                'amount' => rand(200, 5000),
+                'amount' => rand(400, 3500),
                 'vendor' => $vendors[$catIdx],
                 'desc' => $descs[$catIdx],
             ];
         }
 
         foreach ($demoExpenses as $exp) {
-            // BUG (found 14 Aug 2026): the real Expenses page (get_petty_cash/
-            // add_petty_cash in this same file) reads and writes
-            // `farm_utility_expenses`, not `petty_cash` - the latter appears to
-            // be a dead/legacy table nothing else in the app actually uses
-            // (get_petty_cash only ever falls back to it if the
-            // farm_utility_expenses query itself throws, which it doesn't).
-            // So every demo property's Expenses page showed empty regardless
-            // of how much "petty cash" activity this seeded, since it was all
-            // landing in a table the page never reads. Seed the real table.
             $stmt = $pdo->prepare("
                 INSERT INTO farm_utility_expenses (property_id, expense_date, category, description, amount, payment_mode, vendor_name, is_demo)
                 VALUES (?, ?, ?, ?, ?, 'Cash', ?, 1)
@@ -745,9 +773,6 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $exp['date'], $exp['category'], $exp['desc'], $exp['amount'], $exp['vendor']]);
             $expId = $pdo->lastInsertId();
 
-            // Every real expense is also an accounting debit (see add_petty_cash
-            // in petty_cash.php) - without this the P&L/Cash Flow never see a
-            // month of real petty-cash spend, same gap as the guest side had.
             postFinancialLedger($pdo, [
                 'entry_key' => 'expense:demo:' . $expId,
                 'direction' => 'debit',
@@ -1079,31 +1104,27 @@ function generateDemoData($pdo, $propertyId) {
             ]);
         }
 
-        // 8. Demo KDS Orders - today's live orders + historical completed ones
-        // Get menu item IDs for ordering
-        $menuItemStmt = $pdo->prepare("SELECT id FROM menu_items WHERE property_id = ? AND is_demo = 1 LIMIT 10");
+        // 8. Demo KDS Orders - active orders for today + rich historical dining sales across 30 days
+        // Get menu items with prices for calculating order revenue
+        $menuItemStmt = $pdo->prepare("SELECT id, name, price FROM menu_items WHERE property_id = ? AND is_demo = 1");
         $menuItemStmt->execute([$propertyId]);
-        $menuItemIds = $menuItemStmt->fetchAll(PDO::FETCH_COLUMN);
-        if (empty($menuItemIds)) {
-            $menuItemIds = [1];
+        $demoMenuWithPrices = $menuItemStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($demoMenuWithPrices)) {
+            $demoMenuWithPrices = [['id' => 1, 'name' => 'Paneer Butter Masala', 'price' => 320]];
         }
 
         $kdsStatuses = ['Pending', 'Preparing', 'Ready', 'Completed'];
         $kdsOrders = [];
-        for ($i = 0; $i < 15; $i++) {
-            $daysOffset = rand(-25, 0);
-            $orderTime = (clone $today)->modify("$daysOffset days")->format('Y-m-d H:i:s');
-            $status = $kdsStatuses[array_rand($kdsStatuses)];
-
-            // Prefer today's orders to be Pending/Preparing/Ready
-            if ($daysOffset >= -1) {
-                $status = $kdsStatuses[array_rand([0, 1, 2])]; // Pending, Preparing, or Ready
-            }
+        // Generate ~50 dining orders across the 30-day window (2-3 orders per active day)
+        foreach (burstyDayList($windowStart, $today, 70) as $day) {
+            $orderTime = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(8, 21), rand(0, 59));
+            $isToday = $day->format('Y-m-d') === $today->format('Y-m-d');
+            $status = $isToday ? $kdsStatuses[array_rand([0, 1, 2])] : 'Completed';
 
             $kdsOrders[] = [
                 'property_id' => $propertyId,
                 'guest_id' => null,
-                'room_number' => 'Room ' . (101 + $i % 5),
+                'room_number' => 'Room ' . (101 + rand(0, 4)),
                 'order_time' => $orderTime,
                 'status' => $status,
                 'is_demo' => 1,
@@ -1118,17 +1139,37 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$order['property_id'], $order['guest_id'], $order['order_time'], $order['status']]);
             $orderId = $pdo->lastInsertId();
 
-            // Add 1-3 items per order
-            $itemCount = rand(1, 3);
+            // Add 2-4 menu items per order to build realistic dining check sizes (~₹1,200 - ₹2,200)
+            $itemCount = rand(2, 4);
+            $orderTotal = 0;
             for ($j = 0; $j < $itemCount; $j++) {
-                $menuItemId = $menuItemIds[array_rand($menuItemIds)];
-                $qty = rand(1, 3);
+                $item = $demoMenuWithPrices[array_rand($demoMenuWithPrices)];
+                $qty = rand(1, 2);
+                $orderTotal += ($item['price'] * $qty);
                 $itemStatus = $order['status'] === 'Completed' ? 'Served' : ($order['status'] === 'Ready' ? 'Ready' : 'Pending');
                 $itemStmt = $pdo->prepare("
                     INSERT INTO order_items (order_id, menu_item_id, quantity, item_status, is_demo)
                     VALUES (?, ?, ?, ?, 1)
                 ");
-                $itemStmt->execute([$orderId, $menuItemId, $qty, $itemStatus]);
+                $itemStmt->execute([$orderId, $item['id'], $qty, $itemStatus]);
+            }
+
+            // Post financial ledger credit for completed food orders
+            if ($order['status'] === 'Completed' && $orderTotal > 0) {
+                postFinancialLedger($pdo, [
+                    'entry_key' => 'kitchen_order:demo:' . $orderId,
+                    'direction' => 'credit',
+                    'amount' => $orderTotal,
+                    'category' => 'Kitchen POS Sales',
+                    'payment_method' => 'Cash',
+                    'party_type' => 'guest',
+                    'party_id' => null,
+                    'party_name' => $order['room_number'],
+                    'source_type' => 'kitchen_order',
+                    'source_id' => $orderId,
+                    'description' => 'Dining POS Order - ' . $order['room_number'],
+                    'occurred_at' => $order['order_time'],
+                ], $propertyId);
             }
         }
 
