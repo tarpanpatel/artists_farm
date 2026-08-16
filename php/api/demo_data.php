@@ -1144,7 +1144,15 @@ function generateDemoData($pdo, $propertyId) {
                 $inflationFactor = 1 + ($daysElapsed / max(1, $windowDays)) * 0.06;
                 $volatilitySwing = 1 + (rand(-1000, 1000) / 1000) * $item['volatility'];
                 $rate = round($item['rate'] * $inflationFactor * $volatilitySwing, 2);
-                $qty = round(rand(2, 20) / 2, 1);
+                // Trimmed from rand(2, 20)/2 16 Aug 2026 - that quantity range
+                // pushed total Kitchen Purchases (raw ingredient cost) up to
+                // ~90% of Kitchen Sales, i.e. a kitchen that spends almost
+                // everything it earns on restocking - directly contradicting
+                // the 70-90% per-dish margins the Dish Profitability panel
+                // shows from the same menu. Targets a realistic ~25-30% food
+                // cost ratio instead, so Kitchen Sales reliably stays above
+                // Kitchen Purchases.
+                $qty = round(rand(1, 6) / 2, 1);
                 $total = round($qty * $rate, 2);
                 $isPaid = rand(1, 100) <= 70;
                 $purchaseStmt->execute([
