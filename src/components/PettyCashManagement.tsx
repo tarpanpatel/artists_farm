@@ -950,18 +950,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
             ) : (
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-0">
-                    {t('details_descriptions_label', 'Details Descriptions *')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomItemsOpen(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Settings className="w-3.5 h-3.5" /> Manage Custom Items
-                  </button>
-                </div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  {t('details_descriptions_label', 'Details Descriptions *')}
+                </label>
                 <div className="relative">
                   <Input
                     type="text"
@@ -1011,7 +1002,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       {formState.description.trim() !== '' && !expenseItems.some(item => item.toLowerCase() === formState.description.toLowerCase().trim()) && (
                         <div
                           onMouseDown={() => {
-                            handleAddCustomItemFromInput(formState.description.trim());
+                            const typed = formState.description.trim();
+                            setNewCustomItemForm({ label: typed, category: formState.category || 'Other', defaultAmount: '0.00', description: '' });
+                            setIsAddingCustomItem(true);
+                            setIsCustomItemsOpen(true);
                             setShowSuggestions(false);
                           }}
                           className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
@@ -1020,6 +1014,18 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           <Plus className="w-4.5 h-4.5" />
                         </div>
                       )}
+                      <div
+                        onMouseDown={() => {
+                          setIsAddingCustomItem(false);
+                          setIsCustomItemsOpen(true);
+                          setShowSuggestions(false);
+                        }}
+                        className="p-2.5 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[10px] font-bold"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Settings className="w-3.5 h-3.5 text-slate-450" /> Edit existing items
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
