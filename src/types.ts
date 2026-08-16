@@ -268,7 +268,6 @@ export interface AuditLog {
 export interface PayeeEntity {
   id: string;
   name: string;
-  type: 'Vendor' | 'Third Party';
   qrCodeUrl?: string;
 }
 

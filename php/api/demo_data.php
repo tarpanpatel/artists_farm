@@ -1138,19 +1138,19 @@ function generateDemoData($pdo, $propertyId) {
         // names. "Registered Payees" showed 0 vendors on every demo property
         // otherwise, despite Kitchen Purchases logging real vendor-paid entries.
         $demoPayees = [
-            ['name' => 'Fresh Farm Vegetables', 'type' => 'Vendor'],
-            ['name' => 'Sunrise Dairy Distributors', 'type' => 'Vendor'],
-            ['name' => 'Coastal Gas Agency', 'type' => 'Vendor'],
-            ['name' => 'Blue Wave Pool Services', 'type' => 'Vendor'],
-            ['name' => 'Rapid Laundry Solutions', 'type' => 'Vendor'],
-            ['name' => 'State Electricity Board', 'type' => 'Third Party'],
+            ['name' => 'Fresh Farm Vegetables'],
+            ['name' => 'Sunrise Dairy Distributors'],
+            ['name' => 'Coastal Gas Agency'],
+            ['name' => 'Blue Wave Pool Services'],
+            ['name' => 'Rapid Laundry Solutions'],
+            ['name' => 'State Electricity Board'],
         ];
         foreach ($demoPayees as $payee) {
             $stmt = $pdo->prepare("
-                INSERT INTO payee_entities (id, property_id, name, type, is_demo)
-                VALUES (?, ?, ?, ?, 1)
+                INSERT INTO payee_entities (id, property_id, name, is_demo)
+                VALUES (?, ?, ?, 1)
             ");
-            $stmt->execute(['PAYEE-' . uniqid(), $propertyId, $payee['name'], $payee['type']]);
+            $stmt->execute(['PAYEE-' . uniqid(), $propertyId, $payee['name']]);
         }
 
         // 9. Demo Audit Logs - spread across the same 30-day window as everything

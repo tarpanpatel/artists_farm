@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
@@ -246,7 +246,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       .map((s) => ({ id: `staff-${s.id}`, name: s.name, qrCodeUrl: s.qrCodeUrl!, group: 'Staff' }));
     const payeeOptions = payees
       .filter((p) => p.qrCodeUrl)
-      .map((p) => ({ id: `payee-${p.id}`, name: p.name, qrCodeUrl: p.qrCodeUrl!, group: p.type === 'Vendor' ? 'Vendors' : 'Third Parties' }));
+      .map((p) => ({ id: `payee-${p.id}`, name: p.name, qrCodeUrl: p.qrCodeUrl!, group: 'Registered Payees' }));
     return [...staffOptions, ...payeeOptions];
   }, [cashHandlers, payees]);
 

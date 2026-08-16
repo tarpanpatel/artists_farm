@@ -78,12 +78,12 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             $isTestingMode = isset($_COOKIE['artists_farm_testing_mode']) && $_COOKIE['artists_farm_testing_mode'] === '1';
             if ($isTestingMode) {
                 $seedPayees = [
-                    ['1', 'Test Vendor A', 'Vendor', ''],
-                    ['2', 'Test Vendor B', 'Vendor', ''],
+                    ['1', 'Test Vendor A', ''],
+                    ['2', 'Test Vendor B', ''],
                 ];
-                $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, type, qr_code_url) VALUES (?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, qr_code_url) VALUES (?, ?, ?, ?)");
                 foreach ($seedPayees as $p) {
-                    $stmt->execute([$p[0], $propertyId, $p[1], $p[2], $p[3]]);
+                    $stmt->execute([$p[0], $propertyId, $p[1], $p[2]]);
                 }
             }
         }
@@ -280,7 +280,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_payees':
             try {
-                $stmt = $pdo->prepare("SELECT id, name, type, qr_code_url as qrCodeUrl FROM payee_entities WHERE property_id = ? ORDER BY name ASC");
+                $stmt = $pdo->prepare("SELECT id, name, qr_code_url as qrCodeUrl FROM payee_entities WHERE property_id = ? ORDER BY name ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode(['status' => 'success', 'data' => $rows]);
@@ -293,12 +293,11 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, type, qr_code_url) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), type = VALUES(type), qr_code_url = VALUES(qr_code_url)");
+                    $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, qr_code_url) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), qr_code_url = VALUES(qr_code_url)");
                     $stmt->execute([
                         $input['id'] ?? ('pay-' . time()),
                         $propertyId,
                         $input['name'],
-                        $input['type'] ?? 'Vendor',
                         $input['qrCodeUrl'] ?? ''
                     ]);
                     echo json_encode(['status' => 'success', 'message' => 'Payee added successfully']);

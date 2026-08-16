@@ -156,14 +156,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [editingPayee, setEditingPayee] = useState<any | null>(null);
   const [isAddingNewPayee, setIsAddingNewPayee] = useState(false);
   const [searchPayeeQuery, setSearchPayeeQuery] = useState('');
-  const [newPayeeForm, setNewPayeeForm] = useState({ name: '', type: 'Vendor', qrCodeUrl: '' });
+  const [newPayeeForm, setNewPayeeForm] = useState({ name: '', qrCodeUrl: '' });
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
   const [isSavingPayee, setIsSavingPayee] = useState(false);
 
   const handleSavePayee = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = editingPayee ? editingPayee.name.trim() : newPayeeForm.name.trim();
-    const type = editingPayee ? editingPayee.type : newPayeeForm.type;
     const qrCodeUrl = editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl;
 
     if (!name) {
@@ -176,7 +175,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       const payeePayload = {
         id: editingPayee ? editingPayee.id : `pay-${Date.now().toString().slice(-4)}`,
         name,
-        type,
         qrCodeUrl,
       };
 
@@ -185,7 +183,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         showToast(editingPayee ? 'Payee updated successfully!' : 'Payee registered successfully!', { type: 'success' });
         setEditingPayee(null);
         setIsAddingNewPayee(false);
-        setNewPayeeForm({ name: '', type: 'Vendor', qrCodeUrl: '' });
+        setNewPayeeForm({ name: '', qrCodeUrl: '' });
         refreshPayees();
       } else {
         showToast('Failed to save payee to database', { type: 'error' });
@@ -400,19 +398,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const expenseItems = expenseItemsByCategory[formState.category] || [];
 
   const vendorOptions = useMemo(() => {
-    const sorted = [...dbVendors].sort((a, b) => {
-      const typeA = a.type || 'Third Party';
-      const typeB = b.type || 'Third Party';
-      if (typeA !== typeB) {
-        return typeA === 'Vendor' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
+    const sorted = [...dbVendors].sort((a, b) => a.name.localeCompare(b.name));
 
     const mapped = sorted.map(v => ({
       value: v.name,
       label: v.name,
-      group: v.type === 'Vendor' ? 'Vendors' : 'Third Parties',
       searchText: v.name
     }));
 
@@ -1490,7 +1480,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
                   </h4>
                   <form onSubmit={handleSavePayee} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div>
                         <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
                         <Input
@@ -1505,23 +1495,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             }
                           }}
                           placeholder="e.g. Raju Grocery, Pool Supplier"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Classification Type</label>
-                        <StyledSelect
-                          value={editingPayee ? editingPayee.type : newPayeeForm.type}
-                          onChange={val => {
-                            if (editingPayee) {
-                              setEditingPayee({ ...editingPayee, type: val });
-                            } else {
-                              setNewPayeeForm({ ...newPayeeForm, type: val });
-                            }
-                          }}
-                          options={[
-                            { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
-                            { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
-                          ]}
                         />
                       </div>
                     </div>
@@ -1576,7 +1549,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         onClick={() => {
                           setEditingPayee(null);
                           setIsAddingNewPayee(false);
-                          setNewPayeeForm({ name: '', type: 'Vendor', qrCodeUrl: '' });
+                          setNewPayeeForm({ name: '', qrCodeUrl: '' });
                         }}
                         className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
                       >
@@ -1600,7 +1573,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       type="text"
                       value={searchPayeeQuery}
                       onChange={e => setSearchPayeeQuery(e.target.value)}
-                      placeholder="Search by name or type..."
+                      placeholder="Search by name..."
                       className="pl-9"
                     />
                   </div>
@@ -1622,27 +1595,19 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       <thead>
                         <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
                           <th className="px-4 py-3">Payee Name</th>
-                          <th className="px-4 py-3">Classification</th>
                           <th className="px-4 py-3 text-center">UPI QR Code</th>
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase()) || p.type.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
+                        {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
+                            <td colSpan={3} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
                           </tr>
                         ) : (
-                          dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase()) || p.type.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
+                          dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
                             <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                               <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{p.name}</td>
-                              <td className="px-4 py-3">
-                                {p.type === 'Vendor' ? (
-                                  <span className="bg-orange-100 text-orange-850 dark:bg-orange-950/40 dark:text-orange-300 px-2 py-0.5 rounded font-semibold text-[10px]">Vendor</span>
-                                ) : (
-                                  <span className="bg-purple-100 text-purple-850 dark:bg-purple-950/40 dark:text-purple-300 px-2 py-0.5 rounded font-semibold text-[10px]">Third Party</span>
-                                )}
-                              </td>
                               <td className="px-4 py-3 text-center">
                                 {p.qrCodeUrl ? (
                                   <button
