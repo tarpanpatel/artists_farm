@@ -1639,8 +1639,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const expensesPL = ledgerData.filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const netPL = income - expensesPL;
-              const bookingsInMonth = receipts.filter(r => r.checkinDate && r.checkinDate.startsWith(ledgerMonth)).length;
-              const profitPerBooking = bookingsInMonth > 0 ? netPL / bookingsInMonth : 0;
+              const bookingsInMonthList = receipts.filter(r => r.checkinDate && r.checkinDate.startsWith(ledgerMonth));
+              const totalNightsInMonth = bookingsInMonthList.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+              const profitPerRoomNight = totalNightsInMonth > 0 ? netPL / totalNightsInMonth : 0;
               return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -1656,12 +1657,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <p className={`text-[10px] font-semibold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
                       <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
                     </div>
-                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${profitPerBooking >= 0 ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
-                      <p className={`text-[10px] font-semibold uppercase ${profitPerBooking >= 0 ? 'text-purple-800 dark:text-purple-300' : 'text-rose-800 dark:text-rose-300'}`}>
-                        {t('profit_per_booking_label', 'Profit per Booking')} <span className="opacity-70 normal-case">({bookingsInMonth} bookings)</span>
+                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${profitPerRoomNight >= 0 ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
+                      <p className={`text-[10px] font-semibold uppercase ${profitPerRoomNight >= 0 ? 'text-purple-800 dark:text-purple-300' : 'text-rose-800 dark:text-rose-300'}`}>
+                        {t('profit_per_room_night_label', 'Profit per Room Night')} <span className="opacity-70 normal-case">({totalNightsInMonth} {t('room_nights_label', 'room nights')})</span>
                       </p>
-                      <p className={`text-xl font-extrabold mt-1 ${profitPerBooking >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                        ₹{Math.abs(Math.round(profitPerBooking)).toLocaleString('en-IN')}
+                      <p className={`text-xl font-extrabold mt-1 ${profitPerRoomNight >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        ₹{Math.abs(Math.round(profitPerRoomNight)).toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>
