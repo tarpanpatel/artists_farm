@@ -7,7 +7,6 @@ import {
   Utensils, 
   ShoppingBag, 
   Calendar, 
-  Layers, 
   Filter,
   BedDouble,
   Loader2
@@ -49,7 +48,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders, ordersLoading } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'kitchen' | 'expenses' | 'profit_loss' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
 
@@ -89,7 +88,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }, [activeMenuItemKey]);
 
   useEffect(() => {
-    if (['profit_loss', 'balance_sheet', 'cash_flow'].includes(activeTab)) {
+    if (['profit_loss', 'cash_flow'].includes(activeTab)) {
       // 14 Aug 2026: Balance Sheet/Cash Flow's "ledgerData.length === 0" empty
       // rows rendered before this per-tab-switch fetch resolved. Reset to
       // true on every trigger (tab switch or month change), not just once.
@@ -333,6 +332,111 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { label: t('date_filter_this_year', 'This Year'), value: 'year' },
   ];
 
+  // Group P&L and Cash Flow statements by Category for statistical reporting
+  const pLIncomeGroups = Object.entries(
+    ledgerData
+      .filter((l) => l.direction === 'credit')
+      .reduce((acc: Record<string, number>, l) => {
+        const rawCat = l.category || 'Other Income';
+        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
+        return acc;
+      }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  const pLExpenseGroups = Object.entries(
+    ledgerData
+      .filter((l) => l.direction === 'debit')
+      .reduce((acc: Record<string, number>, l) => {
+        const rawCat = l.category || 'General Expense';
+        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
+        return acc;
+      }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  const cashInflowGroups = Object.entries(
+    ledgerData
+      .filter((l) => l.direction === 'credit')
+      .reduce((acc: Record<string, number>, l) => {
+        const rawCat = l.category || 'Other Inflow';
+        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
+        return acc;
+      }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  const cashOutflowGroups = Object.entries(
+    ledgerData
+      .filter((l) => l.direction === 'debit')
+      .reduce((acc: Record<string, number>, l) => {
+        const rawCat = l.category || 'Other Outflow';
+        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
+        return acc;
+      }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
+  // Hospitality BI calculations
+  const adr = (() => {
+    const roomRevenueTotal = filteredReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
+    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    return totalNights > 0 ? roomRevenueTotal / totalNights : 0;
+  })();
+
+  const alos = (() => {
+    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const totalBookings = filteredReceipts.length;
+    return totalBookings > 0 ? totalNights / totalBookings : 0;
+  })();
+
+  const totalRooms = rooms.length || 1;
+  const occupancyRate = (() => {
+    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const activePeriodDays = periodDays || 365;
+    const availableNights = totalRooms * activePeriodDays;
+    return Math.min(100, (totalNights / availableNights) * 100);
+  })();
+
+  // Group Payment Methods for pie chart
+  const paymentMethodCounts = filteredReceipts.reduce((acc, r) => {
+    const method = r.paymentMethod || 'Unspecified';
+    acc[method] = (acc[method] || 0) + (r.grandTotal || 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const paymentMethodPieSeries: number[] = Object.values(paymentMethodCounts) as number[];
+  const paymentMethodPieLabels: string[] = Object.keys(paymentMethodCounts) as string[];
+
+  const paymentMethodPieOptions: any = {
+    chart: { type: 'donut', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: paymentMethodPieLabels,
+    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
+  // Group Booking Sources for pie chart
+  const filteredBookings = filterByDate(guests, 'checkinDate');
+  const bookingSourceCounts = filteredBookings.reduce((acc, g) => {
+    const source = g.bookingSource || 'Direct';
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const bookingSourcePieSeries: number[] = Object.values(bookingSourceCounts) as number[];
+  const bookingSourcePieLabels: string[] = Object.keys(bookingSourceCounts) as string[];
+
+  const bookingSourcePieOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: bookingSourcePieLabels,
+    colors: ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
   return (
     <div className="analytics-dashboard-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
       <PageHeader
@@ -450,17 +554,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <span>{t('pnl_tab_label', 'P&L')}</span>
         </button>
         <button
-          onClick={() => setActiveTab('balance_sheet')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'balance_sheet'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <PieChart className="w-4 h-4" />
-          <span>{t('balance_sheet_tab_label', 'Balance Sheet')}</span>
-        </button>
-        <button
           onClick={() => setActiveTab('cash_flow')}
           className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'cash_flow'
@@ -530,6 +623,45 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Payment Methods Share */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
+              <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+              <div>
+                <ReactApexChart options={paymentMethodPieOptions} series={paymentMethodPieSeries} type="donut" height={320} />
+              </div>
+              <div className="space-y-3.5">
+                {paymentMethodPieLabels.map((label, index) => {
+                  const val = paymentMethodPieSeries[index] || 0;
+                  const totalVal = paymentMethodPieSeries.reduce((s, v) => s + v, 0) || 1;
+                  const pct = (val / totalVal) * 100;
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                        <span>{label}</span>
+                        <span className="font-extrabold">₹{val.toLocaleString('en-IN')} ({pct.toFixed(1)}%)</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: paymentMethodPieOptions.colors[index % paymentMethodPieOptions.colors.length]
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {paymentMethodPieSeries.length === 0 && (
+                  <p className="text-slate-400 text-center py-4">{t('no_payment_data', 'No payment records for this period.')}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -581,6 +713,67 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card Left: Booking Sources Share */}
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-purple-600" /> {t('booking_sources_share_heading', 'Booking Sources Distribution')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                <div className="sm:col-span-7">
+                  <ReactApexChart options={bookingSourcePieOptions} series={bookingSourcePieSeries} type="donut" height={280} />
+                </div>
+                <div className="sm:col-span-5 space-y-2.5">
+                  {bookingSourcePieLabels.map((label, index) => {
+                    const val = bookingSourcePieSeries[index] || 0;
+                    const totalVal = bookingSourcePieSeries.reduce((s, v) => s + v, 0) || 1;
+                    const pct = (val / totalVal) * 100;
+                    return (
+                      <div key={label} className="text-xs">
+                        <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
+                          <span>{label}</span>
+                          <span>{val} ({pct.toFixed(0)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {bookingSourcePieSeries.length === 0 && (
+                    <p className="text-slate-400 text-center py-4">{t('no_source_data', 'No booking sources for this period.')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Right: Hospitality Key Performance Indicators (ADR, ALOS, Occupancy) */}
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('hospitality_kpi_metrics_heading', 'Hospitality Performance Metrics (BI)')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 text-center">
+                  <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">{t('adr_metric_label', 'Average Daily Rate (ADR)')}</p>
+                  <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{adr.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-[9px] text-slate-500 mt-1">{t('adr_metric_subtext', 'Room revenue divided by occupied room nights')}</p>
+                </div>
+
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-center">
+                  <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">{t('alos_metric_label', 'Avg Length of Stay (ALOS)')}</p>
+                  <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">{alos.toFixed(1)} {alos === 1 ? 'night' : 'nights'}</p>
+                  <p className="text-[9px] text-slate-500 mt-1">{t('alos_metric_subtext', 'Total room nights divided by bookings')}</p>
+                </div>
+
+                <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800 text-center">
+                  <p className="text-[10px] font-semibold text-purple-800 dark:text-purple-300 uppercase tracking-wider">{t('occupancy_metric_label', 'Occupancy Rate')}</p>
+                  <p className="text-xl font-extrabold text-purple-700 dark:text-purple-400 mt-1">{occupancyRate.toFixed(1)}%</p>
+                  <p className="text-[9px] text-slate-500 mt-1">{t('occupancy_metric_subtext', 'Occupied room nights vs available inventory capacity')}</p>
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                <strong>BI Metric Note:</strong> Available room capacity is calculated based on <strong>{totalRooms} active rooms</strong> over the selected date range ({periodDays || 'all-time'} days).
+              </div>
             </div>
           </div>
 
@@ -807,20 +1000,31 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <thead className="analytics-dashboard__table-header">
                         <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
                           <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('type_column', 'Type')}</th>
                           <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                        {ledgerData.map((l, i) => (
-                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
-                            <td className={`p-2 font-mono font-semibold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
-                              {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
+                        {pLIncomeGroups.map(([cat, amount]) => (
+                          <tr key={`inc-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
+                            <td className="analytics-dashboard__cell p-2 text-emerald-600 dark:text-emerald-400 font-semibold uppercase text-[10px]">Income</td>
+                            <td className="p-2 font-mono font-bold text-right text-emerald-600">
+                              +₹{amount.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                        {pLExpenseGroups.map(([cat, amount]) => (
+                          <tr key={`exp-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
+                            <td className="analytics-dashboard__cell p-2 text-red-500 dark:text-red-400 font-semibold uppercase text-[10px]">Expense</td>
+                            <td className="p-2 font-mono font-bold text-right text-red-500">
+                              -₹{amount.toLocaleString('en-IN')}
                             </td>
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">
+                          <tr><td colSpan={3} className="analytics-dashboard__cell p-6 text-center text-slate-400">
                             {ledgerLoading ? (
                               <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
                             ) : (
@@ -838,46 +1042,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 7: BALANCE SHEET */}
-      {activeTab === 'balance_sheet' && (
-        <div className="analytics-balance-sheet space-y-6">
-          <div className="analytics-balance-sheet__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="analytics-balance-sheet__header flex items-center justify-between">
-              <h3 className="analytics-dashboard__subtitle analytics-balance-sheet__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Layers className="w-4 h-4 text-purple-600" /> {t('balance_sheet_heading', 'Balance Sheet')}
-              </h3>
-              <Input
-                type="month"
-                value={ledgerMonth}
-                onChange={(e) => setLedgerMonth(e.target.value)}
-                fullWidth={false}
-              />
-            </div>
 
-            {(() => {
-              const totalAssets = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
-              const totalLiabilities = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
-              const equity = totalAssets - totalLiabilities;
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase">{t('total_assets_label', 'Total Assets')}</p>
-                    <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{totalAssets.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                    <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('total_liabilities_label', 'Total Liabilities')}</p>
-                    <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{totalLiabilities.toLocaleString('en-IN')}</p>
-                  </div>
-                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('equity_label', 'Equity')}</p>
-                    <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{equity.toLocaleString('en-IN')}</p>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
 
       {/* TAB 8: CASH FLOW */}
       {activeTab === 'cash_flow' && (
@@ -919,21 +1084,32 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <table className="w-full text-left border-collapse text-xs analytics-dashboard__table analytics-dashboard__table--balance-sheet">
                       <thead className="analytics-dashboard__table-header">
                         <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 analytics-dashboard__table-header-row">
-                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('entry_column', 'Entry')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('category_column', 'Category')}</th>
+                          <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 analytics-dashboard__table-header-cell">{t('flow_direction_column', 'Flow')}</th>
                           <th className="p-2 font-semibold text-slate-600 dark:text-slate-400 text-right analytics-dashboard__table-header-cell">{t('amount_rupees_column', 'Amount (₹)')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                        {ledgerData.map((l, i) => (
-                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                            <td className="analytics-dashboard__cell p-2 text-slate-800 dark:text-slate-200">{l.description || l.category}</td>
-                            <td className={`p-2 font-mono font-semibold text-right ${l.direction === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
-                              {l.direction === 'credit' ? '+' : '-'}₹{Number(l.amount || 0).toLocaleString('en-IN')}
+                        {cashInflowGroups.map(([cat, amount]) => (
+                          <tr key={`inflow-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
+                            <td className="analytics-dashboard__cell p-2 text-emerald-600 dark:text-emerald-400 font-semibold uppercase text-[10px]">Inflow</td>
+                            <td className="p-2 font-mono font-bold text-right text-emerald-600">
+                              +₹{amount.toLocaleString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                        {cashOutflowGroups.map(([cat, amount]) => (
+                          <tr key={`outflow-${cat}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <td className="analytics-dashboard__cell p-2 font-semibold text-slate-800 dark:text-slate-200">{cat}</td>
+                            <td className="analytics-dashboard__cell p-2 text-red-500 dark:text-red-400 font-semibold uppercase text-[10px]">Outflow</td>
+                            <td className="p-2 font-mono font-bold text-right text-red-500">
+                              -₹{amount.toLocaleString('en-IN')}
                             </td>
                           </tr>
                         ))}
                         {ledgerData.length === 0 && (
-                          <tr><td colSpan={2} className="analytics-dashboard__cell p-6 text-center text-slate-400">
+                          <tr><td colSpan={3} className="analytics-dashboard__cell p-6 text-center text-slate-400">
                             {ledgerLoading ? (
                               <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading ledger...</span>
                             ) : (
