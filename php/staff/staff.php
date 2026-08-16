@@ -27,6 +27,15 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             // `LIMIT 1` (whichever row it happens to fetch) always sees the right
             // value regardless of which specific row comes back.
             "ALTER TABLE `staff_users` ADD COLUMN IF NOT EXISTS `access_all_properties` TINYINT(1) NOT NULL DEFAULT 0",
+            // Payee entities dropped their Vendor/Third-Party `type` classification
+            // in favour of a plain UPI ID field (get_payees/add_payee below select
+            // and insert `upi_id` directly) - this environment's payee_entities
+            // table needs the column to exist before those queries can run at all.
+            // The one-off migration script that added this on staging was deleted
+            // after running once there (see git history) - self-heal so any OTHER
+            // environment (production, a fresh local DB) doesn't hard-fail with a
+            // raw "Unknown column 'upi_id'" SQL error on first payee fetch/save.
+            "ALTER TABLE `payee_entities` ADD COLUMN IF NOT EXISTS `upi_id` VARCHAR(100) DEFAULT NULL",
         ];
         foreach ($alterCols as $sql) {
             try { $pdo->exec($sql); } catch (PDOException $e) {}

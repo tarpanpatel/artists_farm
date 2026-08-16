@@ -905,163 +905,127 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           </div>
 
-          {formState.category === 'Kitchen' ? (
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Item (from Master Catalog) *</label>
-              <StyledSelect
-                searchable
-                value={formState.description}
-                onChange={val => {
-                  dispatch({ type: 'SET_FIELD', field: 'description', value: val });
-                  const matched = inventory.find(i => i.name === val);
-                  dispatch({ type: 'SET_FIELD', field: 'kitchenUnit', value: matched?.unit || '' });
-                  if (!formState.kitchenQuantity) {
-                    dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: 1 });
-                  }
-                }}
-                placeholder="Select an item from the kitchen catalog..."
-                options={inventory.map(i => ({ value: i.name, label: i.name }))}
-              />
-              {formState.kitchenUnit && (
-                <p className="text-[10px] text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
-              )}
-            </div>
-          ) : formState.category === 'Staff Advance' ? (
-            <div>
-              {/* A real staff record, not free text - handleSubmit matches
-                  this value against `staff` by name to also write a
-                  staff_advances row, which is what actually nets this
-                  advance against that person's month-end payout (Team tab's
-                  Payroll & Payee Control Center). Free text here (e.g. a
-                  role label like "Cook salary" from the suggestions list,
-                  or a generic "Cash Advance") would silently break that
-                  netting, so this is a picker instead of the usual
-                  Details Descriptions text field - same reasoning as
-                  Kitchen & Supplies' item picker above. */}
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
-              <StyledSelect
-                searchable
-                value={formState.description}
-                onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
-                placeholder="Select who the advance is for..."
-                options={staff.map(s => ({ value: s.name, label: s.name }))}
-              />
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-0">
-                  {t('details_descriptions_label', 'Details Descriptions *')}
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomItemsOpen(true)}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5" /> Manage Custom Items
-                </button>
-              </div>
-              <div className="relative">
-                <Input
-                  type="text"
-                  required
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {formState.category === 'Kitchen' ? (
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Item (from Master Catalog) *</label>
+                <StyledSelect
+                  searchable
                   value={formState.description}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  onChange={e => {
-                    handleDescriptionChange(e.target.value);
-                    setShowSuggestions(true);
+                  onChange={val => {
+                    dispatch({ type: 'SET_FIELD', field: 'description', value: val });
+                    const matched = inventory.find(i => i.name === val);
+                    dispatch({ type: 'SET_FIELD', field: 'kitchenUnit', value: matched?.unit || '' });
+                    if (!formState.kitchenQuantity) {
+                      dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: 1 });
+                    }
                   }}
-                  placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
+                  placeholder="Select an item from the kitchen catalog..."
+                  options={inventory.map(i => ({ value: i.name, label: i.name }))}
                 />
-
-                {/* Interactive Auto-suggestions Dropdown Menu - expenseItems is
-                    already scoped to the selected Cost Category Group (see
-                    expenseItemsByCategory above), so this doesn't need its own
-                    category restriction on top of that. */}
-                {showSuggestions && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    {expenseItems.filter(item =>
-                      item.toLowerCase().includes(formState.description.toLowerCase().trim())
-                    ).map(item => (
-                      <div
-                        key={item}
-                        onMouseDown={() => {
-                          handleDescriptionChange(item);
-                          setShowSuggestions(false);
-                        }}
-                        className="p-2.5 hover:bg-cyan-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
-                      >
-                        <span>{item}</span>
-                        {itemPrices[item] !== undefined && (
-                          <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono px-2 py-0.5 rounded">
-                            Last ₹{itemPrices[item]}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                    {expenseItems.filter(item =>
-                      item.toLowerCase().includes(formState.description.toLowerCase().trim())
-                    ).length === 0 && (
-                      <div className="p-3 text-slate-400 italic text-center">
-                        {t('no_matching_items_message', 'No matching pre-stored items found. You can still type a custom description!')}
-                      </div>
-                    )}
-                    {formState.description.trim() !== '' && !expenseItems.some(item => item.toLowerCase() === formState.description.toLowerCase().trim()) && (
-                      <div
-                        onMouseDown={() => {
-                          handleAddCustomItemFromInput(formState.description.trim());
-                          setShowSuggestions(false);
-                        }}
-                        className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
-                      >
-                        <span>✨ Register "{formState.description.trim()}" to Custom Items list</span>
-                        <Plus className="w-4.5 h-4.5" />
-                      </div>
-                    )}
-                  </div>
+                {formState.kitchenUnit && (
+                  <p className="text-[10px] text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Only shown for Kitchen & Supplies and Staff Advance - both replace
-              "Details Descriptions" with a picker (item / staff member) instead
-              of free text, so this is the only place left to add a note. Every
-              other category already has a free-text Details Descriptions field,
-              and a second text field right below it serving the same purpose
-              was just a redundant duplicate. */}
-          {(formState.category === 'Kitchen' || formState.category === 'Staff Advance') && (
-            <div>
-              <Input
-                label={t('more_information_label', '& More Information (If Any)')}
-                type="text"
-                value={formState.moreInfoNotes}
-                onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
-                placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
-                className="font-medium"
-              />
-            </div>
-          )}
-
-          {/* Always 2 columns, even on mobile - same reasoning as the
-              date/category row above. Kitchen & Supplies uses the second
-              column for Quantity instead of leaving it empty. */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {formState.category === 'Kitchen' && (
+            ) : formState.category === 'Staff Advance' ? (
               <div>
-                <Input
-                  label="Quantity *"
-                  type="number"
-                  step="any"
-                  min="0.001"
-                  required
-                  value={formState.kitchenQuantity}
-                  onChange={e => dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: e.target.value === '' ? '' : Number(e.target.value) })}
-                  placeholder="1"
+                {/* A real staff record, not free text - handleSubmit matches
+                    this value against `staff` by name to also write a
+                    staff_advances row, which is what actually nets this
+                    advance against that person's month-end payout (Team tab's
+                    Payroll & Payee Control Center). Free text here (e.g. a
+                    role label like "Cook salary" from the suggestions list,
+                    or a generic "Cash Advance") would silently break that
+                    netting, so this is a picker instead of the usual
+                    Details Descriptions text field - same reasoning as
+                    Kitchen & Supplies' item picker above. */}
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
+                <StyledSelect
+                  searchable
+                  value={formState.description}
+                  onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
+                  placeholder="Select who the advance is for..."
+                  options={staff.map(s => ({ value: s.name, label: s.name }))}
                 />
               </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-0">
+                    {t('details_descriptions_label', 'Details Descriptions *')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomItemsOpen(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5" /> Manage Custom Items
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    required
+                    value={formState.description}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onChange={e => {
+                      handleDescriptionChange(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
+                  />
+
+                  {/* Interactive Auto-suggestions Dropdown Menu - expenseItems is
+                      already scoped to the selected Cost Category Group (see
+                      expenseItemsByCategory above), so this doesn't need its own
+                      category restriction on top of that. */}
+                  {showSuggestions && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                      {expenseItems.filter(item =>
+                        item.toLowerCase().includes(formState.description.toLowerCase().trim())
+                      ).map(item => (
+                        <div
+                          key={item}
+                          onMouseDown={() => {
+                            handleDescriptionChange(item);
+                            setShowSuggestions(false);
+                          }}
+                          className="p-2.5 hover:bg-cyan-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
+                        >
+                          <span>{item}</span>
+                          {itemPrices[item] !== undefined && (
+                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono px-2 py-0.5 rounded">
+                              Last ₹{itemPrices[item]}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {expenseItems.filter(item =>
+                        item.toLowerCase().includes(formState.description.toLowerCase().trim())
+                      ).length === 0 && (
+                        <div className="p-3 text-slate-400 italic text-center">
+                          {t('no_matching_items_message', 'No matching pre-stored items found. You can still type a custom description!')}
+                        </div>
+                      )}
+                      {formState.description.trim() !== '' && !expenseItems.some(item => item.toLowerCase() === formState.description.toLowerCase().trim()) && (
+                        <div
+                          onMouseDown={() => {
+                            handleAddCustomItemFromInput(formState.description.trim());
+                            setShowSuggestions(false);
+                          }}
+                          className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
+                        >
+                          <span>✨ Register "{formState.description.trim()}" to Custom Items list</span>
+                          <Plus className="w-4.5 h-4.5" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
+
             <div>
               <Input
                 label={formState.category === 'Kitchen' ? 'Total Price (₹) *' : t('expense_amount_rupees_required_label', 'Amount (₹) *')}
@@ -1080,6 +1044,36 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               )}
             </div>
           </div>
+
+          {/* Quantity & Notes Row (Kitchen / Staff Advance only) */}
+          {(formState.category === 'Kitchen' || formState.category === 'Staff Advance') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {formState.category === 'Kitchen' && (
+                <div>
+                  <Input
+                    label="Quantity *"
+                    type="number"
+                    step="any"
+                    min="0.001"
+                    required
+                    value={formState.kitchenQuantity}
+                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'kitchenQuantity', value: e.target.value === '' ? '' : Number(e.target.value) })}
+                    placeholder="1"
+                  />
+                </div>
+              )}
+              <div className={formState.category === 'Staff Advance' ? 'col-span-2' : ''}>
+                <Input
+                  label={t('more_information_label', '& More Information (If Any)')}
+                  type="text"
+                  value={formState.moreInfoNotes}
+                  onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
+                  placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
+                  className="font-medium"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Streamlined 2-Step Payment Source Selection */}
           <div className="space-y-3 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">

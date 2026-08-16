@@ -19,7 +19,7 @@ import {
   HelpCircle,
   Edit2
 } from 'lucide-react';
-import { StaffMember, AttendanceRecord, UserAccount, PayeeEntity, StaffAdvance } from '../types';
+import { StaffMember, AttendanceRecord, UserAccount, StaffAdvance } from '../types';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -1408,76 +1408,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="rounded-xl overflow-hidden border border-slate-200 p-2 bg-slate-50">
               <img src={lightboxUrl} alt="QR Code" className="w-full h-auto rounded-lg" />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT PAYEE MODAL */}
-      {editingPayee && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl text-xs">
-            <h3 className="staff-management__subtitle font-extrabold text-slate-900 text-sm">
-              {t('edit_payee_settings_heading', 'Edit Payee Account Settings')}
-            </h3>
-
-            <form onSubmit={handleUpdatePayeeSave} className="app-form app-form--update-payee space-y-3">
-              <div>
-                <Input
-                  label={t('payee_account_name_label', 'Payee Account Name')}
-                  type="text"
-                  required
-                  value={editingPayee.name}
-                  onChange={(e) => setEditingPayee({ ...editingPayee, name: e.target.value })}
-                  className="font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_type_label', 'Classification Type')}</label>
-                <StyledSelect
-                  value={editingPayee.type}
-                  onChange={(val) => setEditingPayee({ ...editingPayee, type: val as any })}
-                  options={[
-                    { value: 'Vendor', label: 'Vendor' },
-                    { value: 'Third Party', label: 'Third Party' },
-                  ]}
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Replace QR Code Graphic Blueprint (Optional)</label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () =>
-                        setEditingPayee({ ...editingPayee, qrCodeUrl: reader.result as string });
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  className="w-full text-xs text-slate-500 p-2 rounded-xl border border-slate-300"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingPayee(null)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-xs"
-                >
-                  Apply Save Updates
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

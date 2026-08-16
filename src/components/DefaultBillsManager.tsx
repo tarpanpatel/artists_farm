@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Receipt, AlertCircle, Loader2, Search, CheckCircle2, FileText } from 'lucide-react';
-import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { Button } from './Button';
 import { Input } from './Input';
