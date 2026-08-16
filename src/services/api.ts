@@ -1108,6 +1108,10 @@ export async function addGuestToDB(guest: {
   ota_source?: string;
   ota_source_label?: string;
   ical_external_event_id?: string;
+  // Itemized booking-time "Additional Charges" lines (Decoration Fees, Extra
+  // Housekeeping, Pet Stay Charges, custom Misc templates) - see
+  // guest_extra_charges in guests.php's add_guest.
+  extra_charges?: { category: string; amount: number; note?: string }[];
 }): Promise<{ id: string | null; overlapWarning?: { source_label: string; event_start: string; event_end: string } }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_guest`, {
@@ -1300,6 +1304,15 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
                 .filter((it: any) => (it.name || it.item_name) && Number(it.quantity) > 0)
                 .map((it: any) => ({
                   id: it.id != null ? Number(it.id) : undefined,
+                  // get_orders (orders.php) always selects oi.menu_item_id, but
+                  // this mapper dropped it - every OrderItem reached the app
+                  // with menuItemId permanently undefined, which silently broke
+                  // any dish-level join back to menu_items/dish_recipes (found
+                  // 16 Aug 2026: Dish Profitability showed "No dishes have a
+                  // costed recipe yet" even with real costed recipes seeded,
+                  // because AnalyticsDashboard's recipe lookup keys off this
+                  // exact field).
+                  menuItemId: it.menu_item_id != null ? Number(it.menu_item_id) : undefined,
                   name: (it.name || it.item_name || '').trim(),
                   quantity: Math.max(1, Number(it.quantity) || 1),
                   unitPrice: Math.max(0, Number(it.unit_price || it.price) || 0),
@@ -2410,6 +2423,17 @@ export async function fetchRecipesFromDB(): Promise<any[]> {
     if (json.status === 'success' && Array.isArray(json.data)) return json.data;
   } catch (err) {
     console.error('Failed to fetch recipes:', err);
+  }
+  return [];
+}
+
+export async function fetchGuestExtraChargesFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_guest_extra_charges`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch guest extra charges:', err);
   }
   return [];
 }

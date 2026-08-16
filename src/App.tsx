@@ -1193,6 +1193,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       ota_source: newGuest.otaSource || undefined,
       ota_source_label: newGuest.otaSourceLabel || undefined,
       ical_external_event_id: newGuest.icalExternalEventId || undefined,
+      extra_charges: newGuest.extraCharges || undefined,
     }).then(({ id: dbId, overlapWarning }) => {
       if (dbId) {
         setGuests((prev) => prev.map((g) => g.id === newGuest.id ? { ...g, id: dbId } : g));

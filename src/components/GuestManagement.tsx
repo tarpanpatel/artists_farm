@@ -971,11 +971,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             // bookingExtraChargesList replaced the old single-charge state
             // (bookingExtraChargeCategory/MiscNote/Amount) once multiple
-            // lines became possible - this note text is just a human-readable
-            // summary for the booking record; the actual amount is already
-            // folded into bookingPending by the line handlers above.
-            const extraChargeDetail = bookingExtraChargesList
-              .filter((line) => (Number(line.amount) || 0) > 0)
+            // lines became possible - the amount is already folded into
+            // bookingPending by the line handlers above. The per-line detail
+            // used to ONLY ever survive as this human-readable notes string
+            // (see extraCharges below for the structured version now also
+            // sent, so analytics can break accommodation revenue down by
+            // charge type instead of it being buried in free text).
+            const chargedExtraLines = bookingExtraChargesList.filter((line) => (Number(line.amount) || 0) > 0);
+            const extraChargeDetail = chargedExtraLines
               .map((line) => {
                 const noteText = line.category === 'Misc' && line.miscNote.trim()
                   ? `Misc (${line.miscNote.trim()})`
@@ -984,6 +987,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               })
               .join(', ');
             const finalNotes = [showGuestNotes ? notes.trim() : '', extraChargeDetail ? `Extra Charges: ${extraChargeDetail}` : ''].filter(Boolean).join(' | ');
+            const extraCharges = chargedExtraLines.map((line) => ({
+              category: line.category || 'Misc',
+              amount: Number(line.amount) || 0,
+              note: line.category === 'Misc' ? line.miscNote.trim() : '',
+            }));
 
             const guestObj: Guest = {
               id: Math.random().toString(36).substr(2, 9),
@@ -1005,6 +1013,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               pendingReceivedBy: bookingPending > 0 ? pendingReceivedBy : '',
               notes: finalNotes,
               isForeignGuest,
+              extraCharges,
             };
 
             onAddGuest(guestObj);

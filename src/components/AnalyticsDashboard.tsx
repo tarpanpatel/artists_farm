@@ -12,17 +12,21 @@ import {
   Clock,
   CalendarClock,
   Users,
-  Zap
+  Zap,
+  TrendingDown,
+  Activity
 } from 'lucide-react';
 import ReactApexChart from 'react-apexcharts';
 import { BillingReceipt } from '../types';
 import { GUEST_STATUS_CHECKED_OUT, GUEST_STATUS_CHECKEDOUT_LEGACY } from '../constants/guestStatus';
-import { 
-  fetchKitchenPurchasesFromDB, 
-  fetchFinancialLedger, 
-  fetchServedLogsFromDB, 
-  fetchInventoryFromDB, 
-  fetchStockRequestsFromDB 
+import {
+  fetchKitchenPurchasesFromDB,
+  fetchFinancialLedger,
+  fetchServedLogsFromDB,
+  fetchInventoryFromDB,
+  fetchStockRequestsFromDB,
+  fetchRecipesFromDB,
+  fetchGuestExtraChargesFromDB
 } from '../services/api';
 import { useFinance } from '../contexts/FinanceContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -58,7 +62,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'cash_flow'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'pace' | 'kitchen' | 'expenses' | 'profit_loss' | 'fluctuations'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
 
@@ -77,6 +81,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const [servedLogs, setServedLogs] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [stockRequests, setStockRequests] = useState<any[]>([]);
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [extraCharges, setExtraCharges] = useState<any[]>([]);
+  // Fluctuations tab item picker - capped at 5 so the price-trend chart never
+  // gets so busy it's unreadable. Defaults to the 5 most volatile items once
+  // purchase data has loaded (see the effect near the Fluctuations
+  // computations below), then stays exactly whatever the user checks/unchecks.
+  const [selectedFluctuationItems, setSelectedFluctuationItems] = useState<string[]>([]);
+  const [fluctuationSelectionInitialized, setFluctuationSelectionInitialized] = useState(false);
   const [ledgerData, setLedgerData] = useState<any[]>([]);
   // Starts false, not true: the fetch below only fires once activeTab is one
   // of the ledger tabs, so defaulting true would leave it stuck "loading"
@@ -108,6 +120,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         setStockRequests(data);
       }
     });
+    fetchGuestExtraChargesFromDB().then((data) => {
+      if (Array.isArray(data)) {
+        setExtraCharges(data);
+      }
+    });
+    fetchRecipesFromDB().then((data) => {
+      if (Array.isArray(data)) {
+        setRecipes(data);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -116,7 +138,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }, [activeMenuItemKey]);
 
   useEffect(() => {
-    if (['profit_loss', 'cash_flow'].includes(activeTab)) {
+    if (activeTab === 'profit_loss') {
       // 14 Aug 2026: Balance Sheet/Cash Flow's "ledgerData.length === 0" empty
       // rows rendered before this per-tab-switch fetch resolved. Reset to
       // true on every trigger (tab switch or month change), not just once.
@@ -149,7 +171,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     return { start, end };
   };
 
-  const filterByDate = <T extends { date?: string; checkinDate?: string; orderTime?: string }>(items: T[], field: 'date' | 'checkinDate' | 'orderTime' = 'date'): T[] => {
+  const filterByDate = <T extends { date?: string; checkinDate?: string; orderTime?: string; purchaseDate?: string }>(items: T[], field: 'date' | 'checkinDate' | 'orderTime' | 'purchaseDate' = 'date'): T[] => {
     const bounds = getDateBounds();
     if (!bounds) return items;
     return items.filter((item) => {
@@ -163,7 +185,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const filteredReceipts = filterByDate(receipts, 'checkinDate');
   const filteredOrders = filterByDate(orders, 'orderTime');
   const filteredExpenses = filterByDate(pettyCash, 'date');
-  const filteredKitchenPurchases = filterByDate(kitchenPurchases, 'date');
+  // Real field is purchaseDate, not date (see get_kitchen_purchases) - this
+  // was silently zeroing every Kitchen Purchases stat whenever a Day/Week/
+  // Month/Year filter was active (the 'all' default has no bound, so it
+  // short-circuited past the bug and looked fine until someone filtered).
+  const filteredKitchenPurchases = filterByDate(kitchenPurchases, 'purchaseDate');
+  // extraCharges is joined to its guest's checkinDate server-side (see
+  // get_guest_extra_charges in guests.php) so it can be filtered the same way
+  // as every other booking-linked list here.
+  const filteredExtraCharges = filterByDate(extraCharges, 'checkinDate');
 
   const roomRevenue = filteredReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
   const kitchenRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
@@ -187,18 +217,46 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach(item => {
         const name = item.name || 'Item';
-        if (!acc[name]) {
-          acc[name] = { count: 0, revenue: 0 };
+        const key = item.menuItemId != null ? String(item.menuItemId) : name;
+        if (!acc[key]) {
+          acc[key] = { name, menuItemId: item.menuItemId, count: 0, revenue: 0 };
         }
-        acc[name].count += (item.quantity || 1);
-        acc[name].revenue += (item.unitPrice || 0) * (item.quantity || 1);
+        acc[key].count += (item.quantity || 1);
+        acc[key].revenue += (item.unitPrice || 0) * (item.quantity || 1);
       });
     }
     return acc;
-  }, {} as Record<string, { count: number; revenue: number }>);
+  }, {} as Record<string, { name: string; menuItemId?: number; count: number; revenue: number }>);
 
   const sortedMenuItems = Object.entries(menuItemSales)
     .sort((a, b) => b[1].revenue - a[1].revenue);
+
+  // Dish Profitability - joins order sales against Beta Recipe Builder's
+  // per-serving ingredient costing (dish_recipes.ingredients: quantity is
+  // already per-serving, so sum(quantity * costPerUnit) = cost per portion -
+  // see KitchenManagement.tsx's costPerPortion calc, same formula reused
+  // here). Only dishes with an actual costed recipe can show profit/margin;
+  // everything else still counts toward popularity (order count).
+  const recipeCostByMenuItemId = recipes.reduce((acc: Record<number, number>, r: any) => {
+    const cost = (r.ingredients || []).reduce((s: number, ing: any) => s + (Number(ing.quantity) || 0) * (Number(ing.costPerUnit) || 0), 0);
+    acc[r.menuItemId] = cost;
+    return acc;
+  }, {} as Record<number, number>);
+
+  const dishPerformance = Object.values(menuItemSales).map((d) => {
+    const costPerUnit = d.menuItemId != null ? recipeCostByMenuItemId[d.menuItemId] : undefined;
+    const hasCost = costPerUnit !== undefined;
+    const totalCost = hasCost ? (costPerUnit as number) * d.count : undefined;
+    const profit = hasCost ? d.revenue - (totalCost as number) : undefined;
+    const marginPct = hasCost && d.revenue > 0 ? ((profit as number) / d.revenue) * 100 : undefined;
+    return { ...d, costPerUnit, totalCost, profit, marginPct, hasCost };
+  });
+
+  const costedDishes = dishPerformance.filter((d) => d.hasCost);
+  const mostProfitableDishes = [...costedDishes].sort((a, b) => (b.profit as number) - (a.profit as number)).slice(0, 5);
+  const leastProfitableDishes = [...costedDishes].sort((a, b) => (a.profit as number) - (b.profit as number)).slice(0, 5);
+  const mostOrderedDishes = [...dishPerformance].sort((a, b) => b.count - a.count).slice(0, 5);
+  const leastOrderedDishes = [...dishPerformance].sort((a, b) => a.count - b.count).slice(0, 5);
 
   const bookingsByMonth = filteredReceipts.reduce((acc, r) => {
     const date = new Date(r.checkinDate);
@@ -240,12 +298,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const totalBillsThisPeriod = sortedBillsByType.reduce((s, [, v]) => s + v, 0);
 
   // Labor Cost as % of Revenue - trended monthly. Labor cost is drawn from
-  // the same 'Salaries' category petty-cash entries generateSalaryEntry()
-  // posts (StaffManagement/CashDrawerManager's "Pay Now"), so this reads
-  // real payouts, not projected payroll. Revenue-per-month reuses the same
-  // room + kitchen definition as totalGrossRevenue above, just bucketed.
+  // the 'Staff Advance' Cost Category Group (relabeled "Staff Salaries &
+  // Adv." in the Add Expense form - see PettyCashManagement.tsx's category
+  // dropdown; this app has no separate 'Salaries' category, that was a stale
+  // assumption that left this chart permanently at 0% regardless of how much
+  // payroll was actually logged). Revenue-per-month reuses the same room +
+  // kitchen definition as totalGrossRevenue above, just bucketed.
   const laborByMonth = filteredExpenses
-    .filter((e: any) => (e.category || e.costCategory) === 'Salaries' && e.type === 'Expense')
+    .filter((e: any) => (e.category || e.costCategory) === 'Staff Advance' && e.type === 'Expense')
     .reduce((acc: Record<string, number>, e: any) => {
       const key = monthKeyOf(e.date);
       acc[key] = (acc[key] || 0) + (Number(e.amount) || 0);
@@ -360,8 +420,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Revenue', data: roomPerformance.map((r) => r.revenue) }
   ];
 
+  // Excludes 'Staff Advance' (payroll) - grouping by description turned each
+  // staff member's own "Monthly Salary Payout - <name> (<role>)" line into
+  // its own bar, which read as ranking individual staff pay rather than
+  // showing recurring purchase/bill items. Payroll already has its own
+  // "Labor Cost as % of Revenue" trend below; this chart is for what's being
+  // bought, not who's being paid.
   const expenseItems = filteredExpenses
-    .filter((e) => e.type === 'Expense')
+    .filter((e) => e.type === 'Expense' && (e.costCategory || e.category) !== 'Staff Advance')
     .reduce((acc, e) => {
       const name = e.description || e.predefinedItemSelection || 'Other Expense';
       const cat = e.costCategory || e.category || 'General';
@@ -485,7 +551,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [brandSecondary],
-    xaxis: { categories: sortedMenuItems.slice(0, 10).map(([name]) => name) },
+    xaxis: { categories: sortedMenuItems.slice(0, 10).map(([, data]) => data.name) },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -495,19 +561,156 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Revenue', data: sortedMenuItems.slice(0, 10).map(([, data]) => data.revenue) }
   ];
 
-  const kitchenBarOptions: any = {
-    chart: { type: 'bar', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-    plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
-    colors: [successColor, warningColor],
-    xaxis: { categories: ['Kitchen Sales', 'Kitchen Purchases'] },
+  // Both charts share one x-axis max (the global highest order count) so bar
+  // LENGTH is actually comparable between them - each ApexCharts bar chart
+  // otherwise auto-scales to its own data's max, which made a dish ordered
+  // once fill the "Least Ordered" chart exactly as full as the top seller
+  // filled "Most Ordered" (found 16 Aug 2026: read as "these are ordered
+  // equally often" when the real counts could be 10x apart).
+  const dishOrderCountMax = Math.max(1, ...dishPerformance.map((d) => d.count));
+
+  const mostOrderedDishesBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [successColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `${val}x` },
+    xaxis: { categories: mostOrderedDishes.map((d) => d.name), max: dishOrderCountMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const mostOrderedDishesBarSeries = [{ name: 'Orders', data: mostOrderedDishes.map((d) => d.count) }];
+
+  const leastOrderedDishesBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [dangerColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `${val}x` },
+    xaxis: { categories: leastOrderedDishes.map((d) => d.name), max: dishOrderCountMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const leastOrderedDishesBarSeries = [{ name: 'Orders', data: leastOrderedDishes.map((d) => d.count) }];
+
+  // Sales vs Purchases trended day-by-day (16 Aug 2026 - the previous 2-bar
+  // "Kitchen Sales" vs "Kitchen Purchases" snapshot only ever showed two
+  // period totals side by side, which can't show whether purchases are
+  // tracking sales or drifting away from them over time).
+  const kitchenTrendByDate = (() => {
+    const salesByDate: Record<string, number> = {};
+    filteredOrders.forEach((o: any) => {
+      const key = (o.orderTime || '').split(' ')[0].split('T')[0];
+      if (!key) return;
+      salesByDate[key] = (salesByDate[key] || 0) + (Number(o.totalAmount) || 0);
+    });
+    const purchasesByDate: Record<string, number> = {};
+    filteredKitchenPurchases.forEach((p: any) => {
+      // get_kitchen_purchases aliases this purchase_date as purchaseDate, not
+      // date - reading p.date here always came back undefined, which is why
+      // the purchases line rendered flat at zero regardless of how much
+      // purchase data existed.
+      const key = (p.purchaseDate || '').split(' ')[0].split('T')[0];
+      if (!key) return;
+      purchasesByDate[key] = (purchasesByDate[key] || 0) + (Number(p.totalPrice) || 0);
+    });
+    const dates = Array.from(new Set([...Object.keys(salesByDate), ...Object.keys(purchasesByDate)])).sort();
+    return {
+      labels: dates.map((d) => { const [, m, day] = d.split('-'); return `${day}/${m}`; }),
+      sales: dates.map((d) => salesByDate[d] || 0),
+      purchases: dates.map((d) => purchasesByDate[d] || 0),
+    };
+  })();
+
+  const kitchenTrendOptions: any = {
+    chart: { type: 'line', height: 320, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    colors: [successColor, dangerColor],
+    stroke: { curve: 'smooth', width: 2.5 },
+    markers: { size: 3 },
+    xaxis: { categories: kitchenTrendByDate.labels },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
-    legend: { show: false },
+    legend: { position: 'top' },
+    tooltip: { y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
   };
 
-  const kitchenBarSeries = [
-    { name: 'Amount', data: [kitchenRevenue || 0, totalKitchenPurchaseCost || 0] }
+  const kitchenTrendSeries = [
+    { name: 'Kitchen Sales', data: kitchenTrendByDate.sales },
+    { name: 'Kitchen Purchases', data: kitchenTrendByDate.purchases },
   ];
+
+  // ─── Fluctuations Tab: per-item purchase-price volatility & cadence ───
+  // Groups every kitchen purchase by item name (not date-filtered by the
+  // Overview dateFilter - fluctuation is inherently a trend-over-time
+  // question, so this always looks at the full purchase history available)
+  // and computes, per item: how often it's actually bought and how much its
+  // unit_cost swings between purchases - "am I buying ginger every week or
+  // twice a week, and how much is the price actually moving."
+  const purchasesByItemName: Record<string, { date: string; unitCost: number }[]> = {};
+  kitchenPurchases.forEach((p: any) => {
+    const name = (p.itemName || '').trim();
+    if (!name) return;
+    const dateKey = (p.purchaseDate || '').split(' ')[0].split('T')[0];
+    const cost = Number(p.unitCost) || 0;
+    if (!dateKey || cost <= 0) return;
+    if (!purchasesByItemName[name]) purchasesByItemName[name] = [];
+    purchasesByItemName[name].push({ date: dateKey, unitCost: cost });
+  });
+  Object.values(purchasesByItemName).forEach((points) => points.sort((a, b) => a.date.localeCompare(b.date)));
+
+  const fluctuationStats = Object.entries(purchasesByItemName)
+    .filter(([, points]) => points.length >= 2)
+    .map(([name, points]) => {
+      const prices = points.map((p) => p.unitCost);
+      const mean = prices.reduce((s, v) => s + v, 0) / prices.length;
+      const variance = prices.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / prices.length;
+      const stdDev = Math.sqrt(variance);
+      const fluctuationPct = mean > 0 ? (stdDev / mean) * 100 : 0;
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const firstDate = new Date(points[0].date);
+      const lastDate = new Date(points[points.length - 1].date);
+      const daySpan = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / 86400000);
+      const avgFrequencyDays = daySpan / (points.length - 1);
+      const priceChangePct = points[0].unitCost > 0 ? ((points[points.length - 1].unitCost - points[0].unitCost) / points[0].unitCost) * 100 : 0;
+      return { name, points, mean, fluctuationPct, minPrice, maxPrice, count: points.length, avgFrequencyDays, priceChangePct };
+    })
+    .sort((a, b) => b.fluctuationPct - a.fluctuationPct);
+
+  const top5FluctuatingItems = fluctuationStats.slice(0, 5).map((s) => s.name);
+
+  useEffect(() => {
+    if (!fluctuationSelectionInitialized && top5FluctuatingItems.length > 0) {
+      setSelectedFluctuationItems(top5FluctuatingItems);
+      setFluctuationSelectionInitialized(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fluctuationSelectionInitialized, kitchenPurchases.length]);
+
+  const toggleFluctuationItem = (name: string) => {
+    setSelectedFluctuationItems((prev) => {
+      if (prev.includes(name)) return prev.filter((n) => n !== name);
+      if (prev.length >= 5) return prev;
+      return [...prev, name];
+    });
+  };
+
+  const fluctuationColors = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+  const selectedFluctuationStats = fluctuationStats.filter((s) => selectedFluctuationItems.includes(s.name));
+
+  const fluctuationChartOptions: any = {
+    chart: { type: 'line', height: 340, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    colors: fluctuationColors,
+    stroke: { curve: 'smooth', width: 2.5 },
+    markers: { size: 4 },
+    xaxis: { type: 'datetime', title: { text: t('purchase_date_axis', 'Purchase Date') } },
+    yaxis: { title: { text: t('unit_cost_axis', 'Unit Cost (₹)') }, labels: { formatter: (v: number) => `₹${v.toFixed(0)}` } },
+    grid: { strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    legend: { position: 'top' },
+    tooltip: { x: { format: 'dd/MM/yyyy' }, y: { formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` } },
+  };
+
+  const fluctuationChartSeries = selectedFluctuationStats.map((s) => ({
+    name: s.name,
+    data: s.points.map((p) => ({ x: new Date(p.date).getTime(), y: p.unitCost })),
+  }));
 
   const expensesBarOptions: any = {
     chart: { type: 'bar', height: 360, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
@@ -531,13 +734,46 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { label: t('date_filter_this_year', 'This Year'), value: 'year' },
   ];
 
-  // Group P&L and Cash Flow statements by Category for statistical reporting
+  // Group P&L statement by category. Three corrections applied at grouping
+  // time (found 16 Aug 2026 while reviewing the raw ledger category list -
+  // 'Maintenance'/'Transport'/'Miscellaneous' etc. are legacy Cost Category
+  // Group values from before that taxonomy was simplified and are left
+  // as-is, they're real historical spend):
+  //  1. 'Cash Drawer handover'/'Cash Drawer manual_adjustment' (posted by
+  //     add_drawer_entry in petty_cash.php) record a staff member handing
+  //     already-earned cash to the owner's safe - an internal custody
+  //     transfer, not new revenue or a real expense. The guest payment that
+  //     cash came from was already booked once (e.g. 'Guest Checkout
+  //     Settlement'); counting the handover too double-counts it as an
+  //     expense and understates Net Profit. Excluded entirely.
+  //  2. 'Staff Advance' is an early/partial salary payout (the eventual
+  //     "Pay Now" settlement nets it out via staff_advances - see
+  //     CashDrawerManager.tsx's pendingPayout calc), not a distinct cost.
+  //     Folded into 'Salaries' so admins see one true labor-cost figure
+  //     instead of a fragmented, on-its-own-meaningless advance slice.
+  //  3. 'Guest Registration Advance' (posted by add_guest in guests.php,
+  //     when a booking collects a deposit) and 'Guest Checkout Settlement'
+  //     (posted by save_receipt in receipts.php, for `grandTotal -
+  //     advancePaid` - the remaining balance, never double-counting the
+  //     advance) are the SAME accommodation stay split across two different
+  //     moments in the guest lifecycle, not two different income sources.
+  //     Showing them as separate donut slices answers "when was this room
+  //     paid for" when the question that actually matters here is "how much
+  //     did rooms earn" - folded into one 'Accommodation Revenue' figure so
+  //     it reads next to 'Kitchen POS Sales' as an actual revenue stream.
+  const isInternalCashMovement = (raw: string): boolean => (raw || '').startsWith('Cash Drawer');
+  const normalizeLedgerCategory = (raw: string): string => {
+    const cat = (raw || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (cat === 'Staff Advance') return 'Salaries';
+    if (cat === 'Guest Registration Advance' || cat === 'Guest Checkout Settlement') return 'Accommodation Revenue';
+    return cat;
+  };
+
   const pLIncomeGroups = Object.entries(
     ledgerData
-      .filter((l) => l.direction === 'credit')
+      .filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category))
       .reduce((acc: Record<string, number>, l) => {
-        const rawCat = l.category || 'Other Income';
-        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const cat = normalizeLedgerCategory(l.category || 'Other Income');
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
       }, {} as Record<string, number>)
@@ -545,32 +781,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
   const pLExpenseGroups = Object.entries(
     ledgerData
-      .filter((l) => l.direction === 'debit')
+      .filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category))
       .reduce((acc: Record<string, number>, l) => {
-        const rawCat = l.category || 'General Expense';
-        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
-        return acc;
-      }, {} as Record<string, number>)
-  ).sort((a, b) => Number(b[1]) - Number(a[1]));
-
-  const cashInflowGroups = Object.entries(
-    ledgerData
-      .filter((l) => l.direction === 'credit')
-      .reduce((acc: Record<string, number>, l) => {
-        const rawCat = l.category || 'Other Inflow';
-        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
-        return acc;
-      }, {} as Record<string, number>)
-  ).sort((a, b) => Number(b[1]) - Number(a[1]));
-
-  const cashOutflowGroups = Object.entries(
-    ledgerData
-      .filter((l) => l.direction === 'debit')
-      .reduce((acc: Record<string, number>, l) => {
-        const rawCat = l.category || 'Other Outflow';
-        const cat = rawCat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const cat = normalizeLedgerCategory(l.category || 'General Expense');
         acc[cat] = (acc[cat] || 0) + Number(l.amount || 0);
         return acc;
       }, {} as Record<string, number>)
@@ -616,10 +829,17 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
   };
 
-  // Group Booking Sources for pie chart
+  // Group Booking Sources for pie chart. A booking converted from a synced
+  // OTA calendar (Airbnb/Booking.com - see ConvertOtaBookingModal.tsx) never
+  // sets bookingSource at all, only otaSource/otaSourceLabel - reading
+  // bookingSource alone silently folded every OTA-origin guest into
+  // 'Direct', hiding the online/OTA channel mix entirely (found 16 Aug
+  // 2026). otaSourceLabel takes priority when present since it's the more
+  // specific real source (e.g. "Airbnb"), falling back to the plain
+  // Offline/Online choice from the manual booking form otherwise.
   const filteredBookings = filterByDate(guests, 'checkinDate');
   const bookingSourceCounts = filteredBookings.reduce((acc, g) => {
-    const source = g.bookingSource || 'Direct';
+    const source = (g as any).otaSourceLabel || g.bookingSource || 'Direct';
     acc[source] = (acc[source] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -631,6 +851,30 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     labels: bookingSourcePieLabels,
     colors: ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#6b7280'],
+    legend: { position: 'bottom' },
+    stroke: { show: false },
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
+  };
+
+  // Additional Charges Breakdown (Decoration Fees, Extra Housekeeping, Pet
+  // Stay Charges, custom Misc templates) - what a guest paid for their
+  // accommodation beyond base room rent. Room rent itself isn't broken down
+  // further since it's just nights x rate, not a mix of charge types.
+  const extraChargesTotal = filteredExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const extraChargesByCategory = Object.entries(
+    filteredExtraCharges.reduce((acc: Record<string, number>, c) => {
+      const cat = c.category || 'Misc';
+      acc[cat] = (acc[cat] || 0) + (Number(c.amount) || 0);
+      return acc;
+    }, {} as Record<string, number>)
+  ).sort((a, b) => Number(b[1]) - Number(a[1]));
+
+  const extraChargesSeries: number[] = extraChargesByCategory.map(([, amount]) => Number(amount));
+  const extraChargesLabels: string[] = extraChargesByCategory.map(([cat]) => cat);
+  const extraChargesChartOptions: any = {
+    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    labels: extraChargesLabels,
+    colors: ['#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#6b7280'],
     legend: { position: 'bottom' },
     stroke: { show: false },
     dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
@@ -652,9 +896,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     return new Date(str);
   };
 
-  const { prepTimes, serveTimes } = (() => {
+  const { prepTimes, serveTimes, prepTimesByDish } = (() => {
     const prepTimes: number[] = [];
     const serveTimes: number[] = [];
+    const prepTimesByDish: Record<string, number[]> = {};
 
     const servedMap = new Map<string, string>();
     (servedLogs || []).forEach(log => {
@@ -672,6 +917,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           const prepDiff = (readyDate.getTime() - orderDate.getTime()) / (60 * 1000);
           if (prepDiff >= 0 && prepDiff < 300) {
             prepTimes.push(prepDiff);
+            const dishName = (item.name || '').trim();
+            if (dishName) {
+              if (!prepTimesByDish[dishName]) prepTimesByDish[dishName] = [];
+              prepTimesByDish[dishName].push(prepDiff);
+            }
           }
 
           const key = `${order.id}_${(item.name || '').trim().toLowerCase()}`;
@@ -689,11 +939,42 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       });
     });
 
-    return { prepTimes, serveTimes };
+    return { prepTimes, serveTimes, prepTimesByDish };
   })();
 
   const avgPrepTime = prepTimes.length > 0 ? prepTimes.reduce((s, v) => s + v, 0) / prepTimes.length : 0;
   const avgServeTime = serveTimes.length > 0 ? serveTimes.reduce((s, v) => s + v, 0) / serveTimes.length : 0;
+
+  // Fastest/Slowest Prepared Dishes - per-dish average of the same
+  // order_time -> ready_at gap the aggregate "Average Chef Preparation Time"
+  // above already computes, just grouped by dish instead of collapsed into
+  // one property-wide number.
+  const dishPrepAverages = Object.entries(prepTimesByDish)
+    .map(([name, times]) => ({ name, avgMinutes: times.reduce((s, v) => s + v, 0) / times.length, samples: times.length }))
+    .filter((d) => d.samples >= 1);
+  const fastestPreparedDishes = [...dishPrepAverages].sort((a, b) => a.avgMinutes - b.avgMinutes).slice(0, 5);
+  const slowestPreparedDishes = [...dishPrepAverages].sort((a, b) => b.avgMinutes - a.avgMinutes).slice(0, 5);
+  const dishPrepTimeMax = Math.max(1, ...dishPrepAverages.map((d) => d.avgMinutes));
+
+  const fastestPreparedBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [successColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}m` },
+    xaxis: { categories: fastestPreparedDishes.map((d) => d.name), max: dishPrepTimeMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const fastestPreparedBarSeries = [{ name: 'Avg Prep Time', data: fastestPreparedDishes.map((d) => Number(d.avgMinutes.toFixed(1))) }];
+
+  const slowestPreparedBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [dangerColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}m` },
+    xaxis: { categories: slowestPreparedDishes.map((d) => d.name), max: dishPrepTimeMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const slowestPreparedBarSeries = [{ name: 'Avg Prep Time', data: slowestPreparedDishes.map((d) => Number(d.avgMinutes.toFixed(1))) }];
 
   // Requisitions & Supply Analytics
   const sortedReqItems = (() => {
@@ -769,30 +1050,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   const pLExpenseChartOptions: any = {
     chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
     labels: pLExpenseLabels,
-    colors: ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#6b7280'],
-    legend: { position: 'bottom' },
-    stroke: { show: false },
-    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
-  };
-
-  // Cash Inflow Chart
-  const cashInflowSeries: number[] = cashInflowGroups.map(([_, amount]) => Number(amount));
-  const cashInflowLabels: string[] = cashInflowGroups.map(([cat]) => cat);
-  const cashInflowChartOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-    labels: cashInflowLabels,
-    colors: ['#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6b7280'],
-    legend: { position: 'bottom' },
-    stroke: { show: false },
-    dataLabels: { enabled: true, formatter: (val: number) => `${val.toFixed(1)}%` },
-  };
-
-  // Cash Outflow Chart
-  const cashOutflowSeries: number[] = cashOutflowGroups.map(([_, amount]) => Number(amount));
-  const cashOutflowLabels: string[] = cashOutflowGroups.map(([cat]) => cat);
-  const cashOutflowChartOptions: any = {
-    chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
-    labels: cashOutflowLabels,
     colors: ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6', '#6b7280'],
     legend: { position: 'bottom' },
     stroke: { show: false },
@@ -927,15 +1184,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <span>{t('pnl_tab_label', 'P&L')}</span>
         </button>
         <button
-          onClick={() => setActiveTab('cash_flow')}
+          onClick={() => setActiveTab('fluctuations')}
           className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'cash_flow'
+            activeTab === 'fluctuations'
               ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          <IndianRupee className="w-4 h-4" />
-          <span>{t('cash_flow_tab_label', 'Cash Flow')}</span>
+          <Activity className="w-4 h-4" />
+          <span>{t('fluctuations_tab_label', 'Fluctuations')}</span>
         </button>
       </div>
 
@@ -1102,6 +1359,39 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
           </div>
 
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-amber-600" /> {t('additional_charges_breakdown_heading', 'Additional Charges Breakdown')}
+              </h3>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                ₹{extraChargesTotal.toLocaleString('en-IN')} {t('total_label', 'total')}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              {t('additional_charges_note', 'What guests paid on top of base room rent - Decoration, Extra Housekeeping, Pet Stay, and custom Misc Charges templates added at booking. Room rent itself isn\'t split further since it\'s just nights x rate.')}
+            </p>
+            {extraChargesSeries.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                <div className="sm:col-span-7">
+                  <ReactApexChart options={extraChargesChartOptions} series={extraChargesSeries} type="donut" height={280} />
+                </div>
+                <div className="sm:col-span-5 space-y-2.5">
+                  {extraChargesByCategory.map(([cat, amount]) => (
+                    <div key={cat} className="text-xs">
+                      <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
+                        <span>{cat}</span>
+                        <span>₹{Number(amount).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400 text-center py-8 text-xs">{t('no_additional_charges_data', 'No additional charges recorded for this period.')}</p>
+            )}
+          </div>
+
           {isMultiKeyProperty && activeRooms.length > 0 && (
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -1185,7 +1475,69 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
               <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('kitchen_sales_vs_purchases_heading', 'Sales vs Purchases Outflow')}</h4>
-                <ReactApexChart options={kitchenBarOptions} series={kitchenBarSeries} type="bar" height={300} />
+                <ReactApexChart options={kitchenTrendOptions} series={kitchenTrendSeries} type="line" height={300} />
+              </div>
+            </div>
+
+            {/* Dish Profitability & Popularity */}
+            <div className="bg-slate-50/20 dark:bg-slate-900/10 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4 mt-6">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-emerald-600" /> {t('dish_profitability_heading', 'Dish Profitability')}
+              </h3>
+              {costedDishes.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5" /> {t('most_profitable_dishes_label', 'Most Profitable Dishes')}
+                    </h4>
+                    <div className="space-y-2">
+                      {mostProfitableDishes.map((d, i) => (
+                        <div key={d.menuItemId ?? d.name} className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">{i + 1}</span>
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{d.name}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">₹{(d.profit || 0).toLocaleString('en-IN')}</p>
+                            <p className="text-[9px] text-slate-400">{(d.marginPct || 0).toFixed(0)}% {t('margin_label', 'margin')} · {d.count} {t('sold_label', 'sold')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <TrendingDown className="w-3.5 h-3.5" /> {t('least_profitable_dishes_label', 'Least Profitable Dishes')}
+                    </h4>
+                    <div className="space-y-2">
+                      {leastProfitableDishes.map((d, i) => (
+                        <div key={d.menuItemId ?? d.name} className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">{i + 1}</span>
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{d.name}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`text-xs font-extrabold ${(d.profit || 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>₹{(d.profit || 0).toLocaleString('en-IN')}</p>
+                            <p className="text-[9px] text-slate-400">{(d.marginPct || 0).toFixed(0)}% {t('margin_label', 'margin')} · {d.count} {t('sold_label', 'sold')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-slate-400 text-center py-6 text-xs">{t('no_dish_costing_data', 'No dishes have a costed recipe yet - add ingredient costs in Kitchen → Beta Recipe Builder to see profit per dish.')}</p>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 mt-2 border-t border-slate-100 dark:border-slate-800">
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 mt-4">{t('most_ordered_dishes_label', 'Most Ordered Dishes')}</h4>
+                  <ReactApexChart options={mostOrderedDishesBarOptions} series={mostOrderedDishesBarSeries} type="bar" height={220} />
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 mt-4">{t('least_ordered_dishes_label', 'Least Ordered Dishes')}</h4>
+                  <ReactApexChart options={leastOrderedDishesBarOptions} series={leastOrderedDishesBarSeries} type="bar" height={220} />
+                </div>
               </div>
             </div>
 
@@ -1223,6 +1575,19 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   </div>
                 </div>
               </div>
+
+              {dishPrepAverages.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                  <div>
+                    <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('fastest_prepared_dishes_label', 'Fastest Prepared Dishes')}</h4>
+                    <ReactApexChart options={fastestPreparedBarOptions} series={fastestPreparedBarSeries} type="bar" height={220} />
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('slowest_prepared_dishes_label', 'Slowest Prepared Dishes')}</h4>
+                    <ReactApexChart options={slowestPreparedBarOptions} series={slowestPreparedBarSeries} type="bar" height={220} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1302,8 +1667,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             </div>
 
             {(() => {
-              const income = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
-              const expensesPL = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
+              const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
+              const expensesPL = ledgerData.filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const netPL = income - expensesPL;
               return (
                 <div className="space-y-4">
@@ -1345,73 +1710,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               );
             })()}
           </div>
-        </div>
-      )}
 
-
-
-      {/* TAB 8: CASH FLOW */}
-      {activeTab === 'cash_flow' && (
-        <div className="analytics-cash-flow space-y-6">
-          <div className="analytics-cash-flow__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <div className="analytics-cash-flow__header flex items-center justify-between">
-              <h3 className="analytics-dashboard__subtitle analytics-cash-flow__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('cash_flow_statement_heading', 'Cash Flow Statement')}
-              </h3>
-              <Input
-                type="month"
-                value={ledgerMonth}
-                onChange={(e) => setLedgerMonth(e.target.value)}
-                fullWidth={false}
-              />
-            </div>
-
-            {(() => {
-              const cashIn = ledgerData.filter((l) => l.direction === 'credit').reduce((s, l) => s + Number(l.amount || 0), 0);
-              const cashOut = ledgerData.filter((l) => l.direction === 'debit').reduce((s, l) => s + Number(l.amount || 0), 0);
-              const netCash = cashIn - cashOut;
-              return (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('cash_inflow_label', 'Cash Inflow')}</p>
-                      <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{cashIn.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-                      <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('cash_outflow_label', 'Cash Outflow')}</p>
-                      <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{cashOut.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl border ${netCash >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
-                      <p className={`text-[10px] font-semibold uppercase ${netCash >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>{t('net_cash_flow_label', 'Net Cash Flow')}</p>
-                      <p className={`text-xl font-extrabold mt-1 ${netCash >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>{netCash >= 0 ? '+' : '-'}₹{Math.abs(netCash).toLocaleString('en-IN')}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Donut Chart: Cash Inflow Categories */}
-                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('cash_inflow_breakdown_label', 'Inflow Sources Distribution')}</h4>
-                      {cashInflowSeries.length > 0 ? (
-                        <ReactApexChart options={cashInflowChartOptions} series={cashInflowSeries} type="donut" height={280} />
-                      ) : (
-                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_inflow_data', 'No inflow recorded for this period.')}</p>
-                      )}
-                    </div>
-                    {/* Donut Chart: Cash Outflow Categories */}
-                    <div className="bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                      <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 text-center">{t('cash_outflow_breakdown_label', 'Outflow Categories Distribution')}</h4>
-                      {cashOutflowSeries.length > 0 ? (
-                        <ReactApexChart options={cashOutflowChartOptions} series={cashOutflowSeries} type="donut" height={280} />
-                      ) : (
-                        <p className="text-slate-400 text-center py-12 text-xs">{t('no_outflow_data', 'No outflow recorded for this period.')}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Payment Methods Share */}
+          {/* Payment Methods Share - merged in from the former standalone
+              "Cash Flow" tab (16 Aug 2026): its Cash Inflow/Outflow totals
+              and category donuts were computed from the exact same
+              ledgerData, filtered and grouped identically to Income/Expenses
+              above - a literal duplicate under a different name, not a
+              distinct cash-basis-vs-accrual view (this app only has one
+              ledger, settled at the time of the transaction, so there's no
+              accrual/cash timing gap to show separately). This payment-method
+              breakdown was the only piece that tab added on top. */}
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
               <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
@@ -1449,6 +1757,108 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 8: FLUCTUATIONS - purchase price volatility & buying cadence */}
+      {activeTab === 'fluctuations' && (
+        <div className="analytics-fluctuations space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600" /> {t('price_fluctuation_trend_heading', 'Item Price Trend')}
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                {t('fluctuation_selection_count', 'Showing')} {selectedFluctuationItems.length}/5
+              </span>
+            </div>
+            {fluctuationChartSeries.length > 0 ? (
+              <ReactApexChart options={fluctuationChartOptions} series={fluctuationChartSeries} type="line" height={340} />
+            ) : (
+              <p className="text-slate-400 text-center py-12 text-xs">{t('no_fluctuation_data', 'No repeat purchases logged yet - an item needs at least 2 purchases to show a price trend.')}</p>
+            )}
+            <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              {t('fluctuation_default_note', 'Defaults to the 5 most volatile items (by price swing relative to average cost). Use the checklist below to pick your own - up to 5 at a time.')}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+            <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-purple-600" /> {t('select_items_heading', 'Select Items')}
+            </h3>
+            {fluctuationStats.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {fluctuationStats.map((s, i) => {
+                  const isChecked = selectedFluctuationItems.includes(s.name);
+                  const isDisabled = !isChecked && selectedFluctuationItems.length >= 5;
+                  return (
+                    <label
+                      key={s.name}
+                      className={`flex items-start gap-2.5 p-3 rounded-xl border text-xs transition-colors ${
+                        isChecked
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                          : 'bg-slate-50/50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800'
+                      } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 shrink-0"
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        onChange={() => toggleFluctuationItem(s.name)}
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{s.name}</span>
+                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-0.5">
+                          ±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} · {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d · {s.count}x
+                        </p>
+                        <p className={`text-[9px] font-semibold mt-0.5 ${s.priceChangePct >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                          {s.priceChangePct >= 0 ? '+' : ''}{s.priceChangePct.toFixed(1)}% {t('since_first_purchase_label', 'since first purchase')}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-slate-400 text-center py-8 text-xs">{t('no_repeat_purchases', 'No items have been purchased more than once yet.')}</p>
+            )}
+            {selectedFluctuationItems.length >= 5 && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{t('max_items_note', 'Max 5 items selected - uncheck one to add another.')}</p>
+            )}
+          </div>
+
+          {selectedFluctuationStats.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
+              <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-amber-600" /> {t('selected_items_summary_heading', 'Selected Items - Buying Pattern')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {selectedFluctuationStats.map((s, i) => (
+                  <div key={s.name} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: fluctuationColors[i % fluctuationColors.length] }} />
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{s.name}</span>
+                    </div>
+                    <div className="space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
+                      <p>{t('bought_label', 'Bought')} <strong className="text-slate-700 dark:text-slate-300">{s.count}x</strong>, {t('avg_every_label', 'avg every')} <strong className="text-slate-700 dark:text-slate-300">{s.avgFrequencyDays.toFixed(1)} {t('days_label', 'days')}</strong></p>
+                      <p>{t('price_range_label', 'Price range')}: <strong className="text-slate-700 dark:text-slate-300">₹{s.minPrice.toFixed(0)} - ₹{s.maxPrice.toFixed(0)}</strong></p>
+                      <p>{t('avg_cost_label', 'Avg cost')}: <strong className="text-slate-700 dark:text-slate-300">₹{s.mean.toFixed(0)}</strong></p>
+                      <p>
+                        {t('change_since_first_label', 'Change since first purchase')}:{' '}
+                        <strong className={s.priceChangePct >= 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                          {s.priceChangePct >= 0 ? '+' : ''}{s.priceChangePct.toFixed(1)}%
+                        </strong>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

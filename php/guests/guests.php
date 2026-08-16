@@ -196,6 +196,35 @@ function ensureOtaBookingSchema($pdo) {
     markSchemaVerified('schema_ota_booking');
 }
 
+// Itemized "Additional Charges" lines from the booking form (Decoration
+// Fees, Extra Housekeeping, Pet Stay Charges, or a custom Misc Charges
+// Management template). Before this, the per-line category/amount only ever
+// survived as a human-readable notes string on the guest row - the total
+// was real (folded into pending_amount) but which charge type it came from
+// was thrown away before it reached the database, so analytics could never
+// answer "how much did Decoration earn us this month", only "how much extra
+// stuff did guests buy" as one lump misc figure.
+function ensureGuestExtraChargesSchema($pdo) {
+    if (isSchemaVerified('schema_guest_extra_charges')) return;
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `guest_extra_charges` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `property_id` INT NOT NULL DEFAULT 1,
+                `guest_id` INT NOT NULL,
+                `category` VARCHAR(100) NOT NULL,
+                `amount` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                `note` VARCHAR(255) DEFAULT NULL,
+                `is_demo` TINYINT(1) NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_property` (`property_id`),
+                INDEX `idx_guest` (`guest_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (PDOException $e) {}
+    markSchemaVerified('schema_guest_extra_charges');
+}
+
 /**
  * ID-document uploads are temporary, not permanent records (24h TTL): the
  * check-in completion flow sends them to Telegram in one message and then
@@ -314,10 +343,33 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        // Itemized booking-time "Additional Charges" (Decoration Fees, Extra
+        // Housekeeping, Pet Stay Charges, custom Misc templates), joined back
+        // to the guest's checkin_date so Analytics can filter/bucket them the
+        // same way it already does for guests and receipts.
+        case 'get_guest_extra_charges':
+            ensureGuestExtraChargesSchema($pdo);
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT gec.id, gec.guest_id, gec.category, gec.amount, gec.note, gec.created_at, g.checkin_date, g.guest_name, g.room_id
+                    FROM guest_extra_charges gec
+                    JOIN guests g ON gec.guest_id = g.id
+                    WHERE gec.property_id = ?
+                    ORDER BY g.checkin_date DESC
+                ");
+                $stmt->execute([$propertyId]);
+                $charges = array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC));
+                echo json_encode(['status' => 'success', 'data' => $charges]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
         case 'add_guest':
             if ($request_method === 'POST') {
                 ensureComplianceSchema($pdo);
                 ensureOtaBookingSchema($pdo);
+                ensureGuestExtraChargesSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -431,6 +483,30 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $icalExternalEventId,
                     ]);
                     $newId = $pdo->lastInsertId();
+
+                    // Itemized "Additional Charges" (Decoration Fees, Extra Housekeeping,
+                    // Pet Stay Charges, custom Misc templates) - the total is already
+                    // folded into pending_amount above, this is purely so analytics can
+                    // break it down by category instead of only seeing one lump sum.
+                    $extraCharges = is_array($input['extra_charges'] ?? null) ? $input['extra_charges'] : [];
+                    if (!empty($extraCharges)) {
+                        $chargeStmt = $pdo->prepare("
+                            INSERT INTO guest_extra_charges (property_id, guest_id, category, amount, note)
+                            VALUES (?, ?, ?, ?, ?)
+                        ");
+                        foreach ($extraCharges as $charge) {
+                            $chargeAmount = floatval($charge['amount'] ?? 0);
+                            if ($chargeAmount <= 0) continue;
+                            $chargeStmt->execute([
+                                $propertyId,
+                                $newId,
+                                trim($charge['category'] ?? 'Misc') ?: 'Misc',
+                                $chargeAmount,
+                                trim($charge['note'] ?? '') ?: null,
+                            ]);
+                        }
+                    }
+
                     $advance = floatval($input['advance_paid'] ?? 0);
                     if ($advance > 0) {
                         postFinancialLedger($pdo, [

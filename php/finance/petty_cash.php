@@ -94,30 +94,37 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 ], $propertyId);
 
                 // Attach invoice / payment-screenshot proof straight to the
-                // finance Telegram chat on submit. Images arrive as base64
-                // data-URIs in the POST body, are decoded to temp files, sent
-                // with the full expense caption, then discarded - nothing is
-                // persisted (farm_utility_expenses / petty_cash have no image
-                // columns, by design).
+                // finance Telegram chat on submit. Each item arrives as a
+                // base64 data-URI in the POST body (invoice bills may be a
+                // photo OR a PDF - screenshots are always images), decoded to
+                // a temp file, sent together with the full expense caption
+                // via sendMediaGroup, then discarded - nothing is persisted
+                // (farm_utility_expenses / petty_cash have no image columns,
+                // by design).
                 $proofImages = [];
-                foreach (['invoice_bill_url', 'invoiceBillUrl'] as $key) {
-                    if (!empty($input[$key])) { $proofImages[] = $input[$key]; break; }
+                foreach (['invoice_bill_urls', 'invoiceBillUrls'] as $key) {
+                    if (!empty($input[$key]) && is_array($input[$key])) { $proofImages = array_merge($proofImages, $input[$key]); break; }
                 }
-                foreach (['payment_screenshot_url', 'paymentScreenshotUrl'] as $key) {
-                    if (!empty($input[$key])) { $proofImages[] = $input[$key]; break; }
+                foreach (['payment_screenshot_urls', 'paymentScreenshotUrls'] as $key) {
+                    if (!empty($input[$key]) && is_array($input[$key])) { $proofImages = array_merge($proofImages, $input[$key]); break; }
                 }
                 if (!empty($proofImages)) {
                     try {
                         require_once __DIR__ . '/../telegram/sender.php';
                         require_once __DIR__ . '/../telegram/templates.php';
                         $tmpFiles = [];
+                        $tmpTypes = [];
                         foreach ($proofImages as $dataUri) {
+                            if (empty($dataUri) || !is_string($dataUri)) continue;
                             $comma = strpos($dataUri, ',');
+                            $meta = $comma === false ? '' : substr($dataUri, 0, $comma);
+                            $isPdf = stripos($meta, 'application/pdf') !== false;
                             $decoded = base64_decode($comma === false ? $dataUri : substr($dataUri, $comma + 1));
                             if ($decoded === false || $decoded === '') continue;
-                            $tmp = sys_get_temp_dir() . '/expense_' . bin2hex(random_bytes(8)) . '.jpg';
+                            $tmp = sys_get_temp_dir() . '/expense_' . bin2hex(random_bytes(8)) . ($isPdf ? '.pdf' : '.jpg');
                             file_put_contents($tmp, $decoded);
                             $tmpFiles[] = $tmp;
+                            $tmpTypes[] = $isPdf ? 'document' : 'photo';
                         }
                         if (!empty($tmpFiles)) {
                             $caption = TelegramTemplates::render($pdo, 'finance_operational_expense', [
@@ -128,7 +135,7 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                                 'payment_mode' => $input['payment_mode'] ?? $input['paymentMode'] ?? 'Cash',
                                 'amount' => number_format((float)($input['amount'] ?? 0), 2),
                             ]);
-                            sendPropertyTelegramPhoto($pdo, $propertyId, 'finance', $tmpFiles, $caption, 'finance_operational_expense');
+                            sendPropertyTelegramPhoto($pdo, $propertyId, 'finance', $tmpFiles, $caption, 'finance_operational_expense', $tmpTypes);
                         }
                         foreach ($tmpFiles as $tmp) {
                             @unlink($tmp);

@@ -46,6 +46,25 @@ function ensureDemoSchema($pdo) {
         "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
         "ALTER TABLE `ical_sync_configs` ADD COLUMN IF NOT EXISTS `sync_interval` INT NOT NULL DEFAULT 0",
         "ALTER TABLE `farm_utility_expenses` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `dish_recipes` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+        // Itemized booking-time "Additional Charges" (Decoration Fees, Extra
+        // Housekeeping, Pet Stay Charges) - real table, same shape as
+        // guests.php's own ensureGuestExtraChargesSchema(). Duplicated here
+        // (not required-in) because this file only requires database.php/
+        // guest_status.php/module_manager.php/ledger.php, matching the same
+        // is_demo-duplication pattern already used for every other table above.
+        "CREATE TABLE IF NOT EXISTS `guest_extra_charges` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `property_id` INT NOT NULL DEFAULT 1,
+            `guest_id` INT NOT NULL,
+            `category` VARCHAR(100) NOT NULL,
+            `amount` DECIMAL(10,2) NOT NULL DEFAULT 0,
+            `note` VARCHAR(255) DEFAULT NULL,
+            `is_demo` TINYINT(1) NOT NULL DEFAULT 0,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_property` (`property_id`),
+            INDEX `idx_guest` (`guest_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         // Real fix (14 Aug 2026), not demo-only: staff_users.id is a
         // non-numeric string (e.g. "DEMO-abc123", "usr-1723..."), but
         // staff_attendance.user_id was declared int(11) - inserting any
@@ -159,13 +178,19 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$userId, $propertyId, $user['username'], $user['name'], $user['phone'], $user['role'], $user['status'], $user['is_financial_handler']]);
         }
 
-        // 2. Rooms - ensure 5 demo rooms exist with varied default tariffs
+        // 2. Rooms - ensure 5 demo rooms exist with varied default tariffs.
+        // "Luxe Stays" tariff band (raised 16 Aug 2026 from a 1800-2500 budget
+        // band that, combined with a lean 5-person payroll, was landing net
+        // margin around 4-5% - nowhere near what a well-run boutique resort
+        // actually books, and a property literally branded "Luxe" undercharging
+        // relative to its own name read as more of a data bug than a deliberate
+        // budget-tier demo).
         $requiredRooms = [
-            ['name' => 'Room 101', 'slug' => 'room-101', 'tariff' => 2200],
-            ['name' => 'Room 102', 'slug' => 'room-102', 'tariff' => 2500],
-            ['name' => 'Room 103', 'slug' => 'room-103', 'tariff' => 2000],
-            ['name' => 'Room 104', 'slug' => 'room-104', 'tariff' => 1800],
-            ['name' => 'Room 105', 'slug' => 'room-105', 'tariff' => 2400],
+            ['name' => 'Room 101', 'slug' => 'room-101', 'tariff' => 4800],
+            ['name' => 'Room 102', 'slug' => 'room-102', 'tariff' => 5300],
+            ['name' => 'Room 103', 'slug' => 'room-103', 'tariff' => 4600],
+            ['name' => 'Room 104', 'slug' => 'room-104', 'tariff' => 4000],
+            ['name' => 'Room 105', 'slug' => 'room-105', 'tariff' => 5100],
         ];
 
         $roomIds = [];
@@ -245,12 +270,19 @@ function generateDemoData($pdo, $propertyId) {
 
         $allBookings = [];
         $nameIndex = 0;
+        $otaSourceChoices = [
+            ['source' => 'airbnb', 'label' => 'Airbnb'],
+            ['source' => 'booking_com', 'label' => 'Booking.com'],
+        ];
 
         foreach ($rooms as $roomIdx => $room) {
             $roomId = $room['id'];
             $tariff = $room['default_tariff'] ?? 2000;
             $stayCount = 6 + array_rand(range(0, 3)); // 6-9 stays
-            $targetOccupiedDays = (int)($windowDays * (0.65 + (array_rand([0, 5, 10, 15]) / 100))); // 65-75%
+            // 75-90% occupancy (raised 16 Aug 2026 alongside the tariff bump
+            // above, same margin-realism pass) - matches a property that's
+            // genuinely doing well, not just priced well.
+            $targetOccupiedDays = (int)($windowDays * (0.75 + (array_rand([0, 5, 10, 15]) / 100))); // 75-90%
             $stayLengths = [];
             $totalNights = 0;
             for ($i = 0; $i < $stayCount; $i++) {
@@ -284,7 +316,14 @@ function generateDemoData($pdo, $propertyId) {
             $attempts = 0;
             while ($idx < count($stayLengths) && $attempts < 100) {
                 $attempts++;
-                $startOffset = rand(0, max(0, count($availableDays) - $stayLengths[$idx] - 1));
+                $maxOffset = max(0, count($availableDays) - $stayLengths[$idx] - 1);
+                // Skewed toward later dates (max of two uniform draws, a
+                // standard trick for a right-skewed distribution) so monthly
+                // guest count trends upward across the window instead of
+                // flat/declining - a property doing better recently than a
+                // month ago is what "the business is growing" should look
+                // like, not an even scatter with no trend at all.
+                $startOffset = max(rand(0, $maxOffset), rand(0, $maxOffset));
                 $start = $availableDays[$startOffset];
                 $end = (clone $start)->modify('+' . $stayLengths[$idx] . ' days');
 
@@ -299,6 +338,40 @@ function generateDemoData($pdo, $propertyId) {
                 if (!$overlaps) {
                     $stayDates[] = ['start' => $start, 'end' => $end, 'length' => $stayLengths[$idx]];
                     $idx++;
+                }
+            }
+
+            // Advance bookings beyond $windowEnd (today +7) - without these
+            // the Pace tab's "On-the-Books Revenue by Week (Next 12 Weeks)"
+            // chart only ever had one populated bar (this week) and 11 empty
+            // ones, since no demo booking's check-in date ever fell further
+            // out than +7 days. 4-7 forward bookings per room, skewed toward
+            // NEARER weeks (min of two uniform draws - the mirror of the
+            // late-skew trick above) since real advance bookings taper off
+            // the further out they go, but don't vanish to zero.
+            $futureWindowStart = (clone $windowEnd)->modify('+1 day');
+            $futureWindowEnd = (clone $today)->modify('+84 days');
+            $futureDays = [];
+            for ($d = clone $futureWindowStart; $d <= $futureWindowEnd; $d->modify('+1 day')) {
+                $futureDays[] = clone $d;
+            }
+            $futureStayCount = rand(4, 7);
+            $futureAttempts = 0;
+            $futurePlaced = 0;
+            while ($futurePlaced < $futureStayCount && $futureAttempts < 100 && !empty($futureDays)) {
+                $futureAttempts++;
+                $futureLen = rand(1, 4);
+                $maxFutureOffset = max(0, count($futureDays) - $futureLen - 1);
+                $futureOffset = min(rand(0, $maxFutureOffset), rand(0, $maxFutureOffset));
+                $fStart = $futureDays[$futureOffset];
+                $fEnd = (clone $fStart)->modify("+{$futureLen} days");
+                $fOverlaps = false;
+                foreach ($stayDates as $s) {
+                    if ($fStart < $s['end'] && $fEnd > $s['start']) { $fOverlaps = true; break; }
+                }
+                if (!$fOverlaps) {
+                    $stayDates[] = ['start' => $fStart, 'end' => $fEnd, 'length' => $futureLen];
+                    $futurePlaced++;
                 }
             }
 
@@ -322,6 +395,17 @@ function generateDemoData($pdo, $propertyId) {
                     $status = GUEST_STATUS_CHECKED_OUT;
                 }
 
+                // ~20% of bookings originate from a synced OTA calendar,
+                // converted into a real booking the same way
+                // ConvertOtaBookingModal.tsx does - so "Booking Sources
+                // Distribution" has a genuine Online/OTA slice instead of
+                // reading 100% Direct (no demo booking ever set ota_source
+                // before 16 Aug 2026, and offline bookings never set
+                // booking_source at all either, so every source pie was a
+                // single slice regardless of how the property actually books).
+                $isOtaBooking = rand(1, 100) <= 20;
+                $otaChoice = $isOtaBooking ? ($otaSourceChoices[array_rand($otaSourceChoices)]) : null;
+
                 $allBookings[] = [
                     'name' => $guestName,
                     'phone' => $phone,
@@ -332,6 +416,9 @@ function generateDemoData($pdo, $propertyId) {
                     'per_night_charges' => $tariff,
                     'total_charge' => $totalCharge,
                     'advance' => $advance,
+                    'booking_source' => $isOtaBooking ? '' : 'Offline',
+                    'ota_source' => $otaChoice['source'] ?? null,
+                    'ota_source_label' => $otaChoice['label'] ?? null,
                 ];
             }
         }
@@ -349,10 +436,10 @@ function generateDemoData($pdo, $propertyId) {
         foreach ($allBookings as $guest) {
             $receivedBy = $financialHandlerNames[array_rand($financialHandlerNames)];
             $stmt = $pdo->prepare("
-                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, advance_received_by, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 1)
+                INSERT IGNORE INTO guests (property_id, guest_name, phone_number, checkin_date, expected_checkout, status, no_of_guests, room_id, per_night_charges, total_charge, advance_paid, advance_received_by, booking_source, ota_source, ota_source_label, is_demo)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             ");
-            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance'], $receivedBy]);
+            $stmt->execute([$propertyId, $guest['name'], $guest['phone'], $guest['checkin'], $guest['checkout'], $guest['status'], $guest['room_id'], $guest['per_night_charges'], $guest['total_charge'], $guest['advance'], $receivedBy, $guest['booking_source'], $guest['ota_source'], $guest['ota_source_label']]);
             $lastGuestId = $pdo->lastInsertId();
 
             // Every real booking posts its advance to the ledger (see add_guest
@@ -375,6 +462,25 @@ function generateDemoData($pdo, $propertyId) {
                 'occurred_at' => $guest['checkin'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59)),
             ], $propertyId);
 
+            // ~25% of bookings add one itemized "Additional Charge" line, same
+            // as a real front-desk booking form would (Decoration Fees, Extra
+            // Housekeeping, Pet Stay Charges) - gives the Analytics "Additional
+            // Charges Breakdown" real category-level numbers instead of an
+            // empty state on every demo/reset property.
+            if (rand(1, 100) <= 25) {
+                $extraChargeOptions = [
+                    ['category' => 'Decoration Fees', 'min' => 1500, 'max' => 4000],
+                    ['category' => 'Extra Housekeeping', 'min' => 300, 'max' => 800],
+                    ['category' => 'Pet Stay Charges', 'min' => 500, 'max' => 1500],
+                ];
+                $pickedCharge = $extraChargeOptions[array_rand($extraChargeOptions)];
+                $chargeStmt = $pdo->prepare("
+                    INSERT INTO guest_extra_charges (property_id, guest_id, category, amount, is_demo)
+                    VALUES (?, ?, ?, ?, 1)
+                ");
+                $chargeStmt->execute([$propertyId, $lastGuestId, $pickedCharge['category'], rand($pickedCharge['min'], $pickedCharge['max'])]);
+            }
+
             // Checked-out bookings get a real settled receipt, same as an actual
             // checkout produces - otherwise Past Receipts stays empty despite a
             // month of "completed" stays, which is exactly the kind of gap that
@@ -391,8 +497,8 @@ function generateDemoData($pdo, $propertyId) {
                 $receiptId = 'RCP-' . uniqid();
                 $checkoutTime = $guest['checkout'] . ' ' . sprintf('%02d:%02d:00', rand(8, 20), rand(0, 59));
                 $stmt = $pdo->prepare("
-                    INSERT IGNORE INTO billing_receipts (id, property_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, 'Paid', ?)
+                    INSERT IGNORE INTO billing_receipts (id, property_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, is_demo)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, 'Paid', ?, 1)
                 ");
                 $stmt->execute([
                     $receiptId, $propertyId, $guest['name'], $roomNameById[$guest['room_id']] ?? '',
@@ -625,6 +731,176 @@ function generateDemoData($pdo, $propertyId) {
             $stmt->execute([$propertyId, $catId, $item['name'], $item['price'], $imageUrl]);
         }
 
+        // 4b. Demo Dish Recipes - ingredient-costed BOM for every demo menu item,
+        // so the Analytics "Dish Profitability" panel (Kitchen -> Beta Recipe
+        // Builder's costPerPortion = sum(quantity * costPerUnit), reused there)
+        // has real margins to show instead of the empty state. Nothing seeded
+        // this table before 16 Aug 2026 - dish_recipes was never touched by the
+        // generator, and because menu_items gets fresh auto-increment ids on
+        // every clearDemoData()+generateDemoData() cycle, any recipe written by
+        // hand against a previous cycle's ids went orphaned on the next reset
+        // anyway. Quantities below are per single serving (one plate/order of
+        // that item), matching how the Recipe Builder scales cost by servings.
+        $dishRecipePantry = [
+            'Basmati Rice' => ['unit' => 'kg', 'cost' => 90],
+            'Atta (Wheat Flour)' => ['unit' => 'kg', 'cost' => 45],
+            'Maida (Refined Flour)' => ['unit' => 'kg', 'cost' => 42],
+            'Besan (Gram Flour)' => ['unit' => 'kg', 'cost' => 95],
+            'Refined Oil' => ['unit' => 'ltr', 'cost' => 145],
+            'Ghee' => ['unit' => 'kg', 'cost' => 560],
+            'Butter' => ['unit' => 'kg', 'cost' => 480],
+            'Paneer' => ['unit' => 'kg', 'cost' => 380],
+            'Mozzarella Cheese' => ['unit' => 'kg', 'cost' => 420],
+            'Chicken (Curry Cut)' => ['unit' => 'kg', 'cost' => 220],
+            'Chicken Mince' => ['unit' => 'kg', 'cost' => 260],
+            'Mutton' => ['unit' => 'kg', 'cost' => 650],
+            'Mutton Mince' => ['unit' => 'kg', 'cost' => 680],
+            'Egg' => ['unit' => 'pcs', 'cost' => 7],
+            'Milk' => ['unit' => 'ltr', 'cost' => 62],
+            'Curd' => ['unit' => 'kg', 'cost' => 75],
+            'Fresh Cream' => ['unit' => 'kg', 'cost' => 220],
+            'Onion' => ['unit' => 'kg', 'cost' => 35],
+            'Tomato' => ['unit' => 'kg', 'cost' => 42],
+            'Potato' => ['unit' => 'kg', 'cost' => 28],
+            'Mixed Vegetables' => ['unit' => 'kg', 'cost' => 55],
+            'Capsicum' => ['unit' => 'kg', 'cost' => 65],
+            'Cucumber' => ['unit' => 'kg', 'cost' => 25],
+            'Sweet Corn' => ['unit' => 'kg', 'cost' => 90],
+            'Ginger-Garlic Paste' => ['unit' => 'kg', 'cost' => 170],
+            'Garam Masala Mix' => ['unit' => 'kg', 'cost' => 450],
+            'Sugar' => ['unit' => 'kg', 'cost' => 45],
+            'Tea Leaves' => ['unit' => 'kg', 'cost' => 420],
+            'Coffee Powder' => ['unit' => 'kg', 'cost' => 950],
+            'Ice Cream' => ['unit' => 'kg', 'cost' => 260],
+            'Chocolate Syrup' => ['unit' => 'ltr', 'cost' => 320],
+            'Bread Slice' => ['unit' => 'pcs', 'cost' => 4],
+            'Bread Loaf' => ['unit' => 'pcs', 'cost' => 35],
+            'Pizza Base' => ['unit' => 'pcs', 'cost' => 28],
+            'Pizza Sauce' => ['unit' => 'kg', 'cost' => 150],
+            'Noodles (Hakka)' => ['unit' => 'kg', 'cost' => 95],
+            'Soy Sauce' => ['unit' => 'ltr', 'cost' => 260],
+            'Papad (Raw)' => ['unit' => 'pcs', 'cost' => 4],
+            'Puri Shells' => ['unit' => 'kg', 'cost' => 60],
+            'Boondi' => ['unit' => 'kg', 'cost' => 210],
+            'Peanuts' => ['unit' => 'kg', 'cost' => 135],
+            'Kaala Chana (Boiled)' => ['unit' => 'kg', 'cost' => 95],
+            'Kabuli Chana (Boiled)' => ['unit' => 'kg', 'cost' => 95],
+            'Lemon' => ['unit' => 'pcs', 'cost' => 6],
+            'Lentils (Dal)' => ['unit' => 'kg', 'cost' => 110],
+            'Jam' => ['unit' => 'kg', 'cost' => 250],
+        ];
+        $dishRecipeMap = [
+            // Beverages
+            'Cold Coffee' => [['Milk', 0.15], ['Coffee Powder', 0.008], ['Sugar', 0.02], ['Ice Cream', 0.05]],
+            'Hot Chocolate' => [['Milk', 0.2], ['Chocolate Syrup', 0.06], ['Sugar', 0.02]],
+            'Masala Tea' => [['Milk', 0.1], ['Tea Leaves', 0.01], ['Sugar', 0.015]],
+            'Nimbu Pani' => [['Lemon', 1], ['Sugar', 0.03]],
+            'Nimbu Soda' => [['Lemon', 1], ['Sugar', 0.02]],
+            'Regular Tea' => [['Milk', 0.08], ['Tea Leaves', 0.008], ['Sugar', 0.012]],
+            // Breads & Rice
+            'Aloo Paratha' => [['Atta (Wheat Flour)', 0.12], ['Potato', 0.1], ['Ghee', 0.02], ['Butter', 0.01]],
+            'Chapati With Butter' => [['Atta (Wheat Flour)', 0.05], ['Butter', 0.015]],
+            'Jeera Rice' => [['Basmati Rice', 0.15], ['Ghee', 0.015], ['Garam Masala Mix', 0.003]],
+            'Paratha Plain' => [['Atta (Wheat Flour)', 0.06], ['Ghee', 0.015]],
+            'Plain Chapati' => [['Atta (Wheat Flour)', 0.04], ['Ghee', 0.005]],
+            'Plain Rice' => [['Basmati Rice', 0.15]],
+            'Pyaz Paratha' => [['Atta (Wheat Flour)', 0.12], ['Onion', 0.08], ['Ghee', 0.02]],
+            'Veg Pulao' => [['Basmati Rice', 0.18], ['Mixed Vegetables', 0.1], ['Ghee', 0.02], ['Garam Masala Mix', 0.005]],
+            // Breakfast & Eggs
+            'Boiled Eggs' => [['Egg', 3]],
+            'Bread Pakoda' => [['Bread Slice', 2], ['Besan (Gram Flour)', 0.05], ['Refined Oil', 0.03], ['Potato', 0.05]],
+            'Bread Toast Butter (2)' => [['Bread Slice', 2], ['Butter', 0.015]],
+            'Bread Toast Jam (2)' => [['Bread Slice', 2], ['Butter', 0.01], ['Jam', 0.03]],
+            'Breakfast Buffet (Per Person)' => [['Egg', 1], ['Bread Slice', 2], ['Potato', 0.1], ['Milk', 0.1], ['Butter', 0.01], ['Mixed Vegetables', 0.05]],
+            'Egg Bhurji' => [['Egg', 2], ['Onion', 0.05], ['Tomato', 0.05], ['Refined Oil', 0.02]],
+            'French Toast' => [['Bread Slice', 2], ['Egg', 1], ['Milk', 0.05], ['Butter', 0.01], ['Sugar', 0.01]],
+            'Omelette' => [['Egg', 2], ['Onion', 0.02], ['Refined Oil', 0.015]],
+            'Poha' => [['Basmati Rice', 0.1], ['Onion', 0.03], ['Peanuts', 0.02], ['Refined Oil', 0.015]],
+            // Chinese & Snacks
+            'Chilly Paneer (8-10pcs)' => [['Paneer', 0.15], ['Capsicum', 0.05], ['Onion', 0.05], ['Soy Sauce', 0.02], ['Refined Oil', 0.03]],
+            'Chilly Potatoes (8-10pcs)' => [['Potato', 0.25], ['Capsicum', 0.03], ['Soy Sauce', 0.02], ['Refined Oil', 0.03]],
+            'Chinese Pakoda (6-8pcs)' => [['Mixed Vegetables', 0.12], ['Besan (Gram Flour)', 0.06], ['Refined Oil', 0.04], ['Soy Sauce', 0.01]],
+            'Chow mein' => [['Noodles (Hakka)', 0.15], ['Mixed Vegetables', 0.08], ['Soy Sauce', 0.02], ['Refined Oil', 0.02]],
+            'Maggie Regular' => [['Noodles (Hakka)', 0.1], ['Refined Oil', 0.01]],
+            'Masala Maggie' => [['Noodles (Hakka)', 0.1], ['Onion', 0.03], ['Tomato', 0.03], ['Refined Oil', 0.015]],
+            'Sweet Corn Chaat' => [['Sweet Corn', 0.15], ['Butter', 0.015], ['Onion', 0.02]],
+            'Veg Spring roll (6-8pcs)' => [['Maida (Refined Flour)', 0.06], ['Mixed Vegetables', 0.1], ['Refined Oil', 0.04], ['Soy Sauce', 0.01]],
+            // Main Course
+            'Chicken Curry (4pcs)' => [['Chicken (Curry Cut)', 0.25], ['Onion', 0.08], ['Tomato', 0.08], ['Refined Oil', 0.03], ['Ginger-Garlic Paste', 0.015], ['Garam Masala Mix', 0.01]],
+            'Daal Fry' => [['Lentils (Dal)', 0.12], ['Ghee', 0.015], ['Onion', 0.03], ['Tomato', 0.03]],
+            'Daal Tadka' => [['Lentils (Dal)', 0.15], ['Ghee', 0.02], ['Onion', 0.04], ['Tomato', 0.04], ['Garam Masala Mix', 0.005]],
+            'Dinner Buffet (Per Person)' => [['Basmati Rice', 0.1], ['Lentils (Dal)', 0.08], ['Mixed Vegetables', 0.1], ['Paneer', 0.05], ['Atta (Wheat Flour)', 0.08], ['Ghee', 0.02]],
+            'Gatta Masala' => [['Besan (Gram Flour)', 0.1], ['Curd', 0.08], ['Onion', 0.03], ['Tomato', 0.03], ['Refined Oil', 0.02]],
+            'Jeera Aloo' => [['Potato', 0.25], ['Ghee', 0.02], ['Garam Masala Mix', 0.005]],
+            'Kadhai Paneer' => [['Paneer', 0.15], ['Capsicum', 0.05], ['Onion', 0.05], ['Tomato', 0.05], ['Refined Oil', 0.02]],
+            'Kadhi Pakoda' => [['Besan (Gram Flour)', 0.08], ['Curd', 0.15], ['Refined Oil', 0.02]],
+            'Laal Maans' => [['Mutton', 0.3], ['Onion', 0.08], ['Ginger-Garlic Paste', 0.02], ['Garam Masala Mix', 0.015], ['Refined Oil', 0.03]],
+            'Mutton Curry (4pcs)' => [['Mutton', 0.25], ['Onion', 0.06], ['Tomato', 0.06], ['Ginger-Garlic Paste', 0.015], ['Garam Masala Mix', 0.01], ['Refined Oil', 0.02]],
+            'Paneer Bhurji' => [['Paneer', 0.18], ['Onion', 0.05], ['Tomato', 0.05], ['Refined Oil', 0.02]],
+            'Paneer Butter Masala' => [['Paneer', 0.15], ['Butter', 0.03], ['Tomato', 0.1], ['Fresh Cream', 0.05], ['Garam Masala Mix', 0.005]],
+            'Sev Tamatar' => [['Tomato', 0.15], ['Besan (Gram Flour)', 0.08], ['Refined Oil', 0.02], ['Onion', 0.04]],
+            'Shahi Paneer' => [['Paneer', 0.15], ['Fresh Cream', 0.04], ['Butter', 0.02], ['Onion', 0.05], ['Garam Masala Mix', 0.005]],
+            // Pizzas & Sandwiches
+            'Cheese Corn Pizza' => [['Pizza Base', 1], ['Mozzarella Cheese', 0.08], ['Sweet Corn', 0.05], ['Pizza Sauce', 0.03]],
+            'Cheese Grilled Sandwich' => [['Bread Slice', 4], ['Mozzarella Cheese', 0.05], ['Butter', 0.015]],
+            'Cheesy Garlic Bread (6pcs)' => [['Bread Loaf', 1], ['Mozzarella Cheese', 0.03], ['Butter', 0.02], ['Ginger-Garlic Paste', 0.01]],
+            'OTC Pizza' => [['Pizza Base', 1], ['Pizza Sauce', 0.03], ['Mixed Vegetables', 0.05], ['Mozzarella Cheese', 0.04]],
+            'Paneer Pizza' => [['Pizza Base', 1], ['Mozzarella Cheese', 0.06], ['Paneer', 0.08], ['Pizza Sauce', 0.03]],
+            'Veg Grilled Sandwich' => [['Bread Slice', 4], ['Mixed Vegetables', 0.06], ['Butter', 0.015], ['Mozzarella Cheese', 0.02]],
+            // Salads & Raita
+            'Boondi Raita' => [['Curd', 0.15], ['Boondi', 0.03]],
+            'Chaach' => [['Curd', 0.15]],
+            'Green Salad' => [['Onion', 0.03], ['Tomato', 0.05], ['Cucumber', 0.08], ['Lemon', 0.5]],
+            'Plain Curd' => [['Curd', 0.2]],
+            'Veg Raita' => [['Curd', 0.2], ['Mixed Vegetables', 0.05], ['Boondi', 0.02]],
+            // Starters
+            'Aloo Pakoda (6-8pcs)' => [['Potato', 0.15], ['Besan (Gram Flour)', 0.08], ['Refined Oil', 0.04]],
+            'Chicken Seekh Kebab' => [['Chicken Mince', 0.2], ['Ginger-Garlic Paste', 0.015], ['Garam Masala Mix', 0.01], ['Refined Oil', 0.015]],
+            'Chicken Tikka' => [['Chicken (Curry Cut)', 0.25], ['Curd', 0.05], ['Ginger-Garlic Paste', 0.02], ['Garam Masala Mix', 0.012], ['Refined Oil', 0.015]],
+            'French Fries Peri-Peri' => [['Potato', 0.25], ['Refined Oil', 0.05], ['Garam Masala Mix', 0.008]],
+            'French Fries Regular' => [['Potato', 0.25], ['Refined Oil', 0.05]],
+            'Fried Papad' => [['Papad (Raw)', 2], ['Refined Oil', 0.02]],
+            'Kaala Chana Chaat' => [['Kaala Chana (Boiled)', 0.15], ['Onion', 0.04], ['Tomato', 0.04], ['Lemon', 0.5]],
+            'Kabuli Chana Chaat' => [['Kabuli Chana (Boiled)', 0.15], ['Onion', 0.04], ['Tomato', 0.04], ['Lemon', 0.5]],
+            'Masala Papad' => [['Papad (Raw)', 2], ['Onion', 0.02], ['Tomato', 0.02]],
+            'Mix-Veg Pakoda (12pcs)' => [['Mixed Vegetables', 0.15], ['Besan (Gram Flour)', 0.1], ['Refined Oil', 0.05]],
+            'Mutton Seekh Kebab' => [['Mutton Mince', 0.2], ['Ginger-Garlic Paste', 0.015], ['Garam Masala Mix', 0.01], ['Refined Oil', 0.015]],
+            'Otc ' => [['Potato', 0.15], ['Besan (Gram Flour)', 0.06], ['Refined Oil', 0.03]],
+            'Paneer Pakoda (10pcs)' => [['Paneer', 0.15], ['Besan (Gram Flour)', 0.06], ['Refined Oil', 0.04]],
+            'Paneer Tikka (8-10pcs)' => [['Paneer', 0.2], ['Curd', 0.05], ['Garam Masala Mix', 0.01], ['Refined Oil', 0.015]],
+            'Pani Puri (8)' => [['Puri Shells', 0.05], ['Kaala Chana (Boiled)', 0.03], ['Lemon', 0.5]],
+            'Peanut Masala' => [['Peanuts', 0.1], ['Onion', 0.03], ['Tomato', 0.03], ['Lemon', 0.3]],
+            'Pyaz Pakoda (10pcs)' => [['Onion', 0.15], ['Besan (Gram Flour)', 0.08], ['Refined Oil', 0.04]],
+            'Roasted Papad' => [['Papad (Raw)', 1.5]],
+        ];
+
+        $seededMenuStmt = $pdo->prepare("SELECT id, name FROM menu_items WHERE property_id = ? AND is_demo = 1");
+        $seededMenuStmt->execute([$propertyId]);
+        $seededMenuItems = $seededMenuStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $recipeStmt = $pdo->prepare("
+            INSERT INTO dish_recipes (property_id, menu_item_id, recipe_name, yield_factor, servings, ingredients, is_demo)
+            VALUES (?, ?, ?, 1, 1, ?, 1)
+            ON DUPLICATE KEY UPDATE recipe_name = VALUES(recipe_name), ingredients = VALUES(ingredients), is_demo = 1
+        ");
+        foreach ($seededMenuItems as $mi) {
+            if (!isset($dishRecipeMap[$mi['name']])) continue;
+            $ingredients = [];
+            $idx = 1;
+            foreach ($dishRecipeMap[$mi['name']] as $ing) {
+                [$pantryKey, $qty] = $ing;
+                $pantryItem = $dishRecipePantry[$pantryKey];
+                $ingredients[] = [
+                    'id' => (string)($idx++),
+                    'name' => $pantryKey,
+                    'quantity' => $qty,
+                    'unit' => $pantryItem['unit'],
+                    'costPerUnit' => $pantryItem['cost'],
+                ];
+            }
+            $recipeStmt->execute([$propertyId, $mi['id'], $mi['name'], json_encode($ingredients)]);
+        }
+
         // 5. Demo Inventory Items - same idea, copied from the reference
         // property's real ~190-item catalog instead of 7 generic placeholders.
         // Stock levels are randomized (the reference property's real
@@ -725,14 +1001,21 @@ function generateDemoData($pdo, $propertyId) {
             ];
         }
 
-        // 6b. Recurring Utility & Operating Bills
+        // 6b. Recurring Utility & Operating Bills. Category values match the
+        // Add Expense form's actual current Cost Category Group options
+        // (see PettyCashManagement.tsx - only 'Other'/'Bills'/'Staff
+        // Advance'/'Kitchen' exist now, the older 'Utilities'/'Maintenance'
+        // used here before 16 Aug 2026 predate that simplification and don't
+        // match anything the Bills & Utilities Analytics panel filters for,
+        // which is why it always showed empty despite ₹40k+/month of real
+        // seeded utility spend).
         $monthlyBills = [
-            ['cat' => 'Utilities', 'desc' => 'State Commercial Electricity Bill', 'amt' => 22500, 'vendor' => 'State Electricity Board'],
-            ['cat' => 'Utilities', 'desc' => 'Commercial LPG Gas Cylinders (6 Pcs)', 'amt' => 8400, 'vendor' => 'Coastal Gas Agency'],
-            ['cat' => 'Utilities', 'desc' => 'High-Speed Fiber Internet & Landline', 'amt' => 3500, 'vendor' => 'Telecom Co'],
-            ['cat' => 'Utilities', 'desc' => 'Water Tanker Supply (Resort Tanks)', 'amt' => 6500, 'vendor' => 'City Water Supply'],
-            ['cat' => 'Maintenance', 'desc' => 'Swimming Pool Cleaning & Chemical Maintenance', 'amt' => 8500, 'vendor' => 'Blue Wave Pool Services'],
-            ['cat' => 'Maintenance', 'desc' => 'Linen & Laundry Dry Cleaning Services', 'amt' => 12000, 'vendor' => 'Rapid Laundry Solutions'],
+            ['cat' => 'Bills', 'desc' => 'State Commercial Electricity Bill', 'amt' => 22500, 'vendor' => 'State Electricity Board'],
+            ['cat' => 'Bills', 'desc' => 'Commercial LPG Gas Cylinders (6 Pcs)', 'amt' => 8400, 'vendor' => 'Coastal Gas Agency'],
+            ['cat' => 'Bills', 'desc' => 'High-Speed Fiber Internet & Landline', 'amt' => 3500, 'vendor' => 'Telecom Co'],
+            ['cat' => 'Bills', 'desc' => 'Water Tanker Supply (Resort Tanks)', 'amt' => 6500, 'vendor' => 'City Water Supply'],
+            ['cat' => 'Other', 'desc' => 'Swimming Pool Cleaning & Chemical Maintenance', 'amt' => 8500, 'vendor' => 'Blue Wave Pool Services'],
+            ['cat' => 'Other', 'desc' => 'Linen & Laundry Dry Cleaning Services', 'amt' => 12000, 'vendor' => 'Rapid Laundry Solutions'],
         ];
         $billDate = (clone $today)->modify('-20 days')->format('Y-m-d');
         foreach ($monthlyBills as $bill) {
@@ -745,8 +1028,10 @@ function generateDemoData($pdo, $propertyId) {
             ];
         }
 
-        // 6c. Daily Kitchen Supplies & Operational Expenses (bursty)
-        $categories = ['Kitchen Purchase', 'Maintenance', 'Miscellaneous', 'Transport'];
+        // 6c. Daily Kitchen Supplies & Operational Expenses (bursty). Same
+        // current-taxonomy fix as 6b above - only the first (produce
+        // restocking) is genuinely 'Kitchen', the rest fall into 'Other'.
+        $categories = ['Kitchen', 'Other', 'Other', 'Other'];
         $vendors = ['Local Produce Market', 'Hardware Store', 'Local Vendor', 'Transport Co'];
         $descs = [
             'Fresh vegetables, fruits, and daily grocery staples',
@@ -759,7 +1044,12 @@ function generateDemoData($pdo, $propertyId) {
             $demoExpenses[] = [
                 'date' => $day->format('Y-m-d'),
                 'category' => $categories[$catIdx],
-                'amount' => rand(400, 3500),
+                // Trimmed from rand(400, 3500) 16 Aug 2026 - that range's
+                // expected total (~₹40k/month) was disproportionate daily
+                // top-up spend for a property whose entire structured payroll
+                // is ~₹99k, and was the main thing dragging a well-booked
+                // "Luxe Stays" property down to a ~5% net margin.
+                'amount' => rand(150, 700),
                 'vendor' => $vendors[$catIdx],
                 'desc' => $descs[$catIdx],
             ];
@@ -818,31 +1108,52 @@ function generateDemoData($pdo, $propertyId) {
             ]);
         }
 
-        // 6d. Demo Kitchen Purchases Log - bursty across the past 30 days,
-        // split between paid and unpaid / Farm Cash and Out-of-Pocket like a
-        // real property's actual purchase settlement mix.
-        $purchaseItems = [
-            ['name' => 'Basmati Rice', 'unit' => 'Kg', 'rate' => 65],
-            ['name' => 'Cooking Oil (Sunflower)', 'unit' => 'Ltr', 'rate' => 140],
-            ['name' => 'Chicken', 'unit' => 'Kg', 'rate' => 220],
-            ['name' => 'Fresh Vegetables Mix', 'unit' => 'Kg', 'rate' => 45],
-            ['name' => 'Paneer (Fresh)', 'unit' => 'Kg', 'rate' => 320],
-            ['name' => 'LPG Gas Cylinder', 'unit' => 'Pc', 'rate' => 1100],
+        // 6d. Demo Kitchen Purchases Log - each item is bought on its OWN
+        // recurring cadence (found 16 Aug 2026: the old one-random-item-per-
+        // active-day approach also used a single FIXED rate per item forever,
+        // so unit_cost never varied between purchases of the same item at
+        // all - the Analytics "Sales vs Purchases" trend line and the new
+        // Fluctuations tab both need repeat purchases of the SAME item with
+        // real price movement to show anything). Produce (ginger, tomato,
+        // onion...) swings hard and gets bought every few days, like a real
+        // kitchen actually restocks; packaged/bulk goods are bought rarely
+        // and barely move. A slow uptrend is layered on every item so the
+        // whole catalog drifts up over the window, not just wobbles randomly.
+        $purchaseItemCatalog = [
+            ['name' => 'Ginger', 'unit' => 'Kg', 'rate' => 120, 'freqDays' => 4, 'volatility' => 0.28],
+            ['name' => 'Tomato', 'unit' => 'Kg', 'rate' => 40, 'freqDays' => 4, 'volatility' => 0.32],
+            ['name' => 'Onion', 'unit' => 'Kg', 'rate' => 35, 'freqDays' => 5, 'volatility' => 0.24],
+            ['name' => 'Green Chilli', 'unit' => 'Kg', 'rate' => 90, 'freqDays' => 5, 'volatility' => 0.30],
+            ['name' => 'Potato', 'unit' => 'Kg', 'rate' => 28, 'freqDays' => 7, 'volatility' => 0.15],
+            ['name' => 'Fresh Vegetables Mix', 'unit' => 'Kg', 'rate' => 45, 'freqDays' => 4, 'volatility' => 0.18],
+            ['name' => 'Milk', 'unit' => 'Ltr', 'rate' => 60, 'freqDays' => 3, 'volatility' => 0.06],
+            ['name' => 'Paneer (Fresh)', 'unit' => 'Kg', 'rate' => 380, 'freqDays' => 5, 'volatility' => 0.10],
+            ['name' => 'Chicken', 'unit' => 'Kg', 'rate' => 220, 'freqDays' => 6, 'volatility' => 0.12],
+            ['name' => 'Basmati Rice', 'unit' => 'Kg', 'rate' => 90, 'freqDays' => 12, 'volatility' => 0.05],
+            ['name' => 'Cooking Oil (Sunflower)', 'unit' => 'Ltr', 'rate' => 145, 'freqDays' => 10, 'volatility' => 0.08],
+            ['name' => 'LPG Gas Cylinder', 'unit' => 'Pc', 'rate' => 1100, 'freqDays' => 20, 'volatility' => 0.03],
         ];
-        foreach (burstyDayList($windowStart, $today, 40) as $day) {
-            $item = $purchaseItems[array_rand($purchaseItems)];
-            $qty = round(rand(2, 20) / 2, 1);
-            $total = round($qty * $item['rate'], 2);
-            $isPaid = rand(1, 100) <= 70;
-            $stmt = $pdo->prepare("
-                INSERT INTO kitchen_purchases_log (id, property_id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, is_demo)
-                VALUES (?, ?, ?, ?, 'Standard', ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            ");
-            $stmt->execute([
-                'PUR-' . uniqid(), $propertyId, $day->format('Y-m-d'), $item['name'],
-                $qty, $item['unit'], $total, $item['rate'], 'Sunil Yadav', 'Local Market',
-                $isPaid ? 'Paid' : 'Unpaid', rand(0, 1) ? 'Farm Cash' : 'Out-of-Pocket',
-            ]);
+        $purchaseStmt = $pdo->prepare("
+            INSERT INTO kitchen_purchases_log (id, property_id, purchase_date, item_name, specification, quantity, unit, total_price, unit_cost, recorded_by, vendor_name, settlement_status, settlement_method, is_demo)
+            VALUES (?, ?, ?, ?, 'Standard', ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ");
+        foreach ($purchaseItemCatalog as $item) {
+            $cursor = (clone $windowStart)->modify('+' . rand(0, 3) . ' days');
+            while ($cursor <= $today) {
+                $daysElapsed = $windowStart->diff($cursor)->days;
+                $inflationFactor = 1 + ($daysElapsed / max(1, $windowDays)) * 0.06;
+                $volatilitySwing = 1 + (rand(-1000, 1000) / 1000) * $item['volatility'];
+                $rate = round($item['rate'] * $inflationFactor * $volatilitySwing, 2);
+                $qty = round(rand(2, 20) / 2, 1);
+                $total = round($qty * $rate, 2);
+                $isPaid = rand(1, 100) <= 70;
+                $purchaseStmt->execute([
+                    'PUR-' . uniqid(), $propertyId, $cursor->format('Y-m-d'), $item['name'],
+                    $qty, $item['unit'], $total, $rate, 'Sunil Yadav', 'Local Market',
+                    $isPaid ? 'Paid' : 'Unpaid', rand(0, 1) ? 'Farm Cash' : 'Out-of-Pocket',
+                ]);
+                $cursor->modify('+' . max(1, $item['freqDays'] + rand(-1, 2)) . ' days');
+            }
         }
 
         // 6e. Demo Cash Drawer Entries - a handover every few days plus the
@@ -1106,17 +1417,45 @@ function generateDemoData($pdo, $propertyId) {
 
         // 8. Demo KDS Orders - active orders for today + rich historical dining sales across 30 days
         // Get menu items with prices for calculating order revenue
-        $menuItemStmt = $pdo->prepare("SELECT id, name, price FROM menu_items WHERE property_id = ? AND is_demo = 1");
+        $menuItemStmt = $pdo->prepare("
+            SELECT mi.id, mi.name, mi.price, COALESCE(mc.name, 'Main Course') as category_name
+            FROM menu_items mi LEFT JOIN menu_categories mc ON mi.category_id = mc.id
+            WHERE mi.property_id = ? AND mi.is_demo = 1
+        ");
         $menuItemStmt->execute([$propertyId]);
         $demoMenuWithPrices = $menuItemStmt->fetchAll(PDO::FETCH_ASSOC);
         if (empty($demoMenuWithPrices)) {
-            $demoMenuWithPrices = [['id' => 1, 'name' => 'Paneer Butter Masala', 'price' => 320]];
+            $demoMenuWithPrices = [['id' => 1, 'name' => 'Paneer Butter Masala', 'price' => 320, 'category_name' => 'Main Course']];
+        }
+
+        // Per-dish base kitchen prep time (minutes), so "fastest/slowest
+        // prepared dishes" in Analytics reflects a real, stable pattern
+        // (a tea genuinely doesn't take as long as a curry) instead of pure
+        // per-order noise - varied by category, with a fixed per-dish jitter
+        // so the same dish lands in roughly the same band every order.
+        $prepTimeBandByCategory = [
+            'Beverages' => [4, 9],
+            'Salads & Raita' => [5, 10],
+            'Starters' => [8, 16],
+            'Chinese & Snacks' => [10, 20],
+            'Breads & Rice' => [10, 18],
+            'Breakfast & Eggs' => [9, 17],
+            'Pizzas & Sandwiches' => [15, 25],
+            'Main Course' => [18, 35],
+        ];
+        $basePrepMinutesByItemId = [];
+        foreach ($demoMenuWithPrices as $mi) {
+            $band = $prepTimeBandByCategory[$mi['category_name']] ?? [12, 22];
+            $basePrepMinutesByItemId[$mi['id']] = rand($band[0], $band[1]);
         }
 
         $kdsStatuses = ['Pending', 'Preparing', 'Ready', 'Completed'];
         $kdsOrders = [];
-        // Generate ~50 dining orders across the 30-day window (2-3 orders per active day)
-        foreach (burstyDayList($windowStart, $today, 70) as $day) {
+        // Generate ~55-60 dining orders across the 30-day window (82% active-day
+        // chance, up from 70% on 16 Aug 2026 - a modest bump alongside larger
+        // check sizes below, so Kitchen POS carries more of the total revenue
+        // instead of relying on Room Accommodations alone for margin).
+        foreach (burstyDayList($windowStart, $today, 82) as $day) {
             $orderTime = $day->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', rand(8, 21), rand(0, 59));
             $isToday = $day->format('Y-m-d') === $today->format('Y-m-d');
             $status = $isToday ? $kdsStatuses[array_rand([0, 1, 2])] : 'Completed';
@@ -1135,23 +1474,55 @@ function generateDemoData($pdo, $propertyId) {
             INSERT IGNORE INTO orders (property_id, guest_id, order_time, status, is_demo)
             VALUES (?, ?, ?, ?, 1)
         ");
+        $servedLogStmt = $pdo->prepare("
+            INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, room_number, served_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $kitchenStaffNames = ['Sunil Yadav', 'Rajesh Kumar'];
         foreach ($kdsOrders as $order) {
             $stmt->execute([$order['property_id'], $order['guest_id'], $order['order_time'], $order['status']]);
             $orderId = $pdo->lastInsertId();
+            $orderTimeDt = new DateTime($order['order_time']);
 
-            // Add 2-4 menu items per order to build realistic dining check sizes (~₹1,200 - ₹2,200)
-            $itemCount = rand(2, 4);
+            // 3-5 menu items per order, qty 1-3 (up from 2-4 items/qty 1-2 on 16
+            // Aug 2026) for larger dining check sizes (~₹1,800 - ₹3,200) - a
+            // family/group dining at a resort restaurant orders more per table
+            // than a quick solo meal.
+            $itemCount = rand(3, 5);
             $orderTotal = 0;
             for ($j = 0; $j < $itemCount; $j++) {
                 $item = $demoMenuWithPrices[array_rand($demoMenuWithPrices)];
-                $qty = rand(1, 2);
+                $qty = rand(1, 3);
                 $orderTotal += ($item['price'] * $qty);
                 $itemStatus = $order['status'] === 'Completed' ? 'Served' : ($order['status'] === 'Ready' ? 'Ready' : 'Pending');
+
+                // Ready/Served items get a real ready_at (order_time + this
+                // dish's base prep band +- jitter) so per-dish prep latency
+                // (Analytics "Fastest/Slowest Prepared Dishes") reflects an
+                // actual, stable pattern instead of the hardcoded "18.5 mins
+                // (Standard)" fallback the aggregate stat showed when this
+                // was never populated at all.
+                $readyAt = null;
+                if ($itemStatus === 'Ready' || $itemStatus === 'Served') {
+                    $basePrep = $basePrepMinutesByItemId[$item['id']] ?? 15;
+                    $prepMinutes = max(2, $basePrep + rand(-2, 3));
+                    $readyAt = (clone $orderTimeDt)->modify("+{$prepMinutes} minutes")->format('Y-m-d H:i:s');
+                }
+
                 $itemStmt = $pdo->prepare("
-                    INSERT INTO order_items (order_id, menu_item_id, quantity, item_status, is_demo)
-                    VALUES (?, ?, ?, ?, 1)
+                    INSERT INTO order_items (order_id, menu_item_id, quantity, item_status, ready_at, is_demo)
+                    VALUES (?, ?, ?, ?, ?, 1)
                 ");
-                $itemStmt->execute([$orderId, $item['id'], $qty, $itemStatus]);
+                $itemStmt->execute([$orderId, $item['id'], $qty, $itemStatus, $readyAt]);
+
+                if ($itemStatus === 'Served' && $readyAt) {
+                    $servedAt = (clone new DateTime($readyAt))->modify('+' . rand(2, 8) . ' minutes')->format('Y-m-d H:i:s');
+                    $servedLogStmt->execute([
+                        $propertyId, $orderId, $item['name'], $qty,
+                        $kitchenStaffNames[array_rand($kitchenStaffNames)],
+                        $order['room_number'], $servedAt,
+                    ]);
+                }
             }
 
             // Post financial ledger credit for completed food orders
@@ -1270,8 +1641,22 @@ function clearDemoData($pdo, $propertyId) {
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
+        // Delete demo guest extra charges
+        $stmt = $pdo->prepare("DELETE FROM guest_extra_charges WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
         // Delete demo menu items
         $stmt = $pdo->prepare("DELETE FROM menu_items WHERE property_id = ? AND is_demo = 1");
+        $stmt->execute([$propertyId]);
+        $deletedRows += $stmt->rowCount();
+
+        // Delete demo dish recipes - also sweeps up recipes orphaned by a
+        // pre-is_demo-column demo cycle (a recipe whose menu_item_id no
+        // longer exists in menu_items, since that gets deleted+recreated
+        // with fresh ids on every cycle above) regardless of its is_demo
+        // value, so those never accumulate as dead rows going forward.
+        $stmt = $pdo->prepare("DELETE FROM dish_recipes WHERE property_id = ? AND (is_demo = 1 OR menu_item_id NOT IN (SELECT id FROM menu_items))");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
@@ -1338,8 +1723,8 @@ function clearDemoData($pdo, $propertyId) {
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 
-        // Delete demo billing receipts
-        $stmt = $pdo->prepare("DELETE FROM billing_receipts WHERE property_id = ? AND is_demo = 1");
+        // Delete demo billing receipts (including any historical RCP- prefixed demo receipts)
+        $stmt = $pdo->prepare("DELETE FROM billing_receipts WHERE property_id = ? AND (is_demo = 1 OR id LIKE 'RCP-%')");
         $stmt->execute([$propertyId]);
         $deletedRows += $stmt->rowCount();
 

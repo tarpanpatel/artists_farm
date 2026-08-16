@@ -164,14 +164,25 @@ if (!function_exists('sendPropertyTelegramMessage')) {
 }
 
 /**
- * Send one or more photos for a property, routed the same way
+ * Send one or more photos (optionally mixed with documents, e.g. PDF
+ * invoices - see $fileTypes) for a property, routed the same way
  * sendPropertyTelegramMessage() routes text (templateKey → configured group →
- * legacy category fallback). Sends a single sendPhoto call for one file, or a
- * sendMediaGroup (caption on the first item) for multiple. Silently skips
- * (same shape as the text sender) if Telegram isn't configured/enabled.
+ * legacy category fallback). Silently skips (same shape as the text sender)
+ * if Telegram isn't configured/enabled.
+ *
+ * $fileTypes is an optional array parallel to $filePaths, values 'photo' or
+ * 'document' - index i describes $filePaths[i]. Omitted/short arrays default
+ * missing entries to 'photo', so existing callers (guests.php's check-in ID
+ * photos) are unaffected.
+ *
+ * Telegram's sendMediaGroup cannot mix photos with documents in one album
+ * ("Documents and audio files can only be grouped in an album with messages
+ * of the same type" - Bot API docs), so photos and documents are split and
+ * sent as up to two separate messages; the caption is attached to whichever
+ * group goes out first so it isn't duplicated across both.
  */
 if (!function_exists('sendPropertyTelegramPhoto')) {
-    function sendPropertyTelegramPhoto($pdo, $propertyId, $category, array $filePaths, $caption, $templateKey = null) {
+    function sendPropertyTelegramPhoto($pdo, $propertyId, $category, array $filePaths, $caption, $templateKey = null, array $fileTypes = []) {
         $config = getPropertyTelegramConfig($pdo, $propertyId);
         if (!$config['enabled']) {
             return ['skipped' => true, 'reason' => 'Telegram notifications are turned off for this property'];
@@ -194,15 +205,36 @@ if (!function_exists('sendPropertyTelegramPhoto')) {
             return ['skipped' => true, 'reason' => "No group configured for '$label'"];
         }
 
-        $existingPaths = array_values(array_filter($filePaths, 'file_exists'));
-        if (empty($existingPaths)) {
-            return ['skipped' => true, 'reason' => 'No photo files found on disk'];
+        $photoPaths = [];
+        $docPaths = [];
+        foreach (array_values($filePaths) as $i => $path) {
+            if (!file_exists($path)) continue;
+            if (($fileTypes[$i] ?? 'photo') === 'document') {
+                $docPaths[] = $path;
+            } else {
+                $photoPaths[] = $path;
+            }
+        }
+        if (empty($photoPaths) && empty($docPaths)) {
+            return ['skipped' => true, 'reason' => 'No media files found on disk'];
         }
 
-        if (count($existingPaths) === 1) {
-            return sendRawTelegramPhoto($existingPaths[0], $caption, $token, $chatId);
+        $results = [];
+        $captionUsed = false;
+        if (!empty($photoPaths)) {
+            $cap = $captionUsed ? '' : $caption;
+            $captionUsed = true;
+            $results['photos'] = count($photoPaths) === 1
+                ? sendRawTelegramPhoto($photoPaths[0], $cap, $token, $chatId)
+                : sendRawTelegramMediaGroup($photoPaths, $cap, $token, $chatId);
         }
-        return sendRawTelegramMediaGroup($existingPaths, $caption, $token, $chatId);
+        if (!empty($docPaths)) {
+            $cap = $captionUsed ? '' : $caption;
+            $results['documents'] = count($docPaths) === 1
+                ? sendRawTelegramDocument($docPaths[0], $cap, $token, $chatId)
+                : sendRawTelegramMediaGroup($docPaths, $cap, $token, $chatId, array_fill(0, count($docPaths), 'document'));
+        }
+        return $results;
     }
 }
 
@@ -241,15 +273,50 @@ if (!function_exists('sendRawTelegramPhoto')) {
     }
 }
 
+if (!function_exists('sendRawTelegramDocument')) {
+    function sendRawTelegramDocument($filePath, $caption, $token, $chatId) {
+        $url = "https://api.telegram.org/bot" . $token . "/sendDocument";
+        $data = [
+            'chat_id' => $chatId,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+            'document' => new CURLFile($filePath),
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        TelescopeLogger::log(
+            'telegram',
+            ($http_code == 200) ? 'SUCCESS' : 'WARNING',
+            "📨 Telegram API: sendDocument to chat {$chatId} - HTTP {$http_code}" . ($error ? " (Error: {$error})" : ''),
+            "Telegram Sender [Response: {$http_code}]",
+            ['chat_id' => $chatId, 'http_code' => $http_code, 'error' => $error]
+        );
+
+        return $response;
+    }
+}
+
 if (!function_exists('sendRawTelegramMediaGroup')) {
-    function sendRawTelegramMediaGroup(array $filePaths, $caption, $token, $chatId) {
+    function sendRawTelegramMediaGroup(array $filePaths, $caption, $token, $chatId, array $types = []) {
         $url = "https://api.telegram.org/bot" . $token . "/sendMediaGroup";
         $media = [];
         $data = ['chat_id' => $chatId];
 
         foreach (array_values($filePaths) as $i => $path) {
             $attachKey = "photo{$i}";
-            $item = ['type' => 'photo', 'media' => "attach://{$attachKey}"];
+            $item = ['type' => ($types[$i] ?? 'photo'), 'media' => "attach://{$attachKey}"];
             if ($i === 0 && $caption) {
                 $item['caption'] = $caption;
                 $item['parse_mode'] = 'HTML';

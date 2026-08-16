@@ -25,6 +25,12 @@ export interface Guest {
   otaSourceLabel?: string | null;
   icalExternalEventId?: string | null;
   otaCancelledDetectedAt?: string | null;
+  // Itemized "Additional Charges" lines from the booking form (Decoration
+  // Fees, Extra Housekeeping, Pet Stay Charges, or a custom Misc Charges
+  // Management template) - persisted to guest_extra_charges so analytics can
+  // break accommodation revenue down by charge type instead of only ever
+  // seeing it folded into pending_amount/notes text.
+  extraCharges?: { category: string; amount: number; note?: string }[];
 }
 
 export interface BillingReceipt {
@@ -193,8 +199,8 @@ export interface PettyCashEntry {
   amount: number;
   paymentMode?: 'Online' | 'Cash' | 'Bank Transfer' | string;
   paidBy?: string;
-  invoiceBillUrl?: string;
-  paymentScreenshotUrl?: string;
+  invoiceBillUrls?: string[];
+  paymentScreenshotUrls?: string[];
   type?: 'Expense' | 'Replenishment';
 }
 

@@ -35,8 +35,8 @@ interface FormState {
   drawerAmount: number | '';
   staffAmount: number | '';
   isOutofPocketChecked?: boolean;
-  invoiceBillUrl: string;
-  paymentScreenshotUrl: string;
+  invoiceBillUrls: string[];
+  paymentScreenshotUrls: string[];
   // Only used when category === 'Kitchen' - the item picker replaces the
   // free-text description with a Master Catalog selection, and quantity is
   // needed alongside it (unlike every other category, a kitchen purchase
@@ -46,14 +46,28 @@ interface FormState {
   isStaffAdvanceChecked?: boolean;
 }
 
+type ProofField = 'invoiceBillUrls' | 'paymentScreenshotUrls';
+
 type FormAction =
   | { type: 'SET_FIELD'; field: keyof FormState; value: any }
+  // Appends/removes by index rather than routing through SET_FIELD's whole-
+  // array replace - handleCompressFile's FileReader/Image callbacks resolve
+  // asynchronously and out of order when multiple files are picked at once,
+  // so each one needs to append to whatever the array is AT DISPATCH TIME
+  // (which the reducer always sees fresh), not to a stale `formState` array
+  // captured in the callback's closure at the moment the file was selected.
+  | { type: 'ADD_PROOF_FILE'; field: ProofField; value: string }
+  | { type: 'REMOVE_PROOF_FILE'; field: ProofField; index: number }
   | { type: 'RESET_FORM' };
 
 function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case 'SET_FIELD':
       return { ...state, [action.field]: action.value };
+    case 'ADD_PROOF_FILE':
+      return { ...state, [action.field]: [...state[action.field], action.value] };
+    case 'REMOVE_PROOF_FILE':
+      return { ...state, [action.field]: state[action.field].filter((_, i) => i !== action.index) };
     case 'RESET_FORM':
       return {
         ...state,
@@ -61,8 +75,8 @@ function formReducer(state: FormState, action: FormAction): FormState {
         description: '',
         moreInfoNotes: '',
         amount: '',
-        invoiceBillUrl: '',
-        paymentScreenshotUrl: '',
+        invoiceBillUrls: [],
+        paymentScreenshotUrls: [],
         paymentSource: 'property',
         showDrawerSplit: false,
         drawerAmount: '',
@@ -103,8 +117,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     showDrawerSplit: false,
     drawerAmount: '',
     staffAmount: '',
-    invoiceBillUrl: '',
-    paymentScreenshotUrl: '',
+    invoiceBillUrls: [],
+    paymentScreenshotUrls: [],
     kitchenQuantity: '',
     kitchenUnit: '',
     isStaffAdvanceChecked: true,
@@ -544,10 +558,28 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
   // Float balance logic
 
-  // Compress & Crop Image Engine
+  // Compress & Crop Image Engine - also accepts PDFs for the invoice bill
+  // slot (a real invoice is often a scanned/exported PDF, not a photo).
+  // PDFs can't be canvas-compressed, so they're read straight to base64
+  // as-is; images still get the canvas downscale+recompress treatment.
   const handleCompressFile = (file: File, type: 'invoice' | 'screenshot') => {
     console.log('[PettyCash] handleCompressFile start', { type, name: file.name, size: file.size, lastModified: file.lastModified });
+    const field: ProofField = type === 'invoice' ? 'invoiceBillUrls' : 'paymentScreenshotUrls';
     const reader = new FileReader();
+    reader.onerror = () => {
+      console.error('[PettyCash] FileReader onerror', { type, file: file.name });
+    };
+
+    if (file.type === 'application/pdf') {
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        dispatch({ type: 'ADD_PROOF_FILE', field, value: dataUrl });
+        console.log('[PettyCash] pdf dispatch done', { type });
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     reader.onload = (event) => {
       console.log('[PettyCash] FileReader onload start', { type });
       const img = new Image();
@@ -562,7 +594,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          dispatch({ type: 'SET_FIELD', field: type === 'invoice' ? 'invoiceBillUrl' : 'paymentScreenshotUrl', value: compressedBase64 });
+          dispatch({ type: 'ADD_PROOF_FILE', field, value: compressedBase64 });
           console.log('[PettyCash] canvas dispatch done', { type });
         } else {
           console.warn('[PettyCash] canvas 2D context unavailable', { type });
@@ -572,9 +604,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         console.error('[PettyCash] image onerror from FileReader result', { type, srcLength: typeof event.target?.result === 'string' ? event.target.result.length : 'n/a' });
       };
       img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
-      console.error('[PettyCash] FileReader onerror', { type, file: file.name });
     };
     reader.readAsDataURL(file);
     console.log('[PettyCash] FileReader readAsDataURL called', { type });
@@ -691,8 +720,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       paidBy: formState.paidBy,
       amount: Number(formState.amount),
       paymentMode: formState.paymentMode,
-      invoiceBillUrl: formState.invoiceBillUrl || undefined,
-      paymentScreenshotUrl: formState.paymentScreenshotUrl || undefined,
+      invoiceBillUrls: formState.invoiceBillUrls.length > 0 ? formState.invoiceBillUrls : undefined,
+      paymentScreenshotUrls: formState.paymentScreenshotUrls.length > 0 ? formState.paymentScreenshotUrls : undefined,
       type: 'Expense'
     };
 
@@ -952,18 +981,20 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     options={staff.map(s => ({ value: s.name, label: s.name }))}
                   />
                 </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="is-staff-advance-checkbox"
-                    checked={formState.isStaffAdvanceChecked !== false}
-                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'isStaffAdvanceChecked', value: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded cursor-pointer"
-                  />
-                  <label htmlFor="is-staff-advance-checkbox" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                    Mark as Advance (Deductible from final month-end salary)
-                  </label>
-                </div>
+                {formState.description && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="is-staff-advance-checkbox"
+                      checked={formState.isStaffAdvanceChecked !== false}
+                      onChange={e => dispatch({ type: 'SET_FIELD', field: 'isStaffAdvanceChecked', value: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="is-staff-advance-checkbox" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                      Mark as Advance (Deductible from final month-end salary)
+                    </label>
+                  </div>
+                )}
               </div>
             ) : (
               <div>
@@ -1101,7 +1132,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           {/* Streamlined 2-Step Payment Source Selection */}
           <div className="space-y-3 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <div>
-              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">1. Where did the money come from?</label>
+              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">1. How are you paying?</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -1221,16 +1252,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200">Vendor / Payee Name (Optional)</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsPayeeManagerOpen(true)}
-                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <span>⚙️ Manage Payees</span>
-                  </button>
-                </div>
+                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
                 <StyledSelect
                   searchable
                   value={formState.paidBy === currentUserName ? '' : formState.paidBy}
@@ -1238,6 +1260,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   placeholder="Select a registered payee..."
                   options={vendorOptions}
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsPayeeManagerOpen(true)}
+                  className="mt-1.5 text-[10px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Settings className="w-3 h-3" />
+                  <span>Manage Payees</span>
+                </button>
               </div>
             </div>
 
@@ -1247,26 +1277,52 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           </div>
 
-          {/* Proof uploads */}
+          {/* Proof uploads - each accepts multiple files (Telegram's
+              sendMediaGroup carries them in one notification, see
+              sendPropertyTelegramPhoto in petty_cash.php's add_petty_cash
+              handler) so a multi-page invoice or several payment screenshots
+              don't have to be squeezed into one attachment. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> {t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}</label>
               <label htmlFor="invoice-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <FileText className="w-4 h-4 text-slate-400" />
-                <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', 'Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
+                <span>{formState.invoiceBillUrls.length > 0 ? `+ Add Another (${formState.invoiceBillUrls.length} attached)` : t('choose_document_button', 'Choose Image or PDF')}</span>
               </label>
               <Input
                 id="invoice-upload-input"
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
+                multiple
                 onChange={e => {
-                  console.log('[PettyCash] invoice file input onChange', { files: e.target.files?.length, fileNames: Array.from(e.target.files || []).map(f => f.name) });
-                  e.target.files?.[0] && handleCompressFile(e.target.files[0], 'invoice');
+                  const files = Array.from(e.target.files || []);
+                  console.log('[PettyCash] invoice file input onChange', { files: files.length, fileNames: files.map(f => f.name) });
+                  files.forEach(f => handleCompressFile(f, 'invoice'));
+                  e.target.value = '';
                 }}
                 className="hidden"
               />
-              {formState.invoiceBillUrl && (
-                <img src={formState.invoiceBillUrl} alt={t('invoice_image_alt', 'Invoice')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+              {formState.invoiceBillUrls.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                  {formState.invoiceBillUrls.map((url, idx) => (
+                    <div key={idx} className="relative">
+                      {url.startsWith('data:application/pdf') ? (
+                        <div className="h-12 w-12 flex items-center justify-center border rounded bg-white dark:bg-slate-800 shadow-2xs">
+                          <FileText className="w-5 h-5 text-red-500" />
+                        </div>
+                      ) : (
+                        <img src={url} alt={t('invoice_image_alt', 'Invoice')} className="h-12 w-12 object-cover border rounded shadow-2xs" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => dispatch({ type: 'REMOVE_PROOF_FILE', field: 'invoiceBillUrls', index: idx })}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center shadow cursor-pointer"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -1274,20 +1330,36 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
               <label htmlFor="screenshot-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
-                <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', 'Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
+                <span>{formState.paymentScreenshotUrls.length > 0 ? `+ Add Another (${formState.paymentScreenshotUrls.length} attached)` : t('select_screenshot_button', 'Select Screenshot')}</span>
               </label>
               <Input
                 id="screenshot-upload-input"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={e => {
-                  console.log('[PettyCash] screenshot file input onChange', { files: e.target.files?.length, fileNames: Array.from(e.target.files || []).map(f => f.name) });
-                  e.target.files?.[0] && handleCompressFile(e.target.files[0], 'screenshot');
+                  const files = Array.from(e.target.files || []);
+                  console.log('[PettyCash] screenshot file input onChange', { files: files.length, fileNames: files.map(f => f.name) });
+                  files.forEach(f => handleCompressFile(f, 'screenshot'));
+                  e.target.value = '';
                 }}
                 className="hidden"
               />
-              {formState.paymentScreenshotUrl && (
-                <img src={formState.paymentScreenshotUrl} alt={t('screenshot_image_alt', 'Screenshot')} className="mx-auto h-12 object-contain border rounded mt-2 shadow-2xs" />
+              {formState.paymentScreenshotUrls.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                  {formState.paymentScreenshotUrls.map((url, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={url} alt={t('screenshot_image_alt', 'Screenshot')} className="h-12 w-12 object-cover border rounded shadow-2xs" />
+                      <button
+                        type="button"
+                        onClick={() => dispatch({ type: 'REMOVE_PROOF_FILE', field: 'paymentScreenshotUrls', index: idx })}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center shadow cursor-pointer"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
