@@ -114,7 +114,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // (InventoryManagement.tsx) already uses for its "Assign Vendor" picker,
   // so Kitchen & Supplies expenses logged here suggest the same registered
   // vendors instead of this field staying free text.
-  const [dbVendors, setDbVendors] = useState<{ id: string; name: string; type: string; qrCodeUrl?: string }[]>([]);
+  const [dbVendors, setDbVendors] = useState<{ id: string; name: string; upiId?: string; qrCodeUrl?: string }[]>([]);
   
   const refreshPayees = () => {
     fetchPayeesFromDB().then((payees) => {
@@ -156,13 +156,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [editingPayee, setEditingPayee] = useState<any | null>(null);
   const [isAddingNewPayee, setIsAddingNewPayee] = useState(false);
   const [searchPayeeQuery, setSearchPayeeQuery] = useState('');
-  const [newPayeeForm, setNewPayeeForm] = useState({ name: '', qrCodeUrl: '' });
+  const [newPayeeForm, setNewPayeeForm] = useState({ name: '', upiId: '', qrCodeUrl: '' });
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
   const [isSavingPayee, setIsSavingPayee] = useState(false);
 
   const handleSavePayee = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = editingPayee ? editingPayee.name.trim() : newPayeeForm.name.trim();
+    const upiId = editingPayee ? (editingPayee.upiId || '').trim() : newPayeeForm.upiId.trim();
     const qrCodeUrl = editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl;
 
     if (!name) {
@@ -175,6 +176,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       const payeePayload = {
         id: editingPayee ? editingPayee.id : `pay-${Date.now().toString().slice(-4)}`,
         name,
+        upiId,
         qrCodeUrl,
       };
 
@@ -183,7 +185,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         showToast(editingPayee ? 'Payee updated successfully!' : 'Payee registered successfully!', { type: 'success' });
         setEditingPayee(null);
         setIsAddingNewPayee(false);
-        setNewPayeeForm({ name: '', qrCodeUrl: '' });
+        setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
         refreshPayees();
       } else {
         showToast('Failed to save payee to database', { type: 'error' });
@@ -1480,7 +1482,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
                   </h4>
                   <form onSubmit={handleSavePayee} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
                         <Input
@@ -1495,6 +1497,21 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                             }
                           }}
                           placeholder="e.g. Raju Grocery, Pool Supplier"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI ID (Optional)</label>
+                        <Input
+                          type="text"
+                          value={editingPayee ? (editingPayee.upiId || '') : newPayeeForm.upiId}
+                          onChange={e => {
+                            if (editingPayee) {
+                              setEditingPayee({ ...editingPayee, upiId: e.target.value });
+                            } else {
+                              setNewPayeeForm({ ...newPayeeForm, upiId: e.target.value });
+                            }
+                          }}
+                          placeholder="e.g. raju@upi"
                         />
                       </div>
                     </div>
@@ -1549,7 +1566,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         onClick={() => {
                           setEditingPayee(null);
                           setIsAddingNewPayee(false);
-                          setNewPayeeForm({ name: '', qrCodeUrl: '' });
+                          setNewPayeeForm({ name: '', upiId: '', qrCodeUrl: '' });
                         }}
                         className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
                       >
@@ -1607,7 +1624,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                         ) : (
                           dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
                             <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{p.name}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900 dark:text-white">{p.name}</span>
+                                  {p.upiId && <span className="text-[10px] text-slate-400 font-mono select-all mt-0.5">UPI: {p.upiId}</span>}
+                                </div>
+                              </td>
                               <td className="px-4 py-3 text-center">
                                 {p.qrCodeUrl ? (
                                   <button

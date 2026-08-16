@@ -280,7 +280,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_payees':
             try {
-                $stmt = $pdo->prepare("SELECT id, name, qr_code_url as qrCodeUrl FROM payee_entities WHERE property_id = ? ORDER BY name ASC");
+                $stmt = $pdo->prepare("SELECT id, name, upi_id as upiId, qr_code_url as qrCodeUrl FROM payee_entities WHERE property_id = ? ORDER BY name ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode(['status' => 'success', 'data' => $rows]);
@@ -293,11 +293,12 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, qr_code_url) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), qr_code_url = VALUES(qr_code_url)");
+                    $stmt = $pdo->prepare("INSERT INTO payee_entities (id, property_id, name, upi_id, qr_code_url) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), upi_id = VALUES(upi_id), qr_code_url = VALUES(qr_code_url)");
                     $stmt->execute([
                         $input['id'] ?? ('pay-' . time()),
                         $propertyId,
                         $input['name'],
+                        $input['upiId'] ?? '',
                         $input['qrCodeUrl'] ?? ''
                     ]);
                     echo json_encode(['status' => 'success', 'message' => 'Payee added successfully']);

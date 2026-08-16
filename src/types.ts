@@ -268,6 +268,7 @@ export interface AuditLog {
 export interface PayeeEntity {
   id: string;
   name: string;
+  upiId?: string;
   qrCodeUrl?: string;
 }
 
