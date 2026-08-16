@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2 } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB, fetchSystemExpenseCatalogFromDB, fetchBillsCatalogFromDB, addStaffAdvanceToDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, addPayeeDB, deletePayeeDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB, fetchSystemExpenseCatalogFromDB, fetchBillsCatalogFromDB, addStaffAdvanceToDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
 import { PageHeader } from './PageHeader';
 import { DatePicker } from './DatePicker';
 import { t } from '../i18n/en';
+import { useConfirm } from './ConfirmDialogContext';
 import { Input } from './Input';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
@@ -81,6 +82,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const { staff } = useStaff();
   const { pettyCash, pettyCashLoading, addPettyCash, updatePettyCash, deletePettyCash } = useFinance();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { activeRole: authRole, currentUser } = useAuth();
   const currentUserName = currentUser?.name || currentUser?.username || 'Staff';
 
@@ -112,11 +114,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // (InventoryManagement.tsx) already uses for its "Assign Vendor" picker,
   // so Kitchen & Supplies expenses logged here suggest the same registered
   // vendors instead of this field staying free text.
-  const [dbVendors, setDbVendors] = useState<{ id: string; name: string; type: string }[]>([]);
-  useEffect(() => {
+  const [dbVendors, setDbVendors] = useState<{ id: string; name: string; type: string; qrCodeUrl?: string }[]>([]);
+  
+  const refreshPayees = () => {
     fetchPayeesFromDB().then((payees) => {
-      if (payees && payees.length > 0) setDbVendors(payees);
+      setDbVendors(payees || []);
     });
+  };
+
+  useEffect(() => {
+    refreshPayees();
   }, []);
 
   // Root Admin's "Default Expenses (MultiKey)" catalog (system_expenses table,
@@ -143,6 +150,80 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       if (Array.isArray(data) && data.length > 0) setBillsCatalog(data);
     });
   }, []);
+
+  // Payee Manager Modal & CRUD state
+  const [isPayeeManagerOpen, setIsPayeeManagerOpen] = useState(false);
+  const [editingPayee, setEditingPayee] = useState<any | null>(null);
+  const [isAddingNewPayee, setIsAddingNewPayee] = useState(false);
+  const [searchPayeeQuery, setSearchPayeeQuery] = useState('');
+  const [newPayeeForm, setNewPayeeForm] = useState({ name: '', type: 'Vendor', qrCodeUrl: '' });
+  const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
+  const [isSavingPayee, setIsSavingPayee] = useState(false);
+
+  const handleSavePayee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = editingPayee ? editingPayee.name.trim() : newPayeeForm.name.trim();
+    const type = editingPayee ? editingPayee.type : newPayeeForm.type;
+    const qrCodeUrl = editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl;
+
+    if (!name) {
+      showToast('Payee name is required', { type: 'error' });
+      return;
+    }
+
+    try {
+      setIsSavingPayee(true);
+      const payeePayload = {
+        id: editingPayee ? editingPayee.id : `pay-${Date.now().toString().slice(-4)}`,
+        name,
+        type,
+        qrCodeUrl,
+      };
+
+      const success = await addPayeeDB(payeePayload);
+      if (success) {
+        showToast(editingPayee ? 'Payee updated successfully!' : 'Payee registered successfully!', { type: 'success' });
+        setEditingPayee(null);
+        setIsAddingNewPayee(false);
+        setNewPayeeForm({ name: '', type: 'Vendor', qrCodeUrl: '' });
+        refreshPayees();
+      } else {
+        showToast('Failed to save payee to database', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Error saving payee', { type: 'error' });
+    } finally {
+      setIsSavingPayee(false);
+    }
+  };
+
+  const handleDeletePayee = async (id: string, name: string) => {
+    const confirmed = await confirm({
+      title: 'Delete Payee',
+      message: `Delete "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      setIsSavingPayee(true);
+      const success = await deletePayeeDB(id);
+      if (success) {
+        showToast('Payee deleted successfully.', { type: 'success' });
+        if (editingPayee && editingPayee.id === id) {
+          setEditingPayee(null);
+        }
+        refreshPayees();
+      } else {
+        showToast('Failed to delete payee from database', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Error deleting payee', { type: 'error' });
+    } finally {
+      setIsSavingPayee(false);
+    }
+  };
 
   // Kitchen & Supplies entries submitted from this page are stored in
   // kitchen_purchases_log (via create_kitchen_purchase), not
@@ -995,7 +1076,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200">Vendor / Payee Name (Optional)</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsPayeeManagerOpen(true)}
+                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <span>⚙️ Manage Payees</span>
+                  </button>
+                </div>
                 <StyledSelect
                   searchable
                   value={formState.paidBy === currentUserName ? '' : formState.paidBy}
@@ -1366,6 +1456,251 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* PAYEE MANAGER MODAL */}
+      {isPayeeManagerOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Registered Payees (Vendors & Third Parties)</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Manage operational suppliers, business vendors, and pass-through entities.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPayeeManagerOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* Add / Edit Payee Form Area */}
+              {isAddingNewPayee || editingPayee ? (
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
+                  <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                    {editingPayee ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                    {editingPayee ? 'Edit Payee Settings' : 'Register New Account Payee'}
+                  </h4>
+                  <form onSubmit={handleSavePayee} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Payee Account Name *</label>
+                        <Input
+                          type="text"
+                          required
+                          value={editingPayee ? editingPayee.name : newPayeeForm.name}
+                          onChange={e => {
+                            if (editingPayee) {
+                              setEditingPayee({ ...editingPayee, name: e.target.value });
+                            } else {
+                              setNewPayeeForm({ ...newPayeeForm, name: e.target.value });
+                            }
+                          }}
+                          placeholder="e.g. Raju Grocery, Pool Supplier"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Classification Type</label>
+                        <StyledSelect
+                          value={editingPayee ? editingPayee.type : newPayeeForm.type}
+                          onChange={val => {
+                            if (editingPayee) {
+                              setEditingPayee({ ...editingPayee, type: val });
+                            } else {
+                              setNewPayeeForm({ ...newPayeeForm, type: val });
+                            }
+                          }}
+                          options={[
+                            { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
+                            { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">UPI QR Code Graphic (Optional)</label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (editingPayee) {
+                                setEditingPayee({ ...editingPayee, qrCodeUrl: reader.result as string });
+                              } else {
+                                setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: reader.result as string });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      {(editingPayee?.qrCodeUrl || newPayeeForm.qrCodeUrl) && (
+                        <div className="mt-2 flex items-center gap-3">
+                          <img
+                            src={editingPayee ? editingPayee.qrCodeUrl : newPayeeForm.qrCodeUrl}
+                            alt="UPI QR Code preview"
+                            className="h-16 w-16 object-contain border rounded p-1 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingPayee) {
+                                setEditingPayee({ ...editingPayee, qrCodeUrl: '' });
+                              } else {
+                                setNewPayeeForm({ ...newPayeeForm, qrCodeUrl: '' });
+                              }
+                            }}
+                            className="text-xs text-red-500 font-semibold hover:underline"
+                          >
+                            Remove QR
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPayee(null);
+                          setIsAddingNewPayee(false);
+                          setNewPayeeForm({ name: '', type: 'Vendor', qrCodeUrl: '' });
+                        }}
+                        className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingPayee}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer transition-colors"
+                      >
+                        {isSavingPayee ? 'Saving...' : editingPayee ? 'Save Updates' : 'Register Payee'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <Input
+                      type="text"
+                      value={searchPayeeQuery}
+                      onChange={e => setSearchPayeeQuery(e.target.value)}
+                      placeholder="Search by name or type..."
+                      className="pl-9"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setIsAddingNewPayee(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Register Account Payee
+                  </button>
+                </div>
+              )}
+
+              {/* Payees Table / List Grid */}
+              {!isAddingNewPayee && !editingPayee && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-3">Payee Name</th>
+                          <th className="px-4 py-3">Classification</th>
+                          <th className="px-4 py-3 text-center">UPI QR Code</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase()) || p.type.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
+                          </tr>
+                        ) : (
+                          dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase()) || p.type.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
+                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{p.name}</td>
+                              <td className="px-4 py-3">
+                                {p.type === 'Vendor' ? (
+                                  <span className="bg-orange-100 text-orange-850 dark:bg-orange-950/40 dark:text-orange-300 px-2 py-0.5 rounded font-semibold text-[10px]">Vendor</span>
+                                ) : (
+                                  <span className="bg-purple-100 text-purple-850 dark:bg-purple-950/40 dark:text-purple-300 px-2 py-0.5 rounded font-semibold text-[10px]">Third Party</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {p.qrCodeUrl ? (
+                                  <button
+                                    onClick={() => setPayeeLightboxUrl(p.qrCodeUrl!)}
+                                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1 mx-auto"
+                                  >
+                                    <Camera className="w-3.5 h-3.5" /> View QR
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-400 italic">None</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => setEditingPayee(p)}
+                                    className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                                  >
+                                    <Edit2 className="w-3 h-3" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePayee(p.id, p.name)}
+                                    disabled={isSavingPayee}
+                                    className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                                  >
+                                    <Trash2 className="w-3 h-3" /> Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LIGHTBOX FOR UPI QR CODE */}
+      {payeeLightboxUrl && (
+        <div
+          onClick={() => setPayeeLightboxUrl(null)}
+          className="fixed inset-0 bg-slate-950/90 backdrop-blur-xs flex items-center justify-center p-4 z-100 animate-in fade-in cursor-zoom-out"
+        >
+          <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
+            <button
+              onClick={() => setPayeeLightboxUrl(null)}
+              className="absolute top-2 right-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-650 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 p-2 bg-slate-50">
+              <img src={payeeLightboxUrl} alt="UPI QR Code" className="w-full h-auto rounded-lg" />
+            </div>
           </div>
         </div>
       )}

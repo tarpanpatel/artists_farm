@@ -25,7 +25,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
-import { addPayeeDB, addStaffUserDB, deletePayeeDB, deleteStaffUserDB, fetchPayeesFromDB, updateStaffUserDB, updateTenantSuperAdminDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
+import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuperAdminDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -68,16 +68,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Property Payroll & Payee State
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [payees, setPayees] = useState<PayeeEntity[]>([]);
-  // Payees load independently of staff (own fetch, own effect) - the page
-  // used to render this table's "No payees registered." empty state the
-  // instant the component mounted, before the fetch even started, so a
-  // fresh page load visibly showed the empty message and then "popped" in
-  // real data a moment later. Track loading explicitly so we can show a
-  // spinner instead of a false empty state (found 14 Aug 2026, same report
-  // as the Staff table showing "No system users registered." before
-  // staffLoading data arrives).
-  const [isPayeesLoading, setIsPayeesLoading] = useState(true);
+
   // Available roles from site architecture (independent of staff members).
   // "Super Admin" deliberately excluded (13 Aug 2026): that role is not an
   // assignable staff position - it's a single, automatically-synced row that
@@ -100,10 +91,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [newQrCodeUrl, setNewQrCodeUrl] = useState('');
   const [newDailyWage, setNewDailyWage] = useState('');
 
-  // 2. Create Payee
-  const [newPayeeName, setNewPayeeName] = useState('');
-  const [newPayeeType, setNewPayeeType] = useState<'Vendor' | 'Third Party'>('Vendor');
-  const [newPayeeQrCode, setNewPayeeQrCode] = useState('');
+
 
   // 3. Update User
   const [selectedUpdateUserId, setSelectedUpdateUserId] = useState('');
@@ -127,10 +115,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [editingPayee, setEditingPayee] = useState<PayeeEntity | null>(null);
+
   const [userFormTab, setUserFormTab] = useState<'create' | 'update'>('create');
   const [isTeamMemberModalOpen, setIsTeamMemberModalOpen] = useState(false);
-  const [isPayeeModalOpen, setIsPayeeModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (autoOpenAddModal) {
@@ -178,7 +166,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [payingStaff, setPayingStaff] = useState<string | null>(null);
 
   const [searchUsers, setSearchUsers] = useState('');
-  const [searchPayees, setSearchPayees] = useState('');
+
   const [searchPayout, setSearchPayout] = useState('');
   const [searchStaff, setSearchStaff] = useState('');
 
@@ -262,17 +250,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     })));
   }, [staff]);
 
-  useEffect(() => {
-    fetchPayeesFromDB().then((data) => {
-      setPayees(data.map((payee: any) => ({
-        id: String(payee.id),
-        name: payee.name,
-        type: payee.type,
-        qrCodeUrl: payee.qrCodeUrl,
-      })));
-      setIsPayeesLoading(false);
-    });
-  }, []);
+
 
   useEffect(() => {
     if (!newRole && roleOptions.length) setNewRole(roleOptions[0] as UserAccount['role']);
@@ -327,7 +305,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, cashCollected, handovers, outOfPocket, netDrawer, pendingPayout };
   });
 
-  const filteredPayees = payees.filter(p => !searchPayees || p.name.toLowerCase().includes(searchPayees.toLowerCase()) || p.type.toLowerCase().includes(searchPayees.toLowerCase()));
+
   const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
   const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
 
@@ -432,37 +410,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setIsTeamMemberModalOpen(true);
    };
 
-  const handleCreatePayee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPayeeName) return;
-    const newPayee: PayeeEntity = {
-      id: `pay-${Date.now().toString().slice(-4)}`,
-      name: newPayeeName,
-      type: newPayeeType,
-      qrCodeUrl: newPayeeQrCode || undefined,
-    };
-    if (!await addPayeeDB(newPayee)) {
-      showToast('Unable to save the payee to the database.', { type: 'error' });
-      return;
-    }
-    setPayees((previous) => [...previous, newPayee]);
-    setNewPayeeName('');
-    setNewPayeeQrCode('');
-    setIsPayeeModalOpen(false);
-  };
 
-  const handleDeletePayee = async (id: string) => {
-    const confirmed = await confirm({
-      title: 'Purge Payee Archive',
-      message: 'Purge payee archive records permanently?',
-      confirmText: 'Purge Payee',
-      variant: 'danger',
-    });
-    if (confirmed) {
-      if (await deletePayeeDB(id)) setPayees((previous) => previous.filter((payee) => payee.id !== id));
-      else showToast('Unable to delete the payee from the database.', { type: 'error' });
-    }
-  };
 
   const handleUpdateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,14 +473,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     showToast('User account updated successfully!', { type: 'success' });
   };
 
-  const handleUpdatePayeeSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPayee) return;
-    setPayees((prev) =>
-      prev.map((p) => (p.id === editingPayee.id ? editingPayee : p))
-    );
-    setEditingPayee(null);
-  };
+
 
   // Toggle single cell status
   const handleCellClick = (staffMember: StaffMember, dateStr: string) => {
@@ -862,99 +803,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             />
           </div>
 
-          {/* ROW 2: Registered Payees Table (FULL WIDTH) */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-sm">
-                  {t('registered_payees_heading', 'Registered Payees (Vendors & Third Parties)')}
-                </h3>
-                <span className="text-xs text-slate-400">{isPayeesLoading ? '…' : payees.length} {t('vendors_suffix', 'Vendors')}</span>
-              </div>
-              <Button
-                onClick={() => {
-                  setNewPayeeName('');
-                  setNewPayeeQrCode('');
-                  setIsPayeeModalOpen(true);
-                }}
-                variant="primary"
-                size="sm"
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                className="font-semibold cursor-pointer"
-              >
-                Register Account Payee
-              </Button>
-            </div>
 
-            <DataTable
-              columns={[
-                {
-                  name: t('payee_name_column', 'Payee Name'),
-                  selector: (row: any) => row.name,
-                  sortable: true,
-                  cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">{row.name}</span>,
-                },
-                {
-                  name: t('classification_column', 'Classification'),
-                  selector: (row: any) => row.type,
-                  sortable: true,
-                  width: '160px',
-                  cell: (row: any) => row.type === 'Vendor' ? (
-                    <span className="bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 px-2.5 py-1 rounded font-semibold text-[10px]">{t('vendor_badge', 'Vendor')}</span>
-                  ) : (
-                    <span className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2.5 py-1 rounded font-semibold text-[10px]">{t('third_party_badge', 'Third Party')}</span>
-                  ),
-                },
-                {
-                  name: t('upi_qr_code_column', 'UPI QR Code'),
-                  center: true,
-                  width: '140px',
-                  cell: (row: any) => row.qrCodeUrl ? (
-                    <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
-                  ) : (
-                    <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
-                  ),
-                },
-                {
-                  name: t('actions_column', 'Actions'),
-                  right: true,
-                  width: '160px',
-                  cell: (row: any) => (
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button onClick={() => setEditingPayee(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
-                      <Button onClick={() => handleDeletePayee(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
-                    </div>
-                  ),
-                },
-              ]}
-              data={filteredPayees}
-              progressPending={isPayeesLoading}
-              progressComponent={
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_payees_message', 'Loading payees...')}
-                </div>
-              }
-              pagination
-              paginationPerPage={15}
-              paginationRowsPerPageOptions={[10, 15, 25, 50]}
-              highlightOnHover
-              subHeader={
-                <div className="w-full flex items-center py-2">
-                  <Input type="text" value={searchPayees} onChange={e => setSearchPayees(e.target.value)} placeholder="Search by name or type..." className="w-full max-w-xs" />
-                </div>
-              }
-              customStyles={{
-                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                headRow: { style: { backgroundColor: '#f8fafc' } },
-                rows: { style: { minHeight: '52px' } },
-              }}
-              noDataComponent={
-                <div className="p-8 text-center text-slate-400 font-semibold text-xs">No payees registered.</div>
-              }
-            />
-          </div>
         </div>
       )}
 
@@ -2132,95 +1981,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           </div>
         </div>
       )}
-      {/* REGISTER ACCOUNT PAYEE MODAL */}
-      {isPayeeModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-base">Register Account Payee</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Add operational suppliers, vendors, or third parties</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsPayeeModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-6">
-              <form onSubmit={handleCreatePayee} className="app-form app-form--create-payee space-y-4 text-xs">
-                <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('payee_account_name_label', 'Payee Account Name')} *</label>
-                  <Input
-                    type="text"
-                    required
-                    value={newPayeeName}
-                    onChange={(e) => setNewPayeeName(e.target.value)}
-                    placeholder="e.g. Raju Grocery / Pool Supplier"
-                    className="text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('classification_group_label', 'Classification Group')}</label>
-                  <StyledSelect
-                    value={newPayeeType}
-                    onChange={(val) => setNewPayeeType(val as any)}
-                    options={[
-                      { value: 'Vendor', label: 'Business Vendor (Daily/Project Supplies)' },
-                      { value: 'Third Party', label: 'Third Party Account (Pass-Through Routing)' },
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_upi_qr_label', 'Upload UPI QR Image Screenshot (Optional)')}</label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setNewPayeeQrCode(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="md"
-                    onClick={() => setIsPayeeModalOpen(false)}
-                    className="font-semibold cursor-pointer"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    className="font-semibold cursor-pointer"
-                  >
-                    Save Payee
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
