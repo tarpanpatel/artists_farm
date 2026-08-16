@@ -22,7 +22,6 @@ export type TabType =
   | 'telegram'
   | 'misc_charges'
   | 'custom_css'
-  | 'ical_sync'
   | 'service_requests'
   | 'edit_property'
   | 'licenses';

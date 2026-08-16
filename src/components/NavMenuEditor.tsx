@@ -57,7 +57,6 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Past Receipts', tabKey: 'audit_logs', uniqueKey: 'past_receipts_log' },
     { label: 'Login Logs', tabKey: 'audit_logs', uniqueKey: 'login_logs' },
     { label: 'System Health', tabKey: 'audit_logs', uniqueKey: 'system_health' },
-    { label: 'iCal Sync', tabKey: 'ical_sync', uniqueKey: 'ical_sync_manager' },
     { label: 'Telegram Bot', tabKey: 'telegram', uniqueKey: 'telegram' },
     { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
     { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },

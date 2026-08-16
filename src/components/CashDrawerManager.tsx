@@ -256,28 +256,43 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   return (
     <div className="cash-drawer space-y-6 text-xs text-slate-800 dark:text-slate-200">
       <PageHeader
-        title={t('cash_drawer_manager_title', 'Cash Drawer Manager')}
-        subtitle={t('cash_drawer_description', "Digital lockbox tracking who holds the farm's cash. Accountability & reconciliation at a glance.")}
+        title={t('finances_portal_title', 'Finances & Payroll')}
+        subtitle={t('finances_description', 'Track staff cash responsibilities, adjust drawer balances, and calculate monthly payroll payouts.')}
       />
 
       {/* System Totals Bar */}
-      <div className="cash-drawer__totals bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 rounded-2xl p-4 text-white shadow-lg">
-        <div className="cash-drawer__totals-grid grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
-            <p className="text-2xl font-semibold mt-1">₹{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
-            <p className="text-emerald-200 text-[10px]">{t('from_guest_checkouts_label', 'From Guest Checkouts')}</p>
-          </div>
-          <div>
-            <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
-            <p className="text-2xl font-semibold mt-1">₹{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
-            <p className="text-emerald-200 text-[10px]">{t('to_owner_next_shift_label', 'To Owner / Next Shift')}</p>
-          </div>
-          <div>
-            <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
-            <p className="text-2xl font-semibold mt-1">₹{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
-            <p className="text-emerald-200 text-[10px]">{t('unaccounted_should_match_label', 'Unaccounted: Should Match Cash Box')}</p>
-          </div>
+      <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
+          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
+            <IndianRupee className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+            {totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+            {t('from_guest_checkouts_label', 'From Guest Checkouts')}
+          </p>
+        </div>
+
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
+          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
+            <IndianRupee className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+            {totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] text-slate-500 font-semibold mt-1">
+            {t('to_owner_next_shift_label', 'To Owner / Next Shift')}
+          </p>
+        </div>
+
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
+          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
+            <IndianRupee className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+            {totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1">
+            {t('unaccounted_should_match_label', 'Should Match Physical Cash Box')}
+          </p>
         </div>
       </div>
 
@@ -310,20 +325,28 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
 
       {/* Entry Form */}
       <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
-        <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5">
+        <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5">
           {activeForm === 'handover' && (
             <>
-              <Handshake className="w-4 h-4" />
+              <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
               <span>{t('record_cash_handover_heading', 'RECORD CASH HANDOVER')}</span>
             </>
           )}
           {activeForm === 'manual_adjustment' && (
             <>
-              <Sliders className="w-4 h-4" />
+              <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
               <span>{t('manual_balance_adjustment_heading', 'MANUAL BALANCE ADJUSTMENT')}</span>
             </>
           )}
         </h3>
+
+        {activeForm === 'manual_adjustment' && (
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+            <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
+            <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
+            <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over ₹5,000 to the owner or another shift, switch to the <strong>Handover</strong> tab above to record a debit transaction.</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="app-form app-form--cash-drawer space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -368,10 +391,12 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 placeholder={t('select_recipient_placeholder', '-- Select Recipient --')}
                 options={[
                   { value: 'Tarpan (Owner)', label: 'Tarpan (Owner)' },
-                  ...staff.filter(s => s.status === 'Active').map(s => ({
-                    value: s.name,
-                    label: `${s.name} (${s.role})`,
-                  })),
+                  ...staff
+                    .filter(s => s.status === 'Active' && s.id !== selectedStaffId)
+                    .map(s => ({
+                      value: s.name,
+                      label: `${s.name} (${s.role})`,
+                    })),
                 ]}
               />
             </div>

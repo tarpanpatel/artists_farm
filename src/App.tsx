@@ -21,7 +21,6 @@ import { DataExportCenter } from './components/DataExportCenter';
 import { MenuManager } from './components/MenuManager';
 import { MiscChargesManagement } from './components/MiscChargesManagement';
 import { ServiceRequestsManagement } from './components/ServiceRequestsManagement';
-import { ICalSyncManager } from './components/ICalSyncManager';
 import { LicenseManagement } from './components/LicenseManagement';
 import { TelegramNotificationModal } from './components/TelegramNotificationModal';
 import { EditPropertyPage } from './components/EditPropertyPage';
@@ -389,7 +388,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
       menu_manager: 'edit_food_menu',
       telegram: 'telegram',
       misc_charges: 'misc_charges',
-      ical_sync: 'ical_sync_manager',
       custom_css: 'custom_css',
       service_requests: 'service_requests',
       edit_property: 'edit_property',
@@ -902,13 +900,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
       // If hash is a menu item (not a room), clear room override.
       const reserved = new Set([
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
-        'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
+        'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram',
         'guest_registration', 'all_bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
         'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
-        'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
+        // 'ical_sync'/'ical_sync_manager' deliberately NOT here either - same
+        // reasoning as 'edit_property' below: both legacy hashes now redirect
+        // to 'edit_property' (see routeMap), and that page is room-scoped
+        // when opened from inside a room (the iCal section only shows that
+        // room's own feeds), so visiting either from within a room should
+        // stay in that room too, not kick out to the parent property.
+        'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
         'service_requests', 'license_management'
       ]);
 
@@ -1991,12 +1995,6 @@ ${itemsStr}
                     templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
                   />
                 </div>
-              )}
-
-              {!selectedRoomSlugOverride && activeTab === 'ical_sync' && (
-                <ErrorBoundary section="iCal Sync Manager">
-                  <ICalSyncManager propertyId={preloadedData.currentProperty?.id} />
-                </ErrorBoundary>
               )}
 
               {!selectedRoomSlugOverride && activeTab === 'licenses' && (
