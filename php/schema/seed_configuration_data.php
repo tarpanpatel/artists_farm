@@ -85,7 +85,6 @@ try {
       ['label' => 'Kitchen Orders', 'tabKey' => 'kitchen', 'uniqueKey' => 'kitchen_orders'],
       ['label' => 'Staff Meals', 'tabKey' => 'kitchen', 'uniqueKey' => 'staff_meals'],
       ['label' => 'Stock Requests', 'tabKey' => 'inventory', 'uniqueKey' => 'stock_requests'],
-      ['label' => 'Fulfill Stock Req', 'tabKey' => 'inventory', 'uniqueKey' => 'fulfill_stock_req'],
       ['label' => 'Kitchen Wastage', 'tabKey' => 'inventory', 'uniqueKey' => 'deficit_shortfalls_log'],
       ['label' => 'Kitchen Purchases', 'tabKey' => 'inventory', 'uniqueKey' => 'kitchen_purchases'],
       ['label' => 'Stock Log', 'tabKey' => 'inventory', 'uniqueKey' => 'stock_log'],

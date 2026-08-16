@@ -136,7 +136,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         kitchen_overview: { tab: 'kitchen', key: 'kitchen_overview' },
         kitchen: { tab: 'kitchen', key: 'kitchen_overview' },
         stock_requests: { tab: 'inventory', key: 'stock_requests' },
-        fulfill_stock_req: { tab: 'inventory', key: 'fulfill_stock_req' },
+        // fulfill_stock_req page removed - integrated into stock_requests
+        fulfill_stock_req: { tab: 'inventory', key: 'stock_requests' },
         deficit_shortfalls_log: { tab: 'inventory', key: 'deficit_shortfalls_log' },
         stock_log: { tab: 'inventory', key: 'stock_log' },
         // Kitchen Purchases page removed - logging now happens on the
@@ -902,7 +903,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram',
         'guest_registration', 'all_bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
-        'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
+        'stock_requests', 'deficit_shortfalls_log', 'stock_log',
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'past_receipts_log', 'data_export_center',

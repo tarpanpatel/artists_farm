@@ -223,8 +223,9 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Attendance Calendar' WHERE unique_key = 'attendance_calendar'");
                     $pdo->exec("UPDATE nav_menu_items SET unique_key = 'finances', title = 'Finances', url_slug = 'finances', icon_name = 'Landmark' WHERE unique_key = 'cash_drawer'");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'purchase_analytics'");
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'fulfill_stock_req'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Analytics' WHERE unique_key = 'dashboard_analytics'");
-                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");
                 } catch (Exception $e) {}
