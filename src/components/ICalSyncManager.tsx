@@ -38,9 +38,21 @@ interface ICalSyncManagerProps {
   // hides the breadcrumb ("Dashboard / Integrations / iCal Channel API"),
   // which is simply wrong once this isn't its own page anymore.
   embedded?: boolean;
+  // Explicit slug override for the specific property/room this instance is
+  // scoped to. Required when embedding for an individual MULTI_KEY_ROOM: this
+  // app selects rooms via a URL HASH (#room-101-...), not a path segment, so
+  // getPropertySlug() (path-only) can never resolve to a room's own slug on
+  // its own - it always resolves to the parent property, which is why every
+  // backend call below (all keyed off X-Property-Slug) needs this override
+  // to actually scope to just this room instead of silently falling back to
+  // "every room under the parent property". Not needed for a single (non-
+  // multi-key) property's own Edit Property page, since there the URL path
+  // already resolves correctly.
+  propertySlug?: string;
 }
 
-export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, embedded = false }) => {
+export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, embedded = false, propertySlug: propertySlugOverride }) => {
+  const effectivePropertySlug = propertySlugOverride || getPropertySlug();
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
@@ -77,7 +89,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
     if (propertyId) {
       fetchPropertyRooms(propertyId);
     }
-  }, [propertyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, effectivePropertySlug]);
 
   const fetchPropertyRooms = async (id: number) => {
     try {
@@ -102,7 +115,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       // default property instead of showing (and scoping actions to) its own feeds.
       const response = await fetch('/php/api/ical_sync.php?action=get_ical_syncs', {
         credentials: 'include',
-        headers: { 'X-Property-Slug': getPropertySlug() },
+        headers: { 'X-Property-Slug': effectivePropertySlug },
       });
       const data = await response.json();
       if (data.status === 'success' && Array.isArray(data.data)) {
@@ -134,7 +147,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
     try {
       setIsAdding(true);
-      const propertySlug = getPropertySlug();
+      const propertySlug = effectivePropertySlug;
       const payload = {
         ical_url: url.trim(),
         service_type: 'ical',
@@ -184,7 +197,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       const response = await fetch('/php/api/ical_sync.php?action=sync_ical_events', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'X-Property-Slug': getPropertySlug() },
+        headers: { 'X-Property-Slug': effectivePropertySlug },
         body: formData,
       });
       const data = await response.json();
@@ -212,7 +225,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         const res = await fetch('/php/api/ical_sync.php?action=sync_ical_events', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'X-Property-Slug': getPropertySlug() },
+          headers: { 'X-Property-Slug': effectivePropertySlug },
           body: formData,
         });
         const data = await res.json();
@@ -238,7 +251,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
     try {
       const response = await fetch('/php/api/ical_sync.php?action=delete_ical_sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Property-Slug': getPropertySlug() },
+        headers: { 'Content-Type': 'application/json', 'X-Property-Slug': effectivePropertySlug },
         credentials: 'include',
         body: JSON.stringify({ id: calId }),
       });
@@ -606,7 +619,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {propertyRooms.map((room) => {
-              const propertySlug = getPropertySlug();
+              const propertySlug = effectivePropertySlug;
               const roomExportUrl = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}&room=${room.slug}`;
 
               const platform = roomImportPlatforms[room.id] || 'Airbnb';

@@ -88,7 +88,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
           MultiKeyPropertyOverview.tsx for that case instead. */}
       {property.property_type === 'SINGLE' && (
         <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
-          <ICalSyncManager propertyId={property.id} embedded />
+          <ICalSyncManager propertyId={property.id} propertySlug={property.slug} embedded />
         </div>
       )}
     </div>

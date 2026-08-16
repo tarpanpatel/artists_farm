@@ -373,7 +373,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       none, so this naturally scopes to just this room's own
                       feeds. */}
                   <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
-                    <ICalSyncManager propertyId={selectedRoom.id} embedded />
+                    <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} embedded />
                   </div>
                 </div>
             )}

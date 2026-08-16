@@ -30,11 +30,14 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [summaries, setSummaries] = useState<CashDrawerSummary[]>([]);
   const [drawerEntries, setDrawerEntries] = useState<CashDrawerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeForm, setActiveForm] = useState<'handover' | 'manual_adjustment'>('handover');
-  const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [amount, setAmount] = useState<number | ''>('');
+  const [handoverStaffId, setHandoverStaffId] = useState('');
+  const [handoverAmount, setHandoverAmount] = useState<number | ''>('');
   const [handedTo, setHandedTo] = useState('');
-  const [notes, setNotes] = useState('');
+  const [handoverNotes, setHandoverNotes] = useState('');
+
+  const [adjustmentStaffId, setAdjustmentStaffId] = useState('');
+  const [adjustmentAmount, setAdjustmentAmount] = useState<number | ''>('');
+  const [adjustmentNotes, setAdjustmentNotes] = useState('');
 
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState('');
@@ -72,7 +75,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     }).catch(() => {});
   }, []);
 
-  const selectedStaff = summaries.find(s => s.staffId === selectedStaffId);
+  const selectedHandoverStaff = summaries.find(s => s.staffId === handoverStaffId);
+  const selectedAdjustmentStaff = summaries.find(s => s.staffId === adjustmentStaffId);
 
   // Month metadata for the payout calculator
   const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -183,18 +187,17 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleHandoverSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStaffId || !amount || Number(amount) <= 0) return;
-    if (activeForm === 'handover' && !handedTo) return;
+    if (!handoverStaffId || !handoverAmount || Number(handoverAmount) <= 0 || !handedTo) return;
 
-    const staffMember = summaries.find(s => s.staffId === selectedStaffId);
+    const staffMember = summaries.find(s => s.staffId === handoverStaffId);
     if (!staffMember) return;
 
-    if (activeForm === 'handover' && Number(amount) > staffMember.netBalance) {
+    if (Number(handoverAmount) > staffMember.netBalance) {
       const confirmed = await confirm({
         title: t('exceeds_net_balance_title', 'Exceeds Net Balance'),
-        message: `Warning: Handover amount (₹${amount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`,
+        message: `Warning: Handover amount (₹${handoverAmount}) exceeds current net balance (₹${staffMember.netBalance}). This will create a negative balance. Proceed?`,
         confirmText: t('proceed_handover_button', 'Proceed Handover'),
         variant: 'warning',
       });
@@ -204,35 +207,70 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
     }
 
     const entry = {
-      staff_id: selectedStaffId,
+      staff_id: handoverStaffId,
       staff_name: staffMember.staffName,
-      type: activeForm,
-      amount: Number(amount),
-      handed_to: activeForm === 'handover' ? handedTo : undefined,
-      notes: notes || undefined,
+      type: 'handover' as const,
+      amount: Number(handoverAmount),
+      handed_to: handedTo,
+      notes: handoverNotes || undefined,
     };
 
     const ok = onAddDrawerEntry ? await onAddDrawerEntry(entry) : await addDrawerEntryToDB(entry);
     if (ok) {
-      const typeLabel = activeForm === 'handover' ? 'Cash Handover' : 'Manual Adjustment';
-      onLogAudit?.(`Recorded ${typeLabel}: ₹${amount} for ${staffMember.staffName}${activeForm === 'handover' ? ` (handed to ${handedTo})` : ''}`);
+      onLogAudit?.(`Recorded Cash Handover: ₹${handoverAmount} for ${staffMember.staffName} (handed to ${handedTo})`);
 
       if (onDispatchTelegram) {
-        const emoji = activeForm === 'handover' ? '🤝' : '⚙️';
-        const fallbackMsg = `${emoji} <b>CASH DRAWER ${typeLabel.toUpperCase()}</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(amount).toLocaleString('en-IN')}</b>${activeForm === 'handover' ? `\n• Handed To: <b>${handedTo}</b>` : ''}${notes ? `\n• Notes: ${notes}` : ''}\n• Net Balance After: <b>₹${activeForm === 'handover' ? (staffMember.netBalance - Number(amount)).toLocaleString('en-IN') : staffMember.netBalance.toLocaleString('en-IN')}</b>`;
+        const fallbackMsg = `🤝 <b>CASH DRAWER CASH HANDOVER</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(handoverAmount).toLocaleString('en-IN')}</b>\n• Handed To: <b>${handedTo}</b>${handoverNotes ? `\n• Notes: ${handoverNotes}` : ''}\n• Net Balance After: <b>₹${(staffMember.netBalance - Number(handoverAmount)).toLocaleString('en-IN')}</b>`;
         const templateVars: Record<string, string> = {
           staff_name: staffMember.staffName,
-          action_type: typeLabel,
-          amount: String(Number(amount).toLocaleString('en-IN')),
-          remarks: notes || (activeForm === 'handover' ? `Handed to ${handedTo}` : ''),
+          action_type: 'Cash Handover',
+          amount: String(Number(handoverAmount).toLocaleString('en-IN')),
+          remarks: handoverNotes || `Handed to ${handedTo}`,
         };
         const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
         onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance', undefined, 'finance_drawer_adjustment');
       }
 
-      setAmount('');
+      setHandoverAmount('');
       setHandedTo('');
-      setNotes('');
+      setHandoverNotes('');
+      loadAll();
+    }
+  };
+
+  const handleAdjustmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustmentStaffId || !adjustmentAmount || Number(adjustmentAmount) <= 0) return;
+
+    const staffMember = summaries.find(s => s.staffId === adjustmentStaffId);
+    if (!staffMember) return;
+
+    const entry = {
+      staff_id: adjustmentStaffId,
+      staff_name: staffMember.staffName,
+      type: 'manual_adjustment' as const,
+      amount: Number(adjustmentAmount),
+      notes: adjustmentNotes || undefined,
+    };
+
+    const ok = onAddDrawerEntry ? await onAddDrawerEntry(entry) : await addDrawerEntryToDB(entry);
+    if (ok) {
+      onLogAudit?.(`Recorded Manual Adjustment: ₹${adjustmentAmount} for ${staffMember.staffName}`);
+
+      if (onDispatchTelegram) {
+        const fallbackMsg = `⚙️ <b>CASH DRAWER MANUAL ADJUSTMENT</b>\n• Staff: <b>${staffMember.staffName}</b>\n• Amount: <b>₹${Number(adjustmentAmount).toLocaleString('en-IN')}</b>${adjustmentNotes ? `\n• Notes: ${adjustmentNotes}` : ''}\n• Net Balance After: <b>₹${(staffMember.netBalance + Number(adjustmentAmount)).toLocaleString('en-IN')}</b>`;
+        const templateVars: Record<string, string> = {
+          staff_name: staffMember.staffName,
+          action_type: 'Manual Adjustment',
+          amount: String(Number(adjustmentAmount).toLocaleString('en-IN')),
+          remarks: adjustmentNotes || '',
+        };
+        const resolved = await resolveTelegramTemplate('finance_drawer_adjustment', templateVars);
+        onDispatchTelegram('Cash Drawer', resolved || fallbackMsg, 'finance', undefined, 'finance_drawer_adjustment');
+      }
+
+      setAdjustmentAmount('');
+      setAdjustmentNotes('');
       loadAll();
     }
   };
@@ -296,93 +334,49 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </div>
       </div>
 
-      {/* Quick Action Tabs */}
-      <div className="cash-drawer__tabs bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-1 flex gap-1">
-        {[
-          { key: 'handover' as const, label: t('handover_tab', 'Handover'), icon: Handshake, desc: t('cash_given_to_owner_desc', 'Cash Given to Owner') },
-          { key: 'manual_adjustment' as const, label: t('adjustment_tab', 'Adjustment'), icon: Sliders, desc: t('admin_correction_desc', 'Admin Correction') },
-        ].map(tab => {
-          const TabIcon = tab.icon;
-          return (
-          <button
-            key={tab.key}
-            onClick={() => setActiveForm(tab.key)}
-            className={`flex-1 py-3 px-2 rounded-xl text-center transition-all cursor-pointer ${
-              activeForm === tab.key
-                ? 'bg-emerald-600 text-white shadow-md font-semibold'
-                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold'
-            }`}
-          >
-            <div className="text-[11px] flex items-center justify-center gap-1.5">
-              <TabIcon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </div>
-            <div className={`text-[9px] mt-0.5 ${activeForm === tab.key ? 'text-emerald-100' : 'text-slate-400'}`}>{tab.desc}</div>
-          </button>
-        );
-        })}
-      </div>
+      {/* Side-by-Side Forms Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Form A: Record Cash Handover */}
+        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 w-full">
+          <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
+            <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+            <span>{t('record_cash_handover_heading', 'RECORD CASH HANDOVER')}</span>
+          </h3>
 
-      {/* Entry Form */}
-      <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 max-w-[550px] w-full">
-        <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5">
-          {activeForm === 'handover' && (
-            <>
-              <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
-              <span>{t('record_cash_handover_heading', 'RECORD CASH HANDOVER')}</span>
-            </>
-          )}
-          {activeForm === 'manual_adjustment' && (
-            <>
-              <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
-              <span>{t('manual_balance_adjustment_heading', 'MANUAL BALANCE ADJUSTMENT')}</span>
-            </>
-          )}
-        </h3>
+          <form onSubmit={handleHandoverSubmit} className="app-form app-form--cash-drawer space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
+                <StyledSelect
+                  value={handoverStaffId}
+                  onChange={setHandoverStaffId}
+                  placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
+                  options={summaries.map(s => ({
+                    value: s.staffId,
+                    label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
+                  }))}
+                />
+              </div>
 
-        {activeForm === 'manual_adjustment' && (
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-            <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
-            <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
-            <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over ₹5,000 to the owner or another shift, switch to the <strong>Handover</strong> tab above to record a debit transaction.</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="app-form app-form--cash-drawer space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
-              <StyledSelect
-                value={selectedStaffId}
-                onChange={setSelectedStaffId}
-                placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
-                options={summaries.map(s => ({
-                  value: s.staffId,
-                  label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
-                }))}
-              />
+              <div>
+                <Input
+                  label={t('cash_amount_label', 'Amount (₹) *')}
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  value={handoverAmount}
+                  onChange={e => setHandoverAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder={t('enter_amount_placeholder', 'Enter amount')}
+                />
+                {selectedHandoverStaff && handoverAmount && Number(handoverAmount) > selectedHandoverStaff.netBalance && (
+                  <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Exceeds current balance of ₹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <Input
-                label={t('cash_amount_label', 'Amount (₹) *')}
-                type="number"
-                required
-                min="1"
-                step="any"
-                value={amount}
-                onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder={t('enter_amount_placeholder', 'Enter amount')}
-              />
-              {selectedStaff && activeForm === 'handover' && amount && Number(amount) > selectedStaff.netBalance && (
-                <p className="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Exceeds current balance of ₹{selectedStaff.netBalance.toLocaleString('en-IN')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {activeForm === 'handover' && (
             <div>
               <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('handing_over_to_label', 'Handing Over To *')}</label>
               <StyledSelect
@@ -392,7 +386,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 options={[
                   { value: 'Tarpan (Owner)', label: 'Tarpan (Owner)' },
                   ...staff
-                    .filter(s => s.status === 'Active' && s.id !== selectedStaffId)
+                    .filter(s => s.status === 'Active' && s.id !== handoverStaffId)
                     .map(s => ({
                       value: s.name,
                       label: `${s.name} (${s.role})`,
@@ -400,52 +394,128 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 ]}
               />
             </div>
-          )}
 
-          <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
-            <Input
-              type="text"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder={activeForm === 'handover' ? t('handover_notes_placeholder', 'e.g., End of day handover, shift change...') : t('adjustment_notes_placeholder', "e.g., Correcting yesterday's error...")}
-            />
-          </div>
-
-          {/* Balance Preview */}
-          {selectedStaff && (
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
-                <span>{t('current_net_balance_label', 'Current Net Balance')}</span>
-                <span className="text-slate-900 dark:text-white text-sm">₹{selectedStaff.netBalance.toLocaleString('en-IN')}</span>
-              </div>
-              {amount && Number(amount) > 0 && (
-                <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
-                  <span>After This {activeForm === 'handover' ? 'Handover' : 'Adjustment'}</span>
-                  <span className="text-sm">
-                    ₹{(activeForm === 'manual_adjustment'
-                      ? selectedStaff.netBalance + Number(amount)
-                      : selectedStaff.netBalance - Number(amount)
-                    ).toLocaleString('en-IN')}
-                  </span>
-                </div>
-              )}
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
+              <Input
+                type="text"
+                value={handoverNotes}
+                onChange={e => setHandoverNotes(e.target.value)}
+                placeholder={t('handover_notes_placeholder', 'e.g., End of day handover, shift change...')}
+              />
             </div>
-          )}
 
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>
-                {activeForm === 'handover' && t('cash_record_handover_button', 'RECORD HANDOVER')}
-                {activeForm === 'manual_adjustment' && t('cash_apply_adjustment_button', 'APPLY ADJUSTMENT')}
-              </span>
-            </button>
+            {/* Balance Preview */}
+            {selectedHandoverStaff && (
+              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                  <span>{t('current_net_balance_label', 'Current Net Balance')}</span>
+                  <span className="text-slate-900 dark:text-white text-sm">₹{selectedHandoverStaff.netBalance.toLocaleString('en-IN')}</span>
+                </div>
+                {handoverAmount && Number(handoverAmount) > 0 && (
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                    <span>After This Handover</span>
+                    <span className="text-sm">
+                      ₹{(selectedHandoverStaff.netBalance - Number(handoverAmount)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{t('cash_record_handover_button', 'RECORD HANDOVER')}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Form B: Manual Balance Adjustment */}
+        <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 w-full">
+          <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-3 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
+            <Sliders className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+            <span>{t('manual_balance_adjustment_heading', 'MANUAL BALANCE ADJUSTMENT')}</span>
+          </h3>
+
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+            <p><strong>What this does:</strong> Manual adjustments are used to directly <strong>add cash</strong> to a staff member's pocket/drawer balance (e.g. seeding initial cash or correcting entry errors).</p>
+            <p>• <span className="font-semibold text-emerald-600 dark:text-emerald-400">Example (Add Cash):</span> If Vikram starts his shift with ₹2,000 opening cash, apply a <strong>₹2,000</strong> adjustment to seed the drawer.</p>
+            <p>• <span className="font-semibold text-amber-600 dark:text-amber-500">To Deduct Cash instead:</span> If Vikram hands over cash, use the <strong>Record Cash Handover</strong> form on the left to record the transfer.</p>
           </div>
-        </form>
+
+          <form onSubmit={handleAdjustmentSubmit} className="app-form app-form--cash-drawer space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('select_staff_member_label', 'Select Staff Member *')}</label>
+                <StyledSelect
+                  value={adjustmentStaffId}
+                  onChange={setAdjustmentStaffId}
+                  placeholder={t('choose_staff_placeholder', '-- Choose Staff --')}
+                  options={summaries.map(s => ({
+                    value: s.staffId,
+                    label: `${s.staffName} (Balance: ₹${s.netBalance.toLocaleString('en-IN')})`,
+                  }))}
+                />
+              </div>
+
+              <div>
+                <Input
+                  label={t('cash_amount_label', 'Amount (₹) *')}
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  value={adjustmentAmount}
+                  onChange={e => setAdjustmentAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder={t('enter_amount_placeholder', 'Enter amount')}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
+              <Input
+                type="text"
+                value={adjustmentNotes}
+                onChange={e => setAdjustmentNotes(e.target.value)}
+                placeholder={t('adjustment_notes_placeholder', "e.g., Correcting yesterday's error...")}
+              />
+            </div>
+
+            {/* Balance Preview */}
+            {selectedAdjustmentStaff && (
+              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                  <span>{t('current_net_balance_label', 'Current Net Balance')}</span>
+                  <span className="text-slate-900 dark:text-white text-sm">₹{selectedAdjustmentStaff.netBalance.toLocaleString('en-IN')}</span>
+                </div>
+                {adjustmentAmount && Number(adjustmentAmount) > 0 && (
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-600 mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                    <span>After This Adjustment</span>
+                    <span className="text-sm">
+                      ₹{(selectedAdjustmentStaff.netBalance + Number(adjustmentAmount)).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-colors w-full justify-center"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{t('cash_apply_adjustment_button', 'APPLY ADJUSTMENT')}</span>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
 
