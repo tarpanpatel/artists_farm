@@ -390,6 +390,86 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'get_bills_catalog':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `bills_catalog` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `label` VARCHAR(255) NOT NULL UNIQUE,
+                    `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    `description` TEXT DEFAULT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                // Auto-seed with 10 common bill types if table is empty
+                $countStmt = $pdo->query("SELECT COUNT(*) FROM bills_catalog");
+                if ((int)$countStmt->fetchColumn() === 0) {
+                    $defaults = [
+                        ['Electricity Bill', 'Monthly electricity charges'],
+                        ['Water Bill', 'Municipal water supply charges'],
+                        ['Internet / Broadband', 'Monthly internet/broadband plan'],
+                        ['Gas / LPG Bill', 'LPG cylinder or piped gas charges'],
+                        ['Telephone / Mobile', 'Landline or mobile phone bill'],
+                        ['Municipal Property Tax', 'Annual or quarterly property tax'],
+                        ['Insurance Premium', 'Property or asset insurance premium'],
+                        ['Garbage / Waste Disposal', 'Municipal waste disposal charges'],
+                        ['Cable / DTH', 'Cable TV or DTH subscription'],
+                        ['Software Subscription', 'SaaS or software license renewal'],
+                    ];
+                    $ins = $pdo->prepare("INSERT IGNORE INTO bills_catalog (label, description) VALUES (?, ?)");
+                    foreach ($defaults as $d) {
+                        $ins->execute($d);
+                    }
+                }
+
+                $stmt = $pdo->query("SELECT id, label, default_amount, description FROM bills_catalog ORDER BY label ASC");
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_bill_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $label = trim($input['label'] ?? '');
+                    $description = trim($input['description'] ?? '');
+                    $id = $input['id'] ?? null;
+
+                    if ($label === '') {
+                        echo json_encode(['status' => 'error', 'message' => 'Bill name is required']);
+                        break;
+                    }
+
+                    if ($id) {
+                        $stmt = $pdo->prepare("UPDATE bills_catalog SET label = ?, description = ? WHERE id = ?");
+                        $stmt->execute([$label, $description, $id]);
+                    } else {
+                        $stmt = $pdo->prepare("INSERT INTO bills_catalog (label, description) VALUES (?, ?) ON DUPLICATE KEY UPDATE description = VALUES(description)");
+                        $stmt->execute([$label, $description]);
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'Bill item saved successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_bill_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM bills_catalog WHERE id = ? OR label = ?");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    echo json_encode(['status' => 'success', 'message' => 'Bill item deleted', 'rows_deleted' => $stmt->rowCount()]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+
         case 'get_misc_catalog':
             try {
                 $pdo->exec("CREATE TABLE IF NOT EXISTS `miscellaneous_catalog` (

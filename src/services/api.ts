@@ -640,6 +640,33 @@ export async function fetchExpenseItemPricesFromDB(): Promise<Record<string, num
   return {};
 }
 
+export async function fetchSystemExpenseCatalogFromDB(): Promise<Record<string, { id: number; label: string; default_amount: number; category: string; description: string }[]>> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_system_expense_catalog`);
+    const json = await res.json();
+    if (json.status === 'success' && json.data) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch system expense catalog from DB:', err);
+  }
+  return {};
+}
+
+export async function fetchBillsCatalogFromDB(): Promise<{ id: number; label: string; default_amount: number; description: string }[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_bills_catalog`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch bills catalog from DB:', err);
+  }
+  return [];
+}
+
+
 export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string; is_ingredient: number }[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_material_categories`);
@@ -2233,19 +2260,14 @@ export async function generateSalaryEntry(data: {
       }),
     });
     const petJson = await pet.json();
-    // Post to financial ledger
-    await apiFetch(`${API_BASE}?action=record_salary_payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        payment_id: `salary-${data.staffId}-${data.month}`,
-        staff_id: data.staffId,
-        staff_name: data.staffName,
-        amount: data.amount,
-        description: data.description,
-        payment_method: 'Bank Transfer',
-      }),
-    });
+    // NOT a second `record_salary_payment` ledger post here - add_petty_cash
+    // (above) already unconditionally posts every entry it creates to
+    // financial_ledger (petty_cash.php's add_petty_cash case, entry_key
+    // `expense:{id}`). Calling record_salary_payment too used to write a
+    // SECOND debit (`salary:salary-{staffId}-{month}`) for the exact same
+    // payout, silently doubling every salary's reported cost in the P&L -
+    // confirmed in production data (Abhijeet, Jul 2026: two ₹741.94 ledger
+    // rows for one real payment). See CLAUDE.md's postFinancialLedger note.
     return petJson.status === 'success';
   } catch (err) {
     console.error('Failed to generate salary entry:', err);

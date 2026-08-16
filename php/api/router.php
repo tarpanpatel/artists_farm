@@ -2606,6 +2606,9 @@ switch ($action) {
     case 'get_system_expense_catalog':
     case 'add_system_expense_item':
     case 'delete_system_expense_item':
+    case 'get_bills_catalog':
+    case 'add_bill_item':
+    case 'delete_bill_item':
     case 'get_cash_drawer_summary':
     case 'add_drawer_entry':
     case 'get_drawer_entries':

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB, fetchSystemExpenseCatalogFromDB, fetchBillsCatalogFromDB, addStaffAdvanceToDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
@@ -119,6 +119,31 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   }, []);
 
+  // Root Admin's "Default Expenses (MultiKey)" catalog (system_expenses table,
+  // DefaultExpensesManager.tsx) - curated reference items grouped into ~20
+  // granular categories (Appliances, Booking & Marketing, Utilities, etc.)
+  // that cascade to every MultiKey property. Merged into the Details
+  // Descriptions suggestions below (via SYSTEM_CATEGORY_TO_COST_GROUP) so a
+  // brand-new property with zero expense history still gets a real starter
+  // list instead of "No matching pre-stored items found" until it builds up
+  // its own.
+  const [systemExpenseCatalog, setSystemExpenseCatalog] = useState<Record<string, { label: string }[]>>({});
+  useEffect(() => {
+    fetchSystemExpenseCatalogFromDB().then((data) => {
+      if (data && Object.keys(data).length > 0) setSystemExpenseCatalog(data);
+    });
+  }, []);
+
+  // Dedicated Bills Catalog managed by Root Admin → Default Bills (MK).
+  // Items here surface directly as Bills autocomplete suggestions without
+  // needing any category-mapping step.
+  const [billsCatalog, setBillsCatalog] = useState<{ label: string }[]>([]);
+  useEffect(() => {
+    fetchBillsCatalogFromDB().then((data) => {
+      if (Array.isArray(data) && data.length > 0) setBillsCatalog(data);
+    });
+  }, []);
+
   // Kitchen & Supplies entries submitted from this page are stored in
   // kitchen_purchases_log (via create_kitchen_purchase), not
   // farm_utility_expenses, so req_catalog stock keeps syncing correctly -
@@ -220,29 +245,47 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   }, []);
 
   // Description autocomplete, grouped by this form's own Cost Category
-  // Group ('Other'/'Bills'/'Staff Advance'/'Maintenance'/'Kitchen') and
-  // derived from this property's own past expenses (pettyCash, already
-  // loaded via useFinance()) - not get_misc_catalog, which is a completely
-  // different, guest-facing catalog (Guest Charges/Transport/Event &
-  // Services/...) with no correspondence to this form's categories at all.
-  // That mismatch is why selecting "Other" used to suggest things like
-  // "Extra Bed / Mattress" and "Airport Pick-up" - guest misc-charge
-  // labels, not operational expense descriptions. Self-building: as
-  // expenses get logged under a category, their descriptions become
-  // future suggestions for that same category.
+  // Group ('Other'/'Bills'/'Staff Advance'/'Kitchen') and derived from this
+  // property's own past expenses (pettyCash, already loaded via
+  // useFinance()) - not get_misc_catalog, which is a completely different,
+  // guest-facing catalog (Guest Charges/Transport/Event & Services/...)
+  // with no correspondence to this form's categories at all. That mismatch
+  // is why selecting "Other" used to suggest things like "Extra Bed /
+  // Mattress" and "Airport Pick-up" - guest misc-charge labels, not
+  // operational expense descriptions. Self-building: as expenses get
+  // logged under a category, their descriptions become future suggestions
+  // for that same category.
   // Some properties still have expenses logged under category labels that
-  // predate this form's current 5-option dropdown (e.g. 'Miscellaneous',
-  // 'Utilities', 'Transport', 'Kitchen Purchase' from before it was
-  // trimmed to Other/Bills/Staff Advance/Maintenance/Kitchen) - map those
-  // onto their nearest current bucket so old history still surfaces as
-  // suggestions instead of silently going dark under the new labels.
+  // predate this form's current dropdown (e.g. 'Miscellaneous', 'Utilities',
+  // 'Transport', 'Kitchen Purchase' from before it was trimmed down, and
+  // 'Maintenance' itself, removed as its own option since it was one of too
+  // many near-duplicate choices - see git history) - map those onto their
+  // nearest current bucket so old history still surfaces as suggestions
+  // instead of silently going dark under labels nothing points to anymore.
   const normalizeCostCategory = (raw: string): string => {
     const cat = (raw || '').trim();
-    if (cat === 'Miscellaneous' || cat === 'Transport') return 'Other';
+    if (cat === 'Miscellaneous' || cat === 'Transport' || cat === 'Maintenance') return 'Other';
     if (cat === 'Utilities') return 'Bills';
     if (cat === 'Kitchen Purchase') return 'Kitchen';
     return cat || 'Other';
   };
+
+  // Root Admin's system_expenses catalog groups items far more granularly
+  // (21 categories - Appliances, Booking & Marketing, Swimming Pool, etc.)
+  // than this form's Cost Category Group. Route each granular group to
+  // whichever bucket it's clearly about; anything without an obvious match
+  // (which, post-Maintenance-removal, now includes Maintenance & Repairs
+  // and Swimming Pool items too) falls into 'Other', since that's the
+  // form's own catch-all for exactly this kind of spend. Nothing maps to
+  // 'Staff Advance' - that category's Details Descriptions is a real-staff
+  // picker, not free text, so it never reads these suggestions at all.
+  const SYSTEM_CATEGORY_TO_COST_GROUP: Record<string, string> = {
+    'Utilities': 'Bills',
+    'Insurance': 'Bills',
+    'Taxes & Licenses': 'Bills',
+  };
+  const mapSystemCategoryToCostGroup = (systemCategory: string): string =>
+    SYSTEM_CATEGORY_TO_COST_GROUP[systemCategory] || 'Other';
 
   const expenseItemsByCategory = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -253,11 +296,51 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       if (!map[cat]) map[cat] = [];
       if (!map[cat].includes(desc)) map[cat].push(desc);
     });
+    Object.entries(systemExpenseCatalog).forEach(([systemCategory, items]) => {
+      const cat = mapSystemCategoryToCostGroup(systemCategory);
+      if (!map[cat]) map[cat] = [];
+      items.forEach((item) => {
+        const desc = (item.label || '').trim();
+        if (desc && !map[cat].includes(desc)) map[cat].push(desc);
+      });
+    });
+    // Merge dedicated Bills Catalog (Root Admin → Default Bills) directly
+    // into the Bills bucket — these are the primary source of bill-type
+    // suggestions, so they go in first and take precedence over history.
+    if (!map['Bills']) map['Bills'] = [];
+    billsCatalog.forEach((item) => {
+      const desc = (item.label || '').trim();
+      if (desc && !map['Bills'].includes(desc)) map['Bills'].unshift(desc);
+    });
     Object.keys(map).forEach((k) => map[k].sort());
     return map;
-  }, [pettyCash]);
+  }, [pettyCash, systemExpenseCatalog, billsCatalog]);
 
   const expenseItems = expenseItemsByCategory[formState.category] || [];
+
+  const vendorOptions = useMemo(() => {
+    const sorted = [...dbVendors].sort((a, b) => {
+      const typeA = a.type || 'Third Party';
+      const typeB = b.type || 'Third Party';
+      if (typeA !== typeB) {
+        return typeA === 'Vendor' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const mapped = sorted.map(v => ({
+      value: v.name,
+      label: v.name,
+      group: v.type === 'Vendor' ? 'Vendors' : 'Third Parties',
+      searchText: v.name
+    }));
+
+    return [
+      { value: '', label: '-- None (Logged by Self) --', searchText: 'none self clear clear' },
+      ...mapped
+    ];
+  }, [dbVendors]);
+
 
   // Derive list of unique months in entries for dropdown
   const uniqueMonths = Array.from(new Set(pettyCash.map(e => e.date.substring(0, 7)))).sort().reverse();
@@ -397,6 +480,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       return;
     }
 
+    // Redundant with the generic `!formState.description` guard above, but
+    // gives a clearer message for this specific case - money attributed to
+    // the wrong (or no) staff member is worse than a silent no-op.
+    if (formState.category === 'Staff Advance' && !formState.description) {
+      showToast('Select which staff member this advance is for.', { type: 'error' });
+      return;
+    }
+
     const finalDescription = formState.category === 'Salaries' ? `Salary payout for ${formState.description}` : formState.description;
 
     const entry: PettyCashEntry = {
@@ -417,6 +508,25 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     };
 
     addPettyCash(entry);
+
+    // Also record this as a real staff_advances row so it's netted against
+    // that person's month-end payout in Team > Payroll & Payee Control
+    // Center (pendingPayout there subtracts this month's staff_advances,
+    // but never looks at farm_utility_expenses/petty cash) - otherwise an
+    // advance logged here would leave via the ledger correctly but the
+    // staff member would still show as owed their FULL salary at month-end.
+    if (formState.category === 'Staff Advance') {
+      const matchedStaff = staff.find(s => s.name === formState.description);
+      addStaffAdvanceToDB({
+        staffId: matchedStaff?.id || '',
+        staffName: formState.description,
+        amount: Number(formState.amount),
+        date: formState.expenseDate,
+        month: formState.expenseDate.slice(0, 7),
+        reason: formState.moreInfoNotes || finalDescription,
+        addedBy: currentUserName,
+      });
+    }
 
     const handler = financialHandlers.find((h: any) => h.name === formState.paidBy);
     if (formState.drawerAmount && Number(formState.drawerAmount) > 0) {
@@ -603,7 +713,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   { value: 'Other', label: t('category_other_label', 'Other') },
                   { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
                   { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
-                  { value: 'Maintenance', label: t('category_maintenance_label', 'Maintenance & Repairs') },
                   { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                 ]}
               />
@@ -630,6 +739,27 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               {formState.kitchenUnit && (
                 <p className="text-[10px] text-slate-400 mt-1">Unit: <span className="font-semibold text-slate-500 dark:text-slate-300">{formState.kitchenUnit}</span></p>
               )}
+            </div>
+          ) : formState.category === 'Staff Advance' ? (
+            <div>
+              {/* A real staff record, not free text - handleSubmit matches
+                  this value against `staff` by name to also write a
+                  staff_advances row, which is what actually nets this
+                  advance against that person's month-end payout (Team tab's
+                  Payroll & Payee Control Center). Free text here (e.g. a
+                  role label like "Cook salary" from the suggestions list,
+                  or a generic "Cash Advance") would silently break that
+                  netting, so this is a picker instead of the usual
+                  Details Descriptions text field - same reasoning as
+                  Kitchen & Supplies' item picker above. */}
+              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
+              <StyledSelect
+                searchable
+                value={formState.description}
+                onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
+                placeholder="Select who the advance is for..."
+                options={staff.map(s => ({ value: s.name, label: s.name }))}
+              />
             </div>
           ) : (
             <div>
@@ -686,12 +816,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           )}
 
-          {/* Only shown for Kitchen & Supplies - there "Details Descriptions" is
-              an item picker (StyledSelect), not free text, so this is the only
-              place left to add a note. Every other category already has a free-text
-              Details Descriptions field, and a second text field right below it
-              serving the same purpose was just a redundant duplicate. */}
-          {formState.category === 'Kitchen' && (
+          {/* Only shown for Kitchen & Supplies and Staff Advance - both replace
+              "Details Descriptions" with a picker (item / staff member) instead
+              of free text, so this is the only place left to add a note. Every
+              other category already has a free-text Details Descriptions field,
+              and a second text field right below it serving the same purpose
+              was just a redundant duplicate. */}
+          {(formState.category === 'Kitchen' || formState.category === 'Staff Advance') && (
             <div>
               <Input
                 label={t('more_information_label', '& More Information (If Any)')}
@@ -759,7 +890,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span>🏛️ Property Funds</span>
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Property Funds</span>
                 </button>
 
                 <button
@@ -775,7 +907,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span>👤 My Own Pocket</span>
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span>My Own Pocket</span>
                 </button>
 
                 <button
@@ -790,7 +923,8 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <span>⚖️ Split</span>
+                  <Scale className="w-3.5 h-3.5 shrink-0" />
+                  <span>Split</span>
                 </button>
               </div>
             </div>
@@ -861,26 +995,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               </div>
 
               <div>
-                {formState.category === 'Kitchen' ? (
-                  <>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
-                    <StyledSelect
-                      searchable
-                      value={formState.paidBy === currentUserName ? '' : formState.paidBy}
-                      onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
-                      placeholder="Select a registered vendor..."
-                      options={dbVendors.filter(v => v.type === 'Vendor').map(v => ({ value: v.name, label: v.name }))}
-                    />
-                  </>
-                ) : (
-                  <Input
-                    label="Vendor / Payee Name (Optional)"
-                    type="text"
-                    value={formState.paidBy === currentUserName ? '' : formState.paidBy}
-                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: e.target.value || currentUserName })}
-                    placeholder="e.g. Transport Co, Hardware Store"
-                  />
-                )}
+                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Vendor / Payee Name (Optional)</label>
+                <StyledSelect
+                  searchable
+                  value={formState.paidBy === currentUserName ? '' : formState.paidBy}
+                  onChange={val => dispatch({ type: 'SET_FIELD', field: 'paidBy', value: val || currentUserName })}
+                  placeholder="Select a registered payee..."
+                  options={vendorOptions}
+                />
               </div>
             </div>
 
@@ -893,7 +1015,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
           {/* Proof uploads */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('capture_upload_invoice_bill_label', '📁 Capture / Upload Invoice Bill')}</label>
+              <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><FolderOpen className="w-3.5 h-3.5" /> {t('capture_upload_invoice_bill_label_plain', 'Capture / Upload Invoice Bill')}</label>
               <label htmlFor="invoice-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <FileText className="w-4 h-4 text-slate-400" />
                 <span>{formState.invoiceBillUrl ? t('invoice_loaded_compressed_label', 'Invoice Loaded (Compressed)') : t('choose_document_button', 'Choose Document')}</span>
@@ -914,7 +1036,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
 
             <div className="border border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_payment_screenshot_label', '📸 Upload Payment Screenshot')}</label>
+              <label className="app-label text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-center gap-1.5"><Camera className="w-3.5 h-3.5" /> {t('upload_payment_screenshot_label_plain', 'Upload Payment Screenshot')}</label>
               <label htmlFor="screenshot-upload-input" className="block bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-3 rounded-lg text-slate-500 font-semibold flex items-center justify-center gap-1.5 cursor-pointer">
                 <ImageIcon className="w-4 h-4 text-slate-400" />
                 <span>{formState.paymentScreenshotUrl ? t('screenshot_loaded_compressed_label', 'Screenshot Loaded (Compressed)') : t('select_screenshot_button', 'Select Screenshot')}</span>
@@ -1066,16 +1188,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
                 if (isSplit) {
                   return (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs whitespace-nowrap" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
-                      ⚖️ Split (Till + Pocket)
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs whitespace-nowrap flex items-center gap-1" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
+                      <Scale className="w-3 h-3 shrink-0" /> Split (Till + Pocket)
                     </span>
                   );
                 }
 
                 if (isOutofPocket) {
                   return (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap">
-                      👤 Out of Pocket
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap flex items-center gap-1">
+                      <User className="w-3 h-3 shrink-0" /> Out of Pocket
                     </span>
                   );
                 }
@@ -1086,7 +1208,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                       ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                       : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                   }`}>
-                    🏛️ Property ({entry.paymentMode || 'UPI'})
+                    <Building2 className="w-3 h-3 shrink-0" /> Property ({entry.paymentMode || 'UPI'})
                   </span>
                 );
               },
@@ -1188,7 +1310,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     { value: 'Other', label: t('category_other_label', 'Other') },
                     { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
                     { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
-                    { value: 'Maintenance', label: t('category_maintenance_label', 'Maintenance & Repairs') },
                     { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                   ]}
                 />

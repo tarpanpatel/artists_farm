@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
+import { DefaultBillsManager } from './DefaultBillsManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
@@ -38,9 +39,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -220,6 +221,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       section: 'default_expenses' as SectionType,
     },
     {
+      id: 'default_bills',
+      label: 'Default Bills (MK)',
+      icon: Receipt,
+      section: 'default_bills' as SectionType,
+    },
+    {
       id: 'service_request_types',
       label: t('root_service_request_types_menu_label', 'Service Request Types'),
       icon: Bell,
@@ -391,6 +398,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_label', 'Tenants & Properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
+                {activeSection === 'default_bills' && 'Default Bills (MultiKey)'}
                 {activeSection === 'service_request_types' && t('root_service_request_types_heading', 'Service Request Types')}
                 {activeSection === 'appearance' && t('root_appearance_heading_label', 'Appearance Settings')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_label', 'Telegram Templates')}
@@ -404,6 +412,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'tenants_properties' && t('root_tenants_properties_subtitle', 'Manage all tenants and their properties')}
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_subtitle', 'Global navigation menu for all properties')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_subtitle', 'System expense categories and defaults')}
+                {activeSection === 'default_bills' && 'Manage bill types that appear as autocomplete suggestions on the Expenses form'}
                 {activeSection === 'service_request_types' && t('root_service_request_types_subtitle', 'Per-property service request quick-pick categories')}
                 {activeSection === 'appearance' && t('root_appearance_subtitle', 'Customize theme colors and CSS styling')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_subtitle', "One shared template set for the whole platform - edit wording here. Group routing, test pings, and bot setup are configured per-property, on that property's own Telegram Alerts Config page.")}
@@ -496,6 +505,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Default Expenses Section */}
           {activeSection === 'default_expenses' && (
             <DefaultExpensesManager />
+          )}
+
+          {/* Default Bills Section */}
+          {activeSection === 'default_bills' && (
+            <DefaultBillsManager />
           )}
 
           {/* Service Request Types Section */}
