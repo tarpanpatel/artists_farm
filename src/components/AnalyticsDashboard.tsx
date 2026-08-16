@@ -561,6 +561,33 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     { name: 'Revenue', data: sortedMenuItems.slice(0, 10).map(([, data]) => data.revenue) }
   ];
 
+  // Most/Least Profitable Dishes - bar charts instead of ranked text lists
+  // (16 Aug 2026: this page is meant to be charts-only, see the 15 Aug 2026
+  // "remove all remaining data tables" pass - a numbered list of name+profit
+  // rows is the same information in table form, just without the borders).
+  // Diverging scale (profit can go negative) so a loss-making "least
+  // profitable" dish still reads correctly rather than an all-positive bar.
+  const dishProfitAbsMax = Math.max(1, ...costedDishes.map((d) => Math.abs(d.profit ?? 0)));
+  const mostProfitableDishesBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [successColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
+    xaxis: { categories: mostProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const mostProfitableDishesBarSeries = [{ name: 'Profit', data: mostProfitableDishes.map((d) => Number((d.profit ?? 0).toFixed(0))) }];
+
+  const leastProfitableDishesBarOptions: any = {
+    chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
+    colors: [dangerColor],
+    dataLabels: { enabled: true, formatter: (val: number) => `₹${val.toLocaleString('en-IN')}` },
+    xaxis: { categories: leastProfitableDishes.map((d) => d.name), min: -dishProfitAbsMax, max: dishProfitAbsMax },
+    grid: { strokeDashArray: 4 },
+  };
+  const leastProfitableDishesBarSeries = [{ name: 'Profit', data: leastProfitableDishes.map((d) => Number((d.profit ?? 0).toFixed(0))) }];
+
   // Both charts share one x-axis max (the global highest order count) so bar
   // LENGTH is actually comparable between them - each ApexCharts bar chart
   // otherwise auto-scales to its own data's max, which made a dish ordered
@@ -1304,29 +1331,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <PieChart className="w-4 h-4 text-purple-600" /> {t('booking_sources_share_heading', 'Booking Sources Distribution')}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                <div className="sm:col-span-7">
-                  <ReactApexChart options={bookingSourcePieOptions} series={bookingSourcePieSeries} type="donut" height={280} />
-                </div>
-                <div className="sm:col-span-5 space-y-2.5">
-                  {bookingSourcePieLabels.map((label, index) => {
-                    const val = bookingSourcePieSeries[index] || 0;
-                    const totalVal = bookingSourcePieSeries.reduce((s, v) => s + v, 0) || 1;
-                    const pct = (val / totalVal) * 100;
-                    return (
-                      <div key={label} className="text-xs">
-                        <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
-                          <span>{label}</span>
-                          <span>{val} ({pct.toFixed(0)}%)</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {bookingSourcePieSeries.length === 0 && (
-                    <p className="text-slate-400 text-center py-4">{t('no_source_data', 'No booking sources for this period.')}</p>
-                  )}
-                </div>
-              </div>
+              {bookingSourcePieSeries.length > 0 ? (
+                <ReactApexChart options={bookingSourcePieOptions} series={bookingSourcePieSeries} type="donut" height={280} />
+              ) : (
+                <p className="text-slate-400 text-center py-4">{t('no_source_data', 'No booking sources for this period.')}</p>
+              )}
             </div>
 
             {/* Card Right: Hospitality Key Performance Indicators (ADR, ALOS, Occupancy) */}
@@ -1372,21 +1381,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               {t('additional_charges_note', 'What guests paid on top of base room rent - Decoration, Extra Housekeeping, Pet Stay, and custom Misc Charges templates added at booking. Room rent itself isn\'t split further since it\'s just nights x rate.')}
             </p>
             {extraChargesSeries.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                <div className="sm:col-span-7">
-                  <ReactApexChart options={extraChargesChartOptions} series={extraChargesSeries} type="donut" height={280} />
-                </div>
-                <div className="sm:col-span-5 space-y-2.5">
-                  {extraChargesByCategory.map(([cat, amount]) => (
-                    <div key={cat} className="text-xs">
-                      <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-300">
-                        <span>{cat}</span>
-                        <span>₹{Number(amount).toLocaleString('en-IN')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ReactApexChart options={extraChargesChartOptions} series={extraChargesSeries} type="donut" height={280} />
             ) : (
               <p className="text-slate-400 text-center py-8 text-xs">{t('no_additional_charges_data', 'No additional charges recorded for this period.')}</p>
             )}
@@ -1490,39 +1485,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <h4 className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                       <TrendingUp className="w-3.5 h-3.5" /> {t('most_profitable_dishes_label', 'Most Profitable Dishes')}
                     </h4>
-                    <div className="space-y-2">
-                      {mostProfitableDishes.map((d, i) => (
-                        <div key={d.menuItemId ?? d.name} className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">{i + 1}</span>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{d.name}</span>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">₹{(d.profit || 0).toLocaleString('en-IN')}</p>
-                            <p className="text-[9px] text-slate-400">{(d.marginPct || 0).toFixed(0)}% {t('margin_label', 'margin')} · {d.count} {t('sold_label', 'sold')}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <ReactApexChart options={mostProfitableDishesBarOptions} series={mostProfitableDishesBarSeries} type="bar" height={220} />
                   </div>
                   <div>
                     <h4 className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                       <TrendingDown className="w-3.5 h-3.5" /> {t('least_profitable_dishes_label', 'Least Profitable Dishes')}
                     </h4>
-                    <div className="space-y-2">
-                      {leastProfitableDishes.map((d, i) => (
-                        <div key={d.menuItemId ?? d.name} className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">{i + 1}</span>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{d.name}</span>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className={`text-xs font-extrabold ${(d.profit || 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>₹{(d.profit || 0).toLocaleString('en-IN')}</p>
-                            <p className="text-[9px] text-slate-400">{(d.marginPct || 0).toFixed(0)}% {t('margin_label', 'margin')} · {d.count} {t('sold_label', 'sold')}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <ReactApexChart options={leastProfitableDishesBarOptions} series={leastProfitableDishesBarSeries} type="bar" height={220} />
                   </div>
                 </div>
               ) : (
@@ -1724,38 +1693,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
               <PieChart className="w-4 h-4 text-emerald-600" /> {t('payment_methods_share_heading', 'Payment Methods Distribution')}
             </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
-              <div>
-                <ReactApexChart options={paymentMethodPieOptions} series={paymentMethodPieSeries} type="donut" height={320} />
-              </div>
-              <div className="space-y-3.5">
-                {paymentMethodPieLabels.map((label, index) => {
-                  const val = paymentMethodPieSeries[index] || 0;
-                  const totalVal = paymentMethodPieSeries.reduce((s, v) => s + v, 0) || 1;
-                  const pct = (val / totalVal) * 100;
-                  return (
-                    <div key={label}>
-                      <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                        <span>{label}</span>
-                        <span className="font-extrabold">₹{val.toLocaleString('en-IN')} ({pct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${pct}%`,
-                            backgroundColor: paymentMethodPieOptions.colors[index % paymentMethodPieOptions.colors.length]
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                {paymentMethodPieSeries.length === 0 && (
-                  <p className="text-slate-400 text-center py-4">{t('no_payment_data', 'No payment records for this period.')}</p>
-                )}
-              </div>
-            </div>
+            {paymentMethodPieSeries.length > 0 ? (
+              <ReactApexChart options={paymentMethodPieOptions} series={paymentMethodPieSeries} type="donut" height={320} />
+            ) : (
+              <p className="text-slate-400 text-center py-4">{t('no_payment_data', 'No payment records for this period.')}</p>
+            )}
           </div>
         </div>
       )}

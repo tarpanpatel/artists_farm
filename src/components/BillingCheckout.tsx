@@ -772,21 +772,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </div>
       </div>
 
-      {/* Upcoming: date-first sections, each with its own room grid.
-          Today/Past Bookings: a single room-first grid, as before. */}
-      {activeTab === 'upcoming' ? (
-        <div className="space-y-8">
-          {upcomingByDate.map((dateGroup) => (
-            <div key={dateGroup.dateStr}>
-              <h3 className="billing-checkout__subtitle text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                {dateGroup.label}
-              </h3>
-              {renderRoomGroupsGrid(dateGroup.roomGroups)}
-            </div>
-          ))}
-        </div>
-      ) : activeTab === 'past_bookings' ? (
+      {/* Upcoming & Past Bookings: single table view.
+          Today: room-first grid view. */}
+      {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
         <div className="billing-checkout__past-table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
           <DataTable
             columns={pastBookingsColumns}
@@ -812,9 +800,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         renderRoomGroupsGrid(filteredGroups)
       )}
 
-      {/* Empty Search Result - Today/Upcoming room-grid only; the Past
+      {/* Empty Search Result - Today room-grid only; the Upcoming/Past
           Bookings table has its own noDataComponent above. */}
-      {activeTab !== 'past_bookings' && filteredGroups.length === 0 && (
+      {activeTab === 'today' && filteredGroups.length === 0 && (
         <div className="billing-checkout__empty-state bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-12 text-center">
           <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
