@@ -5,6 +5,7 @@ import { t } from '../i18n/en';
 import { OperationalDashboard } from './OperationalDashboard';
 import { GuestManagement } from './GuestManagement';
 import { PropertyEditForm } from './PropertyEditForm';
+import { ICalSyncManager } from './ICalSyncManager';
 
 interface Room {
   id: number;
@@ -360,8 +361,21 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       minimalMode
                     />
                   </div>
+                  </div>
+
+                  {/* Calendar Sync (formerly its own standalone "iCal Sync"
+                      sidebar page, removed - each room's OTA calendar feeds
+                      now live on that room's own Edit Room page instead of a
+                      shared page with a room-picker dropdown). propertyId is
+                      this ROOM's own id, not the parent's - ICalSyncManager's
+                      backend (getICalSyncs) only expands scope to a
+                      property's own MULTI_KEY_ROOM children, and a room has
+                      none, so this naturally scopes to just this room's own
+                      feeds. */}
+                  <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+                    <ICalSyncManager propertyId={selectedRoom.id} embedded />
+                  </div>
                 </div>
-              </div>
             )}
             </>
           );

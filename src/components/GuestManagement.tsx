@@ -34,7 +34,6 @@ import { getPropertySlug } from '../services/api';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
-import { Textarea } from './Textarea';
 import { getExpenseItemIcon } from '../utils/expenseIcons';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
@@ -171,7 +170,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [notes, setNotes] = useState('');
   const [showGuestNotes, setShowGuestNotes] = useState(false);
   const [isForeignGuest, setIsForeignGuest] = useState(false);
-  const [showDynamicIncidentals, setShowDynamicIncidentals] = useState(false);
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(1);
   const [createdBooking, setCreatedBooking] = useState<Guest | null>(null);
@@ -223,7 +221,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [bookingRoomTariff, setBookingRoomTariff] = useState<number>(0);
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
-  const [bookingIncidentals, setBookingIncidentals] = useState<{type: string, amount: number}[]>([]);
   const [showBookingExtraCharges, setShowBookingExtraCharges] = useState<boolean>(false);
   const [bookingExtraChargesList, setBookingExtraChargesList] = useState<BookingExtraChargeLine[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
@@ -280,9 +277,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       if (line.id === id) {
         const lineCopy = { ...line, [field]: value };
         if (field === 'category') {
-          const matched = miscChargesList.find((m) => m.name.toLowerCase() === String(value).toLowerCase());
-          if (matched && matched.defaultPrice > 0) {
-            lineCopy.amount = matched.defaultPrice;
+          // Same label/price fallback as the dropdown options below (which
+          // build `value` from this same m.label / (m as any).name pair) -
+          // matching here has to use the identical logic or it silently
+          // never finds the template whose price it should auto-fill.
+          const matched = miscChargesList.find((m) => {
+            const chargeLabel = m.label || (m as any).name || 'Misc Charge';
+            return chargeLabel.toLowerCase() === String(value).toLowerCase();
+          });
+          const chargePrice = matched ? (matched.default_amount ?? (matched as any).defaultPrice ?? 0) : 0;
+          if (chargePrice > 0) {
+            lineCopy.amount = chargePrice;
           }
         }
         return lineCopy;
@@ -434,12 +439,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setNotes('');
     setShowGuestNotes(false);
     setIsForeignGuest(false);
-    setShowDynamicIncidentals(false);
     setNoOfGuests(1);
     setBookingRoomTariff(0);
     setBookingAdvance(0);
     setBookingPending(0);
-    setBookingIncidentals([]);
+    setShowBookingExtraCharges(false);
+    setBookingExtraChargesList([]);
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
       setRoomNumber(rooms[0].name);
     }
@@ -964,13 +969,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               return;
             }
 
-            const extraNoteText = bookingExtraChargeCategory === 'Misc' && bookingExtraChargeMiscNote.trim()
-              ? `Misc (${bookingExtraChargeMiscNote.trim()})`
-              : bookingExtraChargeCategory;
-            const extraChargeDetail = (Number(bookingExtraChargeAmount) || 0) > 0
-              ? `Extra Charge: ${extraNoteText} - ₹${bookingExtraChargeAmount}`
-              : '';
-            const finalNotes = [showGuestNotes ? notes.trim() : '', extraChargeDetail].filter(Boolean).join(' | ');
+            // bookingExtraChargesList replaced the old single-charge state
+            // (bookingExtraChargeCategory/MiscNote/Amount) once multiple
+            // lines became possible - this note text is just a human-readable
+            // summary for the booking record; the actual amount is already
+            // folded into bookingPending by the line handlers above.
+            const extraChargeDetail = bookingExtraChargesList
+              .filter((line) => (Number(line.amount) || 0) > 0)
+              .map((line) => {
+                const noteText = line.category === 'Misc' && line.miscNote.trim()
+                  ? `Misc (${line.miscNote.trim()})`
+                  : line.category;
+                return `${noteText} - ₹${line.amount}`;
+              })
+              .join(', ');
+            const finalNotes = [showGuestNotes ? notes.trim() : '', extraChargeDetail ? `Extra Charges: ${extraChargeDetail}` : ''].filter(Boolean).join(' | ');
 
             const guestObj: Guest = {
               id: Math.random().toString(36).substr(2, 9),

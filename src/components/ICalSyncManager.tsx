@@ -32,9 +32,15 @@ interface Calendar {
 
 interface ICalSyncManagerProps {
   propertyId?: number;
+  // True when rendered inside a room's Edit Room page or a single property's
+  // Edit Property page (its current homes, after the standalone "iCal Sync"
+  // sidebar page was removed) rather than as that standalone page itself -
+  // hides the breadcrumb ("Dashboard / Integrations / iCal Channel API"),
+  // which is simply wrong once this isn't its own page anymore.
+  embedded?: boolean;
 }
 
-export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) => {
+export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, embedded = false }) => {
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
@@ -338,13 +344,15 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId }) 
       {/* Header Banner */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
         {/* Breadcrumb Navigation */}
-        <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
-          <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
-          <span>/</span>
-          <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
-          <span>/</span>
-          <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
-        </nav>
+        {!embedded && (
+          <nav className="flex text-slate-400 text-[11px] font-semibold gap-1.5 items-center ical-sync-manager__breadcrumb">
+            <span>{t('breadcrumb_dashboard_label', 'Dashboard')}</span>
+            <span>/</span>
+            <span>{t('breadcrumb_integrations_label', 'Integrations')}</span>
+            <span>/</span>
+            <span className="text-blue-600 dark:text-blue-400">{t('breadcrumb_ical_channel_api_label', 'iCal Channel API')}</span>
+          </nav>
+        )}
 
         <PageHeader
           title={t('ical_ota_channel_integration_heading', 'iCal & OTA Channel Integration Keys')}

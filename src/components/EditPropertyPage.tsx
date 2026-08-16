@@ -4,6 +4,7 @@ import { t } from '../i18n/en';
 import { PropertyEditForm } from './PropertyEditForm';
 import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
+import { ICalSyncManager } from './ICalSyncManager';
 
 interface EditPropertyPageProps {
   onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
@@ -78,6 +79,18 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
           />
         </div>
       </div>
+
+      {/* Calendar Sync (formerly its own standalone "iCal Sync" sidebar page,
+          removed - a single property has exactly one calendar to manage, so
+          this is just another property-level setting. A MULTI_KEY parent
+          isn't itself bookable (each room is), so it has no calendar of its
+          own here - see the room's own Edit Room page in
+          MultiKeyPropertyOverview.tsx for that case instead. */}
+      {property.property_type === 'SINGLE' && (
+        <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
+          <ICalSyncManager propertyId={property.id} embedded />
+        </div>
+      )}
     </div>
   );
 };

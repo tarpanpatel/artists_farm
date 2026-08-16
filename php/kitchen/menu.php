@@ -218,8 +218,10 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     VALUES
                     ('nav-kitchen-overview', 1, 'Kitchen', 'kitchen', 'kitchen_overview', 'kitchen_overview', 'Kitchen & Food', 'Utensils', 10, '[\"Super Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\",\"Staff\"]', 1, NULL),
                     ('nav-staff-permissions', 1, 'Staff & Permissions', 'staff', 'staff_permissions', 'staff_permissions', 'Staff & HR', 'ShieldCheck', 30, '[\"Super Admin\",\"Admin\"]', 1, NULL),
-                    ('nav-attendance-calendar', 1, 'Attendance/Salary', 'staff', 'attendance_calendar', 'attendance_calendar', 'Staff & HR', 'CalendarDays', 31, '[\"Super Admin\",\"Admin\",\"Staff Supervisor\"]', 1, NULL)");
+                    ('nav-attendance-calendar', 1, 'Attendance Calendar', 'staff', 'attendance_calendar', 'attendance_calendar', 'Staff & HR', 'CalendarDays', 31, '[\"Super Admin\",\"Admin\",\"Staff Supervisor\"]', 1, NULL)");
                 try {
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'Attendance Calendar' WHERE unique_key = 'attendance_calendar'");
+                    $pdo->exec("UPDATE nav_menu_items SET unique_key = 'finances', title = 'Finances', url_slug = 'finances', icon_name = 'Landmark' WHERE unique_key = 'cash_drawer'");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE custom_url IS NOT NULL AND custom_url != '' AND LOWER(title) = 'team'");

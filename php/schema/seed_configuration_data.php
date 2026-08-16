@@ -90,7 +90,7 @@ try {
       ['label' => 'Kitchen Purchases', 'tabKey' => 'inventory', 'uniqueKey' => 'kitchen_purchases'],
       ['label' => 'Stock Log', 'tabKey' => 'inventory', 'uniqueKey' => 'stock_log'],
       ['label' => 'Expenses', 'tabKey' => 'petty_cash', 'uniqueKey' => 'expenses'],
-      ['label' => 'Cash Drawer', 'tabKey' => 'petty_cash', 'uniqueKey' => 'cash_drawer'],
+      ['label' => 'Finances', 'tabKey' => 'petty_cash', 'uniqueKey' => 'finances'],
       ['label' => 'Misc Charges', 'tabKey' => 'petty_cash', 'uniqueKey' => 'misc_charges'],
       ['label' => 'Staff & Permissions', 'tabKey' => 'staff', 'uniqueKey' => 'staff_permissions'],
       ['label' => 'Attendance Calendar', 'tabKey' => 'staff', 'uniqueKey' => 'attendance_calendar'],

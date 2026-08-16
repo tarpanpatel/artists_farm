@@ -47,7 +47,7 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Kitchen Wastage', tabKey: 'inventory', uniqueKey: 'deficit_shortfalls_log' },
     { label: 'Kitchen Stock & Adjustments Log', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
     { label: 'Expenses', tabKey: 'petty_cash', uniqueKey: 'expenses' },
-    { label: 'Cash Drawer', tabKey: 'petty_cash', uniqueKey: 'cash_drawer' },
+    { label: 'Finances', tabKey: 'petty_cash', uniqueKey: 'finances' },
     { label: 'Misc Charges', tabKey: 'petty_cash', uniqueKey: 'misc_charges' },
     { label: 'Staff & Permissions', tabKey: 'staff', uniqueKey: 'staff_permissions' },
     { label: 'Attendance Calendar', tabKey: 'staff', uniqueKey: 'attendance_calendar' },

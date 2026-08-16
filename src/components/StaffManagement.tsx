@@ -4,10 +4,7 @@ import { Input } from './Input';
 import DataTable from 'react-data-table-component';
 import {
   Plus,
-  IndianRupee,
   X,
-  Check,
-  Trash2,
   Zap,
   Calendar,
   CalendarDays,
@@ -19,13 +16,13 @@ import {
   HelpCircle,
   Edit2
 } from 'lucide-react';
-import { StaffMember, AttendanceRecord, UserAccount, StaffAdvance } from '../types';
+import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
-import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuperAdminDB, saveAttendanceToDB, generateSalaryEntry, fetchCashDrawerSummaryFromDB, addDrawerEntryToDB, fetchStaffAdvancesFromDB, addStaffAdvanceToDB, deleteStaffAdvanceFromDB } from '../services/api';
+import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuperAdminDB } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 
@@ -33,8 +30,6 @@ interface StaffManagementProps {
   activeMenuItemKey?: string;
   auditLogs?: any[];
   onLogAudit?: (actionText: string) => void;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
-  onAddDrawerEntry?: (entry: any) => Promise<boolean>;
   tenantId?: number;
   propertyId?: number | string;
   autoOpenAddModal?: boolean;
@@ -45,8 +40,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   activeMenuItemKey,
   auditLogs: _auditLogs,
   onLogAudit,
-  onDispatchTelegram,
-  onAddDrawerEntry,
   tenantId,
   propertyId,
   autoOpenAddModal,
@@ -142,85 +135,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Monthly Payout Calculator State - advances live in the DB (staff_advances
-  // table), not localStorage, so they're durable and shared across every
-  // device/terminal a property's admins use, and properly tied to a staff_id.
-  const [advances, setAdvances] = useState<StaffAdvance[]>([]);
-  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
-  const [advanceStaff, setAdvanceStaff] = useState<StaffMember | null>(null);
-  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
-  const [advanceReason, setAdvanceReason] = useState('');
-  const [drawerSummary, setDrawerSummary] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchCashDrawerSummaryFromDB().then(data => {
-      if (Array.isArray(data)) setDrawerSummary(data);
-    }).catch(() => {});
-    fetchStaffAdvancesFromDB().then(data => {
-      if (Array.isArray(data)) setAdvances(data);
-    }).catch(() => {});
-  }, []);
-
-  // Per-staff pay tracking
-  const [paidStaff, setPaidStaff] = useState<Set<string>>(new Set());
-  const [payingStaff, setPayingStaff] = useState<string | null>(null);
 
   const [searchUsers, setSearchUsers] = useState('');
 
-  const [searchPayout, setSearchPayout] = useState('');
   const [searchStaff, setSearchStaff] = useState('');
-
-  const handleGiveAdvance = async () => {
-    if (!advanceStaff || advanceAmount <= 0) return;
-    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-    const advancePayload = {
-      staffId: advanceStaff.id,
-      staffName: advanceStaff.name,
-      amount: advanceAmount,
-      date: new Date().toISOString().slice(0, 10),
-      month: monthKey,
-      reason: advanceReason || 'Cash advance',
-      addedBy: 'Admin',
-    };
-    const newId = await addStaffAdvanceToDB(advancePayload);
-    if (!newId) {
-      showToast('Unable to save the advance to the database.', { type: 'error' });
-      return;
-    }
-    const newAdvance: StaffAdvance = { id: newId, ...advancePayload };
-    setAdvances((prev) => [...prev, newAdvance]);
-    setIsAdvanceModalOpen(false);
-
-    // Record cash leaving the drawer + post to financial_ledger
-    const drawerEntry: any = {
-      staff_id: advanceStaff.id,
-      staff_name: advanceStaff.name,
-      type: 'handover',
-      amount: advanceAmount,
-      notes: `Staff advance: ${newAdvance.reason}`,
-    };
-    if (onAddDrawerEntry) {
-      onAddDrawerEntry(drawerEntry);
-    } else {
-      addDrawerEntryToDB(drawerEntry);
-    }
-
-    if (onLogAudit) {
-      onLogAudit(`Admin gave advance of ₹${advanceAmount} to ${advanceStaff.name} (${newAdvance.reason})`);
-    }
-
-    if (onDispatchTelegram) {
-      const msg = `<b>💵 ADVANCE GIVEN</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${advanceStaff.name}\n💰 <b>Amount:</b> ₹${advanceAmount.toLocaleString('en-IN')}\n📝 <b>Reason:</b> ${newAdvance.reason}\n📅 <b>Month:</b> ${monthKey}\n━━━━━━━━━━━━━━━━`;
-      onDispatchTelegram('Staff Advance', msg, 'finance');
-    }
-
-    setAdvanceStaff(null);
-    setAdvanceAmount(0);
-    setAdvanceReason('');
-  };
-
-  const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-  const monthAdvances = advances.filter((a) => a.month === monthKey);
 
   // Form State for Add Staff Roster
   const [name, setName] = useState('');
@@ -279,34 +197,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     attendanceMap.set(`${rec.staffId}_${rec.date}`, rec.status);
   });
 
-  // Payout calculation data
-  const payoutData = staff.filter((s) => s.status === 'Active').map((s) => {
-    const dailyWage = daysInMonth > 0 ? s.monthlySalary / daysInMonth : 0;
-    let presentDays = 0;
-    monthDays.forEach((d) => {
-      const status = attendanceMap.get(`${s.id}_${d.dateStr}`);
-      if (status === 'Present') presentDays += 1;
-      else if (status === 'Half Day') presentDays += 0.5;
-    });
-    const totalEarned = Math.round(dailyWage * presentDays * 100) / 100;
-    const moneyOwed = Math.round((s.monthlySalary - totalEarned) * 100) / 100;
-    // staffId matches new advances; name fallback covers rows that predate it -
-    // namely the out-of-pocket kitchen-purchase reimbursement credits
-    // inventory.php writes directly, which only ever recorded a staff name.
-    const staffAdvances = monthAdvances
-      .filter((a) => (a.staffId ? a.staffId === s.id : a.staffName === s.name))
-      .reduce((sum, a) => sum + a.amount, 0);
-    const ds = drawerSummary.find(d => d.staffId === s.id || d.username === s.name || d.staffName === s.name);
-    const cashCollected = ds?.cashCollected ?? 0;
-    const handovers = ds?.drawerHandovers ?? 0;
-    const outOfPocket = ds?.outOfPocketExpenses ?? 0;
-    const netDrawer = cashCollected - handovers - outOfPocket;
-    const pendingPayout = Math.round((totalEarned - staffAdvances - netDrawer) * 100) / 100;
-    return { staff: s, dailyWage, presentDays, totalEarned, moneyOwed, advances: staffAdvances, cashCollected, handovers, outOfPocket, netDrawer, pendingPayout };
-  });
 
-
-  const filteredPayout = payoutData.filter(r => !searchPayout || r.staff.name.toLowerCase().includes(searchPayout.toLowerCase()));
   const filteredStaff = staff.filter(m => !searchStaff || m.name.toLowerCase().includes(searchStaff.toLowerCase()) || m.role.toLowerCase().includes(searchStaff.toLowerCase()));
 
   // Role hierarchy: lower index = higher privilege
@@ -1036,215 +927,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
           </div>
-
-          {/* MONTHLY PAYOUT CALCULATOR */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors">
-            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
-              <h3 className="staff-management__subtitle font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
-                <IndianRupee className="w-4 h-4" />
-                {t('monthly_payout_calculator_heading', 'Monthly Payout Calculator')}
-              </h3>
-              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full">
-                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-
-            <DataTable
-              columns={[
-                {
-                  name: 'Staff Name',
-                  selector: (row: any) => row.staff.name,
-                  sortable: true,
-                  cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
-                },
-                {
-                  name: 'Daily Wage (₹)',
-                  selector: (row: any) => row.dailyWage,
-                  sortable: true,
-                  right: true,
-                  width: '120px',
-                  cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
-                },
-                {
-                  name: 'Present Days',
-                  selector: (row: any) => row.presentDays,
-                  sortable: true,
-                  center: true,
-                  width: '110px',
-                  cell: (row: any) => <><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
-                },
-                {
-                  name: 'Total Earned (₹)',
-                  selector: (row: any) => row.totalEarned,
-                  sortable: true,
-                  right: true,
-                  width: '130px',
-                  cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-                },
-                {
-                  name: 'Collected (₹)',
-                  selector: (row: any) => row.cashCollected,
-                  sortable: true,
-                  right: true,
-                  width: '110px',
-                  cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-                },
-                {
-                  name: 'Out of Pocket (₹)',
-                  selector: (row: any) => row.outOfPocket,
-                  sortable: true,
-                  right: true,
-                  width: '120px',
-                  cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-                },
-                {
-                  name: 'Handovers (₹)',
-                  selector: (row: any) => row.handovers,
-                  sortable: true,
-                  right: true,
-                  width: '110px',
-                  cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-                },
-                {
-                  name: 'Advances (₹)',
-                  selector: (row: any) => row.advances,
-                  sortable: true,
-                  right: true,
-                  width: '120px',
-                  cell: (row: any) => {
-                    // Negative = a reimbursement credit (e.g. staff paid for a kitchen
-                    // purchase out of pocket), which increases payout rather than
-                    // reducing it - shown in green with a + sign, not hidden as ₹0.00.
-                    const isCredit = row.advances < 0;
-                    return (
-                      <span className={`font-semibold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
-                    );
-                  },
-                },
-                {
-                  name: 'Pending Payout (₹)',
-                  selector: (row: any) => row.pendingPayout,
-                  sortable: true,
-                  right: true,
-                  width: '140px',
-                  cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-                },
-                {
-                  name: 'Actions',
-                  center: true,
-                  width: '240px',
-                  cell: (row: any) => {
-                    const isPaid = paidStaff.has(row.staff.id);
-                    const isPaying = payingStaff === row.staff.id;
-                    return (
-                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
-                          leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
-                        >
-                          Advance
-                        </Button>
-                        {isPaid ? (
-                          <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Paid
-                          </span>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            disabled={isPaying || row.pendingPayout <= 0}
-                            leftIcon={<IndianRupee className="w-3 h-3" />}
-                            onClick={async () => {
-                              setPayingStaff(row.staff.id);
-                              const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-                              const recs = attendance.filter(a => a.staffId === row.staff.id && a.date.startsWith(monthKey));
-                              await saveAttendanceToDB(recs);
-                              const ok = await generateSalaryEntry({
-                                staffId: row.staff.id,
-                                staffName: row.staff.name,
-                                amount: row.pendingPayout,
-                                month: monthKey,
-                                description: `Salary (Auto): ${row.staff.name} - ${monthKey}`,
-                              });
-                              setPayingStaff(null);
-                              if (ok) {
-                                setPaidStaff(prev => new Set(prev).add(row.staff.id));
-                                if (onDispatchTelegram) {
-                                  const msg = `<b>💰 SALARY PAYMENT</b>\n━━━━━━━━━━━━━━━━\n👤 <b>Staff:</b> ${row.staff.name}\n📅 <b>Month:</b> ${monthKey}\n💵 <b>Amount:</b> ₹${row.pendingPayout.toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
-                                  onDispatchTelegram('Salary Payment', msg, 'finance');
-                                }
-                              }
-                            }}
-                          >
-                            {isPaying ? 'Paying...' : 'Pay Now'}
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  },
-                },
-              ]}
-              data={filteredPayout}
-              progressPending={staffLoading}
-              progressComponent={
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
-                </div>
-              }
-              pagination
-              paginationPerPage={15}
-              paginationRowsPerPageOptions={[10, 15, 25, 50]}
-              highlightOnHover
-              subHeader={
-                <div className="w-full flex items-center py-2">
-                  <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
-                </div>
-              }
-              customStyles={{
-                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #fde68a' } },
-                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#b45309', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', paddingLeft: '12px' } },
-                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                headRow: { style: { backgroundColor: '#fffbeb' } },
-                rows: { style: { minHeight: '52px' } },
-              }}
-              noDataComponent={
-                <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
-              }
-            />
-
-            {/* Advances History for this month */}
-            {monthAdvances.length > 0 && (
-              <div className="border-t border-amber-200 dark:border-amber-800/40 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">{t('advances_this_month_label', 'Advances This Month')}</p>
-                <div className="space-y-1">
-                  {monthAdvances.map((adv) => (
-                    <div key={adv.id} className="flex items-center justify-between text-[11px] bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-1.5 border border-red-100 dark:border-red-900/30">
-                      <span className="font-semibold text-red-800 dark:text-red-300">{adv.staffName}</span>
-                      <span className="text-red-600 dark:text-red-400">- ₹{adv.amount.toLocaleString('en-IN')}</span>
-                      <span className="text-slate-400 dark:text-slate-500">{adv.reason}</span>
-                      <button
-                        onClick={async () => {
-                          const ok = await deleteStaffAdvanceFromDB(adv.id);
-                          if (ok) {
-                            setAdvances((prev) => prev.filter((a) => a.id !== adv.id));
-                          } else {
-                            showToast('Unable to delete the advance from the database.', { type: 'error' });
-                          }
-                        }}
-                        className="text-red-400 hover:text-red-600 cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -1499,58 +1181,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* GIVE ADVANCE MODAL */}
-      {isAdvanceModalOpen && advanceStaff && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="staff-management__subtitle font-semibold text-slate-900 dark:text-white text-sm">{t('give_advance_heading', 'Give Advance —')} {advanceStaff.name}</h3>
-              <button onClick={() => setIsAdvanceModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div>
-              <Input
-                label="Amount (₹) *"
-                type="number"
-                min={0}
-                value={advanceAmount || ''}
-                onChange={(e) => setAdvanceAmount(Number(e.target.value))}
-                placeholder="e.g. 2000"
-                className="text-sm font-semibold"
-              />
-            </div>
-
-            <div>
-              <Input
-                label={t('reason_label', 'Reason')}
-                type="text"
-                value={advanceReason}
-                onChange={(e) => setAdvanceReason(e.target.value)}
-                placeholder="e.g. Personal emergency"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setIsAdvanceModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGiveAdvance}
-                disabled={advanceAmount <= 0}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:opacity-50 text-white font-semibold text-xs shadow-sm cursor-pointer"
-              >
-                Confirm Advance
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -148,7 +148,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         inventory: { tab: 'inventory', key: 'stock_requests' },
         expenses: { tab: 'petty_cash', key: 'expenses' },
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
-        cash_drawer: { tab: 'petty_cash', key: 'cash_drawer' },
+        cash_drawer: { tab: 'petty_cash', key: 'finances' },
+        finances: { tab: 'petty_cash', key: 'finances' },
         edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
@@ -172,8 +173,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
         telegram: { tab: 'telegram', key: 'telegram' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
-        ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
-        ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
+        // Standalone "iCal Sync" page removed - calendar management moved onto
+        // each room's own Edit Room page (MultiKeyPropertyOverview.tsx) and,
+        // for single properties, onto Edit Property. Old bookmarks/links to
+        // this hash land on Edit Property instead of a dead tab.
+        ical_sync_manager: { tab: 'edit_property', key: 'edit_property' },
+        ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         license_management: { tab: 'licenses', key: 'license_management' },
       };
@@ -900,7 +905,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
         'guest_registration', 'all_bookings', 'billing_checkout', 'take_food_order', 'kitchen_orders', 'staff_meals',
         'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
-        'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'staff_payees_control',
+        'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
         'edit_food_menu', 'beta_recipe_builder', 'ical_sync_manager', 'misc_charges', 'edit_items_group',
@@ -941,7 +946,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         edit_kitchen_stock: { tab: 'inventory', key: 'edit_kitchen_stock' },
         inventory: { tab: 'inventory', key: 'stock_requests' },
         expenses: { tab: 'petty_cash', key: 'expenses' },
-        cash_drawer: { tab: 'petty_cash', key: 'cash_drawer' },
+        cash_drawer: { tab: 'petty_cash', key: 'finances' },
+        finances: { tab: 'petty_cash', key: 'finances' },
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
         attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
@@ -968,8 +974,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
         data_export_center: { tab: 'export', key: 'data_export_center' },
         telegram: { tab: 'telegram', key: 'telegram' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
-        ical_sync_manager: { tab: 'ical_sync', key: 'ical_sync_manager' },
-        ical_sync: { tab: 'ical_sync', key: 'ical_sync_manager' },
+        // Standalone "iCal Sync" page removed - calendar management moved onto
+        // each room's own Edit Room page (MultiKeyPropertyOverview.tsx) and,
+        // for single properties, onto Edit Property. Old bookmarks/links to
+        // this hash land on Edit Property instead of a dead tab.
+        ical_sync_manager: { tab: 'edit_property', key: 'edit_property' },
+        ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         edit_property: { tab: 'edit_property', key: 'edit_property' },
         license_management: { tab: 'licenses', key: 'license_management' },
@@ -1836,8 +1846,8 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey === 'cash_drawer' && (
-                <ErrorBoundary section="Cash Drawer Manager">
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey === 'finances' && (
+                <ErrorBoundary section="Finances Manager">
                   <CashDrawerManager
                     onLogAudit={logAudit}
                     onDispatchTelegram={dispatchTelegramAlert}
@@ -1845,7 +1855,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'cash_drawer' && activeMenuItemKey !== 'misc_charges' && (
+              {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey !== 'edit_expense_items' && activeMenuItemKey !== 'finances' && activeMenuItemKey !== 'misc_charges' && (
                 <ErrorBoundary section="Petty Cash Management">
                   <PettyCashManagement
                     activeRole={activeRole}
@@ -1869,7 +1879,6 @@ ${itemsStr}
                     activeMenuItemKey={activeMenuItemKey}
                     auditLogs={auditLogs}
                     onLogAudit={logAudit}
-                    onDispatchTelegram={dispatchTelegramAlert}
                     tenantId={preloadedData.currentProperty?.tenant_id}
                     propertyId={preloadedData.currentProperty?.id}
                     autoOpenAddModal={autoOpenAddStaffModal}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
   Smartphone,
   Download,
   ClipboardList,
+  RefreshCw,
   Home as RoomIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../con
 import { t } from '../i18n';
 
 import { requestPushNotificationPermission, getPushPermissionState } from '../services/webPushService';
+import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -69,6 +71,31 @@ export const Header: React.FC<HeaderProps> = ({
   const recentServiceRequests = pendingRequests.slice(0, 5);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [lastSeenHash, setLastSeenHash] = useState<string>('');
+
+  // Calendar Sync quick-action - only shown once at least one iCal feed
+  // exists (any room for a MultiKey property, or the property itself for a
+  // single property). Uses the PARENT property slug, not the current room's
+  // own slug, so this still reflects "does this property have calendars set
+  // up anywhere" even while browsing an individual room page - see
+  // fetchIcalCalendarsFromDB's own comment for why that distinction matters.
+  const [icalCalendars, setIcalCalendars] = useState<{ id: number; service_name: string }[]>([]);
+  const [isSyncingIcal, setIsSyncingIcal] = useState(false);
+  const { propertySlug: icalPropertySlug } = getPropertyAndRoomSlugs();
+
+  useEffect(() => {
+    fetchIcalCalendarsFromDB(icalPropertySlug).then(setIcalCalendars);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [icalPropertySlug]);
+
+  const handleSyncAllCalendars = async () => {
+    if (icalCalendars.length === 0 || isSyncingIcal) return;
+    setIsSyncingIcal(true);
+    const { successCount, total } = await syncAllIcalCalendarsInDB(icalPropertySlug, icalCalendars.map((c) => c.id));
+    setIsSyncingIcal(false);
+    showToast(`Calendar sync complete: ${successCount}/${total} channels synchronized`, {
+      type: successCount === total ? 'success' : 'warning',
+    });
+  };
 
   // Date strings for today and tomorrow
   const today = new Date();
@@ -203,6 +230,23 @@ export const Header: React.FC<HeaderProps> = ({
                   <Download className="w-2 h-2 text-white" strokeWidth={3} />
                 </span>
               </span>
+            </button>
+          )}
+
+          {/* Sync Calendars Button - only shown once at least one iCal feed
+              exists anywhere on this property (see icalCalendars effect
+              above). Spins the icon and disables itself while a sync is in
+              flight, same "Sync All" semantics as ICalSyncManager's own
+              button, just reachable from anywhere instead of only its page. */}
+          {icalCalendars.length > 0 && (
+            <button
+              onClick={handleSyncAllCalendars}
+              disabled={isSyncingIcal}
+              title={isSyncingIcal ? 'Syncing calendars...' : `Sync ${icalCalendars.length} calendar${icalCalendars.length !== 1 ? 's' : ''}`}
+              aria-label="Sync calendars"
+              className="header__sync-calendars relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
             </button>
           )}
 

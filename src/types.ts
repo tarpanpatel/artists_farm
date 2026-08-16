@@ -360,6 +360,10 @@ export interface CashDrawerSummary {
   role: string;
   cashCollected: number;
   cashExpenses: number;
+  // Portion of cashExpenses a staff member paid for personally (e.g. a kitchen
+  // purchase covered out of pocket) rather than out of a held cash drawer -
+  // used by the payout calculator to credit it back against their net drawer.
+  outOfPocketExpenses?: number;
   drawerHandovers: number;
   manualAdjustments: number;
   netBalance: number;
