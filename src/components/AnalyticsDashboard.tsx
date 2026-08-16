@@ -1639,20 +1639,30 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const expensesPL = ledgerData.filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const netPL = income - expensesPL;
+              const bookingsInMonth = receipts.filter(r => r.checkinDate && r.checkinDate.startsWith(ledgerMonth)).length;
+              const profitPerBooking = bookingsInMonth > 0 ? netPL / bookingsInMonth : 0;
               return (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
                       <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('total_income_label', 'Total Income')}</p>
                       <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{income.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+                    <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800 flex flex-col justify-between">
                       <p className="text-[10px] font-semibold text-red-800 dark:text-red-300 uppercase">{t('total_expenses_label', 'Total Expenses')}</p>
                       <p className="text-xl font-extrabold text-red-700 dark:text-red-400 mt-1">₹{expensesPL.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className={`p-4 rounded-xl border ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
+                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
                       <p className={`text-[10px] font-semibold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
                       <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${profitPerBooking >= 0 ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
+                      <p className={`text-[10px] font-semibold uppercase ${profitPerBooking >= 0 ? 'text-purple-800 dark:text-purple-300' : 'text-rose-800 dark:text-rose-300'}`}>
+                        {t('profit_per_booking_label', 'Profit per Booking')} <span className="opacity-70 normal-case">({bookingsInMonth} bookings)</span>
+                      </p>
+                      <p className={`text-xl font-extrabold mt-1 ${profitPerBooking >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        ₹{Math.abs(Math.round(profitPerBooking)).toLocaleString('en-IN')}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
