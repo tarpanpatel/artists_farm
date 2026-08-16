@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
@@ -13,7 +13,6 @@ import { PageHeader } from './PageHeader';
 import { DatePicker } from './DatePicker';
 import { t } from '../i18n/en';
 import { Input } from './Input';
-import { Textarea } from './Textarea';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
@@ -198,24 +197,6 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Item prices map from database
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
 
-  // Expense items list from database (replaces hardcoded array)
-  const [expenseItems, setExpenseItems] = useState<string[]>([]);
-
-  interface ExpenseItem {
-    id: number;
-    label: string;
-    category: string;
-    default_amount: number;
-    is_system_default: boolean;
-  }
-
-  interface CategoryGroup {
-    [key: string]: ExpenseItem[];
-  }
-
-  // Structured expense data from get_misc_catalog
-  const [, setExpensesByCategory] = useState<CategoryGroup>({});
-
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
   const [editingCell, setEditingCell] = useState<{ id: string; field: 'date' | 'amount' } | null>(null);
@@ -229,38 +210,54 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch prices and item list from DB on mount
+  // Fetch prices from DB on mount
   useEffect(() => {
     fetchExpenseItemPricesFromDB().then((prices) => {
       if (prices && Object.keys(prices).length > 0) {
         setItemPrices(prices);
       }
     });
-
-    // Fetch from get_misc_catalog endpoint
-    fetch('/php/api/router.php?action=get_misc_catalog', {
-      credentials: 'include',
-    })
-      .then(res => res.json())
-      .then(data => {
-        if ((data.success || data.status === 'success') && data.data) {
-          setExpensesByCategory(data.data);
-          // Flatten to get all item labels for autocomplete
-          const allItems = Object.values(data.data)
-            .flat()
-            .map((item: any) => item.label)
-            .sort();
-          setExpenseItems(allItems);
-          // Build price map
-          const prices: Record<string, number> = {};
-          Object.values(data.data).flat().forEach((item: any) => {
-            prices[item.label] = item.default_amount;
-          });
-          setItemPrices(prev => ({ ...prev, ...prices }));
-        }
-      })
-      .catch(err => console.error('Failed to fetch expense categories:', err));
   }, []);
+
+  // Description autocomplete, grouped by this form's own Cost Category
+  // Group ('Other'/'Bills'/'Staff Advance'/'Maintenance'/'Kitchen') and
+  // derived from this property's own past expenses (pettyCash, already
+  // loaded via useFinance()) - not get_misc_catalog, which is a completely
+  // different, guest-facing catalog (Guest Charges/Transport/Event &
+  // Services/...) with no correspondence to this form's categories at all.
+  // That mismatch is why selecting "Other" used to suggest things like
+  // "Extra Bed / Mattress" and "Airport Pick-up" - guest misc-charge
+  // labels, not operational expense descriptions. Self-building: as
+  // expenses get logged under a category, their descriptions become
+  // future suggestions for that same category.
+  // Some properties still have expenses logged under category labels that
+  // predate this form's current 5-option dropdown (e.g. 'Miscellaneous',
+  // 'Utilities', 'Transport', 'Kitchen Purchase' from before it was
+  // trimmed to Other/Bills/Staff Advance/Maintenance/Kitchen) - map those
+  // onto their nearest current bucket so old history still surfaces as
+  // suggestions instead of silently going dark under the new labels.
+  const normalizeCostCategory = (raw: string): string => {
+    const cat = (raw || '').trim();
+    if (cat === 'Miscellaneous' || cat === 'Transport') return 'Other';
+    if (cat === 'Utilities') return 'Bills';
+    if (cat === 'Kitchen Purchase') return 'Kitchen';
+    return cat || 'Other';
+  };
+
+  const expenseItemsByCategory = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    pettyCash.forEach((e: any) => {
+      const cat = normalizeCostCategory(e.category || e.costCategory);
+      const desc = (e.description || '').trim();
+      if (!desc) return;
+      if (!map[cat]) map[cat] = [];
+      if (!map[cat].includes(desc)) map[cat].push(desc);
+    });
+    Object.keys(map).forEach((k) => map[k].sort());
+    return map;
+  }, [pettyCash]);
+
+  const expenseItems = expenseItemsByCategory[formState.category] || [];
 
   // Derive list of unique months in entries for dropdown
   const uniqueMonths = Array.from(new Set(pettyCash.map(e => e.date.substring(0, 7)))).sort().reverse();
@@ -651,8 +648,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   placeholder={t('description_search_placeholder', 'Type to search items... (e.g., MCB, Petrol, Water Bill)')}
                 />
 
-                {/* Interactive Auto-suggestions Dropdown Menu (only for 'Other' category) */}
-                {showSuggestions && formState.category === 'Other' && (
+                {/* Interactive Auto-suggestions Dropdown Menu - expenseItems is
+                    already scoped to the selected Cost Category Group (see
+                    expenseItemsByCategory above), so this doesn't need its own
+                    category restriction on top of that. */}
+                {showSuggestions && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                     {expenseItems.filter(item =>
                       item.toLowerCase().includes(formState.description.toLowerCase().trim())
@@ -686,16 +686,23 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           )}
 
-          <div>
-            <Input
-              label={t('more_information_label', '& More Information (If Any)')}
-              type="text"
-              value={formState.moreInfoNotes}
-              onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
-              placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
-              className="font-medium"
-            />
-          </div>
+          {/* Only shown for Kitchen & Supplies - there "Details Descriptions" is
+              an item picker (StyledSelect), not free text, so this is the only
+              place left to add a note. Every other category already has a free-text
+              Details Descriptions field, and a second text field right below it
+              serving the same purpose was just a redundant duplicate. */}
+          {formState.category === 'Kitchen' && (
+            <div>
+              <Input
+                label={t('more_information_label', '& More Information (If Any)')}
+                type="text"
+                value={formState.moreInfoNotes}
+                onChange={e => dispatch({ type: 'SET_FIELD', field: 'moreInfoNotes', value: e.target.value })}
+                placeholder={t('optional_notes_placeholder', 'Optional contextual notes...')}
+                className="font-medium"
+              />
+            </div>
+          )}
 
           {/* Always 2 columns, even on mobile - same reasoning as the
               date/category row above. Kitchen & Supplies uses the second
