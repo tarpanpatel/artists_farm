@@ -43,6 +43,7 @@ interface FormState {
   // also needs to sync req_catalog stock - see handleSubmit).
   kitchenQuantity: number | '';
   kitchenUnit: string;
+  isStaffAdvanceChecked?: boolean;
 }
 
 type FormAction =
@@ -69,6 +70,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isOutofPocketChecked: false,
         kitchenQuantity: '',
         kitchenUnit: '',
+        isStaffAdvanceChecked: true,
       };
     default:
       return state;
@@ -105,6 +107,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     paymentScreenshotUrl: '',
     kitchenQuantity: '',
     kitchenUnit: '',
+    isStaffAdvanceChecked: true,
   }));
   const isAmountEntered = Boolean(formState.amount && Number(formState.amount) > 0);
   const [financialHandlers, setFinancialHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
@@ -701,7 +704,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     // but never looks at farm_utility_expenses/petty cash) - otherwise an
     // advance logged here would leave via the ledger correctly but the
     // staff member would still show as owed their FULL salary at month-end.
-    if (formState.category === 'Staff Advance') {
+    if (formState.category === 'Staff Advance' && formState.isStaffAdvanceChecked !== false) {
       const matchedStaff = staff.find(s => s.name === formState.description);
       addStaffAdvanceToDB({
         staffId: matchedStaff?.id || '',
@@ -898,7 +901,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 options={[
                   { value: 'Other', label: t('category_other_label', 'Other') },
                   { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
-                  { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
+                  { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
                   { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                 ]}
               />
@@ -928,25 +931,39 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 )}
               </div>
             ) : formState.category === 'Staff Advance' ? (
-              <div>
-                {/* A real staff record, not free text - handleSubmit matches
-                    this value against `staff` by name to also write a
-                    staff_advances row, which is what actually nets this
-                    advance against that person's month-end payout (Team tab's
-                    Payroll & Payee Control Center). Free text here (e.g. a
-                    role label like "Cook salary" from the suggestions list,
-                    or a generic "Cash Advance") would silently break that
-                    netting, so this is a picker instead of the usual
-                    Details Descriptions text field - same reasoning as
-                    Kitchen & Supplies' item picker above. */}
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
-                <StyledSelect
-                  searchable
-                  value={formState.description}
-                  onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
-                  placeholder="Select who the advance is for..."
-                  options={staff.map(s => ({ value: s.name, label: s.name }))}
-                />
+              <div className="space-y-3">
+                <div>
+                  {/* A real staff record, not free text - handleSubmit matches
+                      this value against `staff` by name to also write a
+                      staff_advances row, which is what actually nets this
+                      advance against that person's month-end payout (Team tab's
+                      Payroll & Payee Control Center). Free text here (e.g. a
+                      role label like "Cook salary" from the suggestions list,
+                      or a generic "Cash Advance") would silently break that
+                      netting, so this is a picker instead of the usual
+                      Details Descriptions text field - same reasoning as
+                      Kitchen & Supplies' item picker above. */}
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Staff Member *</label>
+                  <StyledSelect
+                    searchable
+                    value={formState.description}
+                    onChange={val => dispatch({ type: 'SET_FIELD', field: 'description', value: val })}
+                    placeholder="Select who the salary or advance is for..."
+                    options={staff.map(s => ({ value: s.name, label: s.name }))}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="is-staff-advance-checkbox"
+                    checked={formState.isStaffAdvanceChecked !== false}
+                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'isStaffAdvanceChecked', value: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                  />
+                  <label htmlFor="is-staff-advance-checkbox" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                    Mark as Advance (Deductible from final month-end salary)
+                  </label>
+                </div>
               </div>
             ) : (
               <div>
@@ -1527,7 +1544,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   options={[
                     { value: 'Other', label: t('category_other_label', 'Other') },
                     { value: 'Bills', label: t('category_bills_label', 'Bills & Utilities') },
-                    { value: 'Staff Advance', label: t('category_staff_advance_label', 'Staff Advance') },
+                    { value: 'Staff Advance', label: t('category_staff_salaries_adv_label', 'Staff Salaries & Adv.') },
                     { value: 'Kitchen', label: t('category_kitchen_label', 'Kitchen & Supplies') },
                   ]}
                 />
