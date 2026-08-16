@@ -30,7 +30,6 @@ export const KITCHEN_MODULE_NAV_KEYS = new Set([
   'deficit_shortfalls_log',
   'edit_food_menu',
   'edit_kitchen_stock',
-  'purchase_analytics',
 ]);
 
 export function isKitchenModuleNavItem(item: { tabKey: string; uniqueKey?: string }): boolean {

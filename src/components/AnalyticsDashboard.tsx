@@ -49,7 +49,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 }) => {
   const { orders, ordersLoading } = useKitchenContext();
   const { pettyCash } = useFinance();
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'food' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'kitchen' | 'expenses' | 'profit_loss' | 'balance_sheet' | 'cash_flow'>(() => {
     return activeMenuItemKey === 'purchase_analytics' ? 'expenses' : 'overview';
   });
 
@@ -59,7 +59,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // render empty states) — bounce back to Overview if the module gets
   // disabled while one of those tabs is active.
   useEffect(() => {
-    if (!kitchenModuleEnabled && (activeTab === 'food' || activeTab === 'kitchen')) {
+    if (!kitchenModuleEnabled && activeTab === 'kitchen') {
       setActiveTab('overview');
     }
   }, [kitchenModuleEnabled, activeTab]);
@@ -416,19 +416,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </button>
         {kitchenModuleEnabled && (
           <button
-            onClick={() => setActiveTab('food')}
-            className={`btn-analytics-tab-food px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'food'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-            }`}
-          >
-            <Utensils className="w-4 h-4" />
-            <span>{t('food_pos_tab_label', 'Food POS')}</span>
-          </button>
-        )}
-        {kitchenModuleEnabled && (
-          <button
             onClick={() => setActiveTab('kitchen')}
             className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'kitchen'
@@ -437,7 +424,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             }`}
           >
             <Utensils className="w-4 h-4" />
-            <span>{t('kitchen_tab_label', 'Kitchen')}</span>
+            <span>{t('kitchen_food_pos_tab_label', 'Kitchen & Food POS')}</span>
           </button>
         )}
         <button
@@ -641,35 +628,72 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 3: FOOD POS */}
-      {activeTab === 'food' && (
-        <div className="analytics-food space-y-6">
-          <div className="analytics-food__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="analytics-dashboard__subtitle analytics-food__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <span>{t('food_menu_performance_heading', 'Food Menu Performance & Most Popular Dish Analytics')}</span>
+      {/* TAB 4: KITCHEN & FOOD POS */}
+      {activeTab === 'kitchen' && (
+        <div className="analytics-kitchen space-y-6">
+          <div className="analytics-kitchen__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-5">
+            <h3 className="analytics-dashboard__subtitle analytics-kitchen__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-2">
+              <Utensils className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>{t('kitchen_sales_purchases_profit_heading', 'Kitchen Sales, Purchases & Net Profit')}</span>
             </h3>
 
-            <div className="grid grid-cols-1 gap-6">
-              <div>
-                <ReactApexChart options={foodBarOptions} series={foodBarSeries} type="bar" height={360} />
+            {/* KPI Summary Rows */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-semibold uppercase tracking-wider">{t('kitchen_pos_sales_income_label', 'Kitchen POS Sales Income')}</p>
+                <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-emerald-600 mt-1">{t('from_guest_dining_orders_subtext', 'From guest dining orders')}</p>
               </div>
 
-              <div className="overflow-x-auto">
-                  <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--room-performance">
-                    <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                      <tr className="analytics-dashboard__table-header-row">
-                        <th className="p-3 analytics-dashboard__table-header-cell">{t('rank_column', 'Rank')}</th>
-                        <th className="p-3 analytics-dashboard__table-header-cell">{t('menu_item_name_column', 'Menu Item Name')}</th>
-                        <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('total_quantity_sold_column', 'Total Quantity Sold')}</th>
-                        <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_generated_revenue_column', 'Total Generated Revenue')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 shadow-2xs">
+                <p className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold uppercase tracking-wider">{t('kitchen_purchase_outflows_label', 'Kitchen Purchase Outflows')}</p>
+                <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-amber-600 mt-1">{t('groceries_gas_supplies_subtext', 'Groceries, gas, and supplies spend')}</p>
+              </div>
+
+              <div className={`p-4 rounded-xl border shadow-2xs ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>{t('kitchen_net_profit_label', 'Kitchen Net Profit')}</p>
+                <p className={`text-2xl font-extrabold mt-1 ${kitchenNetProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>
+                  ₹{kitchenNetProfit.toLocaleString('en-IN')}
+                </p>
+                <p className="text-[10px] text-slate-500 mt-1">{t('kitchen_sales_minus_purchases_subtext', 'Kitchen Sales - Kitchen Purchases')}</p>
+              </div>
+            </div>
+
+            {/* Side-by-Side Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+              {/* Chart A: Food Menu Performance (60% width on desktop) */}
+              <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('food_menu_performance_heading', 'Food Menu Performance & Most Popular Dish Analytics')}</h4>
+                <ReactApexChart options={foodBarOptions} series={foodBarSeries} type="bar" height={300} />
+              </div>
+
+              {/* Chart B: Kitchen Sales vs Purchases (40% width on desktop) */}
+              <div className="lg:col-span-5 bg-slate-50/50 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{t('kitchen_sales_vs_purchases_heading', 'Sales vs Purchases Outflow')}</h4>
+                <ReactApexChart options={kitchenBarOptions} series={kitchenBarSeries} type="bar" height={300} />
+              </div>
+            </div>
+
+            {/* Unified Table Section */}
+            <div className="space-y-3">
+              <h4 className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-4">{t('popular_dishes_ranking_heading', 'Popular Dishes Sales Ranking')}</h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                <table className="datatable w-full text-left border-collapse analytics-dashboard__table">
+                  <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
+                    <tr className="analytics-dashboard__table-header-row">
+                      <th className="p-3 analytics-dashboard__table-header-cell">{t('rank_column', 'Rank')}</th>
+                      <th className="p-3 analytics-dashboard__table-header-cell">{t('dish_name_column', 'Dish Name')}</th>
+                      <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('times_ordered_column', 'Times Ordered')}</th>
+                      <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_revenue_rupees_column', 'Total Revenue (₹)')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
                     {sortedMenuItems.slice(0, 10).map(([itemName, data], index) => (
                       <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="analytics-dashboard__cell p-3 font-semibold text-slate-400">#{index + 1}</td>
                         <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{itemName}</td>
-                        <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count} {t('orders_count_suffix', 'orders')}</td>
+                        <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count}</td>
                         <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
@@ -679,7 +703,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           {ordersLoading ? (
                             <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading orders...</span>
                           ) : (
-                            t('no_food_orders_message', 'No food orders recorded yet.')
+                            t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')
                           )}
                         </td>
                       </tr>
@@ -687,77 +711,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: KITCHEN */}
-      {activeTab === 'kitchen' && (
-        <div className="analytics-kitchen space-y-6">
-          <div className="analytics-kitchen__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
-            <h3 className="analytics-dashboard__subtitle analytics-kitchen__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <span>{t('kitchen_sales_purchases_profit_heading', 'Kitchen Sales, Purchases & Net Profit')}</span>
-            </h3>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <ReactApexChart options={kitchenBarOptions} series={kitchenBarSeries} type="bar" height={320} />
-              </div>
-
-              <div className="space-y-4">
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                  <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold uppercase">{t('kitchen_pos_sales_income_label', 'Kitchen POS Sales Income')}</p>
-                  <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{kitchenRevenue.toLocaleString('en-IN')}</p>
-                  <p className="text-[10px] text-emerald-600 mt-1">{t('from_guest_dining_orders_subtext', 'From guest dining orders')}</p>
-                </div>
-
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs text-amber-800 dark:text-amber-300 font-semibold uppercase">{t('kitchen_purchase_outflows_label', 'Kitchen Purchase Outflows')}</p>
-                  <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 mt-1">₹{totalKitchenPurchaseCost.toLocaleString('en-IN')}</p>
-                  <p className="text-[10px] text-amber-600 mt-1">{t('groceries_gas_supplies_subtext', 'Groceries, gas, and supplies spend')}</p>
-                </div>
-
-                <div className={`p-4 rounded-xl border ${kitchenNetProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
-                  <p className={`text-xs font-semibold uppercase ${kitchenNetProfit >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>{t('kitchen_net_profit_label', 'Kitchen Net Profit')}</p>
-                  <p className={`text-2xl font-extrabold mt-1 ${kitchenNetProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-red-700 dark:text-red-400'}`}>
-                    ₹{kitchenNetProfit.toLocaleString('en-IN')}
-                  </p>
-                  <p className="text-[10px] text-slate-500 mt-1">{t('kitchen_sales_minus_purchases_subtext', 'Kitchen Sales - Kitchen Purchases')}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="datatable w-full text-left border-collapse analytics-dashboard__table analytics-dashboard__table--food">
-                <thead className="bg-slate-50 dark:bg-slate-900 font-semibold border-b border-slate-200 dark:border-slate-700 uppercase text-[10px] analytics-dashboard__table-header">
-                  <tr className="analytics-dashboard__table-header-row">
-                    <th className="p-3 analytics-dashboard__table-header-cell">{t('dish_name_column', 'Dish Name')}</th>
-                    <th className="p-3 text-center analytics-dashboard__table-header-cell">{t('times_ordered_column', 'Times Ordered')}</th>
-                    <th className="p-3 text-right analytics-dashboard__table-header-cell">{t('total_revenue_rupees_column', 'Total Revenue (₹)')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700 analytics-dashboard__table-body">
-                  {sortedMenuItems.slice(0, 10).map(([itemName, data]) => (
-                    <tr key={itemName} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                      <td className="analytics-dashboard__cell p-3 font-semibold text-slate-900 dark:text-white">{itemName}</td>
-                      <td className="analytics-dashboard__cell p-3 text-center font-semibold text-blue-600">{data.count}</td>
-                      <td className="analytics-dashboard__cell p-3 text-right font-extrabold text-emerald-600">₹{data.revenue.toLocaleString('en-IN')}</td>
-                    </tr>
-                  ))}
-                  {sortedMenuItems.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="analytics-dashboard__cell text-center p-6 text-slate-400">
-                        {ordersLoading ? (
-                          <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading orders...</span>
-                        ) : (
-                          t('no_kitchen_orders_message', 'No kitchen orders recorded yet.')
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>

@@ -162,7 +162,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'admin_control_overview' },
-        purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
+        purchase_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
         system_health: { tab: 'audit_logs', key: 'system_health' },
@@ -905,7 +905,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'stock_requests', 'fulfill_stock_req', 'deficit_shortfalls_log', 'stock_log',
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
-        'dashboard_analytics', 'purchase_analytics', 'past_receipts_log', 'data_export_center',
+        'dashboard_analytics', 'past_receipts_log', 'data_export_center',
         // 'ical_sync'/'ical_sync_manager' deliberately NOT here either - same
         // reasoning as 'edit_property' below: both legacy hashes now redirect
         // to 'edit_property' (see routeMap), and that page is room-scoped
@@ -964,7 +964,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         admin_control_overview: { tab: 'analytics', key: 'admin_control_overview' },
         dashboard_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         analytics: { tab: 'analytics', key: 'admin_control_overview' },
-        purchase_analytics: { tab: 'analytics', key: 'purchase_analytics' },
+        purchase_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         login_logs: { tab: 'audit_logs', key: 'login_logs' },
         system_health: { tab: 'audit_logs', key: 'system_health' },

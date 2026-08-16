@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   BarChart3,
-  ShoppingBag,
   Receipt,
   Sliders,
   Send,
@@ -55,14 +54,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       icon: BarChart3,
       color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
     },
-    {
-      uniqueKey: 'purchase_analytics',
-      tabKey: 'analytics',
-      title: t('purchase_analytics_heading', 'Purchase Analytics'),
-      description: t('purchase_analytics_desc', 'Analyze inventory purchases, category spending, supplier costs, and monthly stock trends.'),
-      icon: ShoppingBag,
-      color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
-    },
+
     {
       uniqueKey: 'past_receipts_log',
       tabKey: 'audit_logs',
