@@ -2603,6 +2603,9 @@ switch ($action) {
     case 'get_misc_catalog':
     case 'add_misc_charge_template':
     case 'delete_misc_charge_template':
+    case 'get_property_custom_expenses':
+    case 'add_property_custom_expense':
+    case 'delete_property_custom_expense':
     case 'get_system_expense_catalog':
     case 'add_system_expense_item':
     case 'delete_system_expense_item':

@@ -795,6 +795,70 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'get_property_custom_expenses':
+            try {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS `property_custom_expenses` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `property_id` VARCHAR(100) NOT NULL,
+                    `label` VARCHAR(255) NOT NULL,
+                    `category` VARCHAR(100) NOT NULL,
+                    `default_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    `description` TEXT DEFAULT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY `idx_prop_label_cat` (`property_id`, `label`, `category`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                $stmt = $pdo->prepare("SELECT id, label, default_amount, category, description FROM property_custom_expenses WHERE property_id = ? ORDER BY category ASC, label ASC");
+                $stmt->execute([$propertyId]);
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_property_custom_expense':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $label = trim($input['label'] ?? '');
+                    $category = trim($input['category'] ?? 'Other');
+                    $amount = $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00;
+                    $description = trim($input['description'] ?? '');
+                    $id = $input['id'] ?? null;
+
+                    if ($label === '') {
+                        echo json_encode(['status' => 'error', 'message' => 'Item name is required']);
+                        break;
+                    }
+
+                    if ($id) {
+                        $stmt = $pdo->prepare("UPDATE property_custom_expenses SET label = ?, category = ?, default_amount = ?, description = ? WHERE id = ? AND property_id = ?");
+                        $stmt->execute([$label, $category, $amount, $description, $id, $propertyId]);
+                    } else {
+                        $stmt = $pdo->prepare("INSERT INTO property_custom_expenses (property_id, label, category, default_amount, description) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE category = VALUES(category), default_amount = VALUES(default_amount), description = VALUES(description)");
+                        $stmt->execute([$propertyId, $label, $category, $amount, $description]);
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'Property custom expense saved successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_property_custom_expense':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM property_custom_expenses WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$input['id'] ?? null, $propertyId]);
+                    echo json_encode(['status' => 'success', 'message' => 'Property custom expense deleted successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid finance action']);

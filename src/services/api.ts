@@ -666,6 +666,50 @@ export async function fetchBillsCatalogFromDB(): Promise<{ id: number; label: st
   return [];
 }
 
+export async function fetchPropertyCustomExpensesFromDB(): Promise<{ id: number; label: string; default_amount: number; category: string; description?: string }[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_property_custom_expenses`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch property custom expenses from DB:', err);
+  }
+  return [];
+}
+
+export async function addPropertyCustomExpenseDB(item: any): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_property_custom_expense`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to save property custom expense in DB:', err);
+    return false;
+  }
+}
+
+export async function deletePropertyCustomExpenseDB(id: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_property_custom_expense`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete property custom expense in DB:', err);
+    return false;
+  }
+}
+
+
 
 export async function fetchMaterialCategoriesFromDB(): Promise<{ id: number; name: string; is_ingredient: number }[]> {
   try {

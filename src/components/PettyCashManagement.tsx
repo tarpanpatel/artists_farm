@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
-import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2 } from 'lucide-react';
+import { X, Search, Edit2, FileText, ImageIcon, Landmark, Loader2, Clock, User, Scale, Building2, FolderOpen, Camera, Plus, Trash2, Settings } from 'lucide-react';
 import DataTable from 'react-data-table-component';
 import { PettyCashEntry } from '../types';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, addPayeeDB, deletePayeeDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB, fetchSystemExpenseCatalogFromDB, fetchBillsCatalogFromDB, addStaffAdvanceToDB } from '../services/api';
+import { fetchExpenseItemPricesFromDB, fetchStaffUsersFromDB, addDrawerEntryToDB, recordOutOfPocketCredit, fetchPayeesFromDB, addPayeeDB, deletePayeeDB, fetchKitchenPurchasesFromDB, createKitchenPurchaseDB, deleteKitchenPurchaseDB, fetchSystemExpenseCatalogFromDB, fetchBillsCatalogFromDB, addStaffAdvanceToDB, fetchPropertyCustomExpensesFromDB, addPropertyCustomExpenseDB, deletePropertyCustomExpenseDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StyledSelect } from './StyledSelect';
@@ -151,6 +151,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     });
   }, []);
 
+  const [customExpenses, setCustomExpenses] = useState<{ id: number; label: string; default_amount: number; category: string; description?: string }[]>([]);
+  const refreshCustomExpenses = () => {
+    fetchPropertyCustomExpensesFromDB().then((data) => {
+      setCustomExpenses(data || []);
+    });
+  };
+  useEffect(() => {
+    refreshCustomExpenses();
+  }, []);
+
   // Payee Manager Modal & CRUD state
   const [isPayeeManagerOpen, setIsPayeeManagerOpen] = useState(false);
   const [editingPayee, setEditingPayee] = useState<any | null>(null);
@@ -222,6 +232,102 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       showToast('Error deleting payee', { type: 'error' });
     } finally {
       setIsSavingPayee(false);
+    }
+  };
+
+  // Property Custom Expense Items CRUD state
+  const [isCustomItemsOpen, setIsCustomItemsOpen] = useState(false);
+  const [editingCustomItem, setEditingCustomItem] = useState<any | null>(null);
+  const [isAddingCustomItem, setIsAddingCustomItem] = useState(false);
+  const [searchCustomQuery, setSearchCustomQuery] = useState('');
+  const [newCustomItemForm, setNewCustomItemForm] = useState({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+  const [isSavingCustomItem, setIsSavingCustomItem] = useState(false);
+
+  const handleSaveCustomItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const label = editingCustomItem ? editingCustomItem.label.trim() : newCustomItemForm.label.trim();
+    const category = editingCustomItem ? editingCustomItem.category : newCustomItemForm.category;
+    const defaultAmount = parseFloat(editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount) || 0;
+    const description = editingCustomItem ? editingCustomItem.description : newCustomItemForm.description;
+
+    if (!label) {
+      showToast('Item name is required', { type: 'error' });
+      return;
+    }
+
+    try {
+      setIsSavingCustomItem(true);
+      const payload = {
+        id: editingCustomItem ? editingCustomItem.id : null,
+        label,
+        category,
+        default_amount: defaultAmount,
+        description,
+      };
+
+      const success = await addPropertyCustomExpenseDB(payload);
+      if (success) {
+        showToast(editingCustomItem ? 'Custom item updated!' : 'Custom item registered!', { type: 'success' });
+        setEditingCustomItem(null);
+        setIsAddingCustomItem(false);
+        setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+        refreshCustomExpenses();
+      } else {
+        showToast('Failed to save custom item', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Error saving custom item', { type: 'error' });
+    } finally {
+      setIsSavingCustomItem(false);
+    }
+  };
+
+  const handleDeleteCustomItem = async (id: number, label: string) => {
+    const confirmed = await confirm({
+      title: 'Delete Custom Item',
+      message: `Delete custom item "${label}"? This will not affect existing expense logs.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      setIsSavingCustomItem(true);
+      const success = await deletePropertyCustomExpenseDB(id);
+      if (success) {
+        showToast('Custom item deleted successfully.', { type: 'success' });
+        if (editingCustomItem && editingCustomItem.id === id) {
+          setEditingCustomItem(null);
+        }
+        refreshCustomExpenses();
+      } else {
+        showToast('Failed to delete custom item', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Error deleting custom item', { type: 'error' });
+    } finally {
+      setIsSavingCustomItem(false);
+    }
+  };
+
+  const handleAddCustomItemFromInput = async (labelVal: string) => {
+    if (!labelVal) return;
+    try {
+      const payload = {
+        label: labelVal,
+        category: formState.category,
+        default_amount: 0,
+        description: 'Auto-registered custom item from input'
+      };
+      const success = await addPropertyCustomExpenseDB(payload);
+      if (success) {
+        showToast(`"${labelVal}" registered to your custom items list!`, { type: 'success' });
+        refreshCustomExpenses();
+      } else {
+        showToast('Failed to register custom item', { type: 'error' });
+      }
+    } catch (err) {
+      showToast('Error registering custom item', { type: 'error' });
     }
   };
 
@@ -393,9 +499,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       const desc = (item.label || '').trim();
       if (desc && !map['Bills'].includes(desc)) map['Bills'].unshift(desc);
     });
+    // Merge property-specific custom expenses
+    customExpenses.forEach((item) => {
+      const cat = item.category || 'Other';
+      if (!map[cat]) map[cat] = [];
+      const desc = (item.label || '').trim();
+      if (desc && !map[cat].includes(desc)) map[cat].push(desc);
+    });
     Object.keys(map).forEach((k) => map[k].sort());
     return map;
-  }, [pettyCash, systemExpenseCatalog, billsCatalog]);
+  }, [pettyCash, systemExpenseCatalog, billsCatalog, customExpenses]);
 
   const expenseItems = expenseItemsByCategory[formState.category] || [];
 
@@ -836,7 +949,18 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             </div>
           ) : (
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('details_descriptions_label', 'Details Descriptions *')}</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-0">
+                  {t('details_descriptions_label', 'Details Descriptions *')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomItemsOpen(true)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5" /> Manage Custom Items
+                </button>
+              </div>
               <div className="relative">
                 <Input
                   type="text"
@@ -881,6 +1005,18 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     ).length === 0 && (
                       <div className="p-3 text-slate-400 italic text-center">
                         {t('no_matching_items_message', 'No matching pre-stored items found. You can still type a custom description!')}
+                      </div>
+                    )}
+                    {formState.description.trim() !== '' && !expenseItems.some(item => item.toLowerCase() === formState.description.toLowerCase().trim()) && (
+                      <div
+                        onMouseDown={() => {
+                          handleAddCustomItemFromInput(formState.description.trim());
+                          setShowSuggestions(false);
+                        }}
+                        className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
+                      >
+                        <span>✨ Register "{formState.description.trim()}" to Custom Items list</span>
+                        <Plus className="w-4.5 h-4.5" />
                       </div>
                     )}
                   </div>
@@ -1653,6 +1789,215 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                                   <button
                                     onClick={() => handleDeletePayee(p.id, p.name)}
                                     disabled={isSavingPayee}
+                                    className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
+                                  >
+                                    <Trash2 className="w-3 h-3" /> Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROPERTY CUSTOM ITEMS LEDGER MODAL */}
+      {isCustomItemsOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Property Custom Expense Items</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Manage your property's custom expense descriptions. These do not affect root default expenses.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCustomItemsOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* Add / Edit Custom Item Form Area */}
+              {isAddingCustomItem || editingCustomItem ? (
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-4">
+                  <h4 className="font-bold text-slate-850 dark:text-slate-200 text-sm flex items-center gap-1.5">
+                    {editingCustomItem ? <Edit2 className="w-4 h-4 text-blue-600" /> : <Plus className="w-4 h-4 text-blue-600" />}
+                    {editingCustomItem ? 'Edit Custom Item Settings' : 'Create Custom Expense Item'}
+                  </h4>
+                  <form onSubmit={handleSaveCustomItem} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Item Name / Label *</label>
+                        <Input
+                          type="text"
+                          required
+                          value={editingCustomItem ? editingCustomItem.label : newCustomItemForm.label}
+                          onChange={e => {
+                            if (editingCustomItem) {
+                              setEditingCustomItem({ ...editingCustomItem, label: e.target.value });
+                            } else {
+                              setNewCustomItemForm({ ...newCustomItemForm, label: e.target.value });
+                            }
+                          }}
+                          placeholder="e.g. Special Cleaning Agent, Local Transport Fee"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Cost Category Group</label>
+                        <StyledSelect
+                          value={editingCustomItem ? editingCustomItem.category : newCustomItemForm.category}
+                          onChange={val => {
+                            if (editingCustomItem) {
+                              setEditingCustomItem({ ...editingCustomItem, category: val });
+                            } else {
+                              setNewCustomItemForm({ ...newCustomItemForm, category: val });
+                            }
+                          }}
+                          options={[
+                            { value: 'Other', label: 'Other' },
+                            { value: 'Bills', label: 'Bills' },
+                            { value: 'Kitchen', label: 'Kitchen' },
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Default Amount (Optional)</label>
+                        <Input
+                          type="number"
+                          step="any"
+                          value={editingCustomItem ? editingCustomItem.defaultAmount : newCustomItemForm.defaultAmount}
+                          onChange={e => {
+                            if (editingCustomItem) {
+                              setEditingCustomItem({ ...editingCustomItem, defaultAmount: e.target.value });
+                            } else {
+                              setNewCustomItemForm({ ...newCustomItemForm, defaultAmount: e.target.value });
+                            }
+                          }}
+                          placeholder="e.g. 150.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Short Notes / Description (Optional)</label>
+                        <Input
+                          type="text"
+                          value={editingCustomItem ? (editingCustomItem.description || '') : newCustomItemForm.description}
+                          onChange={e => {
+                            if (editingCustomItem) {
+                              setEditingCustomItem({ ...editingCustomItem, description: e.target.value });
+                            } else {
+                              setNewCustomItemForm({ ...newCustomItemForm, description: e.target.value });
+                            }
+                          }}
+                          placeholder="e.g. Daily transport fare"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 justify-end border-t border-slate-200 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCustomItem(null);
+                          setIsAddingCustomItem(false);
+                          setNewCustomItemForm({ label: '', category: 'Other', defaultAmount: '0.00', description: '' });
+                        }}
+                        className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingCustomItem}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer transition-colors"
+                      >
+                        {isSavingCustomItem ? 'Saving...' : editingCustomItem ? 'Save Updates' : 'Create Item'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200 dark:border-slate-850">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <Input
+                      type="text"
+                      value={searchCustomQuery}
+                      onChange={e => setSearchCustomQuery(e.target.value)}
+                      placeholder="Search items by name..."
+                      className="pl-9"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setIsAddingCustomItem(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Custom Item
+                  </button>
+                </div>
+              )}
+
+              {/* Custom Items Table / List Grid */}
+              {!isAddingCustomItem && !editingCustomItem && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 font-bold uppercase border-b border-slate-200 dark:border-slate-700">
+                          <th className="px-4 py-3">Item name</th>
+                          <th className="px-4 py-3">Category</th>
+                          <th className="px-4 py-3 text-right">Default Amount</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No custom items found.</td>
+                          </tr>
+                        ) : (
+                          customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).map(p => (
+                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-slate-900 dark:text-white">{p.label}</span>
+                                  {p.description && <span className="text-[10px] text-slate-450 dark:text-slate-400">{p.description}</span>}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded font-semibold text-[10px]">{p.category}</span>
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-medium text-slate-750 dark:text-slate-350">
+                                ₹{p.default_amount}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => setEditingCustomItem({ id: p.id, label: p.label, category: p.category, defaultAmount: p.default_amount.toString(), description: p.description || '' })}
+                                    className="bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-sky-100 dark:border-sky-900/60"
+                                  >
+                                    <Edit2 className="w-3 h-3" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCustomItem(p.id, p.label)}
+                                    disabled={isSavingCustomItem}
                                     className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-100 dark:border-red-900/60"
                                   >
                                     <Trash2 className="w-3 h-3" /> Delete
