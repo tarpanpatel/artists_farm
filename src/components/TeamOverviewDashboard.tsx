@@ -80,62 +80,45 @@ export const TeamOverviewDashboard: React.FC<TeamOverviewDashboardProps> = ({
   };
 
   return (
-    <div className="team-overview-dashboard space-y-2 md:space-y-6">
+    <div className="team-overview-dashboard space-y-6">
       <PageHeader
         title={t('team_overview_title', 'Team Overview')}
         subtitle={t('team_overview_subtitle', 'Central launchpad for staff attendance, directory management, payroll, and role-based permissions.')}
       />
 
-      <div className="team-overview-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
+      <div className="team-overview-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {visibleCards.map((card) => {
           const IconComponent = card.icon;
           return (
             <div
               key={card.uniqueKey}
-              className="team-overview-dashboard__card bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group"
+              className="team-overview-dashboard__card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group"
             >
-              {/* Mobile Layout */}
-              <div className="flex md:hidden items-center justify-between gap-2 w-full">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <h3 className="team-overview-dashboard__subtitle text-xs font-semibold text-slate-900 dark:text-white truncate">{card.title}</h3>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0 font-semibold px-2.5 py-1 cursor-pointer text-[11px] h-7"
-                  onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
-                  rightIcon={<ArrowRight className="w-3 h-3" />}
-                >
-                  <span>{t('open_button', 'Open')}</span>
-                </Button>
-              </div>
-
-              {/* Desktop Layout */}
-              <div className="hidden md:flex flex-col justify-between h-full space-y-4">
-                <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
                   <div className={`p-3 rounded-xl border w-fit ${card.color} transition-transform group-hover:scale-105`}>
                     <IconComponent className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="team-overview-dashboard__subtitle text-base md:text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {card.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
-                  </div>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    block
-                    className="justify-center gap-2 font-semibold cursor-pointer"
-                    onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
-                    rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
-                  >
-                    <span>{t('open_prefix', 'Open')} {card.title}</span>
-                  </Button>
+                <div>
+                  <h3 className="team-overview-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{card.description}</p>
                 </div>
+              </div>
+
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  block
+                  className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"
+                  onClick={() => handleNavigate(card.tabKey, card.uniqueKey)}
+                  rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+                >
+                  <span>{t('open_prefix', 'Open')} {card.title}</span>
+                </Button>
               </div>
             </div>
           );

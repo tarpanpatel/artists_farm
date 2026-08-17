@@ -192,10 +192,18 @@ function AppBody({ preloadedData }: AppBodyProps) {
       // list. uniqueKey (not urlSlug) is the actual routing key everything else
       // in the app keys off of; urlSlug is only what the browser bar shows.
       if (hash && preloadedData.navItems) {
-        const matched = preloadedData.navItems.find((item) => item.urlSlug === hash);
+        const matched = preloadedData.navItems.find((item) => item.urlSlug === hash || item.uniqueKey === hash);
         if (matched) {
-          const key = matched.uniqueKey || matched.tabKey;
-          const tab = routeMap[key]?.tab || (matched.tabKey as TabType) || 'dashboard';
+          let key = matched.uniqueKey || matched.tabKey;
+          let tab = routeMap[key]?.tab || (matched.tabKey as TabType) || 'dashboard';
+
+          // Section header items (e.g. custom_nav-719248 or nav-header-*) map to section launchpads
+          if (matched.itemType === 'header' || key.startsWith('custom_nav-') || key.startsWith('nav-header-')) {
+            if (tab === 'staff') key = 'team_overview';
+            else if (tab === 'analytics') key = 'admin_control_overview';
+            else if (tab === 'kitchen') key = 'kitchen_overview';
+          }
+
           return { tab, key };
         }
       }
@@ -1829,7 +1837,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (activeMenuItemKey === 'kitchen_overview' || activeMenuItemKey === 'kitchen') && (
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && (activeMenuItemKey === 'kitchen_overview' || activeMenuItemKey === 'kitchen' || activeMenuItemKey.startsWith('custom_nav-') || activeMenuItemKey.startsWith('nav-header-')) && (
                 <ErrorBoundary section="Kitchen Dashboard">
                   <KitchenDashboard
                     onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'kitchen', uniqueKey)}
@@ -1838,7 +1846,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'kitchen' && activeMenuItemKey !== 'kitchen_overview' && activeMenuItemKey !== 'kitchen' && (
+              {!selectedRoomSlugOverride && activeTab === 'kitchen' && activeMenuItemKey !== 'kitchen_overview' && activeMenuItemKey !== 'kitchen' && !activeMenuItemKey.startsWith('custom_nav-') && !activeMenuItemKey.startsWith('nav-header-') && (
                 <ErrorBoundary section="Kitchen Management">
                   <KitchenManagement
                     guests={guests}
@@ -1891,7 +1899,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'staff' && (activeMenuItemKey === 'team_overview' || activeMenuItemKey === 'team') && (
+              {!selectedRoomSlugOverride && activeTab === 'staff' && (activeMenuItemKey === 'team_overview' || activeMenuItemKey === 'team' || activeMenuItemKey.startsWith('custom_nav-') || activeMenuItemKey.startsWith('nav-header-')) && (
                 <ErrorBoundary section="Team Overview">
                   <TeamOverviewDashboard
                     onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'staff', uniqueKey)}
@@ -1900,7 +1908,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'staff' && activeMenuItemKey !== 'team_overview' && activeMenuItemKey !== 'team' && (
+              {!selectedRoomSlugOverride && activeTab === 'staff' && activeMenuItemKey !== 'team_overview' && activeMenuItemKey !== 'team' && !activeMenuItemKey.startsWith('custom_nav-') && !activeMenuItemKey.startsWith('nav-header-') && (
                 <ErrorBoundary section="Staff Management">
                   <StaffManagement
                     activeMenuItemKey={activeMenuItemKey}
@@ -1914,7 +1922,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'analytics' && (activeMenuItemKey === 'admin_control_overview' || activeMenuItemKey === 'admin_control_group') && (
+              {!selectedRoomSlugOverride && activeTab === 'analytics' && (activeMenuItemKey === 'admin_control_overview' || activeMenuItemKey === 'admin_control_group' || activeMenuItemKey.startsWith('custom_nav-') || activeMenuItemKey.startsWith('nav-header-')) && (
                 <ErrorBoundary section="Admin Control Overview">
                   <AdminControlOverviewDashboard
                     onNavigate={(uniqueKey, tabKey) => handleNavigateTab((tabKey as TabType) || 'analytics', uniqueKey)}
@@ -1923,7 +1931,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && activeTab === 'analytics' && activeMenuItemKey !== 'admin_control_overview' && activeMenuItemKey !== 'admin_control_group' && (
+              {!selectedRoomSlugOverride && activeTab === 'analytics' && activeMenuItemKey !== 'admin_control_overview' && activeMenuItemKey !== 'admin_control_group' && !activeMenuItemKey.startsWith('custom_nav-') && !activeMenuItemKey.startsWith('nav-header-') && (
                 <ErrorBoundary section="Analytics Dashboard">
                   <AnalyticsDashboard
                     receipts={receipts}

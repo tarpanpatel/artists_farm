@@ -54,7 +54,6 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
     description: string;
     icon: React.ComponentType<any>;
     color: string;
-    buttonVariant: 'primary' | 'secondary' | 'tertiary' | 'success' | 'danger' | 'warning';
     badgeText: string | null;
     badgeVariant: 'success' | 'danger' | 'warning' | 'info' | 'neutral';
     uniqueKey: string;
@@ -65,10 +64,9 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       title: t('take_food_order_heading', 'Take Food Order'),
       description: t('take_food_order_desc', 'Create new KOT orders, select tables/rooms, and send directly to kitchen.'),
       icon: UtensilsCrossed,
-      color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
-      buttonVariant: 'success',
+      color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
       badgeText: pendingOrdersCount > 0 ? `${pendingOrdersCount} Active` : null,
-      badgeVariant: 'success',
+      badgeVariant: 'info',
       uniqueKey: 'take_food_order',
       tabKey: 'kitchen',
     },
@@ -77,10 +75,9 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       title: t('kitchen_orders_heading', 'Kitchen Live Orders'),
       description: t('kitchen_orders_desc', 'Live Kitchen Display System (KDS) queue to track active KOT orders, cooking status, and prep.'),
       icon: CookingPot,
-      color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60',
-      buttonVariant: 'warning',
+      color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
       badgeText: pendingOrdersCount > 0 ? `${pendingOrdersCount} Preparing` : null,
-      badgeVariant: 'warning',
+      badgeVariant: 'success',
       uniqueKey: 'kitchen_orders',
       tabKey: 'kitchen',
     },
@@ -90,7 +87,6 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       description: t('stock_requests_desc', 'Submit material requisitions, track pending approvals, and issue stock.'),
       icon: ClipboardList,
       color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
-      buttonVariant: 'primary',
       badgeText: pendingRequisitionsCount > 0 ? `${pendingRequisitionsCount} Pending` : null,
       badgeVariant: 'info',
       uniqueKey: 'stock_requests',
@@ -101,10 +97,9 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       title: t('staff_meals_heading', 'Staff Meals'),
       description: t('staff_meals_desc', 'Record daily staff food consumption, meal allowances, and kitchen staff logs.'),
       icon: Soup,
-      color: 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/60',
-      buttonVariant: 'warning',
+      color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800/60',
       badgeText: null,
-      badgeVariant: 'warning',
+      badgeVariant: 'neutral',
       uniqueKey: 'staff_meals',
       tabKey: 'kitchen',
     },
@@ -113,8 +108,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       title: t('kitchen_wastage_heading', 'Kitchen Wastage'),
       description: t('kitchen_wastage_desc', 'Log spoiled ingredients, broken items, shortfalls, and kitchen waste logs.'),
       icon: Trash2,
-      color: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60',
-      buttonVariant: 'danger',
+      color: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/60',
       badgeText: lowStockCount > 0 ? `${lowStockCount} Low Stock` : null,
       badgeVariant: 'danger',
       uniqueKey: 'deficit_shortfalls_log',
@@ -126,7 +120,6 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       description: t('edit_kitchen_stock_desc', 'Manage raw inventory catalog items, stock levels, unit prices, and audit history.'),
       icon: Sliders,
       color: 'bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-      buttonVariant: 'secondary',
       badgeText: null,
       badgeVariant: 'neutral',
       uniqueKey: 'edit_kitchen_stock',
@@ -138,7 +131,6 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       description: t('edit_food_menu_desc', 'Add new dishes, update prices, manage categories, and customize food items.'),
       icon: BookOpen,
       color: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',
-      buttonVariant: 'secondary',
       badgeText: null,
       badgeVariant: 'neutral',
       uniqueKey: 'edit_food_menu',
@@ -246,7 +238,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
   };
 
   return (
-    <div className="kitchen-dashboard space-y-2 md:space-y-6">
+    <div className="kitchen-dashboard space-y-6">
       <PageHeader
         title={t('kitchen_dashboard_title', 'Kitchen & Dining Operations')}
         subtitle={t('kitchen_dashboard_subtitle', 'Central command for food orders, staff meals, ingredient stock, and inventory logs.')}
@@ -267,7 +259,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
       </PageHeader>
 
       {/* Action Grid - Drag and Drop Enabled via 6-dots Handle */}
-      <div className="kitchen-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 md:gap-5">
+      <div className="kitchen-dashboard__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {orderedVisibleCards.map((card) => {
           const IconComponent = card.icon;
           const isDragging = draggedCardId === card.id;
@@ -279,7 +271,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
               onDragOver={(e) => handleDragOver(e, card.id)}
               onDrop={(e) => handleDrop(e, card.id)}
               onDragEnd={handleDragEnd}
-              className={`kitchen-dashboard__card bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border transition-all duration-200 p-2 md:p-5 flex flex-col justify-between group relative select-none ${
+              className={`kitchen-dashboard__card bg-white dark:bg-slate-800 rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between group relative select-none ${
                 isDragging
                   ? 'opacity-30 scale-[0.98] border-dashed border-blue-400 shadow-none'
                   : isDragOver
@@ -287,88 +279,49 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md'
               }`}
             >
-              {/* Mobile Layout (bare icon without square box, compact 1-row layout) */}
-              <div className="flex md:hidden items-center justify-between gap-2 w-full">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, card.id)}
-                    className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing p-0.5 rounded transition-colors shrink-0"
-                    title="Drag handle"
-                  >
-                    <GripVertical className="w-4 h-4" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, card.id)}
+                      className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing p-1 -m-1 rounded-md transition-colors"
+                      title="Drag handle - click & drag to reorder"
+                    >
+                      <GripVertical className="w-5 h-5" />
+                    </div>
+                    <div className={`p-3 rounded-xl border ${card.color} transition-transform group-hover:scale-105`}>
+                      <IconComponent className="w-6 h-6" />
+                    </div>
                   </div>
-                  {/* Bare Icon without square box on mobile */}
-                  <IconComponent className="w-4.5 h-4.5 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <h3 className="kitchen-dashboard__subtitle text-xs font-semibold text-slate-900 dark:text-white truncate">
-                      {card.title}
-                    </h3>
-                    {card.badgeText && (
-                      <Badge variant={card.badgeVariant} className="text-[9px] font-semibold py-0 px-1 inline-flex shrink-0">
-                        {card.badgeText}
-                      </Badge>
-                    )}
-                  </div>
+                  {card.badgeText && (
+                    <Badge variant={card.badgeVariant} className="font-semibold text-xs">
+                      {card.badgeText}
+                    </Badge>
+                  )}
                 </div>
 
-                <Button
-                  variant={card.buttonVariant}
-                  size="sm"
-                  className="shrink-0 font-semibold px-2.5 py-1 cursor-pointer text-[11px] h-7"
-                  onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
-                  rightIcon={<ArrowRight className="w-3 h-3" />}
-                >
-                  <span>Open</span>
-                </Button>
+                <div>
+                  <h3 className="kitchen-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    {card.description}
+                  </p>
+                </div>
               </div>
 
-              {/* Desktop Layout (full rich card with description) */}
-              <div className="hidden md:flex flex-col justify-between h-full space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, card.id)}
-                        className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing p-1 -m-1 rounded-md transition-colors"
-                        title="Drag handle - click & drag to reorder"
-                      >
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-                      <div className={`p-3 rounded-xl border ${card.color} transition-transform group-hover:scale-105`}>
-                        <IconComponent className="w-6 h-6" />
-                      </div>
-                    </div>
-                    {card.badgeText && (
-                      <Badge variant={card.badgeVariant} className="font-semibold">
-                        {card.badgeText}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="kitchen-dashboard__subtitle text-base md:text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {card.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      {card.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                  <Button
-                    variant={card.buttonVariant}
-                    size="sm"
-                    block
-                    className="justify-center gap-2 font-semibold cursor-pointer"
-                    onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
-                    rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
-                  >
-                    <span>Open {card.title}</span>
-                  </Button>
-                </div>
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  block
+                  className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"
+                  onClick={() => onNavigate(card.uniqueKey, card.tabKey)}
+                  rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+                >
+                  <span>Open {card.title}</span>
+                </Button>
               </div>
             </div>
           );
