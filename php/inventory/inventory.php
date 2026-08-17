@@ -6,6 +6,36 @@
 
 function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
+
+    // Self-heal the System Stock Catalog schema (added 17 Aug 2026) - get_inventory's
+    // UNION ALL below joins req_catalog against system_stock_catalog via
+    // req_catalog.system_item_id, so this table/column existing is load-bearing for
+    // the whole catalog view, not optional. Found missing entirely on staging (never
+    // migrated there when the feature was built locally), which made get_inventory
+    // fail outright and silently render as "0 items" client-side.
+    if (!isSchemaVerified('schema_system_stock_catalog')) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS `system_stock_catalog` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `item_name` varchar(255) NOT NULL,
+              `category_id` int(11) DEFAULT 1,
+              `unit_label` varchar(20) DEFAULT 'Kg',
+              `image_path` text DEFAULT NULL,
+              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } catch (PDOException $e) {}
+        $reqCatalogCols = [
+            "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `unit_cost` DECIMAL(10,2) DEFAULT 0.00",
+            "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `is_demo` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `req_catalog` ADD COLUMN IF NOT EXISTS `system_item_id` INT DEFAULT NULL",
+        ];
+        foreach ($reqCatalogCols as $sql) {
+            try { $pdo->exec($sql); } catch (PDOException $e) {}
+        }
+        markSchemaVerified('schema_system_stock_catalog');
+    }
+
     switch ($action) {
         case 'get_inventory':
             try {
