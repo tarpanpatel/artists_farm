@@ -47,6 +47,38 @@ function getCurrentPropertyId(PDO $pdo): int {
     // Reserved non-property path segments
     $reserved = ['artists_farm', 'php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'login'];
 
+    // Priority 3.5: URL path as an explicit tenant_slug/property_slug PAIR, matching the
+    // documented /{tenant_slug}/{property_slug}/ convention - tried before the generic
+    // single-slug fallback below so a property-slug collision across tenants can't silently
+    // resolve to the wrong tenant's property just because it's checked first. Found 17 Aug
+    // 2026: an orphaned property with no tenant_id and bare slug "jaipur" was shadowing the
+    // correctly tenant-scoped property (slug "artists-farm-jaipur", tenant "artists-farm") on
+    // every request to /artists-farm/jaipur/, because the old single-slug loop below matches
+    // globally with no tenant scoping.
+    $pathSegmentsOrdered = array_values(array_filter($segments, function ($s) use ($reserved) {
+        $c = strtolower(trim($s));
+        return $c !== '' && !in_array($c, $reserved) && !str_contains($c, '.');
+    }));
+    if (count($pathSegmentsOrdered) >= 2) {
+        $maybeTenant = strtolower(trim($pathSegmentsOrdered[0]));
+        $maybeProperty = strtolower(trim($pathSegmentsOrdered[1]));
+        $stmt = $pdo->prepare("
+            SELECT p.id FROM properties p
+            JOIN tenants t ON p.tenant_id = t.id
+            WHERE (t.slug = ? OR REPLACE(t.slug, '_', '-') = ? OR REPLACE(t.slug, '-', '_') = ?)
+              AND (p.slug = ? OR REPLACE(p.slug, '_', '-') = ? OR REPLACE(p.slug, '-', '_') = ?)
+              AND p.is_active = 1
+            LIMIT 1
+        ");
+        $stmt->execute([$maybeTenant, $maybeTenant, $maybeTenant, $maybeProperty, $maybeProperty, $maybeProperty]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return (int)$row['id'];
+        }
+        // No exact pair match (e.g. a legacy compound slug, or segment[1] isn't a property
+        // slug at all) - fall through to the generic candidate loop below unchanged.
+    }
+
     // Collect all valid path segments in reverse order (most specific segment first)
     foreach (array_reverse($segments) as $seg) {
         $clean = strtolower(trim($seg));
