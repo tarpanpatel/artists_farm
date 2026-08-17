@@ -174,6 +174,15 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     (clampedFulfilledPage + 1) * FULFILLED_PAGE_SIZE
   );
 
+  const getRequestTypeLabel = (rawType: string) => {
+    if (!rawType) return '';
+    const matched = requestTypes.find((rt) => rt.typeId === rawType || rt.typeId.toLowerCase() === rawType.toLowerCase());
+    if (matched && matched.label) return matched.label;
+    return rawType
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
   return (
     <div className="space-y-6 max-w-[550px] service-requests-management__container">
       <PageHeader
@@ -200,7 +209,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl service-requests-management__request-item service-requests-management__request-item--pending">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
@@ -232,7 +241,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                     <div key={r.id} className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl opacity-75 service-requests-management__request-item service-requests-management__request-item--fulfilled">
                       <div className="flex-1 min-w-0 service-requests-management__request-details">
                         <div className="flex items-center gap-2 flex-wrap service-requests-management__request-header">
-                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{r.requestType}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white text-sm service-requests-management__request-type">{getRequestTypeLabel(r.requestType)}</span>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>

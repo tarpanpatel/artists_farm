@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, DollarSign, AlertCircle, Loader2, Search, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, AlertCircle, Loader2, Search, CheckCircle2, RefreshCw } from 'lucide-react';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
@@ -34,6 +34,7 @@ export const SystemStockManager: React.FC = () => {
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [editForm, setEditForm] = useState({ name: '', categoryId: 1, unit: 'Kg' });
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     import('../services/api').then(({ fetchMaterialCategoriesFromDB }) => {
@@ -133,6 +134,29 @@ export const SystemStockManager: React.FC = () => {
     }
   };
 
+  const handleSyncDefaults = async () => {
+    try {
+      setSyncing(true);
+      const response = await fetch('/php/api/router.php?action=sync_default_stock_categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setSuccess(data.message || 'Default categories synced');
+        loadStocks();
+      } else {
+        setError(data.message || 'Failed to sync default categories');
+      }
+    } catch (err) {
+      setError('Failed to sync default categories');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleDeleteItem = async (itemId: number, itemName: string) => {
     const confirmed = await confirm({
       title: t('delete_stock_category_title', 'Delete Stock Category'),
@@ -191,14 +215,22 @@ export const SystemStockManager: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h2 className="default-stocks-manager__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600 shrink-0" />
-              <span className="truncate">{t('root_default_stocks_heading_name', 'Default Stocks (MultiKey)')}</span>
+              <Package className="w-5 h-5 text-green-600 shrink-0" />
+              <span className="truncate">{t('root_default_stocks_heading_name', 'System Stock Catalog')}</span>
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              {t('default_stocks_description', 'Manage the 20 default stock categories. Changes cascade to all MultiKey properties.')}
+              {t('default_stocks_description', 'Shared item/category template every property draws from - changes here reach every tenant\'s property, not just MultiKey ones.')}
             </p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleSyncDefaults}
+              disabled={syncing}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {syncing ? t('syncing_button', 'Syncing...') : t('sync_defaults_button', 'Sync Defaults')}
+            </button>
             <button
               onClick={() => setIsAddingNew(!isAddingNew)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -308,7 +340,7 @@ export const SystemStockManager: React.FC = () => {
       {allCategories.length === 0 && (
         <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No stock categories yet. Click <strong>"Sync Defaults"</strong> to populate all 20 default categories.
+            No stock categories yet. Click <strong>"Sync Defaults"</strong> above to populate a starter set of categories and items.
           </p>
         </div>
       )}

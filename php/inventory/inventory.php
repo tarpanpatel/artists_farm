@@ -902,6 +902,69 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        case 'sync_default_stock_categories':
+            // Seeds system_stock_catalog with a clean starter set (17 Aug 2026), curated from
+            // property 1's real 370-item catalog rather than invented - deduplicated (e.g.
+            // "Chicken"/"Chicken Boneless"/"Boneless Chicken" -> one entry) and re-categorized
+            // where the source data was miscategorized (e.g. Fish/Peanut/Kaju were filed under
+            // "Beverages & Breakfast"). system_stock_catalog itself has no property_id (it's the
+            // shared platform-wide template - see get_inventory's UNION), but its category_id
+            // still joins against material_categories, which IS property-scoped - reusing
+            // property 1's category rows here matches the join get_inventory already relies on
+            // rather than inventing a second, parallel category scheme.
+            if ($request_method === 'POST') {
+                try {
+                    $defaults = [
+                        'Vegetables' => [['Onion','Kg'],['Potato','Kg'],['Tomato','Kg'],['Garlic','Kg'],['Ginger','Gm'],['Carrot','Kg'],['Cauliflower','Kg'],['Cabbage','Kg'],['Brinjal','Kg'],['Shimla Mirch','Kg'],['Green Chilli','Kg'],['Lemon','Kg'],['Cucumber','Kg'],['Beans','Kg'],['Green Peas','Kg']],
+                        'Fruits & Desserts' => [['Apple','Kg'],['Banana','Doz'],['Mango','Pcs'],['Papaya','Pcs'],['Watermelon','Pcs'],['Orange','Kg'],['Gulab Jamun','Kg']],
+                        'Non Veg' => [['Chicken','Kg'],['Mutton','Kg'],['Chicken Seekh Kebab','Kg'],['Mutton Seekh Kebab','Kg']],
+                        'Dairy' => [['Butter','Kg'],['Curd','Kg'],['Ghee','Kg'],['Paneer','Kg']],
+                        'Spices & Seasonings' => [['Salt','Kg'],['Haldi','Kg'],['Mirch Powder','Kg'],['Dhaniya Powder','Kg'],['Jeera','Kg'],['Garam Masala','Pcs'],['Chat Masala','Pcs'],['Kitchen King Masala','Pcs'],['Ajino Moto','Gm']],
+                        'Lentils & Pulses' => [['Arhar Dal','Kg'],['Chana Dal','Kg'],['Moong Dal','Kg'],['Urad Dal','Kg'],['Masoor Dal','Kg']],
+                        'Flours & Grains' => [['Atta','Kg'],['Maida','Kg'],['Besan','Kg'],['Basmati Rice','Kg'],['Poha','Kg'],['Corn Flour','Kg']],
+                        'Oils & Dairy Staples' => [['Cooking Oil (Sunflower)','Ltr'],['Mustard Oil','Ltr'],['Cheese','Kg'],['Cream','Kg']],
+                        'Sauce' => [['Tomato Ketchup','Kg'],['Red Chili Sauce','Kg'],['Green Chili Sauce','Kg'],['Sweet Chilli Sauce','Kg'],['Pizza Sauce','Kg']],
+                        'Chinese & Continental Sauces' => [['Noodles','Kg'],['Maggi','Box'],['Chocolate Sauce','Kg'],['Bread Crumb','Kg'],['Pizza Cheese','Kg']],
+                        'Beverages & Breakfast' => [['Biscuit','Kg'],['Namkeen','Kg'],['Tea Masala','Pcs']],
+                        'Bakery' => [['Bread','Pack'],['Pizza Base','Kg']],
+                        'Frozen / Cold' => [['Ice','Kg'],['Ice Cream','Kg'],['French Fries','Kg'],['Mozzarella Cheese','Kg'],['Sweet Corn','Kg']],
+                        'Housekeeping & Disposables' => [['Garbage Bag','Kg'],['Dishwashing Liquid','Ltr'],['Surf Excel','Kg'],['Vim Bar','Kg'],['Tissue Paper','Box'],['Match Box','Pc'],['Dinner Plates','Packets']],
+                        'Crockery & Cutlery' => [['Plates','Pcs'],['Bowls','Pcs'],['Cups','Pcs'],['Glasses','Pcs'],['Spoons','Pcs'],['Forks','Pcs'],['Knife','Pcs']],
+                        'Kitchen Appliance Repairs' => [['Fridge','Pcs'],['Microwave Oven','Pcs'],['Mixer','Pcs'],['Exhaust Fan','Pcs'],['Kettle','Pcs']],
+                        'Pool & Maintenance' => [['Pool Chlorine Tablets','Pcs']],
+                    ];
+
+                    $categoriesCreated = 0;
+                    $itemsCreated = 0;
+                    foreach ($defaults as $catName => $items) {
+                        $catStmt = $pdo->prepare("SELECT id FROM material_categories WHERE name = ? AND property_id = 1 LIMIT 1");
+                        $catStmt->execute([$catName]);
+                        $catId = $catStmt->fetchColumn();
+                        if (!$catId) {
+                            $insCat = $pdo->prepare("INSERT INTO material_categories (name, property_id) VALUES (?, 1)");
+                            $insCat->execute([$catName]);
+                            $catId = $pdo->lastInsertId();
+                            $categoriesCreated++;
+                        }
+
+                        foreach ($items as [$itemName, $unit]) {
+                            $existsStmt = $pdo->prepare("SELECT id FROM system_stock_catalog WHERE LOWER(item_name) = LOWER(?) LIMIT 1");
+                            $existsStmt->execute([$itemName]);
+                            if (!$existsStmt->fetchColumn()) {
+                                $insItem = $pdo->prepare("INSERT INTO system_stock_catalog (item_name, category_id, unit_label) VALUES (?, ?, ?)");
+                                $insItem->execute([$itemName, $catId, $unit]);
+                                $itemsCreated++;
+                            }
+                        }
+                    }
+
+                    echo json_encode(['status' => 'success', 'message' => "Synced $itemsCreated items across " . count($defaults) . ' categories', 'categoriesCreated' => $categoriesCreated, 'itemsCreated' => $itemsCreated]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Invalid inventory action']);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt } from 'lucide-react';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package } from 'lucide-react';
 import { t } from '../i18n/en';
 import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
@@ -40,9 +40,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
+type SectionType = 'dashboard' | 'tenants_properties' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -226,6 +226,12 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
       label: 'Default Bills (MK)',
       icon: Receipt,
       section: 'default_bills' as SectionType,
+    },
+    {
+      id: 'system_stock',
+      label: t('root_system_stock_label', 'System Stock Catalog'),
+      icon: Package,
+      section: 'system_stock' as SectionType,
     },
     {
       id: 'service_request_types',
