@@ -138,8 +138,18 @@ function updatePropertyModuleConfig($pdo, $propertyId, $moduleSlug, $config) {
             VALUES (?, ?, ?)
             ON DUPLICATE KEY UPDATE config = VALUES(config), updated_at = NOW()
         ");
-        return $stmt->execute([$propertyId, $moduleSlug, json_encode($config)]);
+        $encoded = json_encode($config);
+        if ($encoded === false) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('php', 'Error', 'updatePropertyModuleConfig: json_encode failed - ' . json_last_error_msg(), "module_manager.php:updatePropertyModuleConfig ($moduleSlug, property $propertyId)");
+            }
+            return false;
+        }
+        return $stmt->execute([$propertyId, $moduleSlug, $encoded]);
     } catch (Exception $e) {
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('sql', 'SQL Error', 'updatePropertyModuleConfig failed: ' . $e->getMessage(), "module_manager.php:updatePropertyModuleConfig ($moduleSlug, property $propertyId)");
+        }
         return false;
     }
 }
