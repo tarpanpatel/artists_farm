@@ -76,3 +76,15 @@ php/uploads/documents/*/
 !php/uploads/documents/.htaccess
 
 php/database/log.txt
+
+# Custom CSS override (17 Aug 2026) - written directly to disk by
+# php/api/configuration.php whenever an admin edits "Custom CSS" on ANY
+# environment. Being git-tracked meant every such edit created an
+# uncommitted local diff that blocked the next `git pull` on that server
+# (see deploy-staging.ps1's Custom-CSS auto-commit step, and the 3 prior
+# "chore: sync custom CSS override" commits this caused). The DB
+# (system_settings.custom_css) is already the durable backup the app reads
+# from - see getSystemSettings() in configuration.php - so each
+# environment can keep its own local file without it ever needing to
+# round-trip through git again.
+assets/css/custom_css_override.css
