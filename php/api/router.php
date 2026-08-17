@@ -49,9 +49,52 @@ require_once __DIR__ . '/../audit/audit.php';
 // since a failed require_once here is fatal before $action is even read.
 // Now only Telegram-specific actions (see handleTelegramRequests below) are
 // affected if this file is ever missing again.
-if (file_exists(__DIR__ . '/../telegram/telegram.php')) {
-    require_once __DIR__ . '/../telegram/telegram.php';
+$__telegram_php_path = __DIR__ . '/../telegram/telegram.php';
+if (!file_exists($__telegram_php_path) && defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV) {
+    // STAGING-ONLY SELF-HEAL (17 Aug 2026): CPGuard's malware scanner on this
+    // cPanel account only has telegram.php whitelisted under the PRODUCTION
+    // docroot (~/public_html/php/telegram/telegram.php, confirmed via hosting
+    // support ticket) - it keeps re-quarantining staging's own separate copy
+    // under ~/staging.artistic-sthan.com, since that's a different physical
+    // file the whitelist entry doesn't cover.
+    // Deliberately COPIES production's bytes onto the local path rather than
+    // require()-ing the production path directly: telegram.php itself does
+    // require_once __DIR__.'/../modules/module_manager.php' internally, and
+    // require_once dedups by resolved absolute path, not by function names -
+    // requiring it from a foreign __DIR__ would pull in production's copy of
+    // module_manager.php, which then collides with THIS file's own later
+    // require_once of staging's module_manager.php ("Cannot redeclare
+    // function"). Copying first keeps every require in this request on
+    // staging's own path tree, so no cross-environment collision is possible.
+    // Path is root-admin-configurable (Root Dashboard > Telegram Templates >
+    // Telegram Platform Health, saved as system_settings key
+    // 'telegram_fallback_source_path') - falls back to the path the hosting
+    // provider actually confirmed whitelisted (support ticket BRX-3227572)
+    // if nothing has been saved yet.
+    $__prod_telegram_php_path = null;
+    try {
+        $__fallback_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_fallback_source_path' LIMIT 1");
+        $__fallback_stmt->execute();
+        $__prod_telegram_php_path = $__fallback_stmt->fetchColumn() ?: null;
+    } catch (Exception $e) {
+        // system_settings read failed - fall through to the hardcoded default below
+        // rather than letting this block itself take down the request.
+    }
+    if (!$__prod_telegram_php_path) {
+        $__prod_telegram_php_path = '/home/apartment/public_html/php/telegram/telegram.php';
+    }
+    if (file_exists($__prod_telegram_php_path)) {
+        @copy($__prod_telegram_php_path, $__telegram_php_path);
+        if (class_exists('TelescopeLogger')) {
+            TelescopeLogger::log('php', 'Warning', 'php/telegram/telegram.php was missing on staging - restored from production\'s whitelisted copy', 'router.php:telegram self-heal');
+        }
+    }
+    unset($__fallback_stmt, $__prod_telegram_php_path);
 }
+if (file_exists($__telegram_php_path)) {
+    require_once $__telegram_php_path;
+}
+unset($__telegram_php_path);
 require_once __DIR__ . '/../modules/module_manager.php';
 require_once __DIR__ . '/db_export.php';
 require_once __DIR__ . '/../licenses/licenses.php';
@@ -2675,6 +2718,16 @@ switch ($action) {
         if (function_exists('handleTelegramRequests')) {
             handleTelegramRequests($pdo, $request_method, $action, $propertyId);
         } else {
+            // php/telegram/telegram.php is missing from disk (see the file_exists()
+            // guard near the top of this file - a malware scanner quarantined this
+            // exact file once before, 12 Aug 2026, and it's gone missing again since
+            // without anyone noticing until a user hit a broken Save button). Alert
+            // loudly instead of just returning a quiet 503 - 'Fatal Error' severity
+            // triggers Telescope's admin Telegram ping (2-min cooldown, so repeated
+            // requests while broken won't spam).
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('php', 'Fatal Error', "php/telegram/telegram.php is missing from disk - every Telegram action ('$action') is failing", 'router.php:telegram dispatch');
+            }
             http_response_code(503);
             echo json_encode(['status' => 'error', 'message' => 'Telegram module temporarily unavailable.']);
         }
@@ -2719,6 +2772,7 @@ switch ($action) {
     case 'get_nav_page_options':
     case 'get_system_settings':
     case 'save_system_settings':
+    case 'check_telegram_health':
         handleConfigurationRequests($pdo, $request_method, $action, $propertyId);
         break;
 

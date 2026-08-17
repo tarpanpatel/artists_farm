@@ -9,6 +9,7 @@ import { SystemStockManager } from './SystemStockManager';
 import { DefaultBillsManager } from './DefaultBillsManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
+import { TelegramHealthPanel } from './TelegramHealthPanel';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { AccountSettings } from './AccountSettings';
 import { ScrollToTopButton } from './ScrollToTopButton';
@@ -552,6 +553,8 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
               "Visit Tenant Dashboard" on the Tenants & Properties screen). */}
           {activeSection === 'telegram_templates' && (
             <div className="space-y-4">
+              <TelegramHealthPanel />
+
               {/* RootAdminDashboard sits outside the property-scoped AuthProvider
                   tree (needed so TelegramNotificationModal's useAuth() call
                   doesn't crash). templateCustomizationEnabled=true is what

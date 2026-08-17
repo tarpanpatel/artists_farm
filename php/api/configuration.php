@@ -40,6 +40,10 @@ function handleConfigurationRequests($pdo, $request_method, $action, $propertyId
             saveSystemSettings($pdo);
             break;
 
+        case 'check_telegram_health':
+            checkTelegramHealth($pdo);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Unknown configuration action']);
@@ -312,6 +316,121 @@ function saveSystemSettings($pdo) {
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Platform-wide Telegram health check for Root Dashboard (17 Aug 2026).
+ *
+ * Deliberately lives here rather than in telegram/telegram.php: that file is
+ * exactly what a malware scanner has quarantined off this server before (see
+ * router.php's file_exists() guard + self-heal comment), so a health check
+ * living inside it would go dark at the exact moment it's needed most.
+ * configuration.php is unconditionally required by router.php, so this keeps
+ * working even when telegram.php itself is completely missing.
+ */
+function checkTelegramHealth($pdo) {
+    try {
+        $moduleLoaded = function_exists('handleTelegramRequests');
+        $localPath = __DIR__ . '/../telegram/telegram.php';
+        $localFileExists = file_exists($localPath);
+
+        // Root-admin-configurable fallback source (see saveSystemSettings 'telegram_fallback_source_path'
+        // and the matching self-heal block in router.php). Falls back to the path the hosting
+        // provider actually confirmed whitelisted (support ticket BRX-3227572, 17 Aug 2026) if
+        // nothing has been saved yet, so this never reports an empty/unusable path out of the box.
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_fallback_source_path' LIMIT 1");
+        $stmt->execute();
+        $fallbackPath = $stmt->fetchColumn() ?: null;
+        $usingDefaultPath = false;
+        if (!$fallbackPath) {
+            $fallbackPath = '/home/apartment/public_html/php/telegram/telegram.php';
+            $usingDefaultPath = true;
+        }
+        $isStagingEnv = defined('APP_IS_STAGING_ENV') && APP_IS_STAGING_ENV;
+        $fallbackFileExists = $isStagingEnv ? file_exists($fallbackPath) : null;
+
+        // Recent telegram.php availability events (self-heal / missing-module alerts) from Telescope.
+        $recentEvents = [];
+        if (class_exists('TelescopeLogger')) {
+            $logFile = TelescopeLogger::getLogFilePath();
+            if (file_exists($logFile)) {
+                $logs = json_decode((string) @file_get_contents($logFile), true) ?: [];
+                foreach ($logs as $log) {
+                    $msg = $log['msg'] ?? '';
+                    $origin = $log['origin'] ?? '';
+                    if (stripos($msg, 'telegram.php') === false && stripos($origin, 'telegram') === false) {
+                        continue;
+                    }
+                    $recentEvents[] = [
+                        'timestamp' => $log['timestamp'] ?? null,
+                        'severity' => $log['severity'] ?? null,
+                        'msg' => $msg,
+                    ];
+                    if (count($recentEvents) >= 10) break;
+                }
+            }
+        }
+
+        // Per-property bot reachability - hits Telegram's getMe directly (rather than going
+        // through telegram.php's own helper) so this still works when that file is missing.
+        $properties = [];
+        $stmt = $pdo->query("
+            SELECT p.id, p.name, p.slug, pm.config
+            FROM property_modules pm
+            JOIN properties p ON p.id = pm.property_id
+            WHERE pm.module_slug = 'telegram' AND pm.config IS NOT NULL
+            ORDER BY p.name ASC
+        ");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $config = json_decode($row['config'], true) ?: [];
+            if (empty($config['enabled']) || empty($config['botToken'])) continue;
+
+            $entry = [
+                'propertyId' => (int) $row['id'],
+                'propertyName' => $row['name'],
+                'propertySlug' => $row['slug'],
+                'botReachable' => null,
+                'botUsername' => null,
+                'error' => null,
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://api.telegram.org/bot' . $config['botToken'] . '/getMe');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $raw = curl_exec($ch);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            $parsed = $raw ? json_decode($raw, true) : null;
+
+            if (!empty($parsed['ok']) && !empty($parsed['result']['username'])) {
+                $entry['botReachable'] = true;
+                $entry['botUsername'] = $parsed['result']['username'];
+            } else {
+                $entry['botReachable'] = false;
+                $entry['error'] = $parsed['description'] ?? ($curlError ?: 'No response from Telegram API');
+            }
+            $properties[] = $entry;
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'moduleLoaded' => $moduleLoaded,
+                'localFileExists' => $localFileExists,
+                'isStagingEnv' => $isStagingEnv,
+                'fallbackPathConfigured' => $fallbackPath,
+                'fallbackPathIsDefault' => $usingDefaultPath,
+                'fallbackFileExists' => $fallbackFileExists,
+                'recentEvents' => $recentEvents,
+                'properties' => $properties,
+            ],
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
 ?>
