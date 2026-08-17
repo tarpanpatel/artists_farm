@@ -188,9 +188,30 @@ try {
     // Self-healing schema checks: cache check result so DDL ALTER TABLE and SHOW queries run once
     // per server lifetime rather than firing 15 redundant queries on every API request.
     if (!isSchemaVerified('db_connection_init_' . $db_name)) {
-        $pdo->exec("INSERT IGNORE INTO `properties` (`name`, `slug`, `domain`) VALUES
-          ('Ground Code Jaipur', 'jaipur', 'artistsfarmjaipur.com'),
-          ('Ground Code Goa', 'goa', 'goa.artistsfarmjaipur.com')");
+        // REMOVED 17 Aug 2026 - this used to unconditionally INSERT IGNORE two
+        // hardcoded properties ("Ground Code Jaipur"/slug=jaipur, "Ground Code
+        // Goa"/slug=goa) with no tenant_id and no property_type, every time this
+        // once-per-hour cache expired (see schema_cache.php's 3600s TTL). Since
+        // `properties.slug` has no UNIQUE constraint, INSERT IGNORE didn't even
+        // reliably no-op once the real tenant-scoped "jaipur"/"goa" properties
+        // existed - it silently created ORPHANED duplicate properties (no
+        // tenant, so invisible in any tenant's dashboard) that then won every
+        // slug-based URL resolution against the real property, because
+        // property_resolver.php matches slug alone with no tenant scoping.
+        // This is exactly what property ids 290404/290394 were, found and
+        // deleted 17 Aug 2026 - and this code would have silently recreated
+        // them within the hour. Leftover from a pre-multi-tenant single-property
+        // bootstrap; real properties are created tenant-scoped via
+        // TenantDashboard.tsx/PlatformPropertyManagement.tsx now.
+
+        // Legacy property_type values predate the SINGLE/MULTI_KEY/MULTI_KEY_ROOM
+        // enum (e.g. "vacation_home" on properties created before this system
+        // existed - TenantDashboard.tsx's creation UI only ever offers Single or
+        // Multi-Key). Normalize so every consumer can trust an exact
+        // property_type === 'SINGLE' check instead of needing its own workaround.
+        try {
+            $pdo->exec("UPDATE `properties` SET `property_type` = 'SINGLE' WHERE `property_type` NOT IN ('SINGLE', 'MULTI_KEY', 'MULTI_KEY_ROOM') OR `property_type` IS NULL OR `property_type` = ''");
+        } catch (PDOException $e) {}
 
         $propertyWhatsAppCols = [
             "ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `google_maps_link` VARCHAR(500) DEFAULT NULL",

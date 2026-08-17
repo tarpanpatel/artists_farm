@@ -85,15 +85,12 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
           this is just another property-level setting. A MULTI_KEY parent
           isn't itself bookable (each room is), so it has no calendar of its
           own here - see the room's own Edit Room page in
-          MultiKeyPropertyOverview.tsx for that case instead.
-          Checked as "not MULTI_KEY/MULTI_KEY_ROOM" rather than "=== 'SINGLE'"
-          (found 17 Aug 2026): several real properties (e.g. "Artists Farm
-          Jaipur") predate the SINGLE/MULTI_KEY/MULTI_KEY_ROOM enum and still
-          carry a legacy descriptive property_type like "vacation_home" -
-          functionally single-calendar properties (property_configurations
-          has_units:false), but an exact 'SINGLE' match silently hid this
-          card for every one of them. */}
-      {property.property_type !== 'MULTI_KEY' && property.property_type !== 'MULTI_KEY_ROOM' && (
+          MultiKeyPropertyOverview.tsx for that case instead. Only two real
+          property types exist (SINGLE/MULTI_KEY, see TenantDashboard.tsx's
+          creation UI) - any other value is stale legacy data self-healed to
+          SINGLE in php/config/database.php, not a type this should branch
+          on. */}
+      {property.property_type === 'SINGLE' && (
         <div className="edit-property-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
           <ICalSyncManager propertyId={property.id} propertySlug={property.slug} embedded />
         </div>
