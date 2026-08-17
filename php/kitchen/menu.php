@@ -232,6 +232,15 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     // environment, which is why staging still showed all three as separate items.
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'kitchen_purchases'");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'stock_log'");
+                    // iCal Sync was never meant to be its own sidebar page (17 Aug 2026) - it's
+                    // embedded directly in Edit Property for single properties
+                    // (EditPropertyPage.tsx) and in the Units page for multi-key properties
+                    // (MultiKeyPropertyOverview.tsx). Someone added it as a standalone nav item
+                    // via the Nav Menu Editor UI when the feature was built; App.tsx's routeMap
+                    // already redirects the 'ical_sync_manager'/'ical_sync' hashes into
+                    // edit_property, so the standalone entry was always redundant, never wired
+                    // to its own page.
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'ical_sync_manager'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Analytics' WHERE unique_key = 'dashboard_analytics'");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
