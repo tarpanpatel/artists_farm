@@ -138,7 +138,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   }, [activeMenuItemKey]);
 
   useEffect(() => {
-    if (activeTab === 'profit_loss') {
+    // Also fires on 'bookings': Profit per Room Night moved there and reads
+    // from this same ledgerMonth-scoped fetch (17 Aug 2026).
+    if (activeTab === 'profit_loss' || activeTab === 'bookings') {
       // 14 Aug 2026: Balance Sheet/Cash Flow's "ledgerData.length === 0" empty
       // rows rendered before this per-tab-switch fetch resolved. Reset to
       // true on every trigger (tab switch or month change), not just once.
@@ -411,6 +413,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: ['#2563eb'],
     xaxis: { categories: roomPerformance.map((r) => r.name) },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -467,6 +470,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 8, columnWidth: '50%' } },
     colors: [brandColor, successColor],
     xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -481,6 +485,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     stroke: { width: 3, curve: 'smooth' },
     colors: [warningColor],
     xaxis: { categories: sortedBookingsByMonth.map(([month]) => month) },
+    yaxis: { labels: { formatter: (val: number) => `${Math.round(val)}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -511,6 +516,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
     colors: [warningColor],
     xaxis: { categories: sortedBillsByMonth.map(([month]) => month) },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -537,6 +543,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
     colors: [brandColor],
     xaxis: { categories: paceWeeks.map((w) => w.label), title: { text: t('pace_week_starting_axis', 'Week starting') } },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -552,6 +559,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [brandSecondary],
     xaxis: { categories: sortedMenuItems.slice(0, 10).map(([, data]) => data.name) },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -651,6 +659,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     stroke: { curve: 'smooth', width: 2.5 },
     markers: { size: 3 },
     xaxis: { categories: kitchenTrendByDate.labels },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { position: 'top' },
@@ -744,6 +753,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     colors: [dangerColor],
     xaxis: { categories: sortedExpenseItems.slice(0, 15).map(([name]) => name) },
+    yaxis: { labels: { formatter: (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}` } },
     grid: { strokeDashArray: 4 },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -835,6 +845,20 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const activePeriodDays = periodDays || 365;
     const availableNights = totalRooms * activePeriodDays;
     return Math.min(100, (totalNights / availableNights) * 100);
+  })();
+
+  // Profit per Room Night - lives on the Bookings tab (moved from P&L, 17 Aug
+  // 2026) since it's a per-room hospitality KPI, not a P&L line item. Uses the
+  // same ledgerMonth-scoped financial ledger as the P&L statement (not the
+  // dateFilter-scoped filteredReceipts above), so the figure always matches
+  // real ledger-posted P&L rather than a re-derived approximation.
+  const ledgerMonthNights = receipts
+    .filter((r) => r.checkinDate && r.checkinDate.startsWith(ledgerMonth))
+    .reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+  const profitPerRoomNight = (() => {
+    const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
+    const expensesPL = ledgerData.filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
+    return ledgerMonthNights > 0 ? (income - expensesPL) / ledgerMonthNights : 0;
   })();
 
   // Group Payment Methods for pie chart
@@ -1338,16 +1362,16 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               )}
             </div>
 
-            {/* Card Right: Hospitality Key Performance Indicators (ADR, ALOS, Occupancy) */}
+            {/* Card Right: Hospitality Key Performance Indicators (ARR, ALOS, Occupancy, Profit/Room Night) */}
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
               <h3 className="analytics-dashboard__subtitle font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-cyan-600" /> {t('hospitality_kpi_metrics_heading', 'Hospitality Performance Metrics (BI)')}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
                 <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 text-center">
-                  <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">{t('adr_metric_label', 'Average Daily Rate (ADR)')}</p>
+                  <p className="text-[10px] font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">{t('arr_metric_label', 'Average Room Rate (ARR)')}</p>
                   <p className="text-xl font-extrabold text-blue-700 dark:text-blue-400 mt-1">₹{adr.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                  <p className="text-[9px] text-slate-500 mt-1">{t('adr_metric_subtext', 'Room revenue divided by occupied room nights')}</p>
+                  <p className="text-[9px] text-slate-500 mt-1">{t('arr_metric_subtext', 'Room revenue divided by occupied room nights')}</p>
                 </div>
 
                 <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-center">
@@ -1360,6 +1384,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                   <p className="text-[10px] font-semibold text-purple-800 dark:text-purple-300 uppercase tracking-wider">{t('occupancy_metric_label', 'Occupancy Rate')}</p>
                   <p className="text-xl font-extrabold text-purple-700 dark:text-purple-400 mt-1">{occupancyRate.toFixed(1)}%</p>
                   <p className="text-[9px] text-slate-500 mt-1">{t('occupancy_metric_subtext', 'Occupied room nights vs available inventory capacity')}</p>
+                </div>
+
+                <div className={`p-4 rounded-xl border text-center ${profitPerRoomNight >= 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${profitPerRoomNight >= 0 ? 'text-amber-800 dark:text-amber-300' : 'text-rose-800 dark:text-rose-300'}`}>{t('profit_per_room_night_label', 'Profit per Room Night')}</p>
+                  <p className={`text-xl font-extrabold mt-1 ${profitPerRoomNight >= 0 ? 'text-amber-700 dark:text-amber-400' : 'text-rose-700 dark:text-rose-400'}`}>₹{Math.abs(Math.round(profitPerRoomNight)).toLocaleString('en-IN')}</p>
+                  <p className="text-[9px] text-slate-500 mt-1">{t('profit_per_room_night_subtext', 'Ledger P&L for')} {ledgerMonth} {t('profit_per_room_night_subtext_suffix', 'divided by room nights that month')}</p>
                 </div>
               </div>
               <div className="text-[10px] text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
@@ -1639,12 +1669,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
               const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const expensesPL = ledgerData.filter((l) => l.direction === 'debit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);
               const netPL = income - expensesPL;
-              const bookingsInMonthList = receipts.filter(r => r.checkinDate && r.checkinDate.startsWith(ledgerMonth));
-              const totalNightsInMonth = bookingsInMonthList.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
-              const profitPerRoomNight = totalNightsInMonth > 0 ? netPL / totalNightsInMonth : 0;
               return (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
                       <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 uppercase">{t('total_income_label', 'Total Income')}</p>
                       <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">₹{income.toLocaleString('en-IN')}</p>
@@ -1656,14 +1683,6 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <div className={`p-4 rounded-xl border flex flex-col justify-between ${netPL >= 0 ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'}`}>
                       <p className={`text-[10px] font-semibold uppercase ${netPL >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net {netPL >= 0 ? t('net_profit_label', 'Net Profit') : t('net_loss_label', 'Loss')}</p>
                       <p className={`text-xl font-extrabold mt-1 ${netPL >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>₹{Math.abs(netPL).toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl border flex flex-col justify-between ${profitPerRoomNight >= 0 ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'}`}>
-                      <p className={`text-[10px] font-semibold uppercase ${profitPerRoomNight >= 0 ? 'text-purple-800 dark:text-purple-300' : 'text-rose-800 dark:text-rose-300'}`}>
-                        {t('profit_per_room_night_label', 'Profit per Room Night')} <span className="opacity-70 normal-case">({totalNightsInMonth} {t('room_nights_label', 'room nights')})</span>
-                      </p>
-                      <p className={`text-xl font-extrabold mt-1 ${profitPerRoomNight >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                        ₹{Math.abs(Math.round(profitPerRoomNight)).toLocaleString('en-IN')}
-                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

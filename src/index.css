@@ -808,6 +808,94 @@ html.dark .overflow-x-auto::-webkit-scrollbar-track {
   background: rgba(99, 102, 241, 0.7);
 }
 
+/* react-data-table-component's own scroll wrapper (used by every DataTable
+   site-wide) sets overflow-x via its own inline styles, not the Tailwind
+   `.overflow-x-auto` class above, so it never picked up that scrollbar
+   styling. On mobile, most browsers auto-hide a default scrollbar entirely,
+   so a wide table (e.g. Staff & Permissions' 980px table in a ~380px
+   viewport) gave zero visual hint that more columns existed off-screen.
+   Mirrors the same scrollbar treatment so every table gets one consistent,
+   always-visible scroll affordance. */
+.rdt_responsiveWrapper::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+html.dark .rdt_responsiveWrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+}
+
+.rdt_responsiveWrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
+}
+
+/* Firefox has no ::-webkit-scrollbar support - this is its equivalent, so
+   the same "thin, visible, indigo" scrollbar shows there too. */
+.rdt_responsiveWrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   App-wide z-index scale (17 Aug 2026) - READ THIS before adding or
+   changing any z-index anywhere in the app.
+
+   This exists because the header/sidebar/mobile-drawer-scrim stack
+   (Navigation.tsx, Header.tsx) had its z-index adjusted in isolation three
+   separate times, each time fixing one visible conflict while creating a
+   new one, because nobody had ever written down how it related to the
+   REST of the app's z-index usage:
+     1. Sidebar at z-30 rendered BELOW an already-open StyledSelect
+        dropdown (z-50) - fixed by raising the sidebar to z-[56].
+     2. That put the sidebar ABOVE the header (still z-50), so opening the
+        drawer visually hid the header's own logo/hamburger toggle behind
+        the sidebar's opaque background - fixed by raising the header to
+        z-[57].
+     3. That put the header ABOVE every ordinary "fixed inset-0 z-50"
+        page modal (checkout, fulfill-edit, etc. - 50+ instances across
+        the app), so opening one of those while scrolled down cut its
+        title off behind the header and left part of its own backdrop
+        not actually covering the screen.
+
+   The actual scale, low to high (nothing here needs to change to add a
+   new modal - just use z-50 like everything else already does):
+     - z-50            ordinary in-page popovers/dropdowns (StyledSelect
+                        options panel, etc.) - the default for small,
+                        anchored UI. Left untouched (50+ existing uses).
+     - z-[55]/[56]/[57] mobile drawer scrim / sidebar / header, in that
+                        order - deliberately ABOVE ordinary popovers (so
+                        opening the drawer always covers a stale one) but
+                        BELOW real page modals (see below).
+     - z-[58]           every real full-page modal - anything shaped like
+                        `fixed inset-0 ... z-50` (a backdrop covering the
+                        whole viewport) gets bumped here by the rule right
+                        below, without editing 50+ individual components.
+                        Small popovers are exempt because they use
+                        `absolute`, never `fixed inset-0`.
+     - z-60/z-70/z-100  secondary modals deliberately meant to stack above
+                        an already-open page modal (date pickers, mobile
+                        cart drawers, image lightboxes) - unaffected,
+                        already above z-58.
+     - z-[9999]/[99999] toasts and the confirm dialog - always on top,
+                        unaffected.
+
+   If a future conflict shows up, fix it by placing the new element in
+   the correct EXISTING tier above, not by picking an arbitrary number
+   that happens to be higher than whatever it's currently losing to. */
+.fixed.inset-0.z-50 {
+  z-index: 58;
+}
+
 /* Attendance Matrix Enhancements */
 .attendance-matrix-table {
   border-collapse: separate;

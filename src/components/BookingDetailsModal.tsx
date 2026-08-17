@@ -321,9 +321,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           {(() => {
             const advanceReceiver = g.advance_received_by || guest.advanceReceivedBy || '';
             const pendingReceiver = g.pending_received_by || guest.pendingReceivedBy || '';
+            const isCheckedOut = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out');
+            
+            // Advance paid requires an assigned advanceReceiver
             const isAdvanceUnassigned = advancePaid > 0 && !advanceReceiver;
-            const isPendingUnassigned = pendingDisplay > 0 && !pendingReceiver;
-            const isCheckedOutUnsettled = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') && pendingDisplay > 0;
+            
+            // Pending receiver is only unassigned if guest checked out / settled pending balance without specifying who collected it
+            const isPendingUnassigned = isCheckedOut && pendingDisplay === 0 && !pendingReceiver && (roomRent - advancePaid) > 0;
+            
+            // Checked out guest who still owes an unpaid balance
+            const isCheckedOutUnsettled = isCheckedOut && pendingDisplay > 0;
+            
             const showBanner = !isEditing && (isAdvanceUnassigned || isPendingUnassigned || isCheckedOutUnsettled);
 
             if (!showBanner) return null;
@@ -511,7 +519,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </div>
               </div>
               <div>
-                <label className={highlightReceiverFields && !editPendingReceivedBy ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
+                <label className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'text-[11px] font-semibold text-red-500 dark:text-red-400 uppercase' : fieldLabelClass}>{t('pending_received_by_label', 'Pending Received By')}</label>
                 {isEditing ? (
                   <div className="mt-1">
                     <StyledSelect
@@ -519,7 +527,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       onChange={setEditPendingReceivedBy}
                       placeholder="-- Select Staff/User --"
                       buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
-                        highlightReceiverFields && !editPendingReceivedBy
+                        highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out')
                           ? 'border-red-400 dark:border-red-500 ring-4 ring-red-100 dark:ring-red-900/30'
                           : 'border-slate-300 dark:border-slate-600'
                       }`}

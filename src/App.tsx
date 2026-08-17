@@ -252,6 +252,24 @@ function AppBody({ preloadedData }: AppBodyProps) {
     sessionStorage.setItem('artists_farm_active_menu_key', activeMenuItemKey);
   }, [activeTab, activeMenuItemKey]);
 
+  // Listen to browser Back/Forward navigation (hashchange & popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleHashOrPopStateChange = () => {
+      const activeState = getInitialActiveState();
+      setActiveTab(activeState.tab);
+      setActiveMenuItemKey(activeState.key);
+    };
+
+    window.addEventListener('hashchange', handleHashOrPopStateChange);
+    window.addEventListener('popstate', handleHashOrPopStateChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashOrPopStateChange);
+      window.removeEventListener('popstate', handleHashOrPopStateChange);
+    };
+  }, []);
+
   // Auto-scroll page & container to top whenever user hops between tabs, menu items, rooms, or properties
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1829,6 +1847,9 @@ ${itemsStr}
                     onRequestMaterial={handleRequestMaterial}
                     onDispatchTelegram={dispatchTelegramAlert}
                     activeMenuItemKey={activeMenuItemKey}
+                    propertyName={preloadedData.currentProperty?.name || ''}
+                    propertyGstin={preloadedData.currentProperty?.gstin || ''}
+                    propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                   />
                 </ErrorBoundary>
               )}

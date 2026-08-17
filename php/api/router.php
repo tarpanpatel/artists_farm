@@ -36,6 +36,7 @@ require_once __DIR__ . '/../guests/guests.php';
 require_once __DIR__ . '/../billing/billing.php';
 require_once __DIR__ . '/../billing/receipts.php';
 require_once __DIR__ . '/../kitchen/orders.php';
+require_once __DIR__ . '/../kitchen/walk_in_tabs.php';
 require_once __DIR__ . '/../kitchen/menu.php';
 require_once __DIR__ . '/../inventory/inventory.php';
 require_once __DIR__ . '/../finance/ledger.php';
@@ -613,6 +614,7 @@ if ($action !== 'login_user') {
 $kitchen_module_actions = [
     'get_orders', 'create_order', 'update_order_status', 'get_served_logs', 'add_served_log',
     'update_order_item_status', 'update_item_reminder_timestamp', 'check_stale_reminders',
+    'get_walk_in_tabs', 'get_walk_in_tab_history', 'open_walk_in_tab', 'bill_walk_in_tab',
     'get_menu', 'add_menu_item', 'update_menu_item', 'delete_menu_item', 'dedup_menu',
     'get_recipes', 'save_recipe', 'delete_recipe', 'deplete_stock',
     'get_staff_meal_options', 'add_staff_meal_option', 'get_staff_meal_logs', 'add_staff_meal_log',
@@ -622,6 +624,7 @@ $kitchen_module_actions = [
     'get_kitchen_purchases', 'create_kitchen_purchase', 'bulk_update_kitchen_purchases', 'delete_kitchen_purchase',
     'get_material_categories', 'update_material_category', 'delete_material_category', 'add_material_category',
     'toggle_ingredient_category', 'add_catalog_item', 'update_catalog_item', 'delete_catalog_item',
+    'get_system_stock_catalog', 'add_system_stock_item', 'delete_system_stock_item',
     'bulk_update_catalog_category', 'seed_catalog', 'fix_orphan_categories',
 ];
 if (in_array($action, $kitchen_module_actions, true)) {
@@ -2509,6 +2512,9 @@ switch ($action) {
     case 'get_service_request_types':
     case 'save_service_request_type':
     case 'delete_service_request_type':
+    case 'get_system_service_request_catalog':
+    case 'add_system_service_request_type':
+    case 'delete_system_service_request_type':
         // Platform admin (Root Admin Dashboard) can target any property explicitly;
         // otherwise the URL-resolved property context applies (staff/tenant pages).
         if ($is_platform_admin) {
@@ -2546,6 +2552,14 @@ switch ($action) {
     case 'update_item_reminder_timestamp':
     case 'check_stale_reminders':
         handleKitchenRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- WALK-IN TABS (counter/dine-in orders with no room or guest) ---
+    case 'get_walk_in_tabs':
+    case 'get_walk_in_tab_history':
+    case 'open_walk_in_tab':
+    case 'bill_walk_in_tab':
+        handleWalkInTabRequests($pdo, $request_method, $action, $propertyId);
         break;
 
     case 'get_menu':
@@ -2589,6 +2603,9 @@ switch ($action) {
     case 'bulk_update_catalog_category':
     case 'seed_catalog':
     case 'fix_orphan_categories':
+    case 'get_system_stock_catalog':
+    case 'add_system_stock_item':
+    case 'delete_system_stock_item':
         handleInventoryRequests($pdo, $request_method, $action, $propertyId);
         break;
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
+import { Tooltip } from './Tooltip';
 import DataTable from 'react-data-table-component';
 import {
   Plus,
@@ -1288,15 +1289,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       />
                       <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
                         <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
-                        <div className="relative group inline-flex items-center">
-                          <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                        <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
+                          <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                             <HelpCircle className="w-3.5 h-3.5" />
-                          </span>
-                          <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
-                            Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
-                            <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                          </div>
-                        </div>
+                          </button>
+                        </Tooltip>
                       </label>
                     </div>
                   </div>
@@ -1321,15 +1318,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     />
                     <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
                       <span>{t('access_all_properties_label', 'Access All Properties')}</span>
-                      <div className="relative group inline-flex items-center">
-                        <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                      <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
+                        <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                           <HelpCircle className="w-3.5 h-3.5" />
-                        </span>
-                        <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
-                          Grants this team member full multi-property access across all properties under this tenant workspace.
-                          <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                        </div>
-                      </div>
+                        </button>
+                      </Tooltip>
                     </label>
                   </div>
                   <div>
@@ -1453,15 +1446,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           />
                           <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
                             <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
-                            <div className="relative group inline-flex items-center">
-                              <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                            <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
+                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                                 <HelpCircle className="w-3.5 h-3.5" />
-                              </span>
-                              <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
-                                Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.
-                                <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                              </div>
-                            </div>
+                              </button>
+                            </Tooltip>
                           </label>
                         </div>
                       </div>
@@ -1475,15 +1464,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         />
                         <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
                           <span>{t('access_all_properties_label', 'Access All Properties')}</span>
-                          <div className="relative group inline-flex items-center">
-                            <span className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                          <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
+                            <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
                               <HelpCircle className="w-3.5 h-3.5" />
-                            </span>
-                            <div className="absolute bottom-full right-0 mb-2 w-72 max-w-[280px] p-2.5 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-normal leading-snug rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[99999] text-left border border-slate-700/50">
-                              Grants this team member full multi-property access across all properties under this tenant workspace.
-                              <div className="absolute top-full right-2 -mt-0.5 border-4 border-transparent border-t-slate-900 dark:border-t-slate-800" />
-                            </div>
-                          </div>
+                            </button>
+                          </Tooltip>
                         </label>
                       </div>
                     </>

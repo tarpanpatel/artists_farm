@@ -31,36 +31,23 @@ if (!function_exists('convertSnakeToCamel')) {
 }
 
 /**
- * Built-in service request types, grouped by category. Seeded once per property
- * into the service_request_types table (see seedServiceRequestTypes) so the
- * dropdown is DB-driven and editable per property instead of hardcoded.
+ * Ensures the system_service_request_catalog global table exists.
+ * This is the authoritative source for system-wide service request types,
+ * managed by the Root Admin Dashboard. Self-healing via CREATE TABLE IF NOT EXISTS.
  */
-$SERVICE_REQUEST_TYPES = [
-    ['id' => 'fresh_towels', 'category' => 'Housekeeping', 'label' => 'Fresh Towels'],
-    ['id' => 'extra_bedding', 'category' => 'Housekeeping', 'label' => 'Extra Bedding / Pillows'],
-    ['id' => 'toiletries_refill', 'category' => 'Housekeeping', 'label' => 'Toiletries Refill'],
-    ['id' => 'room_cleaning', 'category' => 'Housekeeping', 'label' => 'Room Cleaning'],
-    ['id' => 'trash_pickup', 'category' => 'Housekeeping', 'label' => 'Trash Pickup'],
-    ['id' => 'drinking_water', 'category' => 'Food & Beverage', 'label' => 'Drinking Water / Ice'],
-    ['id' => 'tea_coffee_replenish', 'category' => 'Food & Beverage', 'label' => 'Tea / Coffee Sachets'],
-    ['id' => 'crockery_cutlery', 'category' => 'Food & Beverage', 'label' => 'Crockery / Cutlery'],
-    ['id' => 'room_service_order', 'category' => 'Food & Beverage', 'label' => 'In-Room Dining Request'],
-    ['id' => 'ac_heating_issue', 'category' => 'Maintenance', 'label' => 'AC / Heating Issue'],
-    ['id' => 'hot_water_geyser', 'category' => 'Maintenance', 'label' => 'Hot Water / Geyser Issue'],
-    ['id' => 'wifi_connectivity', 'category' => 'Maintenance', 'label' => 'Wi-Fi / Internet Issue'],
-    ['id' => 'tv_cable_issue', 'category' => 'Maintenance', 'label' => 'TV / Cable Issue'],
-    ['id' => 'plumbing_leakage', 'category' => 'Maintenance', 'label' => 'Plumbing / Leakage'],
-    ['id' => 'electrical_power', 'category' => 'Maintenance', 'label' => 'Electrical / Power Outlet Issue'],
-    ['id' => 'iron_ironing_board', 'category' => 'Amenities On Request', 'label' => 'Iron & Ironing Board'],
-    ['id' => 'hair_dryer', 'category' => 'Amenities On Request', 'label' => 'Hair Dryer'],
-    ['id' => 'mosquito_repellent', 'category' => 'Amenities On Request', 'label' => 'Mosquito Repellent / Vaporizer'],
-    ['id' => 'luggage_assistance', 'category' => 'Front Desk & Services', 'label' => 'Luggage Assistance'],
-    ['id' => 'cab_travel_booking', 'category' => 'Front Desk & Services', 'label' => 'Taxi / Travel Booking'],
-    ['id' => 'late_checkout_request', 'category' => 'Front Desk & Services', 'label' => 'Late Check-out Request'],
-    ['id' => 'early_checkin_request', 'category' => 'Front Desk & Services', 'label' => 'Early Check-in Request'],
-    ['id' => 'first_aid_assistance', 'category' => 'Front Desk & Services', 'label' => 'First Aid Kit'],
-    ['id' => 'other_special_request', 'category' => 'General', 'label' => 'Other / Custom Request'],
-];
+function ensureSystemServiceRequestCatalogSchema($pdo) {
+    if (isSchemaVerified('schema_system_svc_request_catalog')) return;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS system_service_request_catalog (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            type_id VARCHAR(255) NOT NULL,
+            category VARCHAR(255) NOT NULL,
+            label VARCHAR(255) NOT NULL,
+            display_order INT DEFAULT 0
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        markSchemaVerified('schema_system_svc_request_catalog');
+    } catch (PDOException $e) {}
+}
 
 require_once __DIR__ . '/../config/schema_cache.php';
 
@@ -101,25 +88,8 @@ function ensureServiceRequestsSchema($pdo) {
     markSchemaVerified('schema_service_requests');
 }
 
-/**
- * Populate built-in service request types for a property the first time it asks
- * (mirrors populateDefaultExpenses). Idempotent via INSERT IGNORE; only runs when
- * the property has no system-default rows yet, so admin deletions persist.
- */
-function seedServiceRequestTypes($pdo, $propertyId) {
-    global $SERVICE_REQUEST_TYPES;
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM service_request_types WHERE property_id = ? AND is_system_default = TRUE");
-        $stmt->execute([$propertyId]);
-        if (intval($stmt->fetch(PDO::FETCH_ASSOC)['cnt']) > 0) return;
-
-        $insert = $pdo->prepare("INSERT IGNORE INTO service_request_types (property_id, type_id, category, label, is_system_default, display_order) VALUES (?, ?, ?, ?, TRUE, ?)");
-        $order = 0;
-        foreach ($SERVICE_REQUEST_TYPES as $type) {
-            $insert->execute([$propertyId, $type['id'], $type['category'], $type['label'], $order++]);
-        }
-    } catch (PDOException $e) {}
-}
+// seedServiceRequestTypes removed: types now come from system_service_request_catalog (global)
+// and property-specific service_request_types (custom). No seeding needed.
 
 function serviceRequestEditedText($pdo, $req, $staffName) {
     return TelegramTemplates::render($pdo, 'service_request_fulfilled_edit', [
@@ -165,15 +135,94 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
     ensureServiceRequestsSchema($pdo);
 
     switch ($action) {
+        case 'get_system_service_request_catalog':
+            // Root Admin: manage the global system-wide catalog
+            ensureSystemServiceRequestCatalogSchema($pdo);
+            $stmt = $pdo->query("SELECT * FROM system_service_request_catalog ORDER BY category ASC, display_order ASC, label ASC");
+            echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            break;
+
+        case 'add_system_service_request_type':
+            // Root Admin: create or update an item in the global catalog
+            if ($request_method === 'POST') {
+                ensureSystemServiceRequestCatalogSchema($pdo);
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $typeId = trim($input['type_id'] ?? '');
+                $category = trim($input['category'] ?? '');
+                $label = trim($input['label'] ?? '');
+                $id = intval($input['id'] ?? 0);
+                if (!$category || !$label) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'category and label are required']);
+                    break;
+                }
+                if ($id > 0) {
+                    $pdo->prepare("UPDATE system_service_request_catalog SET category = ?, label = ? WHERE id = ?")
+                        ->execute([$category, $label, $id]);
+                } else {
+                    if (!$typeId) {
+                        $typeId = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $label));
+                    }
+                    $maxOrder = $pdo->query("SELECT COALESCE(MAX(display_order), -1) FROM system_service_request_catalog")->fetchColumn();
+                    $pdo->prepare("INSERT INTO system_service_request_catalog (type_id, category, label, display_order) VALUES (?, ?, ?, ?)")
+                        ->execute([$typeId, $category, $label, $maxOrder + 1]);
+                }
+                echo json_encode(['status' => 'success', 'message' => 'System service request type saved']);
+            }
+            break;
+
+        case 'delete_system_service_request_type':
+            // Root Admin: delete an item from the global catalog
+            if ($request_method === 'POST') {
+                ensureSystemServiceRequestCatalogSchema($pdo);
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
+                $id = intval($input['id'] ?? 0);
+                if (!$id) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'id is required']);
+                    break;
+                }
+                $pdo->prepare("DELETE FROM system_service_request_catalog WHERE id = ?")->execute([$id]);
+                echo json_encode(['status' => 'success', 'message' => 'System service request type deleted']);
+            }
+            break;
+
         case 'get_service_request_types':
-            seedServiceRequestTypes($pdo, $propertyId);
-            if (!$propertyId) {
-                // Return all types across all properties for global/shared mode
-                $stmt = $pdo->prepare("SELECT * FROM service_request_types ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
-                $stmt->execute();
+            // Returns a merged view of:
+            //   1. Global system catalog items (source='system')
+            //   2. Property-specific custom items not already in global catalog (source='custom')
+            ensureSystemServiceRequestCatalogSchema($pdo);
+            if ($propertyId) {
+                $stmt = $pdo->prepare("
+                    SELECT
+                        s.id,
+                        ? AS property_id,
+                        s.type_id,
+                        s.category,
+                        s.label,
+                        TRUE AS is_system_default,
+                        s.display_order,
+                        'system' AS source
+                    FROM system_service_request_catalog s
+                    UNION ALL
+                    SELECT
+                        p.id,
+                        p.property_id,
+                        p.type_id,
+                        p.category,
+                        p.label,
+                        FALSE AS is_system_default,
+                        p.display_order,
+                        'custom' AS source
+                    FROM service_request_types p
+                    WHERE p.property_id = ?
+                      AND p.is_system_default = FALSE
+                    ORDER BY category ASC, source DESC, display_order ASC, label ASC
+                ");
+                $stmt->execute([$propertyId, $propertyId]);
             } else {
-                $stmt = $pdo->prepare("SELECT * FROM service_request_types WHERE property_id = ? ORDER BY category ASC, is_system_default DESC, display_order ASC, label ASC");
-                $stmt->execute([$propertyId]);
+                // No property context: return global catalog only
+                $stmt = $pdo->query("SELECT *, 'system' AS source FROM system_service_request_catalog ORDER BY category ASC, display_order ASC, label ASC");
             }
             echo json_encode(['status' => 'success', 'data' => array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC))]);
             break;

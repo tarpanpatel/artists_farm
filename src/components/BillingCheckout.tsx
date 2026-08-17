@@ -137,15 +137,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   };
 
   // Jump to whichever tab actually has the requested booking, and filter the
-  // list down to just that guest via the existing search box - re-runs each
-  // time "Manage" is clicked again (including on the same guest), not just
-  // on mount.
+  // When focusGuestId is passed (e.g. from clicking Checkout & Settle Bill on
+  // Dashboard), switch to the guest's tab and open their Checkout modal directly
+  // over the Bookings page while keeping all tab bookings visible in the background.
   useEffect(() => {
     if (!focusGuestId) return;
     const target = guests.find((g) => String(g.id) === String(focusGuestId));
     if (!target) return;
     setActiveTab(getGuestTabCategory(target));
-    setSearchTerm(target.guestName);
+    setGuestForReceipt(target);
+    setModalMode('edit-and-checkout');
+    setReceiptModalOpen(true);
+    setSearchTerm('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusGuestId]);
 

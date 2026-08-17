@@ -121,6 +121,10 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  // Numeric DB id from create_order's response - needed for bill_walk_in_tab
+  // lookups, since the string `id` above is the display ticket ("KOT-123")
+  // not the row id.
+  orderId?: number;
   guestId: string;
   guestName: string;
   roomNumber: string;
@@ -128,6 +132,35 @@ export interface Order {
   status: 'Pending' | 'Preparing' | 'Fulfilled' | 'Cancelled';
   items: OrderItem[];
   totalAmount: number;
+  // Walk-in orders (no guest_id - food prepared for someone not staying in a
+  // room) belong to a WalkInTab instead of a guest/room. The tab - not the
+  // order - is what gets billed, since a table can order more than once
+  // before it's ready to close out (see WalkInTab below).
+  walkInTabId?: number | null;
+}
+
+export interface WalkInTabItem {
+  name: string;
+  price: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface WalkInTab {
+  id: number;
+  label: string | null;
+  status: 'open' | 'billed';
+  openedAt: string;
+  items: WalkInTabItem[];
+  subtotal: number;
+  // Populated only once billed
+  billedAt?: string | null;
+  paymentMethod?: string | null;
+  discount?: number;
+  gstEnabled?: boolean;
+  gstRate?: number;
+  gstAmount?: number;
+  grandTotal?: number | null;
 }
 
 export interface IncidentalsItem {
@@ -153,6 +186,7 @@ export interface InventoryItem {
   minThreshold: number;
   unit: string;
   imagePath?: string;
+  source?: 'system' | 'custom';
 }
 
 export interface CatalogItem {

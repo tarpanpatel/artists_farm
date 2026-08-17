@@ -1487,35 +1487,30 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               name: t('source_column', 'Source & Mode'),
               selector: (entry: any) => entry.paymentMode || 'Online',
               sortable: true,
-              width: '140px',
-              center: true,
+              wrap: true,
               cell: (entry: any) => {
                 const isOutofPocket = entry.staffAmount && Number(entry.staffAmount) > 0 && Number(entry.staffAmount) === Number(entry.amount);
                 const isSplit = entry.staffAmount && Number(entry.staffAmount) > 0 && entry.drawerAmount && Number(entry.drawerAmount) > 0;
 
                 if (isSplit) {
                   return (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs whitespace-nowrap flex items-center gap-1" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
-                      <Scale className="w-3 h-3 shrink-0" /> Split (Till + Pocket)
+                    <span className="text-xs text-purple-700 dark:text-purple-400 whitespace-nowrap" title={`Till: ₹${entry.drawerAmount} | Out of Pocket: ₹${entry.staffAmount}`}>
+                      Split (Till + Pocket)
                     </span>
                   );
                 }
 
                 if (isOutofPocket) {
                   return (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap flex items-center gap-1">
-                      <User className="w-3 h-3 shrink-0" /> Out of Pocket
+                    <span className="text-xs text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                      Out of Pocket
                     </span>
                   );
                 }
 
                 return (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${
-                    entry.paymentMode === 'Cash'
-                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                      : 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                  }`}>
-                    <Building2 className="w-3 h-3 shrink-0" /> Property ({entry.paymentMode || 'UPI'})
+                  <span className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    Property ({entry.paymentMode || 'UPI'})
                   </span>
                 );
               },
@@ -1524,13 +1519,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               name: t('actions_column', 'Actions'),
               width: '150px',
               center: true as const,
-              cell: (entry: any) => entry.source === 'kitchen' ? (
-                <div className="flex items-center justify-center whitespace-nowrap">
-                  <button onClick={() => handleDeleteKitchenPurchase(entry.id, entry.description)} className="bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-200 dark:border-red-800 whitespace-nowrap shadow-2xs">
-                    {t('delete_button', 'Delete')}
-                  </button>
-                </div>
-              ) : (
+              cell: (entry: any) => (
                 <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                   <button onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })} className="bg-slate-100 hover:bg-blue-50 dark:bg-slate-700 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-600 whitespace-nowrap shadow-2xs">
                     <Edit2 className="w-3 h-3" /> {t('edit_button', 'Edit')}

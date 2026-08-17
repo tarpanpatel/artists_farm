@@ -314,16 +314,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Bookings"
             >
               <span>Bookings</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           )}
         </div>
 
-        {/* Departures Block */}
         <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/35 text-amber-600 dark:text-amber-400 shrink-0">
@@ -340,16 +339,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('guests')}
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Bookings"
             >
               <span>Bookings</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           )}
         </div>
 
-        {/* Guests in-house Block (Only for multi-key property) */}
         {isMultiKeyProperty && (
           <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -367,17 +365,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {onNavigate && (
               <button
                 onClick={() => onNavigate('guests')}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
                 title="View Bookings"
               >
                 <span>Guests</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
               </button>
             )}
           </div>
         )}
 
-        {/* Service Requests Block */}
         <div className="bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all p-3 md:p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/35 text-red-600 dark:text-red-400 shrink-0">
@@ -394,19 +391,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('service_requests')}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
               title="View Service Requests"
             >
               <span>Requests</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Main Calendar View Section */}
       <div className="today-overview__calendar bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-        {/* Header with navigation */}
         <div className="flex justify-between items-center">
           <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
           <div className="flex items-center gap-2">
@@ -425,18 +420,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      {/* Calendar Container with scroll */}
       <div
         ref={scrollRef}
         onScroll={() => updateVisibleMonthLabel(daysArray)}
-        className="today-overview__calendar-scroll overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg relative"
+        className="today-overview__scroll-container overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl"
       >
         <div className="min-w-max">
-          {/* Date Header */}
-          <div className="flex bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600">
-            <div className="w-24 min-w-24 px-2 py-1 font-semibold text-slate-700 dark:text-slate-300 text-xs sticky left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-600 flex items-center z-30 shrink-0">
-              {t('room_column', 'Room')}
-            </div>            {daysArray.map((day, idx) => {
+          <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+            <div className="w-32 min-w-32 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700">
+              Room
+            </div>
+            {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
               const isToday = isSameDate(day, today);
 
@@ -449,7 +443,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }}
                   className={`w-16 min-w-16 shrink-0 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold ${
                     isToday
-                      ? 'bg-teal-500 dark:bg-teal-600 text-white'
+                      ? 'bg-blue-600 text-white dark:bg-blue-600'
                       : 'text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800'
                   }`}
                 >
@@ -621,9 +615,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           className={`w-16 min-w-16 shrink-0 border-r border-slate-100 dark:border-slate-700/50 transition ${
                             isToday ? 'bg-blue-50/60 dark:bg-blue-900/15' : 'bg-white dark:bg-slate-800/30'
                           }`}
-                          style={{
-                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(203, 213, 225, 0.08) 8px, rgba(203, 213, 225, 0.08) 16px)'
-                          }}
                         />
                       );
                     })}
@@ -673,11 +664,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                         const guest = info.item.guest;
                         const isOtaBooking = !!(guest as any).otaSource;
+                        // Checked-out wins over the OTA amber tone (17 Aug 2026 fix) -
+                        // a past OTA booking was showing amber forever regardless of
+                        // status, since this ternary checked isOtaBooking before ever
+                        // asking getGuestColor whether the stay had already ended. The
+                        // Globe badge below still renders either way, so OTA origin
+                        // stays visible even once the cell has gone grey.
+                        const isCheckedOut = isCheckedOutStatus(guest.status);
                         return (
                           <div
                             key={`${guest.id}-${idx}`}
                             className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all absolute ${
-                              isOtaBooking
+                              isOtaBooking && !isCheckedOut
                                 ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                 : getGuestColor(guest.id, guest.status)
                             } pointer-events-auto shadow-xs flex items-center justify-between gap-1 z-20 overflow-hidden`}

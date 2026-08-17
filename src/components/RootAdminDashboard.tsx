@@ -5,6 +5,7 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { PlatformPropertyManagement } from './PlatformPropertyManagement';
 import { NavMenuEditor } from './NavMenuEditor';
 import { DefaultExpensesManager } from './DefaultExpensesManager';
+import { SystemStockManager } from './SystemStockManager';
 import { DefaultBillsManager } from './DefaultBillsManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
@@ -505,6 +506,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Default Expenses Section */}
           {activeSection === 'default_expenses' && (
             <DefaultExpensesManager />
+          )}
+
+          {/* System Stock Catalog Section */}
+          {activeSection === 'system_stock' && (
+            <SystemStockManager />
           )}
 
           {/* Default Bills Section */}

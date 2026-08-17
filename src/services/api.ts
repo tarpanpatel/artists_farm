@@ -1296,9 +1296,11 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
       return json.data
         .map((o: any) => ({
           id: String(o.id || ''),
+          orderId: o.id != null ? Number(o.id) : undefined,
           guestId: String(o.guest_id || ''),
           guestName: (o.guest_name || 'Walk-in').trim(),
           roomNumber: (o.room_number || '').trim(),
+          walkInTabId: o.walk_in_tab_id != null ? Number(o.walk_in_tab_id) : null,
           items: Array.isArray(o.items)
             ? o.items
                 .filter((it: any) => (it.name || it.item_name) && Number(it.quantity) > 0)
@@ -1333,6 +1335,103 @@ export async function fetchOrdersFromDB(): Promise<any[]> {
   return [];
 }
 
+// Persists a kitchen order (create_order) and returns its real numeric DB id
+// - null on failure, including the backend's own PDOException fallback,
+// which reports success without ever actually saving anything, so callers
+// must not treat that as a real order.
+export async function addOrderToDB(order: {
+  guestId?: string | null;
+  walkInTabId?: number | null;
+  items: { menuItemId: number; quantity: number }[];
+}): Promise<number | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=create_order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guest_id: order.guestId || null,
+        walk_in_tab_id: order.walkInTabId || null,
+        items: order.items.map((it) => ({ menu_item_id: it.menuItemId, quantity: it.quantity })),
+      }),
+    });
+    const json = await res.json();
+    if (json.status === 'success' && json.order_id != null) {
+      return Number(json.order_id);
+    }
+  } catch (err) {
+    console.error('Failed to create order:', err);
+  }
+  return null;
+}
+
+// Walk-in tabs - a running bill for a table/customer that isn't staying in a
+// room. Orders attach to a tab (addOrderToDB's walkInTabId) as they come in;
+// billWalkInTabDB closes it out as one consolidated bill instead of settling
+// each order separately.
+export async function fetchWalkInTabsFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_walk_in_tabs`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch walk-in tabs:', err);
+  }
+  return [];
+}
+
+export async function fetchWalkInTabHistoryFromDB(): Promise<any[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_walk_in_tab_history`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch walk-in tab history:', err);
+  }
+  return [];
+}
+
+export async function openWalkInTabDB(label: string): Promise<number | null> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=open_walk_in_tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label }),
+    });
+    const json = await res.json();
+    if (json.status === 'success' && json.tab_id != null) return Number(json.tab_id);
+  } catch (err) {
+    console.error('Failed to open walk-in tab:', err);
+  }
+  return null;
+}
+
+export async function billWalkInTabDB(params: {
+  tabId: number;
+  paymentMethod: string;
+  discount: number;
+  gstEnabled: boolean;
+  gstRate: number;
+}): Promise<{ success: boolean; message?: string; bill?: any }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=bill_walk_in_tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tab_id: params.tabId,
+        payment_method: params.paymentMethod,
+        discount: params.discount,
+        gst_enabled: params.gstEnabled,
+        gst_rate: params.gstRate,
+      }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message, bill: json.bill };
+  } catch (err) {
+    console.error('Failed to bill walk-in tab:', err);
+    return { success: false, message: 'Network error' };
+  }
+}
+
 export async function updateOrderItemStatus(itemId: number, status: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_order_item_status`, {
@@ -1344,6 +1443,27 @@ export async function updateOrderItemStatus(itemId: number, status: string): Pro
     return json.status === 'success';
   } catch (err) {
     console.error('Failed to update order item status:', err);
+    return false;
+  }
+}
+
+// Persists an order's own status (Pending/Preparing/Fulfilled/Cancelled) -
+// separate from updateOrderItemStatus, which only tracks each dish's own
+// Ready/Served state. Nothing called this before 17 Aug 2026: an order's
+// status was set once at creation ('Pending') and then never updated again,
+// even after every one of its items was marked Served - it just sat there
+// until the next full page reload happened to reconcile it.
+export async function updateOrderStatusDB(orderId: string, status: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_order_status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: orderId, status }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to update order status:', err);
     return false;
   }
 }
@@ -1418,6 +1538,7 @@ export interface ServiceRequestType {
   label: string;
   isSystemDefault: boolean;
   displayOrder: number;
+  source?: 'system' | 'custom';
 }
 
 export async function fetchServiceRequestTypesFromDB(propertyId?: number): Promise<ServiceRequestType[]> {
@@ -1465,6 +1586,62 @@ export async function deleteServiceRequestTypeInDB(id: number, propertyId?: numb
     return json.status === 'success';
   } catch (err) {
     console.error('Failed to delete service request type:', err);
+    return false;
+  }
+}
+
+// --- System Service Request Catalog (Root Admin global management) ---
+
+export interface SystemServiceRequestCatalogItem {
+  id: number;
+  type_id: string;
+  category: string;
+  label: string;
+  display_order: number;
+}
+
+export async function fetchSystemServiceRequestCatalogFromDB(): Promise<SystemServiceRequestCatalogItem[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_system_service_request_catalog`);
+    const json = await res.json();
+    if (json.status === 'success' && Array.isArray(json.data)) return json.data;
+  } catch (err) {
+    console.error('Failed to fetch system service request catalog:', err);
+  }
+  return [];
+}
+
+export async function saveSystemServiceRequestTypeInDB(item: {
+  id?: number;
+  type_id?: string;
+  category: string;
+  label: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_system_service_request_type`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to save system service request type:', err);
+    return false;
+  }
+}
+
+export async function deleteSystemServiceRequestTypeFromDB(id: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_system_service_request_type`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to delete system service request type:', err);
     return false;
   }
 }
@@ -2273,19 +2450,22 @@ export async function fetchDrawerEntriesFromDB(): Promise<any[]> {
   return [];
 }
 
-// DB stores served_at as "YYYY-MM-DD HH:MM:SS" - normalize to the app's
-// DD/MM/YYYY display format, keeping the time since a kitchen serve log is a
-// timestamp, not just a date.
-const formatServedAt = (dt: string) => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(dt || '');
-  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dt;
-};
-
 export async function fetchServedLogsFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_served_logs`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
+      // served_at/ready_at come back raw ("YYYY-MM-DD HH:MM:SS", straight
+      // from MySQL) - deliberately NOT reformatted here (found 17 Aug 2026:
+      // this used to convert to "DD/MM/YYYY HH:MM" for display at fetch
+      // time, while a freshly-served item added client-side in the same
+      // session stamped its own timestamp in a different, unrelated format -
+      // two different shapes landing in the same servedLogs list, neither of
+      // which the sort/diff logic in KitchenManagement.tsx could parse
+      // consistently). Keeping the raw DB shape here means every row -
+      // however it got into the list - is in the one format
+      // parseFlexibleTimestamp/buildLocalTimestamp actually agree on;
+      // display formatting happens once, in the table's own cell renderer.
       return json.data.map((item: any) => ({
         id: String(item.id ?? ''),
         orderId: item.order_id ?? '',
@@ -2294,7 +2474,8 @@ export async function fetchServedLogsFromDB(): Promise<any[]> {
         servedBy: item.served_by ?? '',
         guestName: item.guest_name ?? '',
         roomNumber: item.room_number ?? '',
-        servedAt: formatServedAt(item.served_at ?? ''),
+        servedAt: item.served_at ?? '',
+        readyAt: item.ready_at || null,
       }));
     }
   } catch (err) {
@@ -2310,6 +2491,7 @@ export async function addServedLogToDB(log: {
   served_by: string;
   guest_name: string;
   room_number: string;
+  ready_at?: string;
 }): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_served_log`, {

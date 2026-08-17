@@ -9,30 +9,46 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_inventory':
             try {
-                // Try req_catalog first (full catalog with categories)
-                $sql = "SELECT r.id, r.item_name as name, r.category_id, COALESCE(c.name, 'General') as category, r.current_stock as quantity, r.unit_label as unit, COALESCE(r.image_path, '') as image_path 
-                        FROM req_catalog r 
-                        LEFT JOIN material_categories c ON r.category_id = c.id 
-                        WHERE r.property_id = ?
-                        ORDER BY r.item_name ASC";
+                // Return merged list of system templates and property custom items.
+                // Left join req_catalog with system_stock_catalog to get localized current_stock for system items
+                $sql = "
+                    SELECT 
+                        COALESCE(r.id, CONCAT('sys_', s.id)) as id,
+                        s.item_name as name,
+                        s.category_id,
+                        COALESCE(c.name, 'General') as category,
+                        COALESCE(r.current_stock, 0) as quantity,
+                        s.unit_label as unit,
+                        COALESCE(s.image_path, '') as image_path,
+                        'system' as source
+                    FROM system_stock_catalog s
+                    LEFT JOIN req_catalog r ON r.system_item_id = s.id AND r.property_id = ?
+                    LEFT JOIN material_categories c ON s.category_id = c.id
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        r.id,
+                        r.item_name as name,
+                        r.category_id,
+                        COALESCE(c.name, 'General') as category,
+                        r.current_stock as quantity,
+                        r.unit_label as unit,
+                        COALESCE(r.image_path, '') as image_path,
+                        'custom' as source
+                    FROM req_catalog r
+                    LEFT JOIN material_categories c ON r.category_id = c.id
+                    WHERE r.property_id = ? AND r.system_item_id IS NULL
+                    
+                    ORDER BY name ASC
+                ";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$propertyId]);
-                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+                $stmt->execute([$propertyId, $propertyId]);
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode(['status' => 'success', 'data' => $results]);
             } catch (PDOException $e) {
-                try {
-                    // Fallback to inventory_items table (scoped - the table holds every
-                    // property's stock, so an unscoped SELECT here would dump all of them)
-                    $sql = "SELECT id, name, category, quantity, unit FROM inventory_items WHERE property_id = ? ORDER BY name ASC";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$propertyId]);
-                    echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
-                } catch (PDOException $e2) {
-                    // Auto-create req_catalog table if both are missing
-
-                    $stmt = $pdo->prepare("SELECT id, item_name as name, 'General' as category, current_stock as quantity, unit_label as unit FROM req_catalog WHERE property_id = ? ORDER BY item_name ASC");
-                    $stmt->execute([$propertyId]);
-                    echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
-                }
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             }
             break;
 
@@ -40,13 +56,41 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
-                    $stmt = $pdo->prepare("UPDATE req_catalog SET current_stock = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([$input['quantity'], $input['id'], $propertyId]);
+                    $id = $input['id'];
+                    $qty = $input['quantity'];
+
+                    if (is_string($id) && strpos($id, 'sys_') === 0) {
+                        $sysId = (int)str_replace('sys_', '', $id);
+                        
+                        // Check if a local tracking row exists
+                        $stmt = $pdo->prepare("UPDATE req_catalog SET current_stock = ? WHERE system_item_id = ? AND property_id = ?");
+                        $stmt->execute([$qty, $sysId, $propertyId]);
+                        
+                        if ($stmt->rowCount() === 0) {
+                            // Insert a new local tracking row by copying from system_stock_catalog
+                            $stmtSys = $pdo->prepare("SELECT item_name, category_id, unit_label, image_path FROM system_stock_catalog WHERE id = ?");
+                            $stmtSys->execute([$sysId]);
+                            $sysItem = $stmtSys->fetch(PDO::FETCH_ASSOC);
+                            
+                            if ($sysItem) {
+                                $stmtIns = $pdo->prepare("INSERT INTO req_catalog (property_id, system_item_id, item_name, category_id, current_stock, unit_label, image_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                                $stmtIns->execute([$propertyId, $sysId, $sysItem['item_name'], $sysItem['category_id'], $qty, $sysItem['unit_label'], $sysItem['image_path']]);
+                            }
+                        }
+                    } else {
+                        // Standard local item update
+                        $stmt = $pdo->prepare("UPDATE req_catalog SET current_stock = ? WHERE id = ? AND property_id = ?");
+                        $stmt->execute([$qty, $id, $propertyId]);
+                        
+                        if ($stmt->rowCount() === 0) {
+                            $stmt = $pdo->prepare("UPDATE inventory_items SET quantity = ? WHERE id = ? AND property_id = ?");
+                            $stmt->execute([$qty, $id, $propertyId]);
+                        }
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'Stock quantity updated']);
                 } catch (PDOException $e) {
-                    $stmt = $pdo->prepare("UPDATE inventory_items SET quantity = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([$input['quantity'], $input['id'], $propertyId]);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
-                echo json_encode(['status' => 'success', 'message' => 'Stock quantity updated']);
             }
             break;
 
@@ -724,6 +768,68 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                 echo json_encode(['status' => 'success', 'fixed' => $fixed, 'message' => "Fixed $fixed orphan categories"]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'get_system_stock_catalog':
+            try {
+                $stmt = $pdo->query("
+                    SELECT s.id, s.item_name as name, s.category_id, COALESCE(c.name, 'General') as category, s.unit_label as unit, s.image_path
+                    FROM system_stock_catalog s
+                    LEFT JOIN material_categories c ON s.category_id = c.id
+                    ORDER BY c.name ASC, s.item_name ASC
+                ");
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $grouped = [];
+                foreach ($data as $item) {
+                    $cat = $item['category'];
+                    if (!isset($grouped[$cat])) $grouped[$cat] = [];
+                    $grouped[$cat][] = $item;
+                }
+                echo json_encode(['status' => 'success', 'data' => $grouped, 'grouped' => true]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_system_stock_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $name = trim($input['name'] ?? '');
+                    $category_id = $input['categoryId'] ?? 1;
+                    $unit = $input['unit'] ?? 'Kg';
+                    $id = $input['id'] ?? null;
+
+                    if ($id) {
+                        $stmt = $pdo->prepare("UPDATE system_stock_catalog SET item_name = ?, category_id = ?, unit_label = ? WHERE id = ?");
+                        $stmt->execute([$name, $category_id, $unit, $id]);
+                        echo json_encode(['status' => 'success', 'message' => 'System stock item updated']);
+                    } else {
+                        $stmt = $pdo->prepare("INSERT INTO system_stock_catalog (item_name, category_id, unit_label) VALUES (?, ?, ?)");
+                        $stmt->execute([$name, $category_id, $unit]);
+                        echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId(), 'message' => 'System stock item created']);
+                    }
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_system_stock_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                $id = $input['id'] ?? null;
+                if ($id) {
+                    try {
+                        $stmt = $pdo->prepare("DELETE FROM system_stock_catalog WHERE id = ?");
+                        $stmt->execute([$id]);
+                        echo json_encode(['status' => 'success', 'message' => 'System stock item deleted']);
+                    } catch (PDOException $e) {
+                        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                    }
+                }
             }
             break;
 

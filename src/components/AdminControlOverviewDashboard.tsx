@@ -9,6 +9,7 @@ import {
   FolderCog,
   ArrowRight,
   ScrollText,
+  Package,
 } from 'lucide-react';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
@@ -78,6 +79,14 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       description: t('misc_charges_desc', 'Configure preset incidental charges, extra guest fees, and miscellaneous billing templates.'),
       icon: Sliders,
       color: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',
+    },
+    {
+      uniqueKey: 'system_stock',
+      tabKey: 'admin',
+      title: t('system_stock_heading', 'System Stock Catalog'),
+      description: t('system_stock_desc', 'Manage global baseline stock items that are available across all properties.'),
+      icon: Package,
+      color: 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/60',
     },
     {
       uniqueKey: 'telegram',

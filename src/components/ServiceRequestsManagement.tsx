@@ -31,32 +31,9 @@ interface ServiceRequestsManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
 }
 
-export const DEFAULT_SERVICE_REQUEST_TYPES = [
-  { type_id: 'fresh_towels', category: 'Housekeeping', label: 'Fresh Towels' },
-  { type_id: 'extra_bedding', category: 'Housekeeping', label: 'Extra Bedding / Pillows' },
-  { type_id: 'toiletries_refill', category: 'Housekeeping', label: 'Toiletries Refill' },
-  { type_id: 'room_cleaning', category: 'Housekeeping', label: 'Room Cleaning' },
-  { type_id: 'trash_pickup', category: 'Housekeeping', label: 'Trash Pickup' },
-  { type_id: 'drinking_water', category: 'Food & Beverage', label: 'Drinking Water / Ice' },
-  { type_id: 'tea_coffee_replenish', category: 'Food & Beverage', label: 'Tea / Coffee Sachets' },
-  { type_id: 'crockery_cutlery', category: 'Food & Beverage', label: 'Crockery / Cutlery' },
-  { type_id: 'room_service_order', category: 'Food & Beverage', label: 'In-Room Dining Request' },
-  { type_id: 'ac_heating_issue', category: 'Maintenance', label: 'AC / Heating Issue' },
-  { type_id: 'hot_water_geyser', category: 'Maintenance', label: 'Hot Water / Geyser Issue' },
-  { type_id: 'wifi_connectivity', category: 'Maintenance', label: 'Wi-Fi / Internet Issue' },
-  { type_id: 'tv_cable_issue', category: 'Maintenance', label: 'TV / Cable Issue' },
-  { type_id: 'plumbing_leakage', category: 'Maintenance', label: 'Plumbing / Leakage' },
-  { type_id: 'electrical_power', category: 'Maintenance', label: 'Electrical / Power Outlet Issue' },
-  { type_id: 'iron_ironing_board', category: 'Amenities On Request', label: 'Iron & Ironing Board' },
-  { type_id: 'hair_dryer', category: 'Amenities On Request', label: 'Hair Dryer' },
-  { type_id: 'mosquito_repellent', category: 'Amenities On Request', label: 'Mosquito Repellent / Vaporizer' },
-  { type_id: 'luggage_assistance', category: 'Front Desk & Services', label: 'Luggage Assistance' },
-  { type_id: 'cab_travel_booking', category: 'Front Desk & Services', label: 'Taxi / Travel Booking' },
-  { type_id: 'late_checkout_request', category: 'Front Desk & Services', label: 'Late Check-out Request' },
-  { type_id: 'early_checkin_request', category: 'Front Desk & Services', label: 'Early Check-in Request' },
-  { type_id: 'first_aid_assistance', category: 'Front Desk & Services', label: 'First Aid Kit' },
-  { type_id: 'other_special_request', category: 'General', label: 'Other / Custom Request' },
-];
+// Service request types are now fully database-driven via the system_service_request_catalog
+// global table. The DEFAULT_SERVICE_REQUEST_TYPES fallback array has been removed.
+// The backend GET /get_service_request_types returns a merged UNION of system + property custom types.
 
 // Reminder cadence for still-unfulfilled requests - same shared nudge engine
 // shape as KitchenManagement's stale-order poll (php/kitchen/orders.php's
@@ -77,7 +54,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [requestTypes, setRequestTypes] = useState<ServiceRequestType[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoomId, setNewRoomId] = useState<string>('');
-  const [newRequestType, setNewRequestType] = useState(DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
+  const [newRequestType, setNewRequestType] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
@@ -111,21 +88,15 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     loadTypes();
   }, []);
 
-  // DB-driven types when available; falls back to the built-in list so the
-  // dropdown still works before/without a backend seed.
-  const effectiveTypes: ServiceRequestType[] = requestTypes.length > 0
-    ? requestTypes
-    : DEFAULT_SERVICE_REQUEST_TYPES.map((d, i) => ({
-        id: -1 - i,
-        propertyId: 0,
-        typeId: d.type_id,
-        category: d.category,
-        label: d.label,
-        isSystemDefault: true,
-        displayOrder: i,
-      }));
+  // DB-driven merged list (system global + property custom types). Always ready from DB.
+  const typeOptions = requestTypes.map((rt) => ({ value: rt.typeId, label: rt.label, group: rt.category, searchText: `${rt.label} ${rt.category}`.toLowerCase() }));
 
-  const typeOptions = effectiveTypes.map((rt) => ({ value: rt.typeId, label: rt.label, group: rt.category, searchText: `${rt.label} ${rt.category}`.toLowerCase() }));
+  // Set default selection when types load
+  useEffect(() => {
+    if (requestTypes.length > 0 && !newRequestType) {
+      setNewRequestType(requestTypes[0].typeId);
+    }
+  }, [requestTypes]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +115,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       onDispatchTelegram?.('Service Request Created', createdMsg, 'admin');
       setIsAddModalOpen(false);
       setNewRoomId('');
-      setNewRequestType(typeOptions[0]?.value ?? DEFAULT_SERVICE_REQUEST_TYPES[0].type_id);
+      setNewRequestType(typeOptions[0]?.value ?? '');
       setNewDescription('');
       refreshRequests();
     } else {

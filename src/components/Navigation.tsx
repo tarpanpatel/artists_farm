@@ -92,6 +92,31 @@ export const Navigation: React.FC<NavigationProps> = ({
   const pendingReqCount = requisitions.filter((r) => r.status === 'Pending').length;
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
+  // The dimming overlay below used to be gated only by `isSidebarOpen &&`
+  // for whether it renders at all, then hidden visually at desktop widths
+  // via the CSS class `md:hidden`. Those are two independent signals that
+  // can drift apart: isSidebarOpen is only ever set by an explicit
+  // hamburger-button toggle (mobile-oriented) and then just sits there -
+  // it isn't reset when the viewport later widens back to desktop (e.g.
+  // opening DevTools docks a panel and narrows the page below 768px,
+  // toggling the sidebar there, then closing DevTools widens it back out
+  // without ever unsetting isSidebarOpen). The next time the viewport
+  // dips under `md` again for ANY reason, `md:hidden` stops applying and
+  // the overlay reappears, dimming real content even though the sidebar
+  // is meant to be permanently docked at that width. Tracking the actual
+  // breakpoint in JS (matching Tailwind's default `md` = 768px) and using
+  // it to gate the overlay's render directly makes this one single source
+  // of truth instead of two that can independently go stale.
+  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handleChange = (e: MediaQueryListEvent) => setIsDesktopViewport(e.matches);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, []);
+
   // Scroll active item into center of sidebar viewport
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -479,23 +504,20 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      {isSidebarOpen && (
+      {isSidebarOpen && !isDesktopViewport && (
         <div
           onClick={onCloseSidebar}
-          className="navigation__overlay fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs md:hidden transition-opacity"
+          className="navigation__overlay fixed inset-0 z-[55] bg-slate-900/50 backdrop-blur-xs transition-opacity"
         />
       )}
 
-      {/* z-30 -> z-[56] (12 Aug 2026): on mobile, opening this sidebar should
-          always be the topmost thing on screen - "webapp should work like a
-          native mobile app" per explicit product direction. At z-30 it sat
-          BELOW any already-open dropdown (StyledSelect.tsx's options panel is
-          z-50), so e.g. leaving a form's "Room" select open and then tapping
-          the hamburger menu rendered that dropdown floating on top of the
-          freshly-opened sidebar instead of behind it. Placed just above every
-          z-50 popover/modal in the app but still below toasts (z-[9999]) and
-          the confirm dialog (z-[99999]), which should stay visible/actionable
-          even with the sidebar open. */}
+      {/* z-[56]: part of the app-wide z-index scale documented in
+          src/index.css above the .fixed.inset-0.z-50 rule - read that
+          comment in full before changing this value. Sits above ordinary
+          z-50 popovers (StyledSelect's dropdown, etc. - so a freshly-opened
+          sidebar always covers one left open behind it) and below real
+          page modals (bumped to z-[58] by that same CSS rule) and toasts/
+          confirm dialog (z-[9999]/[99999]). */}
       <aside
         id="mainSidebarNavigationContainer"
         // top-0/h-screen/pt-16 (padding, not offset) used to be here so the
@@ -503,7 +525,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         // header's 0-64px band, just visually pushed down with padding. That
         // was invisible while the sidebar sat BELOW the header (z-30 < z-50):
         // the header always won that shared band. Once the sidebar was raised
-        className={`navigation fixed top-0 left-0 h-screen pt-16 z-40 transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
+        className={`navigation fixed top-0 left-0 h-screen pt-16 z-[56] transition-all duration-200 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 ${
           isIconOnly
             ? 'w-16 translate-x-0'
             : isSidebarOpen

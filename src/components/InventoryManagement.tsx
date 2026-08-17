@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Image as ImageIcon, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2 } from 'lucide-react';
+import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
@@ -16,6 +16,125 @@ import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
+
+// Matched against the item NAME first (most specific), since real catalogs
+// group very different items under one loose category (e.g. "Sugar" and
+// "Red Balloon" both landing under "Housekeeping & Disposables") - a
+// category-only icon was confirmed wrong for most rows. Order matters:
+// more specific terms (e.g. "mirch powder") must be checked before the
+// broader term they contain (e.g. "mirch") so spice powders don't get
+// mapped as fresh vegetables. Covers common English + Hindi/Hinglish
+// kitchen-stock vocabulary; anything unmatched falls through to the
+// category rules below, then to a generic Package icon.
+const STOCK_NAME_ICON_RULES: [RegExp, LucideIcon][] = [
+  [/balloon/i, Balloon],
+  [/\bfridge\b|refrigerator/i, Refrigerator],
+  [/microwave/i, Microwave],
+  [/exhaust\s*fan|\bfan\b/i, Fan],
+  [/\bmixer\b|blender/i, Blend],
+  [/air\s*fryer|\bfryer\b/i, Flame],
+  [/sandwich\s*maker/i, Sandwich],
+  [/\bkettle\b/i, Coffee],
+  [/gas\s*cylinder|\blpg\b|\bcylinder\b/i, Flame],
+  [/chlorine|\bro\b|water\s*purifier/i, Droplet],
+  [/dish\s*wash|surf\s*excel|\bvim\b|detergent|\bsoap\b|cleaner|\bpolish\b/i, SprayCan],
+  [/garbage|dustbin|\btrash\b/i, Trash2],
+  [/\bsugar\b/i, Candy],
+  [/\bsalt\b/i, FlaskConical],
+  [/\bmatch\s*box\b/i, Flame],
+  [/\bbiscuit\b|\bcookie\b/i, Cookie],
+  [/\bkaju\b|cashew|\balmond\b|\bpista\b|\bmagaj\b|\bpeanut\b|\bwalnut\b/i, Nut],
+  [/masala|powder|elaichi|dalchini|ajino\s*moto|\bhaldi\b|\bjeera\b|dhaniya|\bgaram\b|\bchaat\b|\bchat\b|kitchen\s*king|\baachar\b|\bachar\b|\bdegi\b/i, FlaskConical],
+  // Sauces/condiments checked before the chili & vegetable rules below, since
+  // e.g. "Tomato Ketchup" and "Green Chili Sauce" contain those ingredient
+  // words but are the finished condiment, not the raw produce.
+  [/sauce|ketchup|chutney/i, Soup],
+  [/\bflour\b|\batta\b|\bmaida\b|\bb[ae]?san\b|\brice\b|\bwheat\b|\bpoha\b|\bpapad\b|\bsev\b|jwar|ragi/i, Wheat],
+  [/\bdal\b|lentil|\bchana\b/i, Bean],
+  [/mirch|mrch|chil+i|pepper/i, Flame],
+  [/\bmint\b|pudina|\bpalak\b|spinach|\bcabbage\b|\bgobhi\b/i, LeafyGreen],
+  [/\blemon\b|\boranges?\b/i, Citrus],
+  [/\bapple\b/i, Apple],
+  [/\bbanana\b/i, Banana],
+  [/\bgrape\b/i, Grape],
+  [/cherry|strawberr/i, Cherry],
+  [/\bmango\b|\bpapaya\b|watermelon|coconut|\bchiku\b|\bamla\b/i, Cherry],
+  [/\btomato\b|\bonion\b|\bpotato\b|\bgarlic\b|\bginger\b|\bcarrot\b|cauliflower|brinjal|\bbeans?\b|capsicum|shimla|\bkhira\b|cucumber|\bloki\b|\bkarela\b|\bmuli\b|radish|\bmatar\b|\bpeas?\b|\bkaddu\b|pumpkin|\bbhindi\b|okra|\barbi\b/i, Carrot],
+  [/\bmilk\b|\bcurd\b|\bdahi\b|paneer|\bcheese\b|\bbutter\b|\bghee\b|\bcream\b|mozzarella/i, Milk],
+  [/chicken|mutton|kabab|kebab/i, Drumstick],
+  [/\begg\b/i, Egg],
+  [/\bfish\b|prawn|seafood/i, Fish],
+  [/\bbread\b|pizza\s*base|\bbun\b|croissant/i, Croissant],
+  [/\btea\b|\bcoffee\b/i, Coffee],
+  [/soda|cold\s*drink/i, CupSoda],
+  [/\bice\b|frozen/i, Snowflake],
+  [/plate|bowl|platter/i, HandPlatter],
+  [/\bcups?\b|\bglass(es)?\b/i, GlassWater],
+  [/fork|knife|spoon/i, Utensils],
+];
+
+const STOCK_CATEGORY_ICON_RULES: [RegExp, LucideIcon][] = [
+  [/spice|season|masala/i, FlaskConical],
+  [/oil|ghee|fat/i, Droplet],
+  [/frozen|cold/i, Snowflake],
+  [/non\s*veg|meat|mutton|chicken|poultry/i, Drumstick],
+  [/fish|seafood|prawn/i, Fish],
+  [/dairy|milk|paneer|curd|yog/i, Milk],
+  [/bakery|bread|bun/i, Croissant],
+  [/dessert|sweet|cake|candy/i, Cake],
+  [/fruit/i, Apple],
+  [/vegetable|produce/i, Carrot],
+  [/lentil|pulse|dal|grain|flour|rice|wheat/i, Wheat],
+  [/beverage|drink|coffee|tea/i, Coffee],
+  [/sauce|chinese|continental|soup/i, Soup],
+  [/housekeeping|disposable|clean/i, SprayCan],
+  [/crockery|cutlery|utensil/i, UtensilsCrossed],
+  [/appliance|repair|equipment/i, Wrench],
+];
+
+// Item name is checked first (specific, e.g. "Sugar" -> Candy) since real
+// catalogs bucket very different items under one loose category; category
+// is only a fallback for names that don't match anything above.
+const getStockItemIcon = (name?: string, category?: string): LucideIcon => {
+  if (name) {
+    const nameMatch = STOCK_NAME_ICON_RULES.find(([pattern]) => pattern.test(name));
+    if (nameMatch) return nameMatch[1];
+  }
+  if (category) {
+    const catMatch = STOCK_CATEGORY_ICON_RULES.find(([pattern]) => pattern.test(category));
+    if (catMatch) return catMatch[1];
+  }
+  return Package;
+};
+
+// Units that are physically divisible (weight/volume, or a dozen - which
+// still resolves to a whole number of pieces, e.g. 0.5 Doz = 6 bananas).
+// Packet/box/piece-style units are excluded on purpose: "0.5 Packets" isn't
+// a real quantity you can ask a kitchen to fulfill, so those stay whole
+// numbers. Add new synonyms here rather than in the input handlers.
+const DECIMAL_FRIENDLY_UNITS = new Set([
+  'kg', 'kgs', 'gm', 'gms', 'g', 'gram', 'grams',
+  'ltr', 'ltrs', 'liter', 'liters', 'litre', 'litres', 'ml',
+  'doz', 'dozen',
+]);
+
+// Request-basket rows store unit as a compound "packSize unit" string
+// ("1 Kg") for display. Strips the leading pack-size number off, leaving
+// just the unit word ("Kg") - needed both for the decimal-friendly check
+// below and for building the "(x0.5 Kg)" string sent to the Fulfill
+// screen, which must NOT contain that extra leading "1" or its regex
+// parser can't find the closing ")" and silently drops the quantity.
+const bareUnit = (unit?: string): string => (unit || '').replace(/^[\d.]+\s*/, '').trim();
+
+const isDecimalFriendlyUnit = (unit?: string): boolean => {
+  if (!unit) return false;
+  return DECIMAL_FRIENDLY_UNITS.has(bareUnit(unit).toLowerCase());
+};
+
+// Kitchen requests only meaningfully resolve to 2 decimal places (e.g. 0.25
+// Kg); rounding both sides before comparing avoids floating-point noise
+// (0.1 + 0.2 !== 0.3) flagging an exact delivery as "partial."
+const roundQty = (n: number): number => Math.round(n * 100) / 100;
 
 interface InventoryManagementProps {
   onUpdateStock: (itemId: string, newStock: number) => void;
@@ -378,8 +497,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const initialData: Record<string, { qty: number, cost: number, size: number, unit: string }> = {};
     sheet.items.forEach((itemStr: string) => {
       const namePart = itemStr.split(' (x')[0];
-      const match = itemStr.match(/\(x(\d+)\s*([a-zA-Z]+)?\)/);
-      const qty = match ? parseInt(match[1]) : 1;
+      // The optional (?:[\d.]+\s*)? skips a stray leading pack-size number
+      // ("x0.5 1 Doz)") so sheets dispatched before the unit-formatting fix
+      // still parse correctly, alongside the normal "x0.5 Doz)" form.
+      const match = itemStr.match(/\(x([\d.]+)\s*(?:[\d.]+\s*)?([a-zA-Z]+)?\)/);
+      const qty = match ? parseFloat(match[1]) : 1;
       const unit = match && match[2] ? match[2] : 'Kg';
       initialData[namePart] = { qty, cost: 0, size: 1, unit };
     });
@@ -422,15 +544,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     let manifestStr = '';
     selectedFulfillSheet.items.forEach((itemStr: string) => {
       const namePart = itemStr.split(' (x')[0];
-      const match = itemStr.match(/\(x(\d+)\s*([a-zA-Z]+)?\)/);
-      const orderedQty = match ? parseInt(match[1]) : 1;
+      // The optional (?:[\d.]+\s*)? skips a stray leading pack-size number
+      // ("x0.5 1 Doz)") so sheets dispatched before the unit-formatting fix
+      // still parse correctly, alongside the normal "x0.5 Doz)" form.
+      const match = itemStr.match(/\(x([\d.]+)\s*(?:[\d.]+\s*)?([a-zA-Z]+)?\)/);
+      const orderedQty = match ? parseFloat(match[1]) : 1;
       const orderedUnit = match && match[2] ? match[2] : '';
       const orderTag = orderedUnit ? `${orderedQty} ${orderedUnit}` : `${orderedQty}`;
-      
+
       const data = fulfillData[namePart];
       if (!data) return;
 
-      if (data.qty !== orderedQty) {
+      if (roundQty(data.qty) !== roundQty(orderedQty)) {
         allDeliveredEqOrdered = false;
       }
       if (data.qty > 0) {
@@ -620,13 +745,36 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
   };
 
+  // Shared by the desktop basket panel and the mobile cart drawer so both
+  // stay in sync with the same decimal-vs-whole-number rule per unit.
+  const handleAdjustReqQty = (id: string, delta: number) => {
+    setReqBasket((prev) =>
+      prev
+        .map((item) => (item.id === id ? { ...item, qty: roundQty(item.qty + delta) } : item))
+        .filter((item) => item.qty > 0)
+    );
+  };
+
+  const handleSetReqQty = (id: string, rawValue: string) => {
+    setReqBasket((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const parsed = rawValue === '' ? 0 : Number(rawValue);
+        if (Number.isNaN(parsed)) return item;
+        const clamped = Math.max(0, parsed);
+        const qty = isDecimalFriendlyUnit(item.unit) ? roundQty(clamped) : Math.round(clamped);
+        return { ...item, qty };
+      })
+    );
+  };
+
   const handleDispatchReq = async () => {
     if (reqBasket.length === 0 && !specialRequestText.trim()) {
       showToast('Supply basket is empty!', { type: 'warning' });
       return;
     }
     const newSheetId = `${1167 + recentSheets.length}`;
-    const items = reqBasket.map((b) => `${b.name} (x${b.qty} ${b.unit})`);
+    const items = reqBasket.map((b) => `${b.name} (x${b.qty} ${bareUnit(b.unit)})`);
     if (specialRequestText.trim()) {
       items.push(`Special Notes: ${specialRequestText.trim()}`);
     }
@@ -1136,14 +1284,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             columns={[
               {
                 name: t('image_column_header'),
-                width: '170px',
-                cell: (row: CatalogItem) => (
-                  row.imagePath ? (
-                    <img src={row.imagePath} alt={row.name} className="w-[150px] h-[50px] object-cover rounded border border-slate-200" />
-                  ) : (
-                    <div className="w-[150px] h-[50px] bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-slate-400 text-[10px] italic">{t('no_image_label')}</div>
-                  )
-                ),
+                width: '80px',
+                cell: (row: CatalogItem) => {
+                  const ItemIcon = getStockItemIcon(row.name, row.category);
+                  return (
+                    <div className="w-11 h-11 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center">
+                      <ItemIcon className="w-5 h-5 text-cyan-600" />
+                    </div>
+                  );
+                },
                 sortable: false,
               },
               {
@@ -1452,7 +1601,35 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>Pending Material Requisitions & Approvals</span>
               </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFulfillRangeOpen(true)}
+                  className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 shadow-xs hover:border-slate-400 dark:hover:border-slate-500 transition-colors cursor-pointer"
+                >
+                  <span className="inline-flex items-center gap-1">{formatDateDDMMYYYY(fulfillFromDraft)} <ArrowRight className="w-3 h-3" /> {formatDateDDMMYYYY(fulfillToDraft)}</span>
+                </button>
+                <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
+                  {t('enter_button', 'Enter')}
+                </button>
+              </div>
             </div>
+
+            {fulfillRangeOpen && (
+              <DateRangePicker
+                isOpen={fulfillRangeOpen}
+                onClose={() => setFulfillRangeOpen(false)}
+                checkinDate={fulfillFromDraft}
+                checkoutDate={fulfillToDraft}
+                onCheckinChange={setFulfillFromDraft}
+                onCheckoutChange={setFulfillToDraft}
+                heading={t('stock_request_log_header', 'Stock Requisition Log')}
+                description={t('fulfill_stock_range_description', 'Pick a from/to range to filter requisitions below')}
+                fromLabel={t('from_label', 'From')}
+                toLabel={t('to_label', 'To')}
+              />
+            )}
 
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
               <DataTable
@@ -1492,13 +1669,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     selector: (row: any) => row.status,
                     sortable: true,
                     center: true,
+                    width: '120px',
                     cell: (row: any) => (
-                      <span className={`font-semibold text-[10px] px-2 py-1 rounded-md ${
+                      <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-md ${
                         row.status === 'PENDING'
-                          ? 'bg-amber-100 text-amber-700'
+                          ? 'bg-amber-100 text-amber-700 border border-amber-200'
                           : row.status === 'FULFILLED'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-slate-100 text-slate-700'
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
                       }`}>
                         {row.status}
                       </span>
@@ -1507,13 +1685,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   {
                     name: 'Actions',
                     center: true,
+                    width: '240px',
                     cell: (row: any) => (
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => handleEditFulfill(row)} className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-2xs active:scale-95">
                           <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
                         </button>
                         {row.status === 'PENDING' && (
-                          <button onClick={() => handleQuickComplete(row)} className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200">
+                          <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-2xs active:scale-95">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Complete
                           </button>
                         )}
@@ -1528,13 +1707,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
                 })}
                 subHeader={
-                  <div className="w-full flex items-center gap-2 py-2">
+                  <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-2">
                     <Input
                       type="text"
                       placeholder="Search requests by item name, status..."
                       value={fulfillSearch}
                       onChange={(e) => setFulfillSearch(e.target.value)}
-                      className="w-full max-w-sm"
+                      className="w-full sm:max-w-md shadow-2xs"
+                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
                     />
                   </div>
                 }
@@ -1550,6 +1730,92 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 }
               />
             </div>
+
+            {/* Fulfill Edit Modal */}
+            {selectedFulfillSheet && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <h3 className="inventory-management__subtitle font-semibold text-slate-700 dark:text-slate-200 text-sm tracking-wide uppercase">
+                      {t('modify_stock_request_header', `Modify Requisition #${selectedFulfillSheet.id}`)}
+                    </h3>
+                    <button onClick={() => setSelectedFulfillSheet(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                    <div className="pt-2">
+                      <h4 className="inventory-management__caption text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">{t('costing_delivery_manifest_header', 'Costing & Delivery Manifest')}</h4>
+
+                      <div className="space-y-5">
+                        {selectedFulfillSheet.items.map((itemStr: string, idx: number) => {
+                          const namePart = itemStr.split(' (x')[0];
+                          const data = fulfillData[namePart] || { qty: 0, cost: 0, size: 1, unit: 'Kg' };
+
+                          return (
+                            <div key={idx} className="space-y-2">
+                              <h5 className="inventory-management__label font-semibold text-slate-800 dark:text-slate-100 text-sm">{namePart}</h5>
+                              <div className="grid grid-cols-4 gap-3">
+                                <div>
+                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('delivered_qty_label', 'Delivered Qty')}</label>
+                                  <Input
+                                    type="number"
+                                    step={isDecimalFriendlyUnit(data.unit) ? '0.01' : '1'}
+                                    value={data.qty}
+                                    onChange={(e) => {
+                                      const parsed = parseFloat(e.target.value) || 0;
+                                      const qty = isDecimalFriendlyUnit(data.unit) ? roundQty(parsed) : Math.round(parsed);
+                                      updateFulfillData(namePart, 'qty', qty);
+                                    }}
+                                    className="w-full text-center"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('cost_price_label', 'Cost Price')}</label>
+                                  <Input
+                                    type="number"
+                                    value={data.cost}
+                                    onChange={(e) => updateFulfillData(namePart, 'cost', parseInt(e.target.value) || 0)}
+                                    className="w-full text-center"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('size_label', 'Size')}</label>
+                                  <Input
+                                    type="number"
+                                    value={data.size}
+                                    onChange={(e) => updateFulfillData(namePart, 'size', parseInt(e.target.value) || 1)}
+                                    className="w-full text-center"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('unit_format_label', 'Unit')}</label>
+                                  <StyledSelect
+                                    value={data.unit}
+                                    onChange={(val) => updateFulfillData(namePart, 'unit', val)}
+                                    options={['Kg', 'Gm', 'Gms', 'Ltr', 'Liter', 'Ml', 'Pack', 'Pcs', 'Pc', 'Box', 'Doz', 'Packets'].map(u => ({ value: u, label: u }))}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 flex justify-end gap-3">
+                    <button onClick={() => setSelectedFulfillSheet(null)} className="px-6 py-2 text-sm font-semibold text-white bg-slate-500 hover:bg-slate-600 rounded-lg transition-colors shadow-xs cursor-pointer">
+                      {t('cancel_button', 'Cancel')}
+                    </button>
+                    <button onClick={handleSaveFulfillQuantities} className="px-6 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors shadow-xs cursor-pointer">
+                      {t('save_commit_updates_button', 'Save & Commit Updates')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -1624,6 +1890,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {filteredCatalog.map((item) => {
                   const isRecentlyAdded = recentlyAddedReqId === item.id;
+                  const ItemIcon = getStockItemIcon(item.name, item.category);
                   return (
                     <div
                       key={item.id}
@@ -1636,7 +1903,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         {/* Item Icon Thumbnail */}
                         <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-500 font-semibold text-[10px]">
-                          <Boxes className="w-5 h-5 text-cyan-600" />
+                          <ItemIcon className="w-5 h-5 text-cyan-600" />
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -1683,6 +1950,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   {totalReqCount} Items
                 </span>
               </div>
+              {reqBasket.length > 0 && (
+                <p className="normal-case text-[10px] text-slate-400 font-normal -mt-2">
+                  Tap a quantity to type an exact amount - decimals work for Kg/Gm/Ltr/Doz items.
+                </p>
+              )}
 
               {reqBasket.length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-xs">
@@ -1704,24 +1976,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                       </div>
                        <div className="flex items-center border border-slate-300 rounded-lg bg-white shrink-0 overflow-hidden">
                          <button
-                           onClick={() =>
-                             setReqBasket((prev) =>
-                               prev
-                                 .map((item) => (item.id === b.id ? { ...item, qty: item.qty - 1 } : item))
-                                 .filter((item) => item.qty > 0)
-                             )
-                           }
+                           onClick={() => handleAdjustReqQty(b.id, -1)}
                            className="w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
                          >
                            -
                          </button>
-                         <span className="w-6 text-center font-semibold text-slate-900 text-xs">{b.qty}</span>
+                         <input
+                           type="number"
+                           inputMode="decimal"
+                           step={isDecimalFriendlyUnit(b.unit) ? '0.01' : '1'}
+                           min="0"
+                           value={b.qty}
+                           onChange={(e) => handleSetReqQty(b.id, e.target.value)}
+                           className="w-12 text-center font-semibold text-slate-900 text-xs border-none outline-hidden bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                         />
                          <button
-                           onClick={() =>
-                             setReqBasket((prev) =>
-                               prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
-                             )
-                           }
+                           onClick={() => handleAdjustReqQty(b.id, 1)}
                            className="w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center cursor-pointer active:scale-90"
                          >
                            +
@@ -1759,7 +2029,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
         {(reqBasket.length > 0 || specialRequestText.trim()) && (
           <div
-            className={`sticky bottom-0 mt-auto z-40 lg:hidden bg-white text-slate-900 rounded-t-2xl shadow-2xl border-t border-slate-200 transition-all duration-300 flex flex-col ${
+            className={`sticky bottom-0 mt-auto z-[60] lg:hidden bg-white text-slate-900 rounded-t-2xl shadow-2xl border-t border-slate-200 transition-all duration-300 flex flex-col ${
               isReqCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
             }`}
           >
@@ -1791,6 +2061,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Items List */}
             <div className="p-3 flex-1 overflow-y-auto space-y-2">
+              <p className="text-[10px] text-slate-400 font-normal text-center pb-1">
+                Tap a quantity to type an exact amount - decimals work for Kg/Gm/Ltr/Doz items.
+              </p>
               {!isReqCartDrawerExpanded && reqBasket.length > 3 && (
                 <p className="text-[10px] text-cyan-700 font-semibold tracking-wide uppercase text-center pb-1">
                   {t('showing_last_3_items_prefix')} {reqBasket.length} {t('showing_last_3_items_suffix')}
@@ -1809,26 +2082,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
                   <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shrink-0">
                     <button
-                      onClick={() =>
-                        setReqBasket((prev) =>
-                          prev
-                            .map((item) => (item.id === b.id ? { ...item, qty: item.qty - 1 } : item))
-                            .filter((item) => item.qty > 0)
-                        )
-                      }
+                      onClick={() => handleAdjustReqQty(b.id, -1)}
                       className="w-7 h-7 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                     >
                       -
                     </button>
-                    <span className="w-6 text-center font-semibold text-slate-900 text-xs">
-                      {b.qty}
-                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step={isDecimalFriendlyUnit(b.unit) ? '0.01' : '1'}
+                      min="0"
+                      value={b.qty}
+                      onChange={(e) => handleSetReqQty(b.id, e.target.value)}
+                      className="w-12 text-center font-semibold text-slate-900 text-xs border-none outline-hidden bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <button
-                      onClick={() =>
-                        setReqBasket((prev) =>
-                          prev.map((item) => (item.id === b.id ? { ...item, qty: item.qty + 1 } : item))
-                        )
-                      }
+                      onClick={() => handleAdjustReqQty(b.id, 1)}
                       className="w-7 h-7 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                     >
                       +
@@ -1867,15 +2136,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     {
       name: t('image_column_header'),
       width: '70px',
-      cell: (item: InventoryItem) => (
-        <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-          {item.imagePath ? (
-            <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
-          ) : (
-            <ImageIcon className="w-4 h-4 text-slate-400" />
-          )}
-        </div>
-      ),
+      cell: (item: InventoryItem) => {
+        const ItemIcon = getStockItemIcon(item.name, item.category);
+        return (
+          <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+            <ItemIcon className="w-4 h-4 text-cyan-600" />
+          </div>
+        );
+      },
     },
     {
       name: t('item_name_label'),
@@ -1933,12 +2201,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       },
     },
     {
-      name: t('tracking_column_header'),
+      name: t('tracking_column_header', 'Tracking'),
       width: '180px',
-      cell: () => (
-        <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-semibold px-2.5 py-1 rounded-full inline-block">
-          {t('system_tracked_badge')}
-        </span>
+      cell: (item: InventoryItem) => (
+        item.source === 'custom' ? (
+          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 w-max">
+            <Settings className="w-3 h-3" />
+            Custom
+          </span>
+        ) : (
+          <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 font-semibold px-2.5 py-1 rounded-full inline-block">
+            {t('system_tracked_badge', 'System Default')}
+          </span>
+        )
       ),
     },
   ];
@@ -2003,8 +2278,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div key={item.id} className="pt-3 first:pt-0 space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                       {item.category}
+                      {item.source === 'custom' ? (
+                        <span className="bg-indigo-100 text-indigo-800 border border-indigo-200 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-0.5"><Settings className="w-2.5 h-2.5" /> Custom</span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[8px]">System</span>
+                      )}
                     </span>
                     <h4 className="inventory-management__caption font-semibold text-slate-900 text-sm">{item.name}</h4>
                   </div>

@@ -389,10 +389,13 @@ function generateDemoData($pdo, $propertyId) {
                 $totalCharge = $tariff * $nights;
                 $advance = (int)($totalCharge * 0.3);
 
-                // Status: past stays are checked out, current/future are checked in
-                $status = GUEST_STATUS_CHECKED_IN;
+                // Status: past stays are checked out, future stays are booked (reservation), current stays are checked in
                 if ($stay['end'] <= $today) {
                     $status = GUEST_STATUS_CHECKED_OUT;
+                } elseif ($stay['start'] > $today) {
+                    $status = GUEST_STATUS_BOOKED;
+                } else {
+                    $status = GUEST_STATUS_CHECKED_IN;
                 }
 
                 // ~20% of bookings originate from a synced OTA calendar,
@@ -1239,7 +1242,11 @@ function generateDemoData($pdo, $propertyId) {
             INSERT IGNORE INTO staff_attendance (property_id, attendance_date, user_id, staff_name, status, marked_by, is_demo)
             VALUES (?, ?, ?, ?, ?, 'Rajesh Kumar', 1)
         ");
-        $attendanceWindowStart = (clone $today)->modify('-13 days');
+        // Matches the main booking window's past edge ($windowStart, -30 days)
+        // - was -13 days (17 Aug 2026 fix), leaving less than half a month of
+        // attendance history while every other past-facing dataset (bookings,
+        // kitchen purchases/orders) already reached back a full 30 days.
+        $attendanceWindowStart = (clone $today)->modify('-30 days');
         for ($d = clone $attendanceWindowStart; $d <= $today; $d->modify('+1 day')) {
             // A day off here and there for the whole property (skeleton
             // crew / quiet day) - not literally every single staff member
@@ -1262,7 +1269,13 @@ function generateDemoData($pdo, $propertyId) {
         // multi-channel property - never overlapping/double-booking the
         // same dates.
         $otaRooms = array_slice($rooms, 0, min(2, count($rooms)));
-        $otaWindowStart = (clone $today)->modify('-20 days');
+        // Past edge squared off to match $windowStart (-30 days, 17 Aug 2026
+        // fix) - was -20 days, the one dataset whose "how far back" didn't
+        // match everything else's exact one-month reach. Forward edge (+30)
+        // is unrelated to the Pace tab's own +84-day forward window and is
+        // left as-is - it only governs how far out a synced-but-unconverted
+        // OTA calendar block can land, not confirmed bookings.
+        $otaWindowStart = (clone $today)->modify('-30 days');
         $otaWindowEnd = (clone $today)->modify('+30 days');
 
         $guestNames = ['John Doe', 'Jane Smith', 'Priya Sharma', 'Carlos Mendez', 'Aisha Patel', 'Liam O\'Brien'];

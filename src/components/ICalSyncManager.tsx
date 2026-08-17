@@ -49,10 +49,28 @@ interface ICalSyncManagerProps {
   // multi-key) property's own Edit Property page, since there the URL path
   // already resolves correctly.
   propertySlug?: string;
+  // Set only when this instance is scoped to a single MULTI_KEY_ROOM (see
+  // propertySlug above) - the parent MULTI_KEY property's own slug, needed
+  // because ical_export.php's per-room feed is addressed as
+  // ?property=<parent-slug>&room=<room-slug>, and propertySlug here is
+  // already the ROOM's own slug, not the parent's. Omit for a SINGLE
+  // property's own Edit Property page, where propertySlug already IS the
+  // exportable property and there is no room segment.
+  parentPropertySlug?: string;
 }
 
-export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, embedded = false, propertySlug: propertySlugOverride }) => {
+export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, embedded = false, propertySlug: propertySlugOverride, parentPropertySlug }) => {
   const effectivePropertySlug = propertySlugOverride || getPropertySlug();
+  // The URL an external channel (Airbnb/Booking.com/etc.) would subscribe to
+  // in order to see THIS property's/room's own bookings. Built directly from
+  // props, not from propertyRooms/get_multikey_property below - that fetch
+  // only ever returns a MULTI_KEY parent's children, but this component is
+  // never mounted with a parent's own id (see the two call sites: a room's
+  // own id for a MULTI_KEY_ROOM, or a SINGLE property's own id) - so a grid
+  // keyed off sibling rooms would always be empty and hide this entirely.
+  const ownExportUrl = parentPropertySlug
+    ? `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${parentPropertySlug}&room=${effectivePropertySlug}`
+    : `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${effectivePropertySlug}`;
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<number | null>(null);
@@ -609,6 +627,40 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
         </div>
       </div>
 
+      {/* Export iCal Feed - the URL to paste into Airbnb/Booking.com/etc.'s
+          "import calendar" setting so bookings made in this app block those
+          platforms too. Scoped to whatever this instance was mounted for
+          (see ownExportUrl above) - not a propertyRooms/get_multikey_property
+          grid, which (16 Aug 2026) turned out to never actually populate at
+          either of this component's two real call sites (a room's own id,
+          or a SINGLE property's own id - never a MULTI_KEY parent's id), so
+          that grid silently never rendered anywhere despite being fully
+          implemented; a user had no way to ever see or copy their export
+          URL. Kept simple: one URL, for one property/room, always visible. */}
+      <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <h3 className="ical-sync-manager__subtitle text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <Layers className="w-5 h-5 text-blue-600" />
+          <span>{t('export_ical_feed_label', 'Export iCal Feed')}</span>
+        </h3>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          {t('export_ical_feed_hint', 'Paste this URL into Airbnb/Booking.com/etc. as an "import calendar" link, so bookings made here block those platforms too.')}
+        </p>
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            value={ownExportUrl}
+            readOnly
+            className="flex-1 font-mono truncate"
+          />
+          <button
+            onClick={() => copyToClipboard(ownExportUrl, 'own-export-url')}
+            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition text-[11px] cursor-pointer shrink-0"
+          >
+            {copiedUrls.has('own-export-url') ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
+          </button>
+        </div>
+      </div>
+
       {/* Per-Room iCal Configuration for MultiKey Properties */}
       {propertyRooms.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -619,9 +671,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {propertyRooms.map((room) => {
-              const propertySlug = effectivePropertySlug;
-              const roomExportUrl = `${window.location.origin}${API_ROOT_BASE}/php/api/ical_export.php?property=${propertySlug}&room=${room.slug}`;
-
               const platform = roomImportPlatforms[room.id] || 'Airbnb';
               const customName = roomCustomNames[room.id] || '';
               const url = roomImportUrls[room.id] || '';
@@ -740,25 +789,6 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
                         className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl transition whitespace-nowrap cursor-pointer shadow-xs"
                       >
                         {t('add_feed_button', 'Add Feed')}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Room Export URL */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase">{t('export_ical_feed_label', 'Export iCal Feed')} ({room.name})</span>
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        value={roomExportUrl}
-                        readOnly
-                        className="flex-1 font-mono truncate"
-                      />
-                      <button
-                        onClick={() => copyToClipboard(roomExportUrl, room.id)}
-                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition text-[11px] cursor-pointer"
-                      >
-                        {copiedUrls.has(room.id) ? t('copied_button', 'Copied') : t('copy_button', 'Copy')}
                       </button>
                     </div>
                   </div>

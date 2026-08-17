@@ -162,17 +162,14 @@ export const Header: React.FC<HeaderProps> = ({
     recentServiceRequests.length;
 
   return (
-    // z-50 -> z-[57] (12 Aug 2026): once the sidebar was moved to start
-    // below the header (Navigation.tsx, top-16 instead of top-0) instead of
-    // overlapping it, the mobile drawer's backdrop scrim (z-[55], inset-0)
-    // started showing consistently across the FULL header instead of being
-    // partly masked by the old overlapping sidebar - washing out the whole
-    // header (including its own hamburger toggle, now unreadable and
-    // effectively unclickable) whenever the drawer is open. Raised above
-    // both the scrim (z-[55]) and the sidebar (z-[56]) so the header stays
-    // sharp and its toggle button stays usable to close the drawer, while
-    // the scrim still dims the actual page content underneath it.
-    <header className="header fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
+    // z-[57]: part of the app-wide z-index scale documented in
+    // src/index.css above the .fixed.inset-0.z-50 rule - read that comment
+    // in full before changing this value. Sits above the drawer scrim
+    // (z-[55]) and sidebar (z-[56]) so the header stays sharp and its
+    // toggle button stays usable while the drawer is open, and below real
+    // page modals (bumped to z-[58] by that same CSS rule) and toasts/
+    // confirm dialog (z-[9999]/[99999]).
+    <header className="header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">

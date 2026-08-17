@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * iCal Export API
  * Generates iCal feed for property availability
@@ -15,39 +15,50 @@ if (empty($propertySlug)) {
 }
 
 try {
-    // Get property by slug
-    $stmt = $pdo->prepare("SELECT id, name FROM properties WHERE slug = :slug AND is_active = 1 LIMIT 1");
-    $stmt->execute([':slug' => $propertySlug]);
-    $property = $stmt->fetch();
+    $roomSlug = $_GET['room'] ?? '';
 
-    if (!$property) {
-        http_response_code(404);
-        die('Property not found');
-    }
-
-    $propertyId = $property['id'];
-    $propertyName = $property['name'];
-
-    // Get all bookings/reservations for this property
-    // Try different table names as bookings might be stored in different tables
     $bookings = [];
+    $propertyId = 0;
+    $propertyName = '';
 
-    $possibleTables = [
-        'SELECT DATE(check_in) as start_date, DATE(check_out) as end_date, status FROM guests WHERE property_id = :property_id AND check_in IS NOT NULL',
-        'SELECT DATE(start_date) as start_date, DATE(end_date) as end_date, status FROM bookings WHERE property_id = :property_id',
-        'SELECT DATE(created_at) as start_date, DATE(created_at) as end_date, status FROM reservations WHERE property_id = :property_id'
-    ];
+    if (!empty($roomSlug)) {
+        $stmt = $pdo->prepare("
+            SELECT r.id, r.name 
+            FROM properties r 
+            JOIN properties p ON r.parent_property_id = p.id 
+            WHERE p.slug = :pslug AND r.slug = :rslug AND r.is_active = 1 
+            LIMIT 1
+        ");
+        $stmt->execute([':pslug' => $propertySlug, ':rslug' => $roomSlug]);
+        $room = $stmt->fetch();
 
-    foreach ($possibleTables as $query) {
-        try {
-            $stmt = $pdo->prepare($query);
-            $stmt->execute([':property_id' => $propertyId]);
-            $bookings = $stmt->fetchAll();
-            if (!empty($bookings)) break;
-        } catch (Exception $e) {
-            // Table doesn't exist, try next one
-            continue;
+        if (!$room) {
+            http_response_code(404);
+            die('Room not found');
         }
+
+        $propertyId = $room['id'];
+        $propertyName = $room['name'];
+
+        $stmt = $pdo->prepare("SELECT DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE room_id = :room_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
+        $stmt->execute([':room_id' => $propertyId]);
+        $bookings = $stmt->fetchAll();
+    } else {
+        $stmt = $pdo->prepare("SELECT id, name FROM properties WHERE slug = :slug AND is_active = 1 LIMIT 1");
+        $stmt->execute([':slug' => $propertySlug]);
+        $property = $stmt->fetch();
+
+        if (!$property) {
+            http_response_code(404);
+            die('Property not found');
+        }
+
+        $propertyId = $property['id'];
+        $propertyName = $property['name'];
+
+        $stmt = $pdo->prepare("SELECT DATE(checkin_date) as start_date, DATE(expected_checkout) as end_date, status, guest_name FROM guests WHERE property_id = :property_id AND checkin_date IS NOT NULL AND status != 'Cancelled'");
+        $stmt->execute([':property_id' => $propertyId]);
+        $bookings = $stmt->fetchAll();
     }
 
     // Generate iCal format
@@ -77,8 +88,15 @@ try {
 
             $ical .= "BEGIN:VEVENT\r\n";
             $ical .= "UID:$eventId@artistsfarm.local\r\n";
+            // iCal all-day (VALUE=DATE) events use an EXCLUSIVE end date, so
+            // DTEND should be the checkout date itself - the guest is gone by
+            // then and the room is free for a new arrival. The +86400 here
+            // was blocking one extra night past every actual checkout
+            // (confirmed against real data: a checkout of 22/07 was exported
+            // as DTEND 23/07), which would make any OTA subscribed to this
+            // feed wrongly reject legitimate same-day-turnover bookings.
             $ical .= "DTSTART;VALUE=DATE:" . date('Ymd', $startDate) . "\r\n";
-            $ical .= "DTEND;VALUE=DATE:" . date('Ymd', $endDate + 86400) . "\r\n";
+            $ical .= "DTEND;VALUE=DATE:" . date('Ymd', $endDate) . "\r\n";
             $ical .= "SUMMARY:Booked - " . $propertyName . "\r\n";
             $ical .= "DESCRIPTION:Property is booked for " . $propertyName . "\r\n";
             $ical .= "STATUS:CONFIRMED\r\n";

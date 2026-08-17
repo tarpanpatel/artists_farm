@@ -371,9 +371,13 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       backend (getICalSyncs) only expands scope to a
                       property's own MULTI_KEY_ROOM children, and a room has
                       none, so this naturally scopes to just this room's own
-                      feeds. */}
+                      feeds. parentPropertySlug (this component's own
+                      propertySlug prop) is separate - it's only used to build
+                      this room's Export iCal Feed URL, which is addressed as
+                      ?property=<parent>&room=<room>, not derivable from the
+                      room's own slug alone. */}
                   <div className="edit-room-page__ical-card bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sm:p-6">
-                    <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} embedded />
+                    <ICalSyncManager propertyId={selectedRoom.id} propertySlug={selectedRoom.slug} parentPropertySlug={propertySlug} embedded />
                   </div>
                 </div>
             )}

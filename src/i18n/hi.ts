@@ -1193,7 +1193,7 @@ export const strings: Record<string, string> = {
   sync_button: "Sync",
   order_received_text: "Received:",
   served_badge: "Served",
-  ready_button: "Ready",
+  ready_button: "Ready?",
   send_pickup_reminder_tooltip: "Send pickup reminder to Admin chat",
   click_when_served_tooltip: "Click when served to resident",
   send_reminder_tooltip: "Send reminder to किचन chat",

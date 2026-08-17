@@ -12,6 +12,7 @@ import {
   Search,
   ShoppingCart,
   ArrowUp,
+  ArrowLeft,
   Save,
   Bookmark,
   Trash2,
@@ -23,15 +24,17 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  Receipt
 } from 'lucide-react';
-import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem } from '../types';
+import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchMaterialCategoriesFromDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, updateItemReminderTimestamp, checkStaleReminders, StaleReminderItem, fetchTelegramConfigDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, fetchWalkInTabHistoryFromDB, openWalkInTabDB } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
+import { WalkInTabBillModal } from './WalkInTabBillModal';
 import DataTable from 'react-data-table-component';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -41,7 +44,30 @@ import { useStaff } from '../contexts/StaffContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
 import { t } from '../i18n/en';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+
+const mapWalkInTabFromApi = (raw: any): WalkInTab => ({
+  id: Number(raw.id),
+  label: raw.label || null,
+  status: raw.status === 'billed' ? 'billed' : 'open',
+  openedAt: raw.opened_at || '',
+  items: Array.isArray(raw.items)
+    ? raw.items.map((it: any) => ({
+        name: it.name || 'Item',
+        price: Number(it.price) || 0,
+        quantity: Number(it.quantity) || 0,
+        lineTotal: Number(it.lineTotal) || 0,
+      }))
+    : [],
+  subtotal: Number(raw.subtotal) || 0,
+  billedAt: raw.billed_at || null,
+  paymentMethod: raw.payment_method || null,
+  discount: Number(raw.discount) || 0,
+  gstEnabled: !!Number(raw.gst_enabled),
+  gstRate: Number(raw.gst_rate) || 0,
+  gstAmount: Number(raw.gst_amount) || 0,
+  grandTotal: raw.grand_total != null ? Number(raw.grand_total) : null,
+});
 
 interface KitchenManagementProps {
   guests: Guest[];
@@ -50,6 +76,9 @@ interface KitchenManagementProps {
   onRequestMaterial: (req: Requisition) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
   activeMenuItemKey?: string;
+  propertyName?: string;
+  propertyGstin?: string;
+  propertyUpiId?: string;
 }
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
@@ -59,13 +88,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   onRequestMaterial,
   onDispatchTelegram,
   activeMenuItemKey = 'kitchen_orders',
+  propertyName = '',
+  propertyGstin = '',
+  propertyUpiId = '',
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { orders, addOrder } = useKitchenContext();
+  const { orders, addOrder, refreshOrders, updateOrderStatus } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
+  const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
@@ -92,9 +124,51 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   };
   const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({});
   const [servedItemKeys, setServedItemKeys] = useState<Record<string, boolean>>({});
+  // Short display string ("03:48 AM") shown inline next to a ready/served
+  // item on its ticket card. Separate from itemReadyTimestamps below (the
+  // full canonical timestamp served_logs actually needs) since this one is
+  // purely decorative and never leaves this component.
   const [itemReadyTimes, setItemReadyTimes] = useState<Record<string, string>>({});
+  // Full local timestamp ("YYYY-MM-DD HH:MM:SS") captured at the moment an
+  // item is marked Ready, reused as readyAt when it's later marked Served.
+  // Added 17 Aug 2026 alongside the buildLocalTimestamp fix below - without
+  // this, readyAt was reconstructed at SERVE time by pairing today's date
+  // with the ready-time-of-day string, and "today's date" was read via
+  // toISOString() (UTC), which lands on the wrong calendar day for the ~5.5
+  // hours a day IST is ahead of UTC - readyAt would claim the item went
+  // ready "yesterday", producing a bogus ~1440-minute Serve Delay no matter
+  // how fast it actually was.
+  const [itemReadyTimestamps, setItemReadyTimestamps] = useState<Record<string, string>>({});
+  // An order's own status never used to update once every item on it was
+  // marked Served - it just sat at 'Pending' until a full reload happened to
+  // reconcile it (found 17 Aug 2026). 'completed' shows an immediate
+  // confirmation pill; 'processing' (a beat later) is the animated cue right
+  // before the card actually leaves the active grid (once the real status
+  // flips to Fulfilled below it, so the card also stays legible for a moment
+  // rather than vanishing the instant the last item is tapped).
+  const [completingOrderIds, setCompletingOrderIds] = useState<Record<string, 'completed' | 'processing'>>({});
 
-  const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string }>>([]);
+  // Walk-in tabs - open tabs (with their live running total) power both the
+  // "add to an existing tab" picker in New Order and the Walk-in Bills board.
+  // Loaded up front (not lazily per-tab) since New Order needs the list too.
+  const [walkInTabs, setWalkInTabs] = useState<WalkInTab[]>([]);
+  const [walkInTabsLoading, setWalkInTabsLoading] = useState(true);
+  const refreshWalkInTabs = async () => {
+    const data = await fetchWalkInTabsFromDB();
+    setWalkInTabs(data.map(mapWalkInTabFromApi));
+    setWalkInTabsLoading(false);
+  };
+  useEffect(() => { refreshWalkInTabs(); }, []);
+
+  const [walkInTabHistory, setWalkInTabHistory] = useState<WalkInTab[]>([]);
+  useEffect(() => {
+    if (activeTab !== 'walk_in_bills') return;
+    fetchWalkInTabHistoryFromDB().then((data) => setWalkInTabHistory(data.map(mapWalkInTabFromApi)));
+  }, [activeTab]);
+
+  const [billingTab, setBillingTab] = useState<WalkInTab | null>(null);
+
+  const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string; readyAt: string | null }>>([]);
 
   // Load served logs from DB on mount
   useEffect(() => {
@@ -111,6 +185,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const nextReady: Record<string, boolean> = {};
     const nextServed: Record<string, boolean> = {};
     const nextReadyTimes: Record<string, string> = {};
+    // Full canonical timestamp (YYYY-MM-DD HH:MM:SS) restored from DB so that
+    // readyAt is never null when Mark Served is tapped after a page refresh or
+    // a 15-second auto-sync clears the in-memory itemReadyTimestamps map.
+    // Without this, any item marked Ready in one render cycle would lose its
+    // readyAt the moment orders refreshed, producing a null readyAt in the
+    // served log and blank "Ready At" / "Serve Delay" columns (found 17 Aug 2026).
+    const nextReadyTimestamps: Record<string, string> = {};
     orders.forEach((ord: Order) => {
       ord.items.forEach((item: OrderItem, idx: number) => {
         const key = `${ord.id}_${idx}`;
@@ -118,6 +199,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           nextReady[key] = true;
           if (item.readyAt) {
             nextReadyTimes[key] = new Date(item.readyAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            nextReadyTimestamps[key] = item.readyAt;
           }
         } else if (item.itemStatus === 'Served') {
           nextServed[key] = true;
@@ -127,6 +209,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setReadyItemKeys((prev) => ({ ...nextReady, ...prev }));
     setServedItemKeys((prev) => ({ ...nextServed, ...prev }));
     setItemReadyTimes((prev) => ({ ...nextReadyTimes, ...prev }));
+    setItemReadyTimestamps((prev) => ({ ...nextReadyTimestamps, ...prev }));
   }, [orders]);
 
   const [ingredientCategoryNames, setIngredientCategoryNames] = useState<string[]>([]);
@@ -141,20 +224,43 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [lastSyncTime, setLastSyncTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   const [syncCountdown, setSyncCountdown] = useState(15);
   const [isSyncing, setIsSyncing] = useState(false);
+  // Ticks every second so KDS elapsed timers stay live without a separate interval.
+  // Piggybacking on the already-running sync countdown beat keeps timer count at 1.
+  const [tickNow, setTickNow] = useState(() => Date.now());
+
+  // Real DB Sync Function: fetches fresh active orders, served logs, and walk-in tabs
+  const executeSync = React.useCallback(async (isManual: boolean = false) => {
+    setIsSyncing(true);
+    try {
+      await Promise.all([
+        refreshOrders(),
+        fetchServedLogsFromDB().then((logs) => {
+          if (logs && logs.length > 0) setServedLogs(logs);
+        }),
+        refreshWalkInTabs(),
+      ]);
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setSyncCountdown(15);
+      if (isManual) {
+        showToast(t('kds_sync_success_toast', 'KDS synced successfully!'), { type: 'success' });
+      }
+    } catch (err) {
+      console.error('Failed to sync KDS data:', err);
+      showToast(t('kds_sync_error_toast', 'Could not sync KDS orders. Check network connection.'), { type: 'error' });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [refreshOrders, showToast]);
 
   // Smart Polling countdown & 15-second background sync logic
   React.useEffect(() => {
     if (!autoSyncEnabled) return;
 
     const timer = setInterval(() => {
+      setTickNow(Date.now()); // drives live elapsed timers on KDS ticket cards
       setSyncCountdown((prev) => {
         if (prev <= 1) {
-          // Trigger lightweight AJAX update check
-          setIsSyncing(true);
-          setTimeout(() => {
-            setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-            setIsSyncing(false);
-          }, 600);
+          executeSync(false);
           return 15;
         }
         return prev - 1;
@@ -162,21 +268,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoSyncEnabled]);
+  }, [autoSyncEnabled, executeSync]);
 
   const triggerManualSync = () => {
-    setIsSyncing(true);
-    setTimeout(() => {
-      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-      setSyncCountdown(15);
-      setIsSyncing(false);
-    }, 500);
+    executeSync(true);
   };
 
   const handleMarkDishReady = async (ord: Order, itemIndex: number, item: OrderItem) => {
     const key = `${ord.id}_${itemIndex}`;
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setReadyItemKeys((prev) => ({ ...prev, [key]: true }));
+    setItemReadyTimestamps((prev) => ({ ...prev, [key]: buildLocalTimestamp(now) }));
     setItemReadyTimes((prev) => ({ ...prev, [key]: nowTime }));
 
     if (item.id) {
@@ -212,6 +315,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   };
 
+  // Fires once the LAST item on an order gets marked Served - shows an
+  // immediate "Completed" confirmation, then a beat later a spinning
+  // "Processing..." cue, then actually flips the order to Fulfilled (both
+  // locally and in the DB), which is what makes it leave the active grid
+  // below (activeOrders filters on status, not on individual item state).
+  const triggerOrderCompletion = (ord: Order) => {
+    setCompletingOrderIds((prev) => ({ ...prev, [ord.id]: 'completed' }));
+    setTimeout(() => {
+      setCompletingOrderIds((prev) => ({ ...prev, [ord.id]: 'processing' }));
+      setTimeout(() => {
+        updateOrderStatus(ord.id, 'Fulfilled');
+        updateOrderStatusDB(ord.orderId != null ? String(ord.orderId) : ord.id, 'Fulfilled');
+        setCompletingOrderIds((prev) => {
+          const next = { ...prev };
+          delete next[ord.id];
+          return next;
+        });
+      }, 700);
+    }, 900);
+  };
+
   const handleMarkDishServed = async (ord: Order, itemIndex: number, item: OrderItem) => {
     const key = `${ord.id}_${itemIndex}`;
     const cleanTicketId = ord.id.replace('#', '');
@@ -221,24 +345,39 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       return;
     }
 
-    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setServedItemKeys((prev) => ({ ...prev, [key]: true }));
 
     if (item.id) {
       updateOrderItemStatus(item.id, 'Served');
     }
 
-    // Add to Current Guest Served Dishes
+    const isLastItemOnOrder = ord.items.every((_, idx) => idx === itemIndex || servedItemKeys[`${ord.id}_${idx}`]);
+    if (isLastItemOnOrder) {
+      triggerOrderCompletion(ord);
+    }
+
+    // Add to Current Guest Served Dishes. Both timestamps are the canonical
+    // "YYYY-MM-DD HH:MM:SS" local format (buildLocalTimestamp) - NOT
+    // toISOString() (UTC - see itemReadyTimestamps' comment above for why
+    // that silently produced a bogus ~1440min Serve Delay) and NOT
+    // formatDateDDMMYYYY (a 2-digit-year DISPLAY format never meant to be
+    // parsed back). The table cells reformat these for display separately.
     const servedByUser = getCurrentUserName();
+    const fallbackGuest = ord.guestName || 'Walk-in';
+    const readyDateStr = itemReadyTimestamps[key] || null;
+
     const newLog = {
       id: Date.now().toString(),
       orderId: cleanTicketId,
       itemName: item.name,
       quantity: item.quantity,
       servedBy: servedByUser,
-      guestName: ord.guestName,
+      guestName: fallbackGuest,
       roomNumber: ord.roomNumber,
-      servedAt: `${formatDateDDMMYYYY(new Date().toISOString())} ${nowTime}`,
+      servedAt: buildLocalTimestamp(now),
+      readyAt: readyDateStr,
     };
     setServedLogs((prev) => [newLog, ...prev]);
     addServedLogToDB({
@@ -246,8 +385,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       item_name: item.name,
       quantity: item.quantity,
       served_by: servedByUser,
-      guest_name: ord.guestName,
+      guest_name: fallbackGuest,
       room_number: ord.roomNumber,
+      ready_at: readyDateStr || undefined,
     });
 
     // BOM Stock Depletion: auto-deduct ingredients from inventory
@@ -288,7 +428,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // separate fast-follow (needs a persisted last-reminder timestamp + scheduler).
   const handleSendKitchenReminder = async (ord: Order, itemIndex: number, item: OrderItem) => {
     const cleanTicketId = ord.id.replace('#', '');
-    const elapsedMin = Math.max(0, Math.round((Date.now() - new Date(ord.orderTime).getTime()) / 60000));
+    // ord.orderTime briefly reads the literal string 'Just now' right after
+    // placing an order (until refreshOrders' refetch replaces it with a real
+    // timestamp) - new Date('Just now') is an Invalid Date, and an
+    // unreminded NaN was going straight into a real Telegram message to the
+    // kitchen ("Pending for: NaN min") if a reminder got sent in that
+    // narrow window (found 17 Aug 2026).
+    const orderTimeMs = new Date(ord.orderTime).getTime();
+    const elapsedMin = isNaN(orderTimeMs) ? 0 : Math.max(0, Math.round((Date.now() - orderTimeMs) / 60000));
 
     if (onDispatchTelegram) {
       const reminderVars: Record<string, string> = {
@@ -691,7 +838,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const filteredRecipeIngredients = recipeSearch
     ? recipeIngredients.filter((ing) => ing.name.toLowerCase().includes(recipeSearch.toLowerCase()))
     : recipeIngredients;
-  const [kdsFilter, setKdsFilter] = useState<'All' | 'Pending' | 'Preparing' | 'Fulfilled'>('All');
 
   // New Order Form State
   const checkedInGuests = guests.filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY);
@@ -709,6 +855,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+  // Walk-in mode - food prepared for someone not staying in a room (a diner at
+  // the restaurant, a local walk-in). No guest/room to attach the order to;
+  // instead it joins a running tab (null = start a new one) that bills as one
+  // consolidated bill once, from the Walk-in Bills tab, however many orders
+  // it accumulates in the meantime.
+  const [orderMode, setOrderMode] = useState<'guest' | 'walkin'>('guest');
+  const [selectedWalkInTabId, setSelectedWalkInTabId] = useState<number | null>(null);
+  const [newTabLabel, setNewTabLabel] = useState('');
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   useEffect(() => {
     const container = document.querySelector('.take-food-order-container');
@@ -753,11 +908,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     );
   };
 
-  // Submit Order
-  const handleOrderSubmit = () => {
-    if (!selectedGuestId || cartItems.length === 0) return;
-    const guest = guests.find((g) => g.id === selectedGuestId);
-    if (!guest) return;
+  // Submit Order - persists to the DB via create_order (found 17 Aug 2026: this
+  // used to only call the local addOrder() below, never the backend at all, so
+  // every order placed here vanished on refresh - it never actually reached the
+  // orders table). Handles both a guest order and a walk-in - walk-in orders
+  // join a running tab (opening a new one first if none was picked) rather
+  // than settling individually; see the Walk-in Bills tab for billing.
+  const handleOrderSubmit = async () => {
+    if (cartItems.length === 0 || isSubmittingOrder) return;
+    const guest = orderMode === 'guest' ? guests.find((g) => g.id === selectedGuestId) : null;
+    if (orderMode === 'guest' && !guest) return;
 
     const orderItems: OrderItem[] = cartItems.map((ci) => ({
       menuItemId: ci.menuItem.id,
@@ -765,22 +925,59 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       quantity: ci.quantity,
       unitPrice: ci.menuItem.price,
     }));
-
     const totalAmount = orderItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
+    setIsSubmittingOrder(true);
+
+    let targetTabId: number | null = null;
+    let targetTabLabel: string | null = null;
+    if (orderMode === 'walkin') {
+      if (selectedWalkInTabId != null) {
+        targetTabId = selectedWalkInTabId;
+        targetTabLabel = walkInTabs.find((tab) => tab.id === selectedWalkInTabId)?.label ?? null;
+      } else {
+        const trimmedLabel = newTabLabel.trim();
+        targetTabId = await openWalkInTabDB(trimmedLabel);
+        targetTabLabel = trimmedLabel || null;
+        if (targetTabId == null) {
+          setIsSubmittingOrder(false);
+          showToast(t('tab_open_failed_toast', 'Could not start a new tab. Please try again.'), { type: 'error' });
+          return;
+        }
+      }
+    }
+
+    const orderId = await addOrderToDB({
+      guestId: guest?.id ?? null,
+      walkInTabId: targetTabId,
+      items: cartItems.map((ci) => ({ menuItemId: ci.menuItem.id, quantity: ci.quantity })),
+    });
+    setIsSubmittingOrder(false);
+
+    if (orderId == null) {
+      showToast(t('order_send_failed_toast', 'Could not send order to the kitchen. Please try again.'), { type: 'error' });
+      return;
+    }
+
     const newOrder: Order = {
-      id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
-      guestId: guest.id,
-      guestName: guest.guestName,
-      roomNumber: guest.roomNumber,
+      id: String(orderId),
+      orderId,
+      guestId: guest?.id ?? '',
+      guestName: guest ? guest.guestName : (targetTabLabel || 'Walk-in'),
+      roomNumber: guest?.roomNumber ?? '',
       orderTime: 'Just now',
       status: 'Pending',
       items: orderItems,
       totalAmount,
+      walkInTabId: targetTabId,
     };
 
     addOrder(newOrder);
     setCartItems([]);
+    setNewTabLabel('');
+    setSelectedWalkInTabId(null);
+    refreshOrders();
+    refreshWalkInTabs();
   };
 
   // Submit New Menu Item
@@ -822,9 +1019,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setIsReqModalOpen(false);
     setReqItemName('');
   };
-
-  const filteredOrders = orders.filter((o) => kdsFilter === 'All' || o.status === kdsFilter);
-
   const filteredRequisitions = requisitions.filter((req) =>
     !reqSearch ||
     req.itemName.toLowerCase().includes(reqSearch.toLowerCase()) ||
@@ -839,33 +1033,37 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <PageHeader title={t('kitchen_ticketing_header')} subtitle={t('kitchen_subtitle')}>
           {activeTab !== 'staff_meals' && (
             <PageHeaderButton onClick={() => setActiveTab('new_order')} icon={Plus}>
-              {t('create_resident_order_button')}
+              {t('create_resident_order_button', 'New Room Order')}
+            </PageHeaderButton>
+          )}
+          {activeTab !== 'staff_meals' && activeTab !== 'walk_in_bills' && (
+            <PageHeaderButton variant="secondary" onClick={() => setActiveTab('walk_in_bills')} icon={Receipt}>
+              {t('walk_in_bills_button', 'Walk-in Bills')}
+              {walkInTabs.filter((tab) => tab.status === 'open').length > 0
+                ? ` (${walkInTabs.filter((tab) => tab.status === 'open').length})`
+                : ''}
+            </PageHeaderButton>
+          )}
+          {activeTab === 'walk_in_bills' && (
+            <PageHeaderButton variant="secondary" onClick={() => setActiveTab('kds')} icon={ArrowLeft}>
+              {t('back_to_live_orders_button', 'Live Orders')}
             </PageHeaderButton>
           )}
         </PageHeader>
       )}
 
       {/* TAB 1: KDS TICKET QUEUE */}
-      {activeTab === 'kds' && (
+      {activeTab === 'kds' && (() => {
+        const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
+
+        return (
         <div className="kds-orders-container space-y-4">
           <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs gap-3 shadow-2xs">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">{t('filter_orders_label')}</span>
-              <div className="flex items-center gap-1.5">
-                {(['All', 'Pending', 'Preparing', 'Fulfilled'] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setKdsFilter(status)}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                      kdsFilter === status
-                        ? 'bg-slate-900 dark:bg-slate-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    {status === 'All' ? t('all_filter_button') : status === 'Pending' ? t('pending_filter_button') : status === 'Preparing' ? t('preparing_filter_button') : t('fulfilled_filter_button')}
-                  </button>
-                ))}
-              </div>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{t('live_active_orders_label', 'Live Active Orders')}</span>
+              <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                {activeOrders.length}
+              </span>
             </div>
 
             {/* Smart Polling / Live Sync Bar */}
@@ -914,10 +1112,32 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
 
           <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredOrders.map((ord) => (
+            {activeOrders.map((ord) => {
+              const completionPhase = completingOrderIds[ord.id];
+              // Elapsed time since the order was placed — drives both the
+              // live timer display and the traffic-light border color.
+              // 'Just now' is the transient string set optimistically right
+              // after placing an order; treat it as 0 min (same isNaN guard
+              // used in handleSendKitchenReminder).
+              const orderTimeMs = new Date(ord.orderTime).getTime();
+              const elapsedTotalSec = isNaN(orderTimeMs) ? 0 : Math.max(0, Math.floor((tickNow - orderTimeMs) / 1000));
+              const elapsedMin = Math.floor(elapsedTotalSec / 60);
+              const elapsedSec = elapsedTotalSec % 60;
+              const elapsedLabel = elapsedMin > 0
+                ? `${elapsedMin}m ${String(elapsedSec).padStart(2, '0')}s`
+                : `${elapsedSec}s`;
+              // Toast KDS "traffic light" border: neutral → amber → red as time ages
+              const urgencyBorder = elapsedMin >= 10
+                ? 'border-l-4 border-l-red-500 dark:border-l-red-500'
+                : elapsedMin >= 5
+                ? 'border-l-4 border-l-amber-400 dark:border-l-amber-400'
+                : 'border-l-4 border-l-slate-200 dark:border-l-slate-600';
+              return (
               <div
                 key={ord.id}
-                className="kds-ticket-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 flex flex-col justify-between"
+                className={`kds-ticket-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 flex flex-col justify-between transition-all duration-500 ${urgencyBorder} ${
+                  completionPhase === 'processing' ? 'opacity-40 scale-[0.97]' : ''
+                }`}
               >
                 <div>
                   {/* Card Header */}
@@ -926,16 +1146,70 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <h3 className="kitchen-management__subtitle font-semibold text-slate-900 dark:text-white text-sm">
                         Order #{ord.id.replace('#', '')}
                       </h3>
-                      <p className="text-slate-400 dark:text-slate-500 text-[10px] font-medium">
-                        ({t('order_received_text')} {ord.orderTime || '01:15 AM'})
+                      {/* Live elapsed timer — the #1 piece of info kitchen staff
+                          need at a glance (Toast/Square KDS standard). Updates
+                          every second via tickNow state. */}
+                      <p className={`text-[11px] font-mono font-semibold flex items-center gap-1 mt-0.5 ${
+                        elapsedMin >= 10
+                          ? 'text-red-600 dark:text-red-400'
+                          : elapsedMin >= 5
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}>
+                        <Clock className="w-3 h-3 shrink-0" />
+                        {isNaN(orderTimeMs) ? t('order_received_text', 'Just received') : elapsedLabel}
                       </p>
                     </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      ord.status === 'Fulfilled' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {ord.status}
-                    </span>
+                    {completionPhase === 'processing' ? (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> {t('processing_label', 'Processing...')}
+                      </span>
+                    ) : completionPhase === 'completed' ? (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        {t('completed_label', 'Completed')}
+                      </span>
+                    ) : (
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        ord.status === 'Fulfilled'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : ord.status === 'Preparing'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {ord.status === 'Pending'
+                          ? t('status_in_queue', 'In Queue')
+                          : ord.status === 'Preparing'
+                          ? t('status_preparing', 'Preparing')
+                          : ord.status}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Walk-in badge - no guest_id means food prepared for someone
+                      not staying in a room. It doesn't settle per order anymore
+                      (see Walk-in Bills tab): the whole tab bills at once, since
+                      a table ordering twice needs one consolidated bill, not two. */}
+                  {!ord.guestId ? (
+                    <div className="mb-2.5 -mt-1">
+                      {/* Amber = walk-in/non-resident (Toast/Cloudbeds standard;
+                          slate blended in and was visually identical to the
+                          room-service blue pill on dark mode). */}
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        {t('walk_in_badge', 'Walk-in')}{ord.guestName && ord.guestName !== 'Walk-in' ? ` · ${ord.guestName}` : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    // Room service - shows who/where this ticket delivers to
+                    // (found 17 Aug 2026: the card never showed this at all
+                    // for a guest order, only for a walk-in, so staff had no
+                    // way to see the destination room on the ticket itself
+                    // until after it was already served).
+                    <div className="mb-2.5 -mt-1">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        {ord.roomNumber || t('room_service_badge', 'Room Service')}{ord.guestName ? ` · ${ord.guestName}` : ''}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Items List */}
                   <div className="kds-ticket-items-list space-y-2 text-xs">
@@ -960,24 +1234,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 )}
                               </>
                             ) : (
-                              <span className="font-semibold text-rose-600 text-xs">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs">
                                 {item.quantity}x {item.name}
                               </span>
                             )}
                           </div>
 
-                          {/* Mobile-Friendly Touch Ready Buttons */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isServed ? (
-                              <span className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                {t('served_badge')}
+                              <span className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-700/60 dark:text-slate-400 dark:border-slate-600 min-h-11 flex items-center">
+                                <Check className="w-3.5 h-3.5 inline mr-1" />{t('served_badge')}
                               </span>
                             ) : isReady ? (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => handleSendPickupReminder(ord, idx, item)}
-                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
                                   title={t('send_pickup_reminder_tooltip')}
                                 >
                                   <Bell className="w-3.5 h-3.5" />
@@ -985,10 +1258,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="btn-kds-item-served border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
-                                  title={t('click_when_served_tooltip')}
+                                  className="btn-kds-item-served border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-800 font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
+                                  title={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
                                 >
-                                  <Check className="w-3.5 h-3.5" /> Served
+                                  {t('served_action_button', 'Mark Served')}
                                 </button>
                               </>
                             ) : (
@@ -996,7 +1269,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSendKitchenReminder(ord, idx, item)}
-                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
                                   title={t('send_reminder_tooltip')}
                                 >
                                   <Bell className="w-3.5 h-3.5" />
@@ -1004,9 +1277,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
-                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-[36px] active:scale-95"
+                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
                                 >
-                                  <Check className="w-3.5 h-3.5" /> {t('ready_button')}
+                                  {t('ready_button', 'Ready?')}
                                 </button>
                               </>
                             )}
@@ -1017,13 +1290,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* No separate order-level "Fulfilled/Served Orders" table anymore
+              (removed 17 Aug 2026) - it duplicated Current Guest Served
+              Dishes below for anything but a multi-item order, and now that
+              order status actually auto-completes (see triggerOrderCompletion
+              above), the overlap was showing up on every single-item ticket.
+              Order completion still works exactly the same (it's what drops
+              a ticket out of the active grid above) - it just isn't rendered
+              as its own table too. */}
 
           {/* Current Guest Served Dishes - DataTable */}
           <CurrentGuestServedDishes servedLogs={servedLogs} />
         </div>
-      )}
+        );
+      })()}
 
       {/* TAB 2: CREATE ORDER POS */}
       {activeTab === 'new_order' && (() => {
@@ -1139,8 +1423,108 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         // Items to display in collapsed bottom drawer on mobile (Last 3 added items, newest on top)
         const visibleDrawerItems = isCartDrawerExpanded ? [...cartItems].reverse() : [...cartItems].slice(-3).reverse();
 
+        // Walk-in mode never needs a checked-in guest - that's the whole point of it.
+        const isOrderSubmitDisabled = cartItems.length === 0 || isSubmittingOrder || (orderMode === 'guest' && (!selectedGuest || checkedInGuests.length === 0));
+        const orderSubmitTitle = orderMode === 'guest' && checkedInGuests.length === 0
+          ? t('no_active_resident_tooltip')
+          : cartItems.length === 0
+          ? t('order_cart_empty_tooltip')
+          : t('send_order_to_kitchen_button');
+
+        const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
+
         return (
           <div className="take-food-order-container space-y-4 pb-48 lg:pb-0">
+            {/* Order Mode: Guest (room service, billed to the stay) vs Walk-in
+                (counter/dine-in, no room - joins a running tab, billed all at
+                once from the Walk-in Bills tab). */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode('guest')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      orderMode === 'guest'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {t('order_mode_guest_button', 'Guest / Room Service')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderMode('walkin')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                      orderMode === 'walkin'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {t('order_mode_walkin_button', 'Walk-in / Counter')}
+                  </button>
+                </div>
+
+                {orderMode === 'guest' && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {selectedGuest ? (
+                      <>
+                        {t('ordering_for_prefix', 'Ordering for')}{' '}
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedGuest.guestName}</span>
+                        {selectedGuest.roomNumber ? ` (${selectedGuest.roomNumber})` : ''}
+                      </>
+                    ) : (
+                      t('no_active_resident_tooltip')
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {orderMode === 'walkin' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    {t('walk_in_tab_picker_label', 'Add to tab')}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWalkInTabId(null)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        selectedWalkInTabId === null
+                          ? 'bg-emerald-600 border-emerald-600 text-white'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
+                      }`}
+                    >
+                      + {t('new_tab_button', 'New Tab')}
+                    </button>
+                    {openTabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setSelectedWalkInTabId(tab.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          selectedWalkInTabId === tab.id
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
+                        }`}
+                      >
+                        {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedWalkInTabId === null && (
+                    <Input
+                      type="text"
+                      value={newTabLabel}
+                      onChange={(e) => setNewTabLabel(e.target.value)}
+                      placeholder={t('walk_in_name_placeholder', 'Table / customer name (optional)')}
+                      className="max-w-xs"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
               {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
               <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
@@ -1303,17 +1687,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || checkedInGuests.length === 0}
-                    title={
-                      checkedInGuests.length === 0
-                        ? t('no_active_resident_tooltip')
-                        : cartItems.length === 0
-                        ? t('order_cart_empty_tooltip')
-                        : t('send_order_to_kitchen_button')
-                    }
+                    disabled={isOrderSubmitDisabled}
+                    title={orderSubmitTitle}
                     className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
                   >
-                    <span>{t('send_order_to_kitchen_button')}</span>
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : t('send_order_to_kitchen_button')}</span>
                   </button>
                 </div>
               </div>
@@ -1322,7 +1700,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
             {cartItems.length > 0 && (
               <div
-                className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
+                className={`fixed bottom-0 left-0 right-0 z-[60] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
                   isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
                 }`}
               >
@@ -1395,17 +1773,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <div className="p-3 bg-white border-t border-slate-200 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
-                    disabled={cartItems.length === 0 || !selectedGuest || checkedInGuests.length === 0}
-                    title={
-                      checkedInGuests.length === 0
-                        ? 'No active resident checked in. Click ACTIVATE LEDGER in sidebar.'
-                        : cartItems.length === 0
-                        ? 'Order cart is empty'
-                        : 'Send Order to Kitchen'
-                    }
+                    disabled={isOrderSubmitDisabled}
+                    title={orderSubmitTitle}
                     className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
                   >
-                    <span>Send Order to Kitchen</span>
+                    <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : 'Send Order to Kitchen'}</span>
                   </button>
                 </div>
               </div>
@@ -1434,6 +1806,107 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
         );
       })()}
+
+      {/* TAB: WALK-IN BILLS - open tabs (running total across every order
+          placed against them) plus recently billed history. Billing a tab
+          opens WalkInTabBillModal, the same itemized/GST/WhatsApp-share
+          pattern a guest's checkout receipt already gets. */}
+      {activeTab === 'walk_in_bills' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-emerald-600" /> {t('open_walk_in_tabs_heading', 'Open Tabs')}
+              </h3>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                {walkInTabs.filter((tab) => tab.status === 'open').length}
+              </span>
+            </div>
+
+            {walkInTabsLoading ? (
+              <p className="text-center py-8 text-slate-400 text-sm">{t('loading_text', 'Loading...')}</p>
+            ) : walkInTabs.filter((tab) => tab.status === 'open').length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
+                <Receipt className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">{t('no_open_tabs_text', 'No open walk-in tabs')}</p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">{t('no_open_tabs_hint', 'Start one from Take Food Order in Walk-in / Counter mode.')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {walkInTabs.filter((tab) => tab.status === 'open').map((tab) => (
+                  <div key={tab.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 flex flex-col justify-between gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{tab.label || t('walk_in_badge', 'Walk-in')}</h4>
+                        <span className="text-[10px] text-slate-400">{formatDateTimeDDMMYYYY(tab.openedAt)}</span>
+                      </div>
+                      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 max-h-28 overflow-y-auto">
+                        {tab.items.map((it, idx) => (
+                          <div key={idx} className="flex justify-between">
+                            <span>{it.quantity}x {it.name}</span>
+                            <span>₹{it.lineTotal.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">₹{tab.subtotal.toLocaleString('en-IN')}</span>
+                      <button
+                        type="button"
+                        onClick={() => setBillingTab(tab)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg cursor-pointer"
+                      >
+                        {t('bill_this_tab_heading', 'Bill This Tab')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {walkInTabHistory.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{t('recently_billed_heading', 'Recently Billed')}</h3>
+              </div>
+              <DataTable
+                columns={[
+                  { name: t('walk_in_badge', 'Walk-in'), selector: (row: WalkInTab) => row.label || '', sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.label || t('walk_in_badge', 'Walk-in')}</span> },
+                  { name: t('served_time_column', 'Served At'), selector: (row: WalkInTab) => row.billedAt || '', sortable: true, cell: (row: WalkInTab) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{row.billedAt ? formatDateTimeDDMMYYYY(row.billedAt) : '-'}</span> },
+                  { name: t('payment_method_label', 'Payment Method'), selector: (row: WalkInTab) => row.paymentMethod || '', sortable: true },
+                  { name: t('grand_total_label', 'Grand Total'), selector: (row: WalkInTab) => row.grandTotal || 0, sortable: true, cell: (row: WalkInTab) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{(row.grandTotal ?? 0).toLocaleString('en-IN')}</span> },
+                ]}
+                data={walkInTabHistory}
+                pagination
+                paginationPerPage={5}
+                paginationRowsPerPageOptions={[5, 10, 20]}
+                highlightOnHover
+                customStyles={{
+                  headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                  cells: { style: { paddingLeft: '12px', fontSize: '12px' } },
+                  rows: { style: { minHeight: '48px' } },
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {billingTab && (
+        <WalkInTabBillModal
+          tab={billingTab}
+          onClose={() => setBillingTab(null)}
+          onBilled={() => {
+            refreshWalkInTabs();
+            refreshOrders();
+            fetchWalkInTabHistoryFromDB().then((data) => setWalkInTabHistory(data.map(mapWalkInTabFromApi)));
+          }}
+          propertyName={propertyName}
+          propertyGstin={propertyGstin}
+          propertyUpiId={propertyUpiId}
+        />
+      )}
 
       {/* TAB 3: MENU CATALOG */}
       {activeTab === 'menu_catalog' && (
@@ -2435,9 +2908,95 @@ interface ServedLogEntry {
   guestName: string;
   roomNumber: string;
   servedAt: string;
+  readyAt: string | null;
 }
 
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+// Canonical, unambiguous LOCAL timestamp ("YYYY-MM-DD HH:MM:SS") used to
+// stamp readyAt/servedAt (handleMarkDishReady/handleMarkDishServed).
+// Deliberately not toISOString() - that's UTC, and IST is 5.5h ahead of it,
+// so for the first ~5.5 hours of any local day toISOString() still reports
+// the PREVIOUS calendar day. Pairing that wrong date with a local
+// time-of-day string (found 17 Aug 2026) made readyAt look ~24h before
+// servedAt no matter how fast an item actually was, showing as a bogus
+// "1440 min" Serve Delay on nearly every fresh row.
+const buildLocalTimestamp = (d: Date): string =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+
+// Parses every shape readyAt/servedAt has ever been stored in:
+//  - canonical "YYYY-MM-DD HH:MM[:SS]" from buildLocalTimestamp above, which
+//    also happens to be exactly what MySQL's served_at (set via NOW()) comes
+//    back as from get_served_logs, so this one branch covers both.
+//  - legacy "YYYY-MM-DD hh:mm AM/PM" (old readyAt) and "DD/MM/YY(YY) hh:mm
+//    AM/PM" (old servedAt, via formatDateDDMMYYYY's 2-digit-year output -
+//    the \d{4}-only year previously here is why a freshly-served dish
+//    sorted as if served in the year 0, at the very bottom instead of top).
+// Shared by the Serve Delay column and by sorting servedLogs.
+const parseFlexibleTimestamp = (s: string): Date | null => {
+  if (!s) return null;
+  const to24Hour = (h: number, ampm?: string): number => {
+    if (!ampm) return h;
+    if (/PM/i.test(ampm) && h !== 12) return h + 12;
+    if (/AM/i.test(ampm) && h === 12) return 0;
+    return h;
+  };
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (isoMatch) {
+    const [, y, mo, d, h, mi, se, ap] = isoMatch;
+    return new Date(Number(y), Number(mo) - 1, Number(d), to24Hour(Number(h), ap), Number(mi), Number(se || 0));
+  }
+  const ddmmMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (ddmmMatch) {
+    const [, d, mo, yRaw, h, mi, ap] = ddmmMatch;
+    const y = yRaw.length === 2 ? Number('20' + yRaw) : Number(yRaw);
+    return new Date(y, Number(mo) - 1, Number(d), to24Hour(Number(h), ap), Number(mi));
+  }
+  return null;
+};
+
+const parseAndDiffMinutes = (readyAt: string, servedAt: string): string => {
+  const readyDate = parseFlexibleTimestamp(readyAt);
+  const servedDate = parseFlexibleTimestamp(servedAt);
+  if (!readyDate || !servedDate) return '—';
+  const diffMin = Math.round((servedDate.getTime() - readyDate.getTime()) / 60000);
+  return diffMin >= 0 ? `${diffMin} min` : '—';
+};
+
 const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ servedLogs }) => {
+  // Search filter state — must live inside the component so the Input
+  // is controlled and actually narrows the table rows.
+  const [filterText, setFilterText] = React.useState('');
+
+  // Always most-recently-served first, full stop - not a "default" a column
+  // click can override (found 17 Aug 2026: defaultSortFieldId={3} was a
+  // 1-based column index that actually pointed at "Dish", not "Served At",
+  // so the table wasn't even sorting by recency like it looked like it was
+  // trying to). Sorted here rather than left to DataTable's own sort so the
+  // order holds regardless of anything else the table does.
+  const sortedLogs = React.useMemo(() => {
+    return [...servedLogs].sort((a, b) => {
+      const aTime = parseFlexibleTimestamp(a.servedAt)?.getTime() ?? 0;
+      const bTime = parseFlexibleTimestamp(b.servedAt)?.getTime() ?? 0;
+      return bTime - aTime;
+    });
+  }, [servedLogs]);
+
+  // Apply search filter across ticket id, dish name, guest name, room, and
+  // served-by columns. Filters after sort so recency order is always preserved.
+  const filteredLogs = React.useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return sortedLogs;
+    return sortedLogs.filter((row) =>
+      (row.orderId || '').toLowerCase().includes(q) ||
+      (row.itemName || '').toLowerCase().includes(q) ||
+      (row.guestName || '').toLowerCase().includes(q) ||
+      (row.roomNumber || '').toLowerCase().includes(q) ||
+      (row.servedBy || '').toLowerCase().includes(q)
+    );
+  }, [sortedLogs, filterText]);
+
+  // Early-return AFTER all hooks so React rules-of-hooks is satisfied.
   if (servedLogs.length === 0) return null;
 
   return (
@@ -2451,24 +3010,38 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
         <DataTable
           columns={[
             { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
-            { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, sortable: true, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-semibold text-slate-900 dark:text-white">#{row.orderId}</span> },
-            { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, sortable: true, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
-            { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, sortable: true, width: '60px', center: true },
-            { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, sortable: true, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName}</span> },
-            { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, sortable: true, width: '70px' },
-            { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, sortable: true, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
-            { name: t('date_time_column'), selector: (row: ServedLogEntry) => row.servedAt, sortable: true, width: '150px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
+            { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-semibold text-slate-900 dark:text-white">#{row.orderId}</span> },
+            { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
+            { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, width: '60px', center: true },
+            { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || '-'}</span> },
+            { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.roomNumber || '-'}</span> },
+            { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
+            {
+              name: t('serve_time_column', 'Serve Delay'),
+              selector: (row: ServedLogEntry) => row.readyAt,
+              width: '100px',
+              cell: (row: ServedLogEntry) => {
+                const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
+                return <span className="font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
+              }
+            },
+            { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
+            { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
           ]}
-          data={servedLogs}
+          data={filteredLogs}
           subHeader={
-            <Input type="text" placeholder={t('search_served_dishes_placeholder')} className="w-full max-w-sm" />
+            <Input
+              type="text"
+              placeholder={t('search_served_dishes_placeholder')}
+              className="w-full max-w-sm"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
           }
           pagination
           paginationPerPage={15}
           paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
           highlightOnHover
-          defaultSortFieldId={3}
-          defaultSortAsc={false}
           customStyles={{
             subHeader: {
               style: {

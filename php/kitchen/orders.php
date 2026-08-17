@@ -29,15 +29,56 @@ if (!function_exists('ensureOrderItemReminderColumns')) {
     }
 }
 
+// Backs walk-in/counter orders (no guest_id - food prepared for someone not
+// staying in a room). SUPERSEDED 17 Aug 2026 by walk_in_tabs.php: a walk-in
+// settling per-order (via walk_in_name/settled_at/payment_method here) turned
+// out to feel wrong in practice for anything beyond a single dish, since a
+// table ordering twice needed two separate settlements instead of one bill.
+// walk_in_tabs.php's `orders.walk_in_tab_id` is what new walk-in orders use
+// now - these three columns stay in place (still self-healed) purely so old
+// rows written before the switch keep reading back correctly.
+if (!function_exists('ensureWalkInOrderColumns')) {
+    function ensureWalkInOrderColumns($pdo) {
+        if (isSchemaVerified('schema_walk_in_orders')) return;
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('walk_in_name', $cols)) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN walk_in_name VARCHAR(150) NULL DEFAULT NULL");
+            }
+            if (!in_array('settled_at', $cols)) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN settled_at DATETIME NULL DEFAULT NULL");
+            }
+            if (!in_array('payment_method', $cols)) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN payment_method VARCHAR(30) NULL DEFAULT NULL");
+            }
+            markSchemaVerified('schema_walk_in_orders');
+        } catch (Exception $e) {
+            error_log("orders walk-in column migration error: " . $e->getMessage());
+        }
+    }
+}
+
 function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'get_orders':
             try {
                 ensureOrderItemReminderColumns($pdo);
-                // Try orders + order_items first
-                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, COALESCE(g.guest_name, 'Walk-in') as guest_name
+                ensureWalkInOrderColumns($pdo);
+                ensureWalkInTabSchema($pdo);
+                // Try orders + order_items first. room_number was never
+                // selected here at all (found 17 Aug 2026) - every order's
+                // roomNumber came back blank the moment anything refetched
+                // from the DB (get_orders never carried it, only the
+                // client's own just-placed optimistic copy briefly did),
+                // which is why a room guest's own served dishes showed no
+                // room even though the guest genuinely has one.
+                $sql = "SELECT o.id, o.guest_id, o.order_time, o.status, o.walk_in_tab_id,
+                               COALESCE(g.guest_name, wt.label, o.walk_in_name, 'Walk-in') as guest_name,
+                               p.name as room_number
                         FROM orders o
                         LEFT JOIN guests g ON o.guest_id = g.id
+                        LEFT JOIN properties p ON g.room_id = p.id
+                        LEFT JOIN walk_in_tabs wt ON o.walk_in_tab_id = wt.id
                         WHERE o.property_id = ?
                         ORDER BY o.order_time DESC";
                 $stmt = $pdo->prepare($sql);
@@ -82,26 +123,41 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'create_order':
             if ($request_method === 'POST') {
+                ensureWalkInOrderColumns($pdo);
+                ensureWalkInTabSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 $guest_id = $input['guest_id'] ?? null;
+                // A tab only means anything when there's no guest_id - a
+                // guest-attached order is always room service, never a walk-in,
+                // regardless of what the client sent.
+                $walkInTabId = empty($guest_id) ? (int)($input['walk_in_tab_id'] ?? 0) ?: null : null;
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, order_time, status) VALUES (?, ?, NOW(), 'Pending')");
-                    $stmt->execute([$propertyId, $guest_id]);
+                    $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, walk_in_tab_id, order_time, status) VALUES (?, ?, ?, NOW(), 'Pending')");
+                    $stmt->execute([$propertyId, $guest_id, $walkInTabId]);
                     $order_id = $pdo->lastInsertId();
 
                     $itemsPayload = [];
                     if (!empty($input['items']) && is_array($input['items'])) {
-                        $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, 'Pending')");
+                        // property_id was missing here (found 17 Aug 2026 while wiring
+                        // this endpoint up for real - it had never actually been called
+                        // from the frontend before, so the column's `DEFAULT 1` silently
+                        // absorbed every row without anything noticing). Not currently
+                        // read anywhere (order_items is always joined through orders,
+                        // never filtered by its own property_id directly), but it's the
+                        // same misattribution shape CLAUDE.md already flags for
+                        // postFinancialLedger - fixing it now rather than leaving a second
+                        // dormant copy of that bug.
+                        $itemStmt = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, ?, 'Pending')");
                         foreach ($input['items'] as $item) {
                             $menuItemId = $item['menu_item_id'] ?? $item['id'] ?? null;
                             $qty = (int)($item['quantity'] ?? 1);
-                            $itemStmt->execute([$order_id, $menuItemId, $qty]);
+                            $itemStmt->execute([$propertyId, $order_id, $menuItemId, $qty]);
                             $nameStmt = $pdo->prepare("SELECT name FROM menu_items WHERE id = ?");
                             $nameStmt->execute([$menuItemId]);
                             $itemsPayload[] = ['name' => $nameStmt->fetchColumn() ?: 'Dish', 'qty' => $qty];
                         }
                     }
-                    echo json_encode(['status' => 'success', 'id' => 'KOT-' . $order_id, 'message' => 'Kitchen ticket created successfully']);
+                    echo json_encode(['status' => 'success', 'id' => 'KOT-' . $order_id, 'order_id' => (int)$order_id, 'message' => 'Kitchen ticket created successfully']);
 
                     // Notify the kitchen group about the new ticket (best-effort;
                     // never let a Telegram hiccup fail the order itself).
@@ -117,6 +173,10 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                             $gStmt = $pdo->prepare("SELECT guest_name FROM guests WHERE id = ?");
                             $gStmt->execute([$guest_id]);
                             $guestName = $gStmt->fetchColumn() ?: 'Walk-in';
+                        } elseif (!empty($walkInTabId)) {
+                            $tStmt = $pdo->prepare("SELECT label FROM walk_in_tabs WHERE id = ?");
+                            $tStmt->execute([$walkInTabId]);
+                            $guestName = $tStmt->fetchColumn() ?: 'Walk-in';
                         }
                         $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload);
                         sendPropertyTelegramMessage($pdo, $propertyId, 'kitchen', $msg, null, 'kitchen_new_order');
@@ -149,7 +209,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_served_logs':
             try {
-                $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at FROM served_logs WHERE property_id = ? ORDER BY id DESC LIMIT 200");
+                $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at, ready_at FROM served_logs WHERE property_id = ? ORDER BY id DESC LIMIT 200");
                 $stmt->execute([$propertyId]);
                 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode(['status' => 'success', 'data' => $logs]);
@@ -163,15 +223,35 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 try {
                     // Ensure table exists
-                    $stmt = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                    $guestName = $input['guest_name'] ?? '';
+                    $roomNumber = $input['room_number'] ?? '';
+                    
+                    if ($roomNumber && ($guestName === '' || $guestName === 'Walk-in')) {
+                        $rStmt = $pdo->prepare("SELECT id FROM properties WHERE name = ? AND parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
+                        $rStmt->execute([$roomNumber, $propertyId]);
+                        $roomId = $rStmt->fetchColumn();
+                        if ($roomId) {
+                            $gStmt = $pdo->prepare("SELECT guest_name FROM guests WHERE room_id = ? AND checkin_date <= CURDATE() AND expected_checkout >= NOW() ORDER BY id DESC LIMIT 1");
+                            $gStmt->execute([$roomId]);
+                            $foundGuest = $gStmt->fetchColumn();
+                            if ($foundGuest) {
+                                $guestName = $foundGuest;
+                            }
+                        }
+                    }
+
+                    if ($guestName === '') $guestName = 'Walk-in';
+
+                    $stmt = $pdo->prepare("INSERT INTO served_logs (property_id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at, ready_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
                     $stmt->execute([
                         $propertyId,
                         $input['order_id'] ?? '',
                         $input['item_name'] ?? '',
                         $input['quantity'] ?? 1,
                         $input['served_by'] ?? '',
-                        $input['guest_name'] ?? '',
-                        $input['room_number'] ?? '',
+                        $guestName,
+                        $roomNumber,
+                        empty($input['ready_at']) ? null : date('Y-m-d H:i:s', strtotime($input['ready_at']))
                     ]);
                     echo json_encode(['status' => 'success']);
                 } catch (PDOException $e) {
