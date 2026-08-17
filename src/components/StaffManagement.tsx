@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Loader2,
   HelpCircle,
-  Edit2
+  Edit2,
+  MessageCircle
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -106,6 +107,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // instead of the normal per-property updateStaffUserDB (see
   // handleUpdateUserSubmit below).
   const isEditingSuperAdmin = updateRole === 'Super Admin';
+  const updateTargetUser = users.find((u) => u.id === selectedUpdateUserId);
 
   // Modals / Lightboxes
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -216,6 +218,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return currentLevel <= targetLevel;
   };
 
+  // Sharing a passcode over WhatsApp is a step above ordinary "edit" rights
+  // (canEditUser already lets peers at the same hierarchy level edit each
+  // other, e.g. one Staff Supervisor editing another) - restricted to actual
+  // admin roles only, regardless of what canEditUser would otherwise permit.
+  const normalizedCurrentRole = (currentUser?.role || '') === 'root_admin' ? 'Root Admin' : (currentUser?.role || '');
+  const canShareLogins = ['Root Admin', 'Super Admin', 'Admin'].includes(normalizedCurrentRole);
+
   const visibleUsers = users.filter(u => u.role !== 'Root Admin');
 
   // Handlers for Control Center
@@ -301,6 +310,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setUserFormTab('update');
      setIsTeamMemberModalOpen(true);
    };
+
+  // Shares this staff member's CURRENT login (phone + their existing
+  // passcode, already loaded client-side as passcodePin - not a reveal
+  // endpoint) via WhatsApp, pre-addressed to their own number. Mirrors
+  // buildTenantWhatsAppShareUrl in PlatformPropertyManagement.tsx, but the
+  // login URL is this property's own origin+pathname (not the bare platform
+  // root) so the staff member lands directly on the right property's login
+  // screen.
+  const buildStaffWhatsAppShareUrl = (user: { fullName: string; username: string; passcodePin?: string }) => {
+    const digits = (user.username || '').replace(/\D/g, '');
+    const phone = digits.length === 10 ? '91' + digits : digits;
+    const loginUrl = window.location.origin + window.location.pathname;
+    const message = `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nPhone: ${digits}\nPasscode: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this passcode private. Didn't request this? You can ignore this message.`;
+    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  };
 
 
 
@@ -639,13 +663,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 {
                   name: t('actions_column', 'Actions'),
                   right: true,
-                  width: '170px',
+                  width: '210px',
                   cell: (row: any) => {
                     const isCurrentUser = currentUser?.id === row.id;
                     const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                     const canDelete = !isCurrentUser && canEdit;
+                    const hasPhone = /^\d{10}$/.test((row.username || '').replace(/\D/g, ''));
                     return (
                       <div className="flex items-center gap-1.5 justify-end">
+                        {canShareLogins && (isCurrentUser || canEdit) && hasPhone && (
+                          <a href={buildStaffWhatsAppShareUrl(row)} target="_blank" rel="noopener noreferrer" title={t('share_login_whatsapp_tooltip', 'Share login details via WhatsApp')}>
+                            <Button variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2">
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </Button>
+                          </a>
+                        )}
                         {isCurrentUser ? (
                           <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
                         ) : (
@@ -1146,6 +1178,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <Input
                     label={t('six_digit_passcode_required_label', '6-Digit Passcode PIN *')}
                     type="password"
+                    autoComplete="new-password"
                     required
                     maxLength={6}
                     value={rosterPasscode}
@@ -1246,6 +1279,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
                         <Input
                           type="password"
+                          autoComplete="new-password"
                           required
                           maxLength={6}
                           value={newPasscode}
@@ -1259,6 +1293,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm Passcode PIN *</label>
                         <Input
                           type="password"
+                          autoComplete="new-password"
                           required
                           maxLength={6}
                           value={newConfirmPasscode}
@@ -1399,6 +1434,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
                       <Input
                         type="password"
+                        autoComplete="new-password"
                         maxLength={6}
                         value={updatePasscode}
                         onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -1411,6 +1447,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
                       <Input
                         type="password"
+                        autoComplete="new-password"
                         maxLength={6}
                         value={updateConfirmPasscode}
                         onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -1420,6 +1457,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       />
                     </div>
                   </div>
+
+                  {canShareLogins && /^\d{10}$/.test((updateUsername || '').replace(/\D/g, '')) && (
+                    <a
+                      href={buildStaffWhatsAppShareUrl({
+                        fullName: updateFullName || updateTargetUser?.fullName || '',
+                        username: updateUsername,
+                        passcodePin: updatePasscode || updateTargetUser?.passcodePin,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button type="button" variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        {t('share_login_details_button', 'Share Login Details via WhatsApp')}
+                      </Button>
+                    </a>
+                  )}
+
                   {isEditingSuperAdmin ? (
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
                       {t('super_admin_locked_fields_hint', "Super Admin's role can't be reassigned - it's the tenant's own login, not an assignable position - and it's always a Cash Handler with Access All Properties, so there's nothing to toggle here.")}
