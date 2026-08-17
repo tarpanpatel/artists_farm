@@ -671,7 +671,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     const hasPhone = /^\d{10}$/.test((row.username || '').replace(/\D/g, ''));
                     return (
                       <div className="flex items-center gap-1.5 justify-end">
-                        {canShareLogins && (isCurrentUser || canEdit) && hasPhone && (
+                        {canShareLogins && hasPhone && (
                           <a href={buildStaffWhatsAppShareUrl(row)} target="_blank" rel="noopener noreferrer" title={t('share_login_whatsapp_tooltip', 'Share login details via WhatsApp')}>
                             <Button variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2">
                               <MessageCircle className="w-3.5 h-3.5" />
