@@ -1111,18 +1111,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
 
     let hasError = false;
     let errorMessage = '';
+    let outcome: { success: boolean; attempted: number; delivered: number; reason?: string } = { success: false, attempted: 0, delivered: 0 };
 
     try {
-      const ok = await sendTelegramAlertDB({
+      outcome = await sendTelegramAlertDB({
         eventType,
         category,
         message,
         replyMarkup,
         templateKey,
       });
-      if (!ok) {
+      if (!outcome.success) {
         hasError = true;
-        errorMessage = 'PHP Proxy returned failure';
+        errorMessage = outcome.reason || 'No Telegram group actually received this message.';
       }
     } catch (err: any) {
       hasError = true;
@@ -1160,6 +1161,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
         replyMarkup,
       },
     });
+
+    return outcome;
   };
 
   // Helper to add audit logs
@@ -1522,10 +1525,10 @@ ${itemsStr}
     logAudit(`${currentUserName} updated image for inventory item ${item?.name || itemId}`);
   };
 
-  const handleSendTestNotification = () => {
+  const handleSendTestNotification = async () => {
     const testTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Ground Code Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
-    dispatchTelegramAlert('Test Dispatch', testMsg, 'all');
+    return dispatchTelegramAlert('Test Dispatch', testMsg, 'all');
   };
 
   const handleSavePropertyLocation = async (address: string, googleMapsLink: string, instructions?: string): Promise<boolean> => {

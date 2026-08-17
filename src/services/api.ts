@@ -2173,13 +2173,60 @@ export async function saveReceiptToDB(receipt: any): Promise<boolean> {
   }
 }
 
+export interface TelegramSendOutcome {
+  // True only when at least one Telegram group actually received the
+  // message - NOT just "the HTTP round-trip to our own backend succeeded".
+  success: boolean;
+  attempted: number;
+  delivered: number;
+  reason?: string;
+}
+
+// sendPropertyTelegramMessage() (php/telegram/sender.php) returns different
+// shapes depending on how the send resolved: {skipped:true, reason} when
+// Telegram is off or no group is routed for this category; a single raw
+// Telegram API JSON string for a single-chat send; or, for category 'all',
+// an object keyed by chatId -> raw Telegram API JSON string per group. This
+// parses whichever shape came back into one consistent outcome so callers
+// don't have to know the difference.
+function parseTelegramSendResult(result: any): TelegramSendOutcome {
+  if (!result || (typeof result === 'object' && !Array.isArray(result) && Object.keys(result).length === 0)) {
+    return { success: false, attempted: 0, delivered: 0, reason: 'No Telegram groups are configured for this property yet.' };
+  }
+  if (typeof result === 'object' && !Array.isArray(result) && 'skipped' in result) {
+    return { success: false, attempted: 0, delivered: 0, reason: result.reason || 'Telegram send was skipped.' };
+  }
+  const parseOne = (raw: any): boolean => {
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return !!parsed?.ok;
+    } catch {
+      return false;
+    }
+  };
+  // Multi-group ('all' category): object keyed by chatId.
+  if (typeof result === 'object' && !Array.isArray(result)) {
+    const chatIds = Object.keys(result);
+    const delivered = chatIds.filter((id) => parseOne(result[id])).length;
+    return {
+      success: delivered > 0,
+      attempted: chatIds.length,
+      delivered,
+      reason: delivered === 0 ? 'Telegram rejected the message for every configured group - double-check the bot token and that the bot is still a member of each group.' : undefined,
+    };
+  }
+  // Single-chat send: result is itself a raw Telegram API JSON string.
+  const ok = parseOne(result);
+  return { success: ok, attempted: 1, delivered: ok ? 1 : 0, reason: ok ? undefined : 'Telegram rejected the message.' };
+}
+
 export async function sendTelegramAlertDB(payload: {
   eventType: string;
   category: string;
   message: string;
   replyMarkup?: any;
   templateKey?: string;
-}): Promise<boolean> {
+}): Promise<TelegramSendOutcome> {
   try {
     const res = await apiFetch(`${API_BASE}?action=send_telegram_alert`, {
       method: 'POST',
@@ -2187,10 +2234,13 @@ export async function sendTelegramAlertDB(payload: {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
-    return json.status === 'success';
+    if (json.status !== 'success') {
+      return { success: false, attempted: 0, delivered: 0, reason: json.message || 'Request to the notification backend failed.' };
+    }
+    return parseTelegramSendResult(json.result);
   } catch (err) {
     console.error('Failed to send Telegram alert via backend proxy:', err);
-    return false;
+    return { success: false, attempted: 0, delivered: 0, reason: 'Network error while sending.' };
   }
 }
 

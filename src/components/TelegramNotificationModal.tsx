@@ -57,7 +57,10 @@ interface TelegramNotificationModalProps {
   telegramConfig: TelegramConfig;
   onUpdateConfig: (newConfig: TelegramConfig) => void;
   dispatchLogs: TelegramDispatchLog[];
-  onSendTestNotification: () => void;
+  // Returns the real delivery outcome (which groups actually received the
+  // ping, not just "the request reached our backend") so the button can
+  // show an honest result instead of always claiming success.
+  onSendTestNotification: () => void | Promise<{ success: boolean; attempted?: number; delivered?: number; reason?: string } | void>;
   isEmbedded?: boolean;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
   kitchenModuleEnabled?: boolean;
@@ -414,6 +417,8 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [activeTemplateId, setActiveTemplateId] = useState<string>(FALLBACK_TEMPLATES[0].id);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [testSent, setTestSent] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [activeCategory, setActiveCategory] = useState<'All' | 'Kitchen' | 'Admin' | 'Finances'>('All');
@@ -899,10 +904,20 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     return text.replace(/\n/g, '<br/>');
   };
 
-  const handleTest = () => {
-    onSendTestNotification();
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
+  const handleTest = async () => {
+    setTestSending(true);
+    setTestError(null);
+    try {
+      const outcome = await onSendTestNotification();
+      if (outcome && outcome.success === false) {
+        setTestError(outcome.reason || t('telegram_test_ping_failed_generic', 'No group actually received the test message.'));
+        return;
+      }
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 3000);
+    } finally {
+      setTestSending(false);
+    }
   };
 
   if (!isEmbedded && !isOpen) return null;
@@ -934,14 +949,25 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             <>
               <button
                 onClick={handleTest}
-                className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 ${
+                disabled={testSending}
+                className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed ${
                   testSent
                     ? 'bg-emerald-600 hover:bg-emerald-500'
+                    : testError
+                    ? 'bg-red-600 hover:bg-red-500'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                <Send className="w-4 h-4" />
-                <span>{testSent ? t('ping_sent_button', 'Ping Sent Successfully!') : t('send_test_ping_button', 'Send Test Telegram Ping')}</span>
+                {testSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                <span>
+                  {testSending
+                    ? t('sending_button', 'Sending...')
+                    : testSent
+                    ? t('ping_sent_button', 'Ping Sent Successfully!')
+                    : testError
+                    ? t('ping_failed_button', 'Ping Failed')
+                    : t('send_test_ping_button', 'Send Test Telegram Ping')}
+                </span>
               </button>
               <button
                 onClick={() => setShowSetupWizard(true)}
@@ -962,6 +988,13 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           )}
         </div>
       </div>
+
+      {testError && !hideRoutingControls && (
+        <div className="flex items-start gap-2.5 -mt-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+          <span className="font-semibold shrink-0">{t('test_ping_failed_label', 'Test ping failed:')}</span>
+          <span>{testError}</span>
+        </div>
+      )}
 
       {/* Main 2-Column Catalog Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
