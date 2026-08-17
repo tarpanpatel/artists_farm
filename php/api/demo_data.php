@@ -1352,9 +1352,11 @@ function generateDemoData($pdo, $propertyId) {
                     }
                     if ($overlaps) continue;
 
-                    $placedRanges[] = ['start' => $blockStart, 'end' => $blockEnd];
                     $externalId = 'demo-' . uniqid() . '-' . $syncConfigId . $feed['uid_suffix'];
-                    $eventTitle = $feed['channel'] . ' Reservation - ' . $guestNames[array_rand($guestNames)];
+                    $refCode = ($feed['channel'] === 'Airbnb')
+                        ? 'HM' . strtoupper(substr(md5(uniqid()), 0, 8))
+                        : (string)rand(1000000000, 9999999999);
+                    $eventTitle = $feed['channel'] . ' #' . $refCode;
                     $eventData = json_encode(['source' => $feed['service_type'], 'source_label' => $feed['service_name']]);
                     $eventStmt = $pdo->prepare("
                         INSERT INTO ical_synced_events (sync_config_id, external_event_id, event_title, event_start, event_end, event_data, sync_status)

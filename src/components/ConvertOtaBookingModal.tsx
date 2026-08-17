@@ -133,15 +133,18 @@ export const ConvertOtaBookingModal: React.FC<ConvertOtaBookingModalProps> = ({
             </p>
           </div>
 
-          {otaBlock.event_title && (
-            <div className="mb-4 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
-              <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
-                <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{otaBlock.event_title}</div>
+          {otaBlock.event_title && (() => {
+            const cleanTitle = otaBlock.event_title.replace(/\s*-\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/gi, '').trim();
+            return (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <Hash className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase">{t('ota_reference_label', 'OTA Reference (not a guest name)')}</div>
+                  <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{cleanTitle || otaBlock.event_title}</div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="space-y-4">
             <div>
