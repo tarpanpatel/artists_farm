@@ -840,6 +840,23 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
             }
             break;
 
+        // Categories for the System Stock Catalog's own dropdowns (Add/Edit forms), always
+        // scoped to property_id=1 - the same anchor system_stock_catalog.category_id already
+        // points at (see sync_default_stock_categories/add_system_stock_item below). Deliberately
+        // NOT get_material_categories: that resolves against the REQUEST's property context,
+        // which for a Root Dashboard request is propertyId=0 (no real property there) - returning
+        // a completely different, disconnected set of category IDs that share names but not IDs
+        // with what system_stock_catalog items actually reference, so the Edit modal's dropdown
+        // could never show the item's real category (found 17 Aug 2026).
+        case 'get_system_stock_categories':
+            try {
+                $stmt = $pdo->query("SELECT id, name FROM material_categories WHERE property_id = 1 ORDER BY name ASC");
+                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            } catch (PDOException $e) {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
         case 'get_system_stock_catalog':
             try {
                 $stmt = $pdo->query("

@@ -36,14 +36,27 @@ export const SystemStockManager: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    import('../services/api').then(({ fetchMaterialCategoriesFromDB }) => {
-      fetchMaterialCategoriesFromDB().then((cats) => {
-        if (cats && cats.length > 0) {
-          setDbCategories(cats);
-        }
+  const loadCategories = async () => {
+    try {
+      // Deliberately NOT fetchMaterialCategoriesFromDB() - that resolves against the
+      // current request's property context (propertyId=0 on Root Dashboard), which
+      // returns a disconnected set of category IDs that share names but not IDs with
+      // what system_stock_catalog items actually reference. This always resolves
+      // against property_id=1, matching the items' real category_id values.
+      const response = await fetch('/php/api/router.php?action=get_system_stock_categories', {
+        credentials: 'include',
       });
-    });
+      const data = await response.json();
+      if (data.status === 'success' && Array.isArray(data.data)) {
+        setDbCategories(data.data);
+      }
+    } catch (err) {
+      // Non-fatal - the category dropdown just falls back to empty until retried.
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
     loadStocks();
   }, []);
 
@@ -292,7 +305,7 @@ export const SystemStockManager: React.FC = () => {
                   onChange={(value) => setNewItem({ ...newItem, categoryId: parseInt(value) })}
                   placeholder={t('select_category_placeholder', '-- Select Category --')}
                   searchable
-                  options={dbCategories.map((cat) => ({ value: cat.id.toString(), name: cat.name }))}
+                  options={dbCategories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
                 />
               </div>
               <div>

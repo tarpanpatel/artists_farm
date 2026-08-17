@@ -624,7 +624,7 @@ $kitchen_module_actions = [
     'get_kitchen_purchases', 'create_kitchen_purchase', 'bulk_update_kitchen_purchases', 'delete_kitchen_purchase',
     'get_material_categories', 'update_material_category', 'delete_material_category', 'add_material_category',
     'toggle_ingredient_category', 'add_catalog_item', 'update_catalog_item', 'delete_catalog_item',
-    'get_system_stock_catalog', 'add_system_stock_item', 'delete_system_stock_item', 'sync_default_stock_categories',
+    'get_system_stock_catalog', 'get_system_stock_categories', 'add_system_stock_item', 'delete_system_stock_item', 'sync_default_stock_categories',
     'bulk_update_catalog_category', 'seed_catalog', 'fix_orphan_categories',
 ];
 if (in_array($action, $kitchen_module_actions, true)) {
@@ -2604,6 +2604,7 @@ switch ($action) {
     case 'seed_catalog':
     case 'fix_orphan_categories':
     case 'get_system_stock_catalog':
+    case 'get_system_stock_categories':
     case 'add_system_stock_item':
     case 'delete_system_stock_item':
     case 'sync_default_stock_categories':
