@@ -115,12 +115,23 @@ if (!function_exists('pollAndMatchPairingCodes')) {
 
 if (!function_exists('getPairingStatus')) {
     function getPairingStatus($pdo, $code) {
-        $stmt = $pdo->prepare("SELECT * FROM telegram_pairing_codes WHERE code = ?");
+        // Expiry is computed entirely in SQL (created_at vs NOW(), both on the
+        // DB server's own clock) rather than pulling created_at into PHP and
+        // comparing via time() - strtotime(): that mixed the DB server's
+        // system timezone with PHP's date_default_timezone_set('Asia/Kolkata')
+        // (set globally in errors/logger.php) - two different offsets being
+        // diffed against each other. On this server the mismatch was ~4.5
+        // hours, so every code already read as older than the 15-minute
+        // window the instant it was created, before a user had any chance to
+        // send it in Telegram. Found 17 Aug 2026 (codes always showing
+        // "expired" immediately). pollAndMatchPairingCodes() below already
+        // did this comparison correctly in SQL - this just matches that.
+        $stmt = $pdo->prepare("SELECT *, (status = 'pending' AND created_at <= (NOW() - INTERVAL 15 MINUTE)) as is_expired FROM telegram_pairing_codes WHERE code = ?");
         $stmt->execute([$code]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) return ['status' => 'not_found'];
 
-        if ($row['status'] === 'pending' && (time() - strtotime($row['created_at'])) > 900) {
+        if ($row['is_expired']) {
             $upd = $pdo->prepare("UPDATE telegram_pairing_codes SET status = 'expired' WHERE id = ?");
             $upd->execute([$row['id']]);
             return ['status' => 'expired'];
