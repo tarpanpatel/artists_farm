@@ -224,6 +224,14 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->exec("UPDATE nav_menu_items SET unique_key = 'finances', title = 'Finances', url_slug = 'finances', icon_name = 'Landmark' WHERE unique_key = 'cash_drawer'");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'purchase_analytics'");
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'fulfill_stock_req'");
+                    // kitchen_purchases folded into the unified Expenses page, stock_log folded
+                    // into Edit Kitchen Stock (16-17 Aug 2026) - still real routes (App.tsx maps
+                    // them), just no longer their own sidebar entries. Delete here so every
+                    // environment's nav_menu_items converges, the same way fulfill_stock_req does
+                    // above - this was previously only done as a one-off manual DB edit on this
+                    // environment, which is why staging still showed all three as separate items.
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'kitchen_purchases'");
+                    $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'stock_log'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Analytics' WHERE unique_key = 'dashboard_analytics'");
                     $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview' WHERE unique_key IN ('take_food_order', 'kitchen_orders', 'staff_meals', 'stock_requests', 'deficit_shortfalls_log', 'stock_log', 'kitchen_purchases', 'edit_food_menu', 'edit_kitchen_stock') AND (parent_id IS NULL OR parent_id = '')");
                     $pdo->exec("UPDATE nav_menu_items SET custom_url = NULL, open_in_new_tab = 0 WHERE custom_url IS NOT NULL AND (LOWER(title) = 'team' OR unique_key IN ('team', 'team_overview'))");
