@@ -1366,7 +1366,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             ]}
             data={catalogItems.filter(item => {
               const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
-              const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+              const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || !selectedCategory || item.category === selectedCategory;
               return matchesSearch && matchesCategory;
             })}
             subHeader={
@@ -1374,7 +1374,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-500 font-medium shrink-0 text-xs">{t('filter_label')}</span>
                   {catalogCategories.map(cat => {
-                    const count = catalogItems.filter(i => i.category === cat).length;
+                    const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
                     const isActive = selectedCategory === cat;
                     return (
                       <button
