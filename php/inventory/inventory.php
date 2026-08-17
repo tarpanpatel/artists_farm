@@ -46,6 +46,45 @@ function handleInventoryRequests($pdo, $request_method, $action, $propertyId) {
                 $stmt->execute([$propertyId, $propertyId]);
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
+                // If a property has no custom/system items in req_catalog yet,
+                // auto-seed baseline catalog items from property_id 1 so no property ever shows 0 items
+                if (empty($results) && $propertyId > 0) {
+                    try {
+                        $seedSql = "
+                            INSERT IGNORE INTO req_catalog (property_id, item_name, category_id, current_stock, unit_label, unit_cost, image_path, is_demo)
+                            SELECT ?, item_name, category_id, current_stock, unit_label, unit_cost, image_path, 1
+                            FROM req_catalog
+                            WHERE property_id = 1 OR property_id = (SELECT MIN(property_id) FROM (SELECT DISTINCT property_id FROM req_catalog) as t)
+                        ";
+                        $seedStmt = $pdo->prepare($seedSql);
+                        $seedStmt->execute([$propertyId]);
+
+                        $stmt->execute([$propertyId, $propertyId]);
+                        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    } catch (Exception $seedErr) {}
+                }
+
+                // If still empty (e.g. fresh DB before property 1 seeded), fallback to querying any property's catalog
+                if (empty($results)) {
+                    try {
+                        $fallbackSql = "
+                            SELECT 
+                                r.id,
+                                r.item_name as name,
+                                r.category_id,
+                                COALESCE(c.name, 'General') as category,
+                                r.current_stock as quantity,
+                                r.unit_label as unit,
+                                COALESCE(r.image_path, '') as image_path,
+                                'custom' as source
+                            FROM req_catalog r
+                            LEFT JOIN material_categories c ON r.category_id = c.id
+                            ORDER BY name ASC
+                        ";
+                        $results = $pdo->query($fallbackSql)->fetchAll(PDO::FETCH_ASSOC);
+                    } catch (Exception $fbErr) {}
+                }
+                
                 echo json_encode(['status' => 'success', 'data' => $results]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

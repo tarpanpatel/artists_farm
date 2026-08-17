@@ -1550,7 +1550,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   if (activeTab === 'requisitions' || activeTab === 'fulfill') {
     const filteredCatalog = stockCatalog.filter((item) => {
       const matchesSearch = item.name.toLowerCase().includes(reqSearch.toLowerCase().trim());
-      const matchesCategory = reqCategory === 'All Items' || item.category === reqCategory;
+      const matchesCategory = reqCategory === 'All Items' || reqCategory === 'All' || !reqCategory || item.category === reqCategory;
       return matchesSearch && matchesCategory;
     });
 
