@@ -1,0 +1,70 @@
+/* ==========================================================================
+   Ground Code Resort SaaS — Mobile Screen & Touch UI Optimization
+   Act as: @agency-ui-designer
+
+   Primary Mission:
+   Fix iOS Safari, Mobile Chrome, and WebApp PWA auto-zoom issues on input focus.
+   iOS WebKit triggers auto-zoom whenever an input, select, textarea, or contenteditable
+   element has a computed font-size < 16px. Once zoomed in, iOS does not auto-zoom out.
+
+   This stylesheet enforces 16px minimum font size on mobile screens (max-width: 768px)
+   and touch devices, eliminating auto-zoom while maintaining a clean, touch-friendly,
+   and accessible UI layout.
+   ========================================================================== */
+
+/* 1. Global Viewport & Mobile Body Scaling Safeguards */
+html,
+body {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 2. Mobile Screen & Touch Device Specific Rules */
+@media screen and (max-width: 768px), (pointer: coarse) {
+
+  /* Prevent iOS WebKit focus auto-zoom by enforcing 16px font-size */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+    /* Touch target padding optimization for mobile ergonomics */
+    line-height: 1.4 !important;
+  }
+
+  /* Specific handling for search inputs & date/time pickers on mobile */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"] {
+    font-size: 16px !important;
+  }
+
+  /* Smooth momentum scrolling for iOS WebKit scroll containers */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto,
+  .modal-body,
+  .drawer-content {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 3. Standalone Web App / PWA Display Mode Adjustments */
+@media (display-mode: standalone) {
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+}

@@ -382,33 +382,33 @@ export const Navigation: React.FC<NavigationProps> = ({
           <button
             type="button"
             onClick={handleHeaderClick}
-            className={`w-full flex items-center justify-between ${depth === 0 ? 'p-2.5 text-xs font-semibold' : 'p-2 text-xs font-semibold'} rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between ${depth === 0 ? 'px-3 py-2.5 text-sm font-semibold' : 'px-2.5 py-2 text-[13px] font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
                 : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
             } navigation__node-btn`}
           >
             <div className="flex items-center gap-2.5 truncate navigation__node-title-wrapper">
-              <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'} navigation__node-icon`} />
+              <ItemIcon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-white' : depth === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-500'} navigation__node-icon`} />
               <span className="truncate navigation__node-title">{node.title}</span>
             </div>
             <div className="flex items-center gap-1 navigation__node-badge-wrapper">
               {badge && (
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge.className} navigation__node-badge`}>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.className} navigation__node-badge`}>
                   {badge.text}
                 </span>
               )}
               <button
                 type="button"
                 onClick={toggleExpand}
-                className={`navigation__node-chevron-btn p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors ${isActive ? 'text-white' : 'text-slate-400'}`}
+                className={`navigation__node-chevron-btn p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors ${isActive ? 'text-white' : 'text-slate-400'}`}
                 title={isExpanded ? "Collapse" : "Expand"}
                 aria-label={isExpanded ? "Collapse" : "Expand"}
               >
                 {isExpanded ? (
-                  <ChevronDown className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
+                  <ChevronDown className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
                 ) : (
-                  <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
+                  <ChevronRight className={`w-4.5 h-4.5 ${isActive ? 'text-white' : 'text-slate-400'} navigation__node-chevron`} />
                 )}
               </button>
             </div>
@@ -423,7 +423,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       );
     }
 
-    const iconSize = depth === 0 ? 'w-4 h-4' : 'w-3.5 h-3.5';
+    const iconSize = depth === 0 ? 'w-4.5 h-4.5' : 'w-4 h-4';
 
     const itemKey = node.uniqueKey || node.tabKey;
     // The URL hash follows urlSlug (regenerated on rename) - itemKey stays the
@@ -442,7 +442,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           e.preventDefault();
           handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
         }}
-        className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'p-2.5 text-xs font-semibold' : depth === 1 ? 'p-2 text-xs font-semibold' : 'p-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
+        className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'px-3 py-2.5 text-sm font-semibold' : depth === 1 ? 'px-2.5 py-2 text-[13px] font-medium' : 'px-2 py-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
@@ -458,7 +458,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         </div>
         {badge && (
           <span
-            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
               isActive ? 'bg-white/20 text-white' : badge.className
             } navigation__leaf-badge`}
           >
@@ -566,7 +566,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
               {customUrlRootItems.length > 0 && (
                 <div className="navigation__custom-links pt-2 mt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="navigation__custom-links-header px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Custom Links</div>
+                  <div className="navigation__custom-links-header px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Custom Links</div>
                   {customUrlRootItems.map(item => {
                     const ItemIcon = getIconComponent(item.iconName);
                     return (
@@ -576,12 +576,12 @@ export const Navigation: React.FC<NavigationProps> = ({
                         target={item.openInNewTab ? '_blank' : undefined}
                         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
                         onClick={() => { if (window.innerWidth < 768) onCloseSidebar(); }}
-                        className="navigation__custom-link w-full flex items-center gap-2.5 p-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
+                        className="navigation__custom-link w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-100"
                       >
-                        <ItemIcon className="w-4 h-4 shrink-0 text-purple-500 dark:text-purple-400" />
+                        <ItemIcon className="w-4.5 h-4.5 shrink-0 text-purple-500 dark:text-purple-400" />
                         <span className="truncate">{item.title}</span>
                         {item.openInNewTab && (
-                          <LinkIcon className="w-3 h-3 shrink-0 ml-auto text-purple-400 dark:text-purple-500" />
+                          <LinkIcon className="w-3.5 h-3.5 shrink-0 ml-auto text-purple-400 dark:text-purple-500" />
                         )}
                       </a>
                     );
@@ -590,23 +590,23 @@ export const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
 
-            <div className="navigation__logout-section pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="navigation__logout-section pt-3 mt-auto border-t border-slate-200 dark:border-slate-700 space-y-2.5">
               <div className="navigation__user-profile flex items-center gap-2.5 px-1 py-1">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
+                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 ring-2 ring-blue-500/30 shrink-0">
                   <UserRound className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                     {currentUser?.name || 'User'}
                   </div>
                 </div>
               </div>
               <button
                 onClick={handleLogoutClick}
-                className="navigation__logout-btn w-full flex items-center gap-3 p-2.5 text-xs font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
+                className="navigation__logout-btn w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
                 style={{ color: '#ff5252' }}
               >
-                <LogOut className="w-4 h-4 text-red-500" />
+                <LogOut className="w-4.5 h-4.5 text-red-500" />
                 <span>Sign Out Terminal</span>
               </button>
             </div>

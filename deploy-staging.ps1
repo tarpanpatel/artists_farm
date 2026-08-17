@@ -111,7 +111,7 @@ try {
     #    this step fails loudly (not silently) if that hasn't been done yet.
     if (-not $SkipPhpSync -and -not $DryRun) {
         Write-Step "Syncing PHP backend on staging (git pull)"
-        Invoke-Ssh "cd $RemoteDir && git pull origin multi-tenant"
+        Invoke-Ssh "cd $RemoteDir && git fetch origin && git reset --hard origin/multi-tenant"
         Write-Ok "Staging PHP backend is in sync."
     }
 

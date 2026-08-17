@@ -174,19 +174,8 @@ html.dark {
   --badge-neutral-border: #475569;
 }
 
-/* Mobile: inputs also capped at 14px to match global max.
-   Trade-off: iOS Safari will auto-zoom on input focus because
-   the computed font-size is under 16px. This is the only way to
-   enforce 14px everywhere; Apple does not expose a flag to disable
-   just the zoom without also disabling pinch-zoom. */
-@media (max-width: 767px) {
-
-  input,
-  select,
-  textarea {
-    font-size: 14px;
-  }
-}
+/* Mobile input focus auto-zoom fix: minimum 16px font-size enforced on mobile screens
+   in mobile_screen_fix.css to prevent iOS Safari/Chrome from zooming in on input focus. */
 
 /* Global: force normal font-weight on all form fields */
 input,
