@@ -16,7 +16,7 @@ import {
   Loader2,
   HelpCircle,
   Edit2,
-  MessageCircle
+  Share2
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -311,19 +311,42 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
      setIsTeamMemberModalOpen(true);
    };
 
-  // Shares this staff member's CURRENT login (phone + their existing
+  // Builds this staff member's CURRENT login (username + their existing
   // passcode, already loaded client-side as passcodePin - not a reveal
-  // endpoint) via WhatsApp, pre-addressed to their own number. Mirrors
-  // buildTenantWhatsAppShareUrl in PlatformPropertyManagement.tsx, but the
-  // login URL is this property's own origin+pathname (not the bare platform
-  // root) so the staff member lands directly on the right property's login
-  // screen.
-  const buildStaffWhatsAppShareUrl = (user: { fullName: string; username: string; passcodePin?: string }) => {
-    const digits = (user.username || '').replace(/\D/g, '');
-    const phone = digits.length === 10 ? '91' + digits : digits;
+  // endpoint) as plain text. The login URL is this property's own
+  // origin+pathname (not the bare platform root) so the staff member lands
+  // directly on the right property's login screen.
+  const buildStaffLoginShareMessage = (user: { fullName: string; username: string; passcodePin?: string }) => {
     const loginUrl = window.location.origin + window.location.pathname;
-    const message = `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nPhone: ${digits}\nPasscode: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this passcode private. Didn't request this? You can ignore this message.`;
-    return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+    return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPasscode: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this passcode private. Didn't request this? You can ignore this message.`;
+  };
+
+  // Prefers the OS-level share sheet (navigator.share) so the admin picks
+  // WhatsApp/SMS/Telegram/Email/whatever's actually installed, rather than
+  // this app guessing a single channel (WhatsApp specifically assumes both a
+  // phone-number username AND that the recipient has WhatsApp - neither is
+  // guaranteed). Falls back to copying the message to the clipboard on
+  // browsers without Web Share support (notably desktop Firefox) - that
+  // still works for every staff member regardless of username format.
+  const handleShareLogin = async (user: { fullName: string; username: string; passcodePin?: string }) => {
+    const message = buildStaffLoginShareMessage(user);
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Ground Code Login Details', text: message });
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          console.error('Web Share failed:', err);
+        }
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      showToast("Login details copied - paste them wherever you'd like to send them.", { type: 'success' });
+    } catch (err) {
+      console.error('Clipboard copy failed:', err);
+      showToast('Could not copy login details.', { type: 'error' });
+    }
   };
 
 
@@ -668,15 +691,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     const isCurrentUser = currentUser?.id === row.id;
                     const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
                     const canDelete = !isCurrentUser && canEdit;
-                    const hasPhone = /^\d{10}$/.test((row.username || '').replace(/\D/g, ''));
                     return (
                       <div className="flex items-center gap-1.5 justify-end">
-                        {canShareLogins && hasPhone && (
-                          <a href={buildStaffWhatsAppShareUrl(row)} target="_blank" rel="noopener noreferrer" title={t('share_login_whatsapp_tooltip', 'Share login details via WhatsApp')}>
-                            <Button variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2">
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </Button>
-                          </a>
+                        {canShareLogins && !!row.username && (
+                          <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2" title={t('share_login_tooltip', 'Share login details')}>
+                            <Share2 className="w-3.5 h-3.5" />
+                          </Button>
                         )}
                         {isCurrentUser ? (
                           <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
@@ -1458,22 +1478,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   </div>
 
-                  {canShareLogins && /^\d{10}$/.test((updateUsername || '').replace(/\D/g, '')) && (
-                    <a
-                      href={buildStaffWhatsAppShareUrl({
+                  {canShareLogins && !!(updateUsername || updateTargetUser?.username) && (
+                    <Button
+                      type="button"
+                      onClick={() => handleShareLogin({
                         fullName: updateFullName || updateTargetUser?.fullName || '',
-                        username: updateUsername,
+                        username: updateUsername || updateTargetUser?.username || '',
                         passcodePin: updatePasscode || updateTargetUser?.passcodePin,
                       })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex"
+                      variant="secondary"
+                      size="xs"
+                      className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5"
                     >
-                      <Button type="button" variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5">
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        {t('share_login_details_button', 'Share Login Details via WhatsApp')}
-                      </Button>
-                    </a>
+                      <Share2 className="w-3.5 h-3.5" />
+                      {t('share_login_details_button', 'Share Login Details')}
+                    </Button>
                   )}
 
                   {isEditingSuperAdmin ? (
