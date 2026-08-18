@@ -1155,23 +1155,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('new_order')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold ${
               activeTab === 'new_order'
-                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-t border-x border-b-transparent border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <UtensilsCrossed className="w-4 h-4" />
-            <span>{t('create_resident_order_button', 'New Order (POS)')}</span>
+            <span>{t('create_resident_order_button', 'Take Order')}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('kds')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold ${
               activeTab === 'kds'
-                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-t border-x border-b-transparent border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -1190,10 +1190,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('walk_in_bills')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer font-semibold ${
               activeTab === 'walk_in_bills'
-                ? 'relative -mb-px z-10 border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
-                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'relative -mb-px z-10 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-t border-x border-b-transparent border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 border-slate-200/60 dark:border-slate-700/50'
             }`}
           >
             <Receipt className="w-4 h-4" />
