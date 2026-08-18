@@ -7,6 +7,7 @@ import {
   updateServiceRequestReminderTimestamp,
   checkStaleServiceRequests,
   fetchServiceRequestTypesFromDB,
+  saveServiceRequestTypeInDB,
   resolveTelegramTemplate,
   getPropertySlug,
 } from '../services/api';
@@ -54,6 +55,9 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const [fulfilledPage, setFulfilledPage] = useState(0);
   const FULFILLED_PAGE_SIZE = 5;
 
+  const [customRequestLabel, setCustomRequestLabel] = useState('');
+  const [saveToCatalog, setSaveToCatalog] = useState(true);
+
   const getCurrentUserName = () => {
     if (currentUser?.name) return currentUser.name;
     if (currentUser?.username) return currentUser.username;
@@ -78,8 +82,21 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     loadTypes();
   }, []);
 
-  // DB-driven merged list (system global + property custom types). Always ready from DB.
-  const typeOptions = requestTypes.map((rt) => ({ value: rt.typeId, label: rt.label, group: rt.category, searchText: `${rt.label} ${rt.category}`.toLowerCase() }));
+  // DB-driven merged list (system global + property custom types) + Custom addition entry
+  const typeOptions = [
+    ...requestTypes.map((rt) => ({
+      value: rt.typeId,
+      label: rt.label,
+      group: rt.category,
+      searchText: `${rt.label} ${rt.category}`.toLowerCase(),
+    })),
+    {
+      value: '__CUSTOM__',
+      label: '➕ Add Custom Service / Charge...',
+      group: 'Custom',
+      searchText: 'custom add create new charge service request',
+    },
+  ];
 
   // Set default selection when types load
   useEffect(() => {
@@ -91,6 +108,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   // Auto-prefill charge amount when request type changes
   useEffect(() => {
     if (!newRequestType) return;
+    if (newRequestType === '__CUSTOM__') {
+      setNewChargeAmount('');
+      return;
+    }
     const selectedOption = requestTypes.find((rt) => rt.typeId === newRequestType || rt.typeId.toLowerCase() === newRequestType.toLowerCase());
     const matchedCharge = (miscCharges as any[])?.find((c) => {
       const labelMatch = c.label?.toLowerCase() === selectedOption?.label?.toLowerCase();
@@ -106,19 +127,59 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    let targetRequestType = newRequestType;
     const charge = newChargeAmount ? parseFloat(newChargeAmount) : 0;
+
+    if (newRequestType === '__CUSTOM__') {
+      const labelTrimmed = customRequestLabel.trim();
+      if (!labelTrimmed) {
+        showToast('Please enter a name for the custom service or charge', { type: 'error' });
+        setSaving(false);
+        return;
+      }
+      targetRequestType = labelTrimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+      if (saveToCatalog) {
+        // Save to property's custom service request types catalog
+        await saveServiceRequestTypeInDB({
+          type_id: targetRequestType,
+          category: 'Guest Charges',
+          label: labelTrimmed,
+        });
+
+        // Register default price into misc catalog if charge > 0
+        if (charge > 0) {
+          try {
+            await fetch('/php/api/router.php?action=add_misc_charge_template', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                label: labelTrimmed,
+                category: 'Guest Charges',
+                default_amount: charge,
+              }),
+            });
+          } catch (err) {}
+        }
+        await loadTypes();
+      }
+    }
+
     const ok = await createServiceRequestInDB({
       room_id: newRoomId ? Number(newRoomId) : null,
-      request_type: newRequestType,
+      request_type: targetRequestType,
       description: newDescription.trim(),
       charge_amount: charge > 0 ? charge : 0,
       requested_by: getCurrentUserName(),
     });
+
     if (ok) {
       showToast('Service request logged', { type: 'success' });
       setIsAddModalOpen(false);
       setNewRoomId('');
-      setNewRequestType(typeOptions[0]?.value ?? '');
+      setNewRequestType(requestTypes[0]?.typeId ?? '');
+      setCustomRequestLabel('');
       setNewDescription('');
       setNewChargeAmount('');
       refreshRequests();
@@ -330,6 +391,35 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   searchable
                 />
               </div>
+              {newRequestType === '__CUSTOM__' && (
+                <div className="service-requests-management__form-group p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 space-y-3">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-indigo-900 dark:text-indigo-200 mb-1">
+                      Custom Service / Charge Name <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="text"
+                      value={customRequestLabel}
+                      onChange={(e) => setCustomRequestLabel(e.target.value)}
+                      placeholder="e.g. Bonfire & Setup, Pool Towel..."
+                      className="w-full"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <input
+                      type="checkbox"
+                      id="saveToCatalogCb"
+                      checked={saveToCatalog}
+                      onChange={(e) => setSaveToCatalog(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
+                    />
+                    <label htmlFor="saveToCatalogCb" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
+                      Save to property catalog for future selection
+                    </label>
+                  </div>
+                </div>
+              )}
               <div className="service-requests-management__form-group">
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">
                   Charge Amount (₹) <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(Optional - added to checkout bill if set)</span>
