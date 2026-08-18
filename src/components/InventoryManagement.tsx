@@ -1168,13 +1168,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             items-center) is required so the active tab's bottom edge -
             shorter than inactive tabs since it has no bottom border - still
             lands flush with the panel below instead of floating above it. */}
-        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => setCatalogView('items')}
             className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               catalogView === 'items'
-                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
                 : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
@@ -1186,7 +1186,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             onClick={() => setCatalogView('categories')}
             className={`btn-manage-categories flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               catalogView === 'categories'
-                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
                 : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
@@ -1812,13 +1812,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             required so the active tab's bottom edge - shorter than inactive
             tabs since it has no bottom border - still lands flush with the
             panel below instead of floating above it. */}
-        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => setActiveTab('requisitions')}
             className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               activeTab === 'requisitions'
-                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
                 : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
@@ -1830,14 +1830,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             onClick={() => setActiveTab('fulfill')}
             className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               activeTab === 'fulfill'
-                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold border-slate-200 dark:border-slate-700 shadow-2xs'
                 : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>Fulfill & Pending Approvals</span>
             {pendingSheetsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-xl text-[10px] font-extrabold bg-red-600 text-white shadow-2xs">
+              <span className="px-2 py-0.5 rounded-xl text-[10px] font-semibold bg-red-600 text-white shadow-2xs">
                 {pendingSheetsCount}
               </span>
             )}
@@ -2261,7 +2261,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
               {/* Category Pills Bar - hidden by default, revealed via the Filter button above */}
               {showReqCategoryFilters && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                   {categories.map((cat) => {
                     const isSelected = reqCategory === cat;
                     return (

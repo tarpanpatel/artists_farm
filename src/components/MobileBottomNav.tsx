@@ -145,7 +145,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 onClick={() => handleNavClick(item.tab, item.itemKey)}
                 className={`flex flex-col items-center justify-center min-w-[54px] py-1 px-2 rounded-xl transition-all active:scale-90 cursor-pointer ${
                   isActive
-                    ? 'text-blue-600 dark:text-blue-400 font-bold'
+                    ? 'text-blue-600 dark:text-blue-400 font-semibold'
                     : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -175,7 +175,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             aria-label="Toggle Full Menu"
             className={`flex flex-col items-center justify-center min-w-[54px] py-1 px-2 rounded-xl transition-all active:scale-90 cursor-pointer ${
               isSidebarOpen
-                ? 'text-blue-600 dark:text-blue-400 font-bold'
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
                 : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-white'
             }`}
           >

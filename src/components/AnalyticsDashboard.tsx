@@ -1170,10 +1170,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
-          className={`btn-analytics-tab-overview px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-overview px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'overview'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <TrendingUp className="w-4 h-4 shrink-0" />
@@ -1182,10 +1182,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('bookings')}
-          className={`btn-analytics-tab-bookings px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-bookings px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'bookings'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <Calendar className="w-4 h-4 shrink-0" />
@@ -1194,10 +1194,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('pace')}
-          className={`btn-analytics-tab-pace px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-pace px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'pace'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <CalendarClock className="w-4 h-4 shrink-0" />
@@ -1207,10 +1207,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+            className={`btn-analytics-tab-kitchen px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
               activeTab === 'kitchen'
                 ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
             }`}
           >
             <Utensils className="w-4 h-4 shrink-0" />
@@ -1220,10 +1220,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('expenses')}
-          className={`btn-analytics-tab-purchases px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`btn-analytics-tab-purchases px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'expenses'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <ShoppingBag className="w-4 h-4 shrink-0" />
@@ -1232,10 +1232,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('profit_loss')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'profit_loss'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <BarChart3 className="w-4 h-4 shrink-0" />
@@ -1244,10 +1244,10 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('fluctuations')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'fluctuations'
               ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+              : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
           }`}
         >
           <Activity className="w-4 h-4 shrink-0" />
