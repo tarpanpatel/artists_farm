@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Textarea } from './Textarea';
@@ -187,7 +187,7 @@ We look forward to welcoming you!`;
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                💬
+                <MessageCircle className="w-3.5 h-3.5" />
               </span>
               <div>
                 <h4 className="whatsapp-template-settings__caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Live Guest Notification Preview</h4>

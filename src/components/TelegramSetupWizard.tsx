@@ -428,7 +428,10 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                 {(!botUsername || showBotFatherGuide) && (
                   <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
                     <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex justify-between items-center">
-                      <span>{t('how_to_create_bot_heading', '🤖 How to create a Telegram Bot:')}</span>
+                      <span className="flex items-center gap-1.5">
+                        <Bot className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        {t('how_to_create_bot_heading', 'How to create a Telegram Bot:')}
+                      </span>
                       {botUsername && (
                         <button
                           type="button"

@@ -301,36 +301,36 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       />
 
       {/* System Totals Bar */}
-      <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
-            <IndianRupee className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
-            {totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+      <div className="analytics-kpi-grid grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
+          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
+            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-500 shrink-0" />
+            <span className="truncate">{totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
           </p>
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+          <p className="text-[9px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1 truncate">
             {t('from_guest_checkouts_label', 'From Guest Checkouts')}
           </p>
         </div>
 
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
-            <IndianRupee className="w-5 h-5 text-amber-600 dark:text-amber-500" />
-            {totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('total_handed_over_label', 'Total Handed Over')}</p>
+          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
+            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-500 shrink-0" />
+            <span className="truncate">{totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
           </p>
-          <p className="text-xs text-slate-500 font-semibold mt-1">
+          <p className="text-[9px] sm:text-xs text-slate-500 font-semibold mt-1 truncate">
             {t('to_owner_next_shift_label', 'To Owner / Next Shift')}
           </p>
         </div>
 
-        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
-            <IndianRupee className="w-5 h-5 text-blue-600 dark:text-blue-500" />
-            {totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+        <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs min-w-0">
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
+          <p className="text-sm sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-0.5 sm:gap-1">
+            <IndianRupee className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-500 shrink-0" />
+            <span className="truncate">{totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
           </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1">
+          <p className="text-[9px] sm:text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1 truncate">
             {t('unaccounted_should_match_label', 'Should Match Physical Cash Box')}
           </p>
         </div>

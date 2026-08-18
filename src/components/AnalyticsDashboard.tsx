@@ -6,6 +6,7 @@ import {
   PieChart,
   Utensils,
   ShoppingBag,
+  ShoppingCart,
   Calendar,
   Filter,
   BedDouble,
@@ -1604,7 +1605,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         <div className="analytics-expenses space-y-6">
           <div className="analytics-expenses__card bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-4">
             <h3 className="analytics-dashboard__subtitle analytics-expenses__title font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              {t('expense_items_cost_breakdown_heading', '🛒 Expense Items - Total Cost Breakdown')}
+              <ShoppingCart className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              {t('expense_items_cost_breakdown_heading', 'Expense Items - Total Cost Breakdown')}
             </h3>
 
             <div className="w-full">

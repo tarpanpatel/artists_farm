@@ -1337,22 +1337,21 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 />
               </div>
 
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!editingTenant.is_active}
-                    onChange={(e) =>
-                      setEditingTenant({
-                        ...editingTenant,
-                        is_active: e.target.checked ? 1 : 0,
-                      })
-                    }
-                    className="w-4 h-4 rounded"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t('active_status_badge', 'Active')}
-                  </span>
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+                <input
+                  type="checkbox"
+                  id="editTenantActiveCheck"
+                  checked={!!editingTenant.is_active}
+                  onChange={(e) =>
+                    setEditingTenant({
+                      ...editingTenant,
+                      is_active: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-4 h-4 rounded cursor-pointer shrink-0"
+                />
+                <label htmlFor="editTenantActiveCheck" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                  {t('active_status_badge', 'Active')}
                 </label>
               </div>
             </div>

@@ -1059,7 +1059,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                           }}
                           className="p-3 text-blue-600 dark:text-blue-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors border-t border-slate-200 dark:border-slate-700 text-[11px]"
                         >
-                          <span>✨ Register "{formState.description.trim()}" to Custom Items list</span>
+                          <span>Register "{formState.description.trim()}" to Custom Items list</span>
                           <Plus className="w-4.5 h-4.5" />
                         </div>
                       )}

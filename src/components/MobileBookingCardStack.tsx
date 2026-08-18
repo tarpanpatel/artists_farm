@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, CreditCard, LogIn, LogOut, Users, Building, Search, IndianRupee } from 'lucide-react';
+import { Phone, MessageSquare, CreditCard, LogIn, LogOut, Users, Building, Search, IndianRupee, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Guest } from '../types';
 
 interface MobileBookingCardStackProps {
@@ -254,9 +254,15 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                   <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                     <span className="text-[10px] text-slate-400 uppercase font-semibold">C-Form Filing:</span>
                     {guest.cFormFiledAt ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">✓ Filed ({guest.cFormFiledAt})</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        <span>Filed ({guest.cFormFiledAt})</span>
+                      </span>
                     ) : (
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">⚠️ Pending Filing</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px] inline-flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-amber-500" />
+                        <span>Pending Filing</span>
+                      </span>
                     )}
                   </div>
                 )}

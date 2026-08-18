@@ -24,8 +24,11 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
-  Receipt
+  Receipt,
+  User
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -43,6 +46,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Input } from './Input';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
@@ -3059,18 +3063,37 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
     );
   }, [sortedLogs, filterText]);
 
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 10;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterText]);
+
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  const paginatedMobileLogs = React.useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredLogs.slice(start, start + itemsPerPage);
+  }, [filteredLogs, currentPage]);
+
   // Early-return AFTER all hooks so React rules-of-hooks is satisfied.
   if (servedLogs.length === 0) return null;
 
   return (
-    <div className="mt-8 space-y-3">
-      <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-semibold text-sm">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-        <span>{t('current_guest_served_dishes_heading')}</span>
-        <span className="text-xs text-slate-400 ml-1">({servedLogs.length} {t('total_suffix')})</span>
-      </div>
+    <div className="mt-8">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs p-4 space-y-3.5">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-500 shrink-0" />
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-sm tracking-wide">
+              {t('current_guest_served_dishes_heading')}
+            </h3>
+            <span className="text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 shrink-0">
+              {servedLogs.length} {t('total_suffix')}
+            </span>
+          </div>
+        </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs p-3 space-y-3">
         <Input
           type="text"
           placeholder={t('search_served_dishes_placeholder')}
@@ -3081,7 +3104,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
 
         {/* Mobile Card Stack View (md:hidden) */}
         <div className="md:hidden space-y-2.5">
-          {filteredLogs.map((row, idx) => {
+          {paginatedMobileLogs.map((row, idx) => {
             const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
             return (
               <div
@@ -3097,14 +3120,16 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
                         {row.quantity}x {row.itemName}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                      👤 <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || 'Walk-in Resident'}</span>
-                      {row.roomNumber && <span className="text-slate-500 dark:text-slate-400"> ({row.roomNumber})</span>}
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 flex items-center gap-1">
+                      <User className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || 'Walk-in Resident'}</span>
+                      {row.roomNumber && <span className="text-slate-500 dark:text-slate-400">({row.roomNumber})</span>}
                     </div>
                   </div>
                   {diff ? (
-                    <span className="font-mono text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0">
-                      ⏱️ {diff}
+                    <span className="font-mono text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0 inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-600" />
+                      <span>{diff}</span>
                     </span>
                   ) : null}
                 </div>
@@ -3124,6 +3149,34 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
               </div>
             );
           })}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700 text-xs">
+              <Button
+                variant="secondary"
+                size="xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}
+                className="cursor-pointer"
+              >
+                Previous
+              </Button>
+              <span className="font-semibold text-slate-600 dark:text-slate-400 text-[11px]">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
+                className="cursor-pointer"
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Desktop DataTable (hidden md:block) */}
@@ -3151,7 +3204,7 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
             ]}
             data={filteredLogs}
             pagination
-            paginationPerPage={15}
+            paginationPerPage={10}
             paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
             highlightOnHover
             customStyles={{

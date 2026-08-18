@@ -296,9 +296,16 @@ export const Header: React.FC<HeaderProps> = ({
                         showToast('Please enable notification permissions in your phone browser settings.', { type: 'warning' });
                       }
                     }}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shrink-0"
+                    className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
                   >
-                    {getPushPermissionState() === 'granted' ? 'Enabled ✓' : 'Enable Alerts'}
+                    {getPushPermissionState() === 'granted' ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Enabled</span>
+                      </>
+                    ) : (
+                      <span>Enable Alerts</span>
+                    )}
                   </button>
                 </div>
 

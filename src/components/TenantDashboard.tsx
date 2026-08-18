@@ -814,15 +814,16 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   className="tenant-dashboard__input"
                 />
               </div>
-              <label className="flex items-start gap-2.5 cursor-pointer tenant-dashboard__checkbox-label">
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px] tenant-dashboard__checkbox-label">
                 <input
                   type="checkbox"
+                  id="editTelegramTemplateCustomizationCheck"
                   checked={editTelegramTemplateCustomization}
                   onChange={e => setEditTelegramTemplateCustomization(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded accent-indigo-600 cursor-pointer tenant-dashboard__checkbox"
+                  className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0 tenant-dashboard__checkbox"
                 />
-                <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300 tenant-dashboard__checkbox-text">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</span>
-              </label>
+                <label htmlFor="editTelegramTemplateCustomizationCheck" className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer tenant-dashboard__checkbox-text">{t('allow_telegram_template_customization_label', 'Enable Telegram Template Customization')}</label>
+              </div>
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 tenant-dashboard__edit-section">
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 tenant-dashboard__edit-section-title">{t('whatsapp_booking_confirmation_heading', 'WhatsApp Booking Confirmation')}</p>

@@ -17,7 +17,10 @@ import {
   HelpCircle,
   Edit2,
   Share2,
-  TrendingUp
+  TrendingUp,
+  QrCode,
+  CreditCard,
+  Phone
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -667,7 +670,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '160px',
                     cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-xs">{t('cash_handler_badge', '💳 Cash Handler')}</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-xs inline-flex items-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{t('cash_handler_text', 'Cash Handler')}</span>
+                      </span>
                     ) : (
                       <span className="text-slate-400 dark:text-slate-500 font-medium text-xs">{t('no_finances_badge', 'No Finances')}</span>
                     ),
@@ -677,7 +683,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '140px',
                     cell: (row: any) => row.qrCodeUrl ? (
-                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
+                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', 'View QR')}</Button>
                     ) : (
                       <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
                     ),
@@ -797,7 +803,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <div>
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">Cash Handling</span>
                           {row.isFinancialHandler ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">💳 Cash Handler</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold inline-flex items-center gap-1">
+                              <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Cash Handler</span>
+                            </span>
                           ) : (
                             <span className="text-slate-400 font-medium">No Finances</span>
                           )}
@@ -805,7 +814,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">UPI QR Code</span>
                           {row.qrCodeUrl ? (
-                            <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">📸 View QR</Button>
+                            <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">View QR</Button>
                           ) : (
                             <span className="text-slate-400 italic text-[11px]">None</span>
                           )}
@@ -1345,7 +1354,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                    <span className="font-mono text-slate-500">📞 {s.phone || 'No phone'}</span>
+                    <span className="font-mono text-slate-500 inline-flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>{s.phone || 'No phone'}</span>
+                    </span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{s.monthlySalary.toLocaleString('en-IN')} / mo</span>
                   </div>
 
