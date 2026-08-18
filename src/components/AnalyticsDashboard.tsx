@@ -1108,7 +1108,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   };
 
   return (
-    <div className="analytics-dashboard-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="analytics-dashboard-container space-y-6 text-slate-800 dark:text-slate-200">
       <PageHeader
         title={t('bi_analytics_dashboard_heading', 'Business Intelligence (BI) Analytics Dashboard')}
         subtitle={t('bi_analytics_dashboard_subtitle', 'Real-time multi-dimensional financial reports, revenue streams, operational expenses, and procurement price analytics.')}

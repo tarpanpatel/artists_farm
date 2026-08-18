@@ -92,7 +92,7 @@ return (
         } ${
           /(^|\s)(!?)text-/.test(buttonClassName)
             ? '' 
-            : 'text-xs'
+            : 'text-sm'
         } ${buttonClassName} styled-select__trigger form-field__select`}
       >
         <span className={`truncate text-inherit ${selected ? 'text-[var(--input-text-default)]' : 'text-[var(--input-placeholder)]'} styled-select__value`}>

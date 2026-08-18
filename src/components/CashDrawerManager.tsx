@@ -292,7 +292,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   }, [drawerEntries, searchHistory]);
 
   return (
-    <div className="cash-drawer space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="cash-drawer space-y-6 text-slate-800 dark:text-slate-200">
       <PageHeader
         title={t('finances_portal_title', 'Finances & Payroll')}
         subtitle={t('finances_description', 'Track staff cash responsibilities, adjust drawer balances, and calculate monthly payroll payouts.')}
@@ -301,34 +301,34 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       {/* System Totals Bar */}
       <div className="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('total_cash_collected_label', 'Total Cash Collected')}</p>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
             <IndianRupee className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
             {totalCollected.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
             {t('from_guest_checkouts_label', 'From Guest Checkouts')}
           </p>
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('total_handed_over_label', 'Total Handed Over')}</p>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
             <IndianRupee className="w-5 h-5 text-amber-600 dark:text-amber-500" />
             {totalHandedOver.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-slate-500 font-semibold mt-1">
+          <p className="text-xs text-slate-500 font-semibold mt-1">
             {t('to_owner_next_shift_label', 'To Owner / Next Shift')}
           </p>
         </div>
 
         <div className="analytics-kpi-card bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('net_cash_in_system_label', 'Net Cash In System')}</p>
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-1">
             <IndianRupee className="w-5 h-5 text-blue-600 dark:text-blue-500" />
             {totalCashInSystem.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1">
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1">
             {t('unaccounted_should_match_label', 'Should Match Physical Cash Box')}
           </p>
         </div>
@@ -338,7 +338,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Form A: Record Cash Handover */}
         <div className="cash-drawer__form-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 w-full">
-          <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-sm mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
+          <h3 className="cash-drawer-manager__subtitle font-bold text-slate-900 dark:text-white text-sm tracking-wider uppercase mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2">
             <Handshake className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
             <span>{t('record_cash_handover_heading', 'RECORD CASH HANDOVER')}</span>
           </h3>

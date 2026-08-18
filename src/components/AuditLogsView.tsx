@@ -244,7 +244,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   };
 
   return (
-    <div className="audit-logs space-y-6 text-xs text-slate-800 dark:text-slate-200">
+    <div className="audit-logs space-y-6 text-slate-800 dark:text-slate-200">
       {!isStandalonePage && (
         <PageHeader
           title={t('audit_trails_system_diagnostics_heading', 'Audit Trails & System Diagnostics')}

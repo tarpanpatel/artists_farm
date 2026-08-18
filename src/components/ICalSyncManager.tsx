@@ -371,7 +371,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   }
 
   return (
-    <div className="space-y-6 text-xs text-slate-800 dark:text-slate-200 ical-sync-manager__root">
+    <div className="space-y-6 text-slate-800 dark:text-slate-200 ical-sync-manager__root">
       {/* Header Banner */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 ical-sync-manager__header-banner">
         {/* Breadcrumb Navigation */}

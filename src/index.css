@@ -177,11 +177,29 @@ html.dark {
 /* Mobile input focus auto-zoom fix: minimum 16px font-size enforced on mobile screens
    in mobile_screen_fix.css to prevent iOS Safari/Chrome from zooming in on input focus. */
 
-/* Global: force normal font-weight on all form fields */
+/* Global Design System Typography: Unified Form Inputs & Select Controls */
 input,
 select,
-textarea {
+textarea,
+.app-input,
+.styled-select__trigger,
+.app-select-button,
+.form-field__input,
+.form-field__select,
+.styled-select__value,
+.styled-select__option {
+  font-family: inherit !important;
+  font-size: 14px;
+  line-height: 1.4;
   font-weight: normal;
+}
+
+label,
+.app-label,
+.input__label {
+  font-family: inherit !important;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* Global Date Input - Click Anywhere to Open Picker */

@@ -933,7 +933,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   if (activeTab === 'deficit') {
     return (
-      <div className="kitchen-wastage-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
+      <div className="kitchen-wastage-container space-y-6 text-slate-800 dark:text-slate-200">
         <PageHeader
           title="Kitchen Wastage & Spillage Log"
           subtitle="Formally record spillage, spoilage, or kitchen damage with full accountability and audit trail."

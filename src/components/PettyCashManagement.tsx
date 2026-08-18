@@ -877,7 +877,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       return matchesMonth && matchesSearch;
     });
 
-  return (    <div className="expenses-page-container space-y-6 text-xs text-slate-800 dark:text-slate-200">
+  return (    <div className="expenses-page-container space-y-6 text-slate-800 dark:text-slate-200">
       {/* Datalist for Details Descriptions Autocomplete */}
       <datalist id="expense-items-list">
         {expenseItems.map(item => (
