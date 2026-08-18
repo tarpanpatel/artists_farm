@@ -8,7 +8,6 @@ import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
 import { GlobalModal } from './components/GlobalModal';
-import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { ConfirmDialogProvider } from './components/ConfirmDialogContext';
 import { StaffPropertyPicker } from './components/StaffPropertyPicker';
@@ -2210,7 +2209,6 @@ ${itemsStr}
         )}
 
         <GlobalModal />
-        <ScrollToTopButton />
     </div>
   );
 }

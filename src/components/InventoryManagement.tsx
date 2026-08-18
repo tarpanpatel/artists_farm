@@ -1162,14 +1162,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             items-center) is required so the active tab's bottom edge -
             shorter than inactive tabs since it has no bottom border - still
             lands flush with the panel below instead of floating above it. */}
-        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => setCatalogView('items')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               catalogView === 'items'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
             <Package className="w-4 h-4 shrink-0" />
@@ -1178,10 +1178,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <button
             type="button"
             onClick={() => setCatalogView('categories')}
-            className={`btn-manage-categories flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`btn-manage-categories flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               catalogView === 'categories'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
             <Settings className="w-4 h-4 shrink-0" />
@@ -1191,7 +1191,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         {/* Categories Tab */}
         {catalogView === 'categories' && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 space-y-3">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-3">
             <div className="flex items-center gap-2">
               <Input
                 type="text"
@@ -1299,7 +1299,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
 
         {catalogView === 'items' && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 space-y-4">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
         {/* Panel header - "Register New Item" moved here from the tab row
             (18 Aug 2026) now that the tabs are centered pure navigation. */}
         <div className="flex items-center justify-end">
@@ -1806,14 +1806,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             required so the active tab's bottom edge - shorter than inactive
             tabs since it has no bottom border - still lands flush with the
             panel below instead of floating above it. */}
-        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => setActiveTab('requisitions')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               activeTab === 'requisitions'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
             <PackagePlus className="w-4 h-4 shrink-0" />
@@ -1822,10 +1822,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('fulfill')}
-            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer relative -mb-px z-10 ${
               activeTab === 'fulfill'
-                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
-                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+                ? 'border-t border-x border-b-0 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700 shadow-2xs'
+                : 'border bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold border-slate-200/80 dark:border-slate-700/60'
             }`}
           >
             <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -1839,7 +1839,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         </div>
 
         {activeTab === 'fulfill' ? (
-          <div className="space-y-4 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-700/80">
               <div className="flex items-center gap-2">
                 <button
@@ -2201,7 +2201,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
           <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">

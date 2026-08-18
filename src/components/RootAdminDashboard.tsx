@@ -12,7 +12,6 @@ import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { TelegramHealthPanel } from './TelegramHealthPanel';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { AccountSettings } from './AccountSettings';
-import { ScrollToTopButton } from './ScrollToTopButton';
 import { TelegramConfig } from '../types';
 import { AuthProvider } from '../contexts/AuthContext';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
@@ -51,8 +50,8 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   activeRole,
 }) => {
   // This dashboard scrolls its own <main> (overflow-auto below) rather than
-  // the window, unlike the other page shells - ScrollToTopButton needs this
-  // ref to know which element to watch/scroll instead of defaulting to window.
+  // the window, unlike the other page shells - used to reset scroll position
+  // to top on tab change (see below).
   const mainScrollRef = useRef<HTMLElement>(null);
 
   const [activeSection, setActiveSection] = useState<SectionType>(() => {
@@ -665,8 +664,6 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           )}
         </div>
       </main>
-
-      <ScrollToTopButton scrollContainerRef={mainScrollRef} />
     </div>
   );
 };

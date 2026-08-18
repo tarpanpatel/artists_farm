@@ -9,7 +9,6 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
-import { ScrollToTopButton } from './ScrollToTopButton';
 import { API_ROOT_BASE, apiFetch, getPropertySlug } from '../services/api';
 import { t } from '../i18n/en';
 
@@ -1003,8 +1002,6 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           </div>
         </div>
       )}
-
-      <ScrollToTopButton />
     </div>
   );
 };

@@ -4,7 +4,6 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
-import { ScrollToTopButton } from './ScrollToTopButton';
 import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
@@ -1915,8 +1914,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           </div>
         </div>
       )}
-
-      <ScrollToTopButton />
     </div>
   );
 };

@@ -1,47 +1,53 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 
 interface ScrollToTopButtonProps {
-  // Most page shells scroll the window itself; RootAdminDashboard scrolls
-  // its own <main> instead (it has its own overflow-auto), so this accepts
-  // an optional ref to that element and falls back to window when omitted.
-  scrollContainerRef?: React.RefObject<HTMLElement | null>;
   threshold?: number;
 }
 
 /**
  * Mobile-only "back to top" button - appears after scrolling past `threshold`
- * (default 500px) and smooth-scrolls back to the top of the page on click.
- * Positioned bottom-left (not bottom-right, which the toast container and the
- * install-app banner both use) and sits above them (z-40) with enough bottom
- * offset to stay clear of the install banner when it's showing.
+ * (default 500px) and smooth-scrolls back to the top on click. Mounted once,
+ * globally, in main.tsx (a sibling of <App />) rather than per-page, so
+ * every view gets the same condition automatically instead of each page
+ * shell having to remember to wire it up.
+ *
+ * Most pages scroll the window, but a few (e.g. RootAdminDashboard's own
+ * <main overflow-auto>) scroll an internal container instead, where
+ * window.scrollY never changes. A capture-phase listener on `document`
+ * catches scroll events from any of them - scroll events don't bubble, but
+ * capture-phase listeners on an ancestor still see them - so this needs no
+ * per-page scrollContainerRef prop; whichever element last scrolled becomes
+ * the active target for both the visibility check and the click handler.
  */
-export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({
-  scrollContainerRef,
-  threshold = 500,
-}) => {
+export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({ threshold = 500 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const activeScrollElRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const target: HTMLElement | Window = scrollContainerRef?.current || window;
-
-    const handleScroll = () => {
-      const scrollTop =
-        target === window
-          ? window.scrollY
-          : (target as HTMLElement).scrollTop;
-      setIsVisible(scrollTop > threshold);
+    const getScrollTop = (target: EventTarget | null): number => {
+      if (!target || target === document || target === window) {
+        return window.scrollY || document.documentElement.scrollTop;
+      }
+      return (target as HTMLElement).scrollTop;
     };
 
-    target.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => target.removeEventListener('scroll', handleScroll);
-  }, [scrollContainerRef, threshold]);
+    const handleScroll = (e: Event) => {
+      const isWindowOrDocument = e.target === document || e.target === window;
+      activeScrollElRef.current = isWindowOrDocument ? null : (e.target as HTMLElement);
+      setIsVisible(getScrollTop(e.target) > threshold);
+    };
+
+    // capture: true catches scroll events bubbling up from any internally
+    // scrolling descendant, not just the window itself.
+    document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => document.removeEventListener('scroll', handleScroll, true);
+  }, [threshold]);
 
   const handleClick = () => {
-    const target = scrollContainerRef?.current;
-    if (target) {
-      target.scrollTo({ top: 0, behavior: 'smooth' });
+    const el = activeScrollElRef.current;
+    if (el) {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }

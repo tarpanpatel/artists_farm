@@ -5,6 +5,7 @@ import './index.css';
 import './mobile_screen_fix.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner';
+import { ScrollToTopButton } from './components/ScrollToTopButton';
 
 // Error filtering - skip genuine noise only. This list previously also
 // matched "Cannot read property/properties" (the single most common real JS
@@ -134,5 +135,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
     <UpdateAvailableBanner />
+    <ScrollToTopButton />
   </React.StrictMode>
 );
