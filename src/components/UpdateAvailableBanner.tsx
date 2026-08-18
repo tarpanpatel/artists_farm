@@ -1,0 +1,43 @@
+import React, { useEffect, useState } from 'react';
+import { RefreshCw, X } from 'lucide-react';
+
+// Listens for the 'sw-update-available' event dispatched by main.tsx when a
+// new service worker has taken control of an already-running session (see
+// main.tsx for why that's distinct from the page's first-ever SW install,
+// which has nothing to reload for). Shown as a dismissible, persistent
+// banner rather than auto-reloading - a POS app force-reloading itself
+// mid-checkout would be worse than the staleness it's fixing.
+export const UpdateAvailableBanner: React.FC = () => {
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => setUpdateAvailable(true);
+    window.addEventListener('sw-update-available', handleUpdate);
+    return () => window.removeEventListener('sw-update-available', handleUpdate);
+  }, []);
+
+  if (!updateAvailable || dismissed) return null;
+
+  return (
+    <div className="update-available-banner fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md pointer-events-none">
+      <div className="pointer-events-auto flex items-center gap-3 bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 animate-toast-in">
+        <RefreshCw className="w-4 h-4 text-blue-400 shrink-0" />
+        <span className="flex-1 text-xs font-semibold">A new version of the app is available.</span>
+        <button
+          onClick={() => window.location.reload()}
+          className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+        >
+          Reload
+        </button>
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+          title="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+};

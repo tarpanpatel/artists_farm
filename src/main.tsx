@@ -4,6 +4,7 @@ import { App } from './App';
 import './index.css';
 import './mobile_screen_fix.css';
 import { recordTelescopeLog } from './utils/telescopeLogger';
+import { UpdateAvailableBanner } from './components/UpdateAvailableBanner';
 
 // Error filtering - skip genuine noise only. This list previously also
 // matched "Cannot read property/properties" (the single most common real JS
@@ -87,7 +88,35 @@ window.addEventListener('click', (e) => {
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        // sw.js's own install/activate handlers already call skipWaiting()
+        // + clients.claim(), so a new worker takes over immediately once
+        // the browser has actually fetched and installed it - the missing
+        // piece is that browsers only check for a new sw.js on their own
+        // roughly once every 24h. An installed PWA can sit open/backgrounded
+        // for far longer than that, so check proactively: right away isn't
+        // useful (nothing's changed yet), but periodically and whenever the
+        // tab regains focus catches "was backgrounded, came back" - the
+        // common case for a POS app staff leave open all shift.
+        const checkForUpdate = () => registration.update().catch(() => {});
+        setInterval(checkForUpdate, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') checkForUpdate();
+        });
+
+        // controllerchange fires both on this page's first-ever SW install
+        // AND when a later update swaps in a new worker - only the second
+        // case means "the code running right now is stale, please reload".
+        // Distinguish them by checking whether a controller already existed
+        // before this fired; the very first activation has none yet.
+        let hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (hadController) {
+            window.dispatchEvent(new CustomEvent('sw-update-available'));
+          }
+          hadController = true;
+        });
+      }).catch((err) => {
         console.error('Service worker registration failed:', err);
       });
     });
@@ -104,5 +133,6 @@ if ('serviceWorker' in navigator) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
+    <UpdateAvailableBanner />
   </React.StrictMode>
 );
