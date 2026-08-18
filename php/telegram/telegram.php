@@ -44,7 +44,7 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_telegram_config':
             $config = getPropertyTelegramConfig($pdo, $propertyId);
             // Don't leak which chars of the token exist beyond confirming one is set;
-            // the raw token is still needed for editing, so return it as-is â€” this
+            // the raw token is still needed for editing, so return it as-is — this
             // app has no auth boundary on the main router today (see other actions).
             echo json_encode(['status' => 'success', 'data' => $config]);
             break;
@@ -134,7 +134,7 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'No Telegram bot token is configured on this server yet.']);
                     break;
                 }
-                $raw = sendRawTelegramMessage("âœ… <b>Test message from Ground Code</b>\nThis group is now connected.", $token, $chatId);
+                $raw = sendRawTelegramMessage("✅ <b>Test message from Ground Code</b>\nThis group is now connected.", $token, $chatId);
                 $parsed = json_decode($raw, true);
                 $ok = !empty($parsed['ok']);
                 echo json_encode(['status' => $ok ? 'success' : 'error', 'message' => $ok ? null : ($parsed['description'] ?? 'Telegram API call failed')]);

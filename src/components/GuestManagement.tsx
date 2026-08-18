@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
+import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -471,7 +472,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   }, [guests]);
 
-  // Lodging Breakdown Data â€” initialized from guest data (BUG 6 FIX)
+  // Lodging Breakdown Data — initialized from guest data (BUG 6 FIX)
   const [baseLodging, setBaseLodging] = useState(0);
   const [advancePaid, setAdvancePaid] = useState(0);
   const [advancePayer] = useState('');
@@ -511,7 +512,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [qrModalTitle, setQrModalTitle] = useState('');
   const [qrModalHasCode, setQrModalHasCode] = useState(false);
 
-  // Track which order-items the cashier manually removed â€” persisted to localStorage so page refresh doesn't restore them
+  // Track which order-items the cashier manually removed — persisted to localStorage so page refresh doesn't restore them
   const getRemovedKey = (guestId: string) => `billing_removed_${guestId}`;
 
   const getRemovedIds = (guestId: string): Set<string> => {
@@ -527,7 +528,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     localStorage.setItem(getRemovedKey(guestId), JSON.stringify([...set]));
   };
 
-  // GST optional toggle â€” rate auto-detected from room tariff slab
+  // GST optional toggle — rate auto-detected from room tariff slab
   const [gstEnabled, setGstEnabled] = useState(false);
   const getGstSlab = (rate: number): number => {
     if (rate <= 1000) return 5;
@@ -541,7 +542,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Print-Friendly Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
-  // Active Guest Object â€” BUG 3 FIX: fallback to first Active guest, not guests[0]
+  // Active Guest Object — BUG 3 FIX: fallback to first Active guest, not guests[0]
   const currentGuest = guests.find((g) => g.id === selectedGuestId) || checkedInGuests[0];
 
   // Whenever selected guest changes, auto-load their fulfilled orders into incidentals
@@ -1463,6 +1464,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       {/* ========================================================================= */}
       {activeMenuItemKey === 'all_bookings' && (
         <div className="guest-management__checkout-workspace space-y-6">
+          {/* Mobile Booking Card Stack (Touch-First Cards View) */}
+          <MobileBookingCardStack
+            guests={guests}
+            rooms={rooms}
+            selectedGuestId={selectedGuestId}
+            onSelectGuest={(id) => setSelectedGuestId(id)}
+            onCheckoutGuest={(id) => onCheckoutGuest?.(id)}
+            onOpenWhatsApp={(g) => {
+              setShareGuest(g);
+              setIsShareModalOpen(true);
+            }}
+            onAddBooking={() => setIsAddBookingModalOpen(true)}
+          />
           {/* BUG 5 FIX: Guard for empty Active guest list */}
           {checkedInGuests.length === 0 ? (
             <div className="guest-management__empty-state bg-white p-8 rounded-2xl border border-slate-200 shadow-2xs text-center">
@@ -1483,7 +1497,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY)
                   .map((g) => ({
                     value: g.id,
-                    label: `${g.guestName} (${g.roomNumber}) â€” Phone: ${g.phoneNumber}`,
+                    label: `${g.guestName} (${g.roomNumber}) — Phone: ${g.phoneNumber}`,
                   }))}
               />
             </div>
@@ -1871,7 +1885,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <span>-₹{discounts.toFixed(2)}</span>
                       </div>
                     )}
-                    {/* GST Toggle â€” rate auto-detected from room tariff slab */}
+                    {/* GST Toggle — rate auto-detected from room tariff slab */}
                     <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-1.5">
                       <div className="flex items-center gap-2">
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -2234,7 +2248,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
               )}
 
-              {/* GST Breakdown â€” item-wise */}
+              {/* GST Breakdown — item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
                   <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">

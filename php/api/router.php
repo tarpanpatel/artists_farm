@@ -277,7 +277,7 @@ set_exception_handler(function($exception) {
         TelescopeLogger::log(
             'php',
             'FATAL',
-            "ðŸ”´ Exception: {$exception->getMessage()}",
+            "🔴 Exception: {$exception->getMessage()}",
             "Exception Handler [{$exception->getFile()}:{$exception->getLine()}]",
             ['message' => $exception->getMessage(), 'file' => $exception->getFile(), 'line' => $exception->getLine()]
         );
@@ -391,7 +391,7 @@ if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_a
             TelescopeLogger::log(
                 'security',
                 'WARNING',
-                "ðŸ”’ Unauthorized API call attempt: {$action} [{$reason}]",
+                "🔒 Unauthorized API call attempt: {$action} [{$reason}]",
                 "Security Middleware [Authentication Failed]",
                 ['action' => $action, 'method' => $request_method, 'reason' => $reason, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
             );
@@ -479,7 +479,7 @@ function isTenantAccessAllowed(PDO $pdo, $requestedTenantId, int $currentPropert
     // 1. Direct session flag check
     if (!empty($_SESSION['is_platform_admin']) || (($_SESSION['role'] ?? '') === 'root_admin')) return true;
 
-    // 2. DB lookup by user_id (authoritative â€” handles cases where session flag wasn't written)
+    // 2. DB lookup by user_id (authoritative — handles cases where session flag wasn't written)
     if (isset($_SESSION['user_id'])) {
         $stmt = $pdo->prepare("SELECT is_platform_admin, role FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
@@ -626,7 +626,7 @@ if (!in_array($action, $public_actions, true)) {
         TelescopeLogger::log(
             'security',
             'WARNING',
-            "ðŸ”’ Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
+            "🔒 Property-scope violation: {$request_user} attempted {$action} on property #{$propertyId} without access",
             "Security Middleware [Property Access Denied]",
             ['action' => $action, 'property_id' => $propertyId, 'user' => $request_user, 'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1']
         );
@@ -651,7 +651,7 @@ if ($action !== 'login_user') {
 // Actions that belong entirely to food service: kitchen orders, the food menu
 // & recipes, and the whole stock/requisitions/kitchen-purchases inventory
 // system (php/inventory/inventory.php has no non-food inventory concept).
-// A property with the 'kitchen' module disabled gets none of this â€” enforced
+// A property with the 'kitchen' module disabled gets none of this — enforced
 // here so disabling it actually stops the data from being created/read, not
 // just hides the nav link.
 $kitchen_module_actions = [

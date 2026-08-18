@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight } from 'lucide-react';
+import { X, IndianRupee, Home, Calendar, AlertCircle, Plus, Trash2, CheckCircle2, Share2, Printer, QrCode, Loader2, CornerDownRight, MessageSquare } from 'lucide-react';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { StyledSelect } from './StyledSelect';
@@ -1179,54 +1179,52 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isProcessing}
-            className="flex-1 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer"
-          >
-            {t('cancel_button', 'Cancel')}
-          </button>
+        <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 sm:px-6 flex items-center gap-3">
           {internalMode === 'edit-and-checkout' && (
             <button
               type="button"
               onClick={() => setIsPrintModalOpen(true)}
-              className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+              className="flex-1 h-12 py-3 px-4 bg-cyan-600 hover:bg-cyan-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shrink-0"
             >
-              <Printer className="w-4 h-4" /> {t('preview_share_bill_button', 'Preview & Share Bill')}
+              <Printer className="w-4 h-4 shrink-0" />
+              <span>{t('preview_share_bill_button', 'Preview & Share Bill')}</span>
             </button>
           )}
+
           <button
             type="button"
             onClick={handleSaveOrCheckout}
             disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
-            className={`flex-2 py-3 text-white font-semibold text-xs rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 ${
+            className={`flex-1 h-12 py-3 px-4 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 shrink-0 ${
               internalMode === 'edit-only'
-                ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                ? 'bg-blue-600 hover:bg-blue-700 active:scale-98 cursor-pointer'
                 : !isSplitMatching
                 ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-75'
-                : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
+                : 'bg-emerald-600 hover:bg-emerald-700 active:scale-98 cursor-pointer'
             }`}
           >
-            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            {isProcessing
-              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-              : internalMode === 'edit-only'
-              ? t('save_booking_changes_button', 'Save Booking Changes')
-              : !isSplitMatching
-              ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
-              : t('checkout_close_booking_button', 'Checkout & Close Booking')
-            }
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            <span>
+              {isProcessing
+                ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+                : internalMode === 'edit-only'
+                ? t('save_booking_changes_button', 'Save Booking Changes')
+                : !isSplitMatching
+                ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
+                : t('checkout_close_booking_button', 'Checkout & Close Booking')
+              }
+            </span>
           </button>
+
           {internalMode === 'edit-only' && (
             <button
               type="button"
               onClick={handleSaveAndProceedToCheckout}
               disabled={isProcessing}
-              className="flex-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-2xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              className="flex-1 h-12 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 shrink-0"
             >
-              <CheckCircle2 className="w-4 h-4" /> {t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}</span>
             </button>
           )}
         </div>
@@ -1265,26 +1263,32 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               <button
                 type="button"
                 onClick={handleShareReceipt}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors shadow-2xs"
               >
-                <Share2 className="w-3.5 h-3.5" /> {t('share_bill_png_button', 'Share Bill (PNG)')}
+                <Share2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{t('share_bill_png_button', 'Share Bill (PNG)')}</span>
               </button>
+
               <a
                 href={`https://api.whatsapp.com/send?phone=${guest.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + guest.phoneNumber.replace(/\D/g, '') : guest.phoneNumber.replace(/\D/g, '')}&text=${encodeURIComponent(
                   `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer text-center"
+                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer text-xs transition-colors shadow-2xs text-center"
               >
-                Share via WhatsApp
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                <span>Share via WhatsApp</span>
               </a>
+
+              {/* Simple Cross Close Button */}
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(false)}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg cursor-pointer"
+                className="shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Close"
               >
-                {t('close_button', 'Close')}
+                <X className="w-4 h-4 shrink-0" />
               </button>
             </div>
 
@@ -1378,7 +1382,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </div>
               )}
 
-              {/* GST Breakdown â€” item-wise */}
+              {/* GST Breakdown — item-wise */}
               {gstEnabled && gstAmount > 0 && (
                 <div className="space-y-1 pt-2 border-t border-dashed border-slate-200">
                   <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">

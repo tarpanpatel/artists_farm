@@ -77,52 +77,52 @@ const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT/gi, replace: '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Guest:(<\/b>)?/gi, replace: '👤 <b>Guest:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?ACCOMMODATION LOGISTICS/gi, replace: '🏠 <b>ACCOMMODATION LOGISTICS</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL ITEMIZED KOT/gi, replace: '🍽ï¸ <b>FINAL ITEMIZED KOT</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL ITEMIZED KOT/gi, replace: '🍽️ <b>FINAL ITEMIZED KOT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL PAYOUT SPLIT/gi, replace: '💳 <b>FINAL PAYOUT SPLIT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Desk Cashier Executing/gi, replace: '👤 <i>Desk Cashier Executing</i>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW FINANCIAL TRANSACTION/gi, replace: '💰 <b>NEW FINANCIAL TRANSACTION</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Cashier:(<\/b>)?/gi, replace: '👤 <b>Cashier:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED/gi, replace: 'ðŸŸ¢ <b>TOTAL CREDITED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?UPCOMING ARRIVALS TOMORROW/gi, replace: 'ðŸ›Žï¸ <b>UPCOMING ARRIVALS TOMORROW</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH READY TO SERVE/gi, replace: '🍽ï¸ <b>DISH READY TO SERVE</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Order Ticket:(<\/b>)?/gi, replace: 'ðŸ·ï¸ <b>Order Ticket:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED/gi, replace: '🟢 <b>TOTAL CREDITED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?UPCOMING ARRIVALS TOMORROW/gi, replace: '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH READY TO SERVE/gi, replace: '🍽️ <b>DISH READY TO SERVE</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Order Ticket:(<\/b>)?/gi, replace: '🏷️ <b>Order Ticket:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW ORDER/gi, replace: '🔔 <b>NEW ORDER</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH SERVED/gi, replace: '✅ <b>DISH SERVED</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUEST/gi, replace: '📦 <b>MATERIAL REQUEST</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Processed By:(<\/b>)?/gi, replace: '👤 <b>Processed By:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Global Status:(<\/b>)?/gi, replace: 'ðŸŸ¢ <b>Global Status:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF MEAL REQUEST/gi, replace: 'ðŸ± <b>STAFF MEAL REQUEST</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Global Status:(<\/b>)?/gi, replace: '🟢 <b>Global Status:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF MEAL REQUEST/gi, replace: '🍱 <b>STAFF MEAL REQUEST</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUISITION APPROVED/gi, replace: '✅ <b>MATERIAL REQUISITION APPROVED</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?FULLY ITEMIZED SETTLEMENT BILL/gi, replace: '📶 <b>FULLY ITEMIZED SETTLEMENT BILL</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?KITCHEN ORDER/gi, replace: '🍽ï¸ <b>KITCHEN ORDER</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF DUTY MEAL DISPATCHED/gi, replace: 'ðŸ› <b>STAFF DUTY MEAL DISPATCHED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?KITCHEN ORDER/gi, replace: '🍽️ <b>KITCHEN ORDER</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF DUTY MEAL DISPATCHED/gi, replace: '🍛 <b>STAFF DUTY MEAL DISPATCHED</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW MATERIAL REQUISITION SHEET/gi, replace: '📦 <b>NEW MATERIAL REQUISITION SHEET</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?LOW STOCK WARNING ALERT/gi, replace: '⚠️ <b>LOW STOCK WARNING ALERT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?PETTY CASH/gi, replace: '💰 <b>PETTY CASH</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?ORDER COMPLETED/gi, replace: '✅ <b>ORDER COMPLETED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINANCIAL TRANSACTION \(DRAWER ADJUSTMENT\)/gi, replace: 'ðŸ§ <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINANCIAL TRANSACTION \(DRAWER ADJUSTMENT\)/gi, replace: '🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Staff Handler:(<\/b>)?/gi, replace: '👤 <b>Staff Handler:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Action Type:(<\/b>)?/gi, replace: 'ðŸ”„ <b>Action Type:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Remarks:(<\/b>)?/gi, replace: 'ðŸ“ <b>Remarks:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Action Type:(<\/b>)?/gi, replace: '🔄 <b>Action Type:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Remarks:(<\/b>)?/gi, replace: '📝 <b>Remarks:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?AMOUNT MOVEMENT:(<\/b>)?/gi, replace: '💰 <b>AMOUNT MOVEMENT:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Resident:(<\/b>)?/gi, replace: '👤 <b>Resident:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Receipt:(<\/b>)?/gi, replace: 'ðŸ†” <b>Receipt:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Receipt:(<\/b>)?/gi, replace: '🆔 <b>Receipt:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Advance Paid:(<\/b>)?/gi, replace: '💰 <b>Advance Paid:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Final Balance Due:(<\/b>)?/gi, replace: 'ðŸ”´ <b>Final Balance Due:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Total Bill:(<\/b>)?/gi, replace: 'ðŸ’µ <b>Total Bill:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Final Balance Due:(<\/b>)?/gi, replace: '🔴 <b>Final Balance Due:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Total Bill:(<\/b>)?/gi, replace: '💵 <b>Total Bill:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Payment Mode:(<\/b>)?/gi, replace: '💳 <b>Payment Mode:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Room:(<\/b>)?/gi, replace: 'ðŸšª <b>Room:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID Document\(s\):(<\/b>)?/gi, replace: 'ðŸªª <b>ID Document(s):</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID VERIFICATION STILL PENDING/gi, replace: 'ðŸªª <b>ID VERIFICATION STILL PENDING</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Room:(<\/b>)?/gi, replace: '🚪 <b>Room:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID Document\(s\):(<\/b>)?/gi, replace: '🪪 <b>ID Document(s):</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID VERIFICATION STILL PENDING/gi, replace: '🪪 <b>ID VERIFICATION STILL PENDING</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Type:(<\/b>)?/gi, replace: '📶 <b>Type:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfill Time:(<\/b>)?/gi, replace: 'ðŸ•’ <b>Fulfill Time:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfill Time:(<\/b>)?/gi, replace: '🕒 <b>Fulfill Time:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfillment Time:(<\/b>)?/gi, replace: '📅 <b>Fulfillment Time:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Date:(<\/b>)?/gi, replace: '📅 <b>Date:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Category:(<\/b>)?/gi, replace: 'ðŸ·ï¸ <b>Category:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Category:(<\/b>)?/gi, replace: '🏷️ <b>Category:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Paid By:(<\/b>)?/gi, replace: '👤 <b>Paid By:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/gi, replace: 'ðŸ“ <b>Details:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/gi, replace: '📝 <b>Details:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Method:(<\/b>)?/gi, replace: '💳 <b>Method:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/gi, replace: 'ðŸ”´ <b>DEBIT AMOUNT:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/gi, replace: '🔴 <b>DEBIT AMOUNT:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/gi, replace: '🏃‍♂️ <i>Staff, please collect and tap below when' },
 ];
 
@@ -146,7 +146,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     variables: ['{staff_name}', '{action_type}', '{remarks}', '{amount}'],
     template: `<b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>\n━━━━━━━━━━━━━━━━━━\n<b>Staff Handler:</b> {staff_name}\n<b>Action Type:</b> {action_type}\n<b>Remarks:</b> {remarks}\n━━━━━━━━━━━━━━━━━━\n<b>AMOUNT MOVEMENT: ₹{amount}</b>`,
     buttons: [
-      [{ id: 'b1', text: 'ðŸ“Š Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
+      [{ id: 'b1', text: '📊 Open Cash Drawer Logs', callback_data: 'view_cash_drawer' }]
     ]
   },
   {
@@ -156,9 +156,9 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Billing & Financial',
     description: 'Sent to Finance group when an operational or farm utility expense is recorded.',
     variables: ['{expense_date}', '{category}', '{paid_by}', '{description}', '{payment_mode}', '{amount}'],
-    template: `ðŸ’¸ <b>NEW FINANCIAL TRANSACTION (EXPENSE)</b>\n━━━━━━━━━━━━━━━━━━\n📅 <b>Date:</b> {expense_date}\nðŸ—‚ï¸ <b>Category:</b> {category}\n👤 <b>Paid By:</b> {paid_by}\nðŸ“ <b>Details:</b> {description}\n💳 <b>Method:</b> {payment_mode}\n━━━━━━━━━━━━━━━━━━\nðŸ”´ <b>DEBIT AMOUNT: ₹{amount}</b>`,
+    template: `💸 <b>NEW FINANCIAL TRANSACTION (EXPENSE)</b>\n━━━━━━━━━━━━━━━━━━\n📅 <b>Date:</b> {expense_date}\n🗂️ <b>Category:</b> {category}\n👤 <b>Paid By:</b> {paid_by}\n📝 <b>Details:</b> {description}\n💳 <b>Method:</b> {payment_mode}\n━━━━━━━━━━━━━━━━━━\n🔴 <b>DEBIT AMOUNT: ₹{amount}</b>`,
     buttons: [
-      [{ id: 'b2', text: 'ðŸ“œ View Expense Ledger', callback_data: 'view_ledger' }]
+      [{ id: 'b2', text: '📜 View Expense Ledger', callback_data: 'view_ledger' }]
     ]
   },
   {
@@ -168,9 +168,9 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Billing & Financial',
     description: 'Comprehensive settlement report dispatched to Admin group upon guest checkout.',
     variables: ['{guest_name}', '{base_rent}', '{advance_paid}', '{advance_collector}', '{accommodation_pending}', '{pending_collector}', '{items_list}', '{food_subtotal}', '{split_phrases}', '{cashier_name}', '{grand_total_due}'],
-    template: `🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n\n🏠 <b>ACCOMMODATION LOGISTICS:</b>\n• Contract Tariff: ₹{base_rent}\n• Advance Taken: ₹{advance_paid} (By: {advance_collector})\n• Pending Settled: ₹{accommodation_pending} (By: {pending_collector})\n\n🍽ï¸ <b>FINAL ITEMIZED KOT & EXTRAS:</b>\n{items_list}\n• Incidentals Subtotal: <b>₹{food_subtotal}</b>\n\n💳 <b>FINAL PAYOUT SPLIT DISTRIBUTION:</b>\n{split_phrases}\n👤 <i>Desk Cashier Executing: {cashier_name}</i>\n━━━━━━━━━━━━━━━━━━\n<b>GRAND TOTAL PAYABLE SETTLED: ₹{grand_total_due}</b>`,
+    template: `🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n\n🏠 <b>ACCOMMODATION LOGISTICS:</b>\n• Contract Tariff: ₹{base_rent}\n• Advance Taken: ₹{advance_paid} (By: {advance_collector})\n• Pending Settled: ₹{accommodation_pending} (By: {pending_collector})\n\n🍽️ <b>FINAL ITEMIZED KOT & EXTRAS:</b>\n{items_list}\n• Incidentals Subtotal: <b>₹{food_subtotal}</b>\n\n💳 <b>FINAL PAYOUT SPLIT DISTRIBUTION:</b>\n{split_phrases}\n👤 <i>Desk Cashier Executing: {cashier_name}</i>\n━━━━━━━━━━━━━━━━━━\n<b>GRAND TOTAL PAYABLE SETTLED: ₹{grand_total_due}</b>`,
     buttons: [
-      [{ id: 'b3', text: 'ðŸ“„ Download Guest Invoice PDF', url: 'https://artistsfarm.com/invoice' }]
+      [{ id: 'b3', text: '📄 Download Guest Invoice PDF', url: 'https://artistsfarm.com/invoice' }]
     ]
   },
   {
@@ -180,7 +180,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Billing & Financial',
     description: 'Sent to Finance group when new revenue is collected at checkout.',
     variables: ['{guest_name}', '{cashier_name}', '{split_phrases}', '{total_collected}'],
-    template: `💰 <b>NEW FINANCIAL TRANSACTION (REVENUE CREDIT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n👤 <b>Cashier:</b> {cashier_name}\n💳 <b>Split Distribution:</b>\n{split_phrases}\n━━━━━━━━━━━━━━━━━━\nðŸŸ¢ <b>TOTAL CREDITED: ₹{total_collected}</b>`,
+    template: `💰 <b>NEW FINANCIAL TRANSACTION (REVENUE CREDIT)</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest:</b> {guest_name}\n👤 <b>Cashier:</b> {cashier_name}\n💳 <b>Split Distribution:</b>\n{split_phrases}\n━━━━━━━━━━━━━━━━━━\n🟢 <b>TOTAL CREDITED: ₹{total_collected}</b>`,
   },
   {
     id: 'tpl-5',
@@ -189,7 +189,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Cron & Notifications',
     description: 'Automated daily summary of guest arrivals scheduled for tomorrow.',
     variables: ['{arrivals_list}'],
-    template: `ðŸ›Žï¸ <b>UPCOMING ARRIVALS TOMORROW</b>\n━━━━━━━━━━━━━━━━━━\n\n{arrivals_list}`,
+    template: `🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>\n━━━━━━━━━━━━━━━━━━\n\n{arrivals_list}`,
   },
   {
     id: 'tpl-6',
@@ -198,7 +198,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Kitchen & Ordering',
     description: 'Sent when an individual dish is marked ready for pickup by the kitchen.',
     variables: ['{order_id}', '{qty}', '{dish_name}', '{instruction_note}'],
-    template: `🍽ï¸ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\nðŸ·ï¸ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name}{instruction_note}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`,
+    template: `🍽️ <b>DISH READY TO SERVE</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #{order_id}\n• <b>{qty}x</b> {dish_name}{instruction_note}\n━━━━━━━━━━━━━━━━━━\n🏃‍♂️ <i>Staff, please collect and tap below when served.</i>`,
     buttons: [
       [{ id: 'b6', text: '🏃‍♂️ Mark as Served', callback_data: 'mark_served_40' }]
     ]
@@ -212,7 +212,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     variables: ['{order_id}', '{guest_name}', '{room_no}', '{waiter_name}', '{order_time}', '{order_items}'],
     template: `<b>🔔 NEW ORDER #{order_id}</b>\n<b>Room / Guest:</b> {guest_name} ({room_no})\n<b>Waiter:</b> {waiter_name}\n<b>Items:</b>\n{order_items}\n\n<i>Time: {order_time}</i>`,
     buttons: [
-      [{ id: 'b7', text: 'ðŸ‘¨â€ðŸ³ View Kitchen KDS Queue', callback_data: 'open_kds' }]
+      [{ id: 'b7', text: '👨‍🍳 View Kitchen KDS Queue', callback_data: 'open_kds' }]
     ]
   },
   {
@@ -231,9 +231,9 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Requisitions & Inventory',
     description: 'Sent when kitchen staff submits a store material or stock request.',
     variables: ['{staff_name}', '{request_time}', '{items_list}', '{custom_notes}'],
-    template: `📦 <b>MATERIAL REQUEST</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>By:</b> {staff_name}\n📅 <b>At:</b> {request_time}\n\nðŸ“ <b>Items List Required:</b>\n{items_list}\n\nðŸ’¬ <b>Special / Ad-Hoc Requests:</b>\n{custom_notes}\n━━━━━━━━━━━━━━━━━━`,
+    template: `📦 <b>MATERIAL REQUEST</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>By:</b> {staff_name}\n📅 <b>At:</b> {request_time}\n\n📝 <b>Items List Required:</b>\n{items_list}\n\n💬 <b>Special / Ad-Hoc Requests:</b>\n{custom_notes}\n━━━━━━━━━━━━━━━━━━`,
     buttons: [
-      [{ id: 'b9', text: 'ðŸšš Fulfill Requisition', callback_data: 'fulfill_req_1166' }]
+      [{ id: 'b9', text: '🚚 Fulfill Requisition', callback_data: 'fulfill_req_1166' }]
     ]
   },
   {
@@ -243,7 +243,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Requisitions & Inventory',
     description: 'Sent when a store inventory requisition is fulfilled or issued.',
     variables: ['{header_title}', '{req_id}', '{staff_name}', '{fulfillment_time}', '{status_label}', '{items_manifest}', '{status_title}'],
-    template: `{header_title}\n━━━━━━━━━━━━━━━━━━\nðŸ†” <b>Sheet ID:</b> #{req_id}\n👤 <b>Processed By:</b> {staff_name}\n📅 <b>Fulfillment Time:</b> {fulfillment_time}\nðŸŸ¢ <b>Global Status:</b> {status_label}\n━━━━━━━━━━━━━━━━━━\nðŸ“ <b>Items Variance Manifest:</b>\n\n{items_manifest}`,
+    template: `{header_title}\n━━━━━━━━━━━━━━━━━━\n🆔 <b>Sheet ID:</b> #{req_id}\n👤 <b>Processed By:</b> {staff_name}\n📅 <b>Fulfillment Time:</b> {fulfillment_time}\n🟢 <b>Global Status:</b> {status_label}\n━━━━━━━━━━━━━━━━━━\n📝 <b>Items Variance Manifest:</b>\n\n{items_manifest}`,
   },
   {
     id: 'tpl-12',
@@ -279,7 +279,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Kitchen & Ordering',
     description: 'Sent when a staff duty meal is dispatched from the kitchen.',
     variables: ['{order_id}', '{beneficiary}', '{meal_details}'],
-    template: `ðŸ› <b>STAFF DUTY MEAL DISPATCHED #{order_id}</b>\n• Beneficiary: <b>{beneficiary}</b>\n• Details: <b>{meal_details}</b>\n• Location: <b>Staff Pantry</b>`,
+    template: `🍛 <b>STAFF DUTY MEAL DISPATCHED #{order_id}</b>\n• Beneficiary: <b>{beneficiary}</b>\n• Details: <b>{meal_details}</b>\n• Location: <b>Staff Pantry</b>`,
   },
   {
     id: 'tpl-16',
@@ -315,7 +315,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Telegram Webhooks',
     description: 'Edit text applied to the original Telegram message when a dish is marked served via inline button callback.',
     variables: ['{original_text}', '{staff_name}', '{serve_time}'],
-    template: `✅ <b>DISH SERVED</b>\n\n{original_text}\n\nðŸ‘¨â€ðŸ³ <b>Served By:</b> {staff_name}\nðŸ•’ <b>At:</b> {serve_time}`,
+    template: `✅ <b>DISH SERVED</b>\n\n{original_text}\n\n👨‍🍳 <b>Served By:</b> {staff_name}\n🕒 <b>At:</b> {serve_time}`,
   },
   {
     id: 'tpl-20',
@@ -324,7 +324,7 @@ const FALLBACK_TEMPLATES: TelegramTemplateExtended[] = [
     category: 'Telegram Webhooks',
     description: 'Edit text applied to the original Telegram message when an entire order is marked completed via inline button callback.',
     variables: ['{original_text}', '{staff_name}', '{serve_time}'],
-    template: `✅ <b>ORDER COMPLETED</b>\n\n{original_text}\n\nðŸ‘¨â€ðŸ³ <b>Fulfilled By:</b> {staff_name}\nðŸ•’ <b>At:</b> {serve_time}`,
+    template: `✅ <b>ORDER COMPLETED</b>\n\n{original_text}\n\n👨‍🍳 <b>Fulfilled By:</b> {staff_name}\n🕒 <b>At:</b> {serve_time}`,
   },
 ];
 
@@ -481,7 +481,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const kitchenEnabled = kitchenModuleEnabled ?? true;
 
   // Per-property Telegram connection settings (bot token, groups, per-template
-  // routing) â€” shared between the Connection Settings drawer and the per-template
+  // routing) — shared between the Connection Settings drawer and the per-template
   // "Send to" picker in the editor below, so both read/write the same state.
   const [tgSettings, setTgSettings] = useState<PropertyTelegramConfig | null>(null);
   const [tgRoutingSaving, setTgRoutingSaving] = useState(false);
@@ -555,7 +555,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideRoutingControls]);
 
-  // Routing changes save immediately â€” no separate "did you remember to click
+  // Routing changes save immediately — no separate "did you remember to click
   // Save?" step for picking a notification's destination group.
   const setTemplateRouting = async (dbKey: string, groupKey: string) => {
     if (!tgSettings) return;
@@ -588,7 +588,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     }
   }, [activeTemplateId]);
 
-  // TODO: Fetch templates from DB â€” fetchTemplatesFromDB() not yet implemented in api.ts
+  // TODO: Fetch templates from DB — fetchTemplatesFromDB() not yet implemented in api.ts
 
   // Push new template string to history stack
   const updateTemplateWithHistory = (newTemplate: string) => {
@@ -781,7 +781,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const handleAddButtonRow = () => {
     const newBtn: TelegramInlineButton = {
       id: `btn-${Date.now()}`,
-      text: 'ðŸ”˜ New Action Button',
+      text: '🔘 New Action Button',
       callback_data: 'action_click',
     };
     const currentButtons = currentTpl.buttons || [];
@@ -842,7 +842,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           fetchTemplatesFromDB().then(setDbTemplates);
           if (onLogAudit) {
             const currentUserName = getLoggedInUserName();
-            onLogAudit(`${currentUserName} updated Telegram template "${currentTpl.eventName}" (${currentTpl.dbKey}) â€” template content edited and saved to database`, { module: 'telegram_template', status: 'Success', user: currentUserName });
+            onLogAudit(`${currentUserName} updated Telegram template "${currentTpl.eventName}" (${currentTpl.dbKey}) — template content edited and saved to database`, { module: 'telegram_template', status: 'Success', user: currentUserName });
           }
         } else {
           setSaveStatus('Saved locally!');
@@ -1116,7 +1116,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 ]}
               />
             ) : (
-              <span className="text-[11px] text-slate-400">Loadingâ€¦</span>
+              <span className="text-[11px] text-slate-400">Loading…</span>
             )}
             {tgRoutingSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />}
             {tgSettings && tgSettings.groups.filter(g => g.chatId).length === 0 && (
@@ -1317,7 +1317,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           <div className="p-3.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex flex-col gap-0.5">
-                <span>{t('inline_keyboard_buttons_heading', 'ðŸ”˜ Telegram Inline Keyboard Buttons')}</span>
+                <span>{t('inline_keyboard_buttons_heading', '🔘 Telegram Inline Keyboard Buttons')}</span>
                 <span className="text-[10px] text-slate-400 font-normal">
                   URLs open web pages. Callbacks (e.g., <code>mark_served_40</code>) trigger backend scripts directly from Telegram.
                 </span>
@@ -1396,7 +1396,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {/* Live Dark Telegram Preview */}
           <div className="space-y-1.5 pt-1">
             <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <span>{t('live_preview_heading', 'ðŸ¤– POS Notification Bot (Live Dark Telegram Preview)')}</span>
+              <span>{t('live_preview_heading', '🤖 POS Notification Bot (Live Dark Telegram Preview)')}</span>
             </div>
 
             <div className="bg-[#17212b] rounded-2xl p-4 border border-slate-800 text-white shadow-lg space-y-3">

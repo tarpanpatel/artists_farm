@@ -46,7 +46,7 @@ function removeLucideGlobal() {
   if (el) el.remove();
 }
 
-const DEFAULT_CSS = `/* Ground Code â€” Custom CSS Override
+const DEFAULT_CSS = `/* Ground Code — Custom CSS Override
    Base typography rules are defined below so they can be tuned from this page.
    These rules are unlayered, so they already beat Tailwind utility classes;
    no force-priority flags are needed anywhere in the site. The override style

@@ -85,7 +85,7 @@ if (file_exists($dist_index)) {
 <body>
     <div class="card">
         <span class="badge">PHP Backend Active</span>
-        <h1>ðŸŒ¾ Ground Code Resort System</h1>
+        <h1>🌾 Ground Code Resort System</h1>
         <p>Your PHP backend and MySQL database connection are online.</p>
         <a href="php/api/router.php" class="btn">Test API Router Endpoint &rarr;</a>
     </div>
