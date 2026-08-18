@@ -1394,7 +1394,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }
                     }}
                     disabled={inCartQty === 0}
-                    className={`aspect-square w-8 h-8 rounded-md font-extrabold text-xs flex items-center justify-center transition-all shadow-2xs ${
+                    className={`aspect-square w-8 h-8 rounded-sm shrink-0 font-extrabold text-xs flex items-center justify-center transition-all shadow-2xs ${
                       inCartQty === 0
                         ? 'bg-slate-200/60 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 active:scale-90 cursor-pointer'
@@ -1416,7 +1416,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       e.stopPropagation();
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`aspect-square w-8 h-8 rounded-md font-extrabold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
+                    className={`aspect-square w-8 h-8 rounded-sm shrink-0 font-extrabold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
                       isRecentlyAdded
                         ? 'bg-emerald-600 text-white scale-95 animate-pulse'
                         : 'bg-emerald-600 text-white hover:bg-emerald-700'
@@ -1582,15 +1582,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   </div>
                 </div>
 
-                {/* Selected Category Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
-                  <h3 className="kitchen-management__subtitle font-semibold text-slate-700 dark:text-slate-300 text-xs tracking-wider uppercase">
-                    {selectedPosCategory === 'all' ? t('all_menu_items_header') : posCategories.find((category) => category.id === selectedPosCategory)?.label}
-                  </h3>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
-                    {filteredPosMenuItems.length} items
-                  </span>
-                </div>
+
 
                 {/* Menu Items Grid with Dish Thumbnails (Compact POS Layout) */}
                 {filteredPosMenuItems.length === 0 ? (
@@ -1658,21 +1650,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             </h4>
                           </div>
 
-                          <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+                          <div className="flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-minus aspect-square w-8 h-8 rounded-sm shrink-0 bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-700"
                             >
-                              -
+                              <Minus className="w-3.5 h-3.5" />
                             </button>
                             <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-plus aspect-square w-8 h-8 rounded-sm shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
-                              +
+                              <Plus className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1711,7 +1703,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable, Floats Above MobileBottomNav) */}
             {cartItems.length > 0 && (
               <div
-                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
+                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-[0_-8px_24px_-6px_rgba(0,0,0,0.15)] border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
                   isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
                 }`}
               >
@@ -1746,21 +1738,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+                      <div className="flex items-center gap-1 rounded-md bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-minus aspect-square w-8 h-8 rounded-sm shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
                         >
-                          -
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
                         <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus aspect-square w-8 h-8 rounded-sm shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
-                          +
+                          <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
