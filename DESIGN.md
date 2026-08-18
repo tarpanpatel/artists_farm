@@ -141,11 +141,9 @@ This document defines the core visual design tokens, component architecture patt
 
 ---
 
-## 16. Universal Toast Notification Placement Guidelines
-- **Universal Screen Centering Rule**: ALL toast notifications, alert banners, popups, and floating feedback status messages across the entire site MUST appear directly in the **center of the screen** (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]`).
-- **Prohibited Toast Placements**: Corner placements such as bottom-right (`bottom-4 right-4`), top-right (`top-4 right-4` / `top-20 right-6`), bottom-center, or top-center are strictly prohibited.
-- **Toast Styling Tokens**:
-  - **Positioning**: Fixed screen centering (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] pointer-events-none`).
-  - **Radius & Elevation**: Universal `rounded-xl` corners with `shadow-2xl` elevation.
-  - **Z-Index Layering**: High `z-[9999]` elevation ensuring toast notifications float above all page modals, slide-over drawers, and navigation headers.
+## 17. Universal Modal Standard (Vertical Centering, Scrolling & Footer Layout)
+- **Universal Vertical Centering**: ALL modal dialogs and overlay popups across the entire site MUST be perfectly centered vertically and horizontally on the viewport (`fixed inset-0 flex items-center justify-center p-3 sm:p-4 z-50`).
+- **Universal Modal Scrolling Rule**: ALL modal dialogs MUST feature vertical scrollability (`max-h-[85vh]` or `max-h-[calc(100vh-2rem)]` combined with `overflow-y-auto scrollbar-thin`). Modals must NEVER overflow off-screen or cut off action buttons.
+- **No Redundant Bottom Cancel Buttons**: Do NOT place redundant "Cancel" buttons in modal bottom footers when a top-right `<X />` close button is present. Bottom action footers should focus on primary submit/action controls and special feature actions (e.g. *Share Login Details*).
+- **Header & Footer Framing**: Modal containers must use flex direction (`flex flex-col max-h-[85vh]`) with sticky/fixed header and footer action bars so that the modal title and action buttons remain visible while the form body scrolls smoothly inside (`flex-1 overflow-y-auto p-4 sm:p-6`).
 

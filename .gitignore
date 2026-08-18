@@ -63,6 +63,13 @@ deploy-panel/
 # Tool-generated cache/logs (Playwright MCP console dumps)
 .playwright-mcp/
 
+# Ad-hoc debug/testing screenshots saved straight to the repo root (by
+# browser automation or manual "save as") - these aren't project assets,
+# they're throwaway captures from testing a change. Root-anchored so it
+# doesn't touch real image assets that live in subfolders (assets/,
+# icons/, php/uploads/images/).
+/*.png
+
 # Not part of this project - unrelated cloned repo used to help other AI tooling
 agency-agents/
 
