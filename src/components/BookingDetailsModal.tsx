@@ -9,6 +9,7 @@ import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
+import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -87,6 +88,15 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // banner, so the empty received-by field(s) it's pointing at get a visual
   // highlight - the generic Edit button shouldn't highlight anything.
   const [highlightReceiverFields, setHighlightReceiverFields] = useState(false);
+  const [isIdModalOpen, setIsIdModalOpen] = useState(false);
+
+  const handleOpenId = () => {
+    if (onOpenIdVerification) {
+      onOpenIdVerification();
+    } else {
+      setIsIdModalOpen(true);
+    }
+  };
 
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -320,7 +330,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action Banner 1: Check-in ID Verification */}
-          {onOpenIdVerification && !isEditing && (
+          {!isEditing && (
             <div
               className={`booking-details-modal__id-btn w-full mb-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
                 guest.idVerificationStatus === 'Complete'
@@ -334,7 +344,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </span>
               <button
                 type="button"
-                onClick={onOpenIdVerification}
+                onClick={handleOpenId}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
                   guest.idVerificationStatus === 'Complete'
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -343,6 +353,29 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               >
                 <Upload className="w-3.5 h-3.5" />
                 {guest.idVerificationStatus === 'Complete' ? 'View / Re-upload ID' : 'Upload Guest ID'}
+              </button>
+            </div>
+          )}
+
+          {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
+          {guest.isForeignGuest && !g.c_form_filed && !g.cFormFiled && !isEditing && (
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>Foreign Guest: C-Form Filing Required</span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await markCFormFiled(guest.id);
+                  if (ok) {
+                    showToast('C-Form marked as filed', { type: 'success' });
+                    onSave({ ...guest, cFormFiled: true, c_form_filed: true } as any);
+                  }
+                }}
+                className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-2xs shrink-0"
+              >
+                Mark C-Form Filed
               </button>
             </div>
           )}
@@ -766,6 +799,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         blockedDates={getBlockedDateStrings()}
         heading={t('select_dates_for_room_heading', 'Select dates - {{room}}').replace('{{room}}', guest.roomNumber || t('this_property_label', 'this property'))}
       />
+
+      {isIdModalOpen && (
+        <CheckinVerificationModal
+          guest={guest}
+          isOpen={isIdModalOpen}
+          onClose={() => setIsIdModalOpen(false)}
+          onVerificationComplete={async () => {
+            setIsIdModalOpen(false);
+            await onSave({ ...guest, idVerificationStatus: 'Complete' });
+          }}
+        />
+      )}
     </>
   );
 };
