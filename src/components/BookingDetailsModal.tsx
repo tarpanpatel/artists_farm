@@ -137,10 +137,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [editNotes, setEditNotes] = useState('');
   const [editIsForeignGuest, setEditIsForeignGuest] = useState(false);
 
+  const [cFormFiledState, setCFormFiledState] = useState<boolean>(false);
+  const [cFormNumberState, setCFormNumberState] = useState<string>('');
+  const [isSavingCForm, setIsSavingCForm] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (guest) {
+      const g = guest as any;
+      const isFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+      setCFormFiledState(isFiled);
+      setCFormNumberState(g.c_form_number || g.cFormNumber || '');
+    }
+  }, [guest]);
+
   if (!guest) return null;
 
   const g = guest as any;
-  const isCFormFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
+  const isCFormFiled = cFormFiledState;
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
@@ -403,15 +416,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={async () => {
-                  const ok = await markCFormFiled(guest.id, true);
-                  if (ok) {
-                    const filedAt = new Date().toISOString();
-                    showToast('C-Form marked as filed', { type: 'success' });
-                    await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true } as any);
-                  } else {
-                    showToast('Failed to update C-Form status', { type: 'error' });
-                  }
+                onClick={() => {
+                  setCFormFiledState(true);
+                  const el = document.getElementById('c-form-number-input');
+                  if (el) el.focus();
                 }}
                 className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-2xs shrink-0"
               >
@@ -694,7 +702,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       className={`p-3 rounded-xl border transition-all ${
                         !isCFormFiled
                           ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40 ring-2 ring-rose-300 dark:ring-rose-800 animate-pulse'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'
+                          : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/30'
                       }`}
                     >
                       <label className={fieldLabelClass}>{t('foreign_national_guest_label', 'Foreign National Guest')}</label>
@@ -702,22 +710,27 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
                           <input
                             type="checkbox"
-                            checked={isCFormFiled}
+                            checked={cFormFiledState}
                             onChange={async (e) => {
                               const isChecked = e.target.checked;
-                              const ok = await markCFormFiled(guest.id, isChecked);
-                              if (ok) {
-                                const filedAt = isChecked ? new Date().toISOString() : null;
-                                showToast(isChecked ? `C-Form marked as filed` : `C-Form marked as pending`, { type: 'success' });
-                                await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: isChecked, c_form_filed: isChecked } as any);
+                              if (!isChecked) {
+                                const ok = await markCFormFiled(guest.id, false, '');
+                                if (ok) {
+                                  setCFormFiledState(false);
+                                  setCFormNumberState('');
+                                  showToast('C-Form marked as pending', { type: 'success' });
+                                  await onSave({ ...guest, cFormFiledAt: null, cFormFiled: false, c_form_filed: false, cFormNumber: '', c_form_number: '' } as any);
+                                } else {
+                                  showToast('Failed to update C-Form status', { type: 'error' });
+                                }
                               } else {
-                                showToast('Failed to update C-Form status', { type: 'error' });
+                                setCFormFiledState(true);
                               }
                             }}
-                            className="w-4.5 h-4.5 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
+                            className="w-4.5 h-4.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                           />
-                          <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : ''}>
-                            {isCFormFiled ? 'C-Form Filed' : '⚠️ C-Form Pending — Check to Mark Filed'}
+                          <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : 'text-emerald-800 dark:text-emerald-300 font-bold'}>
+                            {cFormFiledState ? 'C-Form Filed' : '⚠️ C-Form Pending — Check to Mark Filed'}
                           </span>
                           {guest.cFormFiledAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
@@ -726,6 +739,40 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           )}
                         </label>
                       </div>
+
+                      {cFormFiledState && (
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <input
+                            id="c-form-number-input"
+                            type="text"
+                            value={cFormNumberState}
+                            onChange={(e) => setCFormNumberState(e.target.value)}
+                            placeholder="C-Form Confirmation No."
+                            className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={isSavingCForm}
+                            onClick={async () => {
+                              setIsSavingCForm(true);
+                              const ok = await markCFormFiled(guest.id, true, cFormNumberState);
+                              setIsSavingCForm(false);
+                              if (ok) {
+                                const filedAt = new Date().toISOString();
+                                setCFormFiledState(true);
+                                showToast('C-Form saved & Telegram notification sent', { type: 'success' });
+                                await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true, cFormNumber: cFormNumberState, c_form_number: cFormNumberState } as any);
+                              } else {
+                                showToast('Failed to save C-Form details', { type: 'error' });
+                              }
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+                          >
+                            {isSavingCForm ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Save</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

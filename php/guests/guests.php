@@ -864,11 +864,44 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 $guestId = validateGuestIdOrRespond($input['id'] ?? null);
                 if ($guestId === null) break;
                 try {
-                    // Un-filing (staff caught a mistake) just clears the timestamp again.
                     $filed = !array_key_exists('filed', $input) || !empty($input['filed']);
-                    $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ? WHERE id = ? AND property_id = ?");
-                    $stmt->execute([$filed ? date('Y-m-d H:i:s') : null, $guestId, $propertyId]);
-                    echo json_encode(['status' => 'success', 'message' => $filed ? 'Marked as filed' : 'Marked as not filed']);
+                    $cFormNumber = isset($input['c_form_number']) ? trim((string)$input['c_form_number']) : (isset($input['cFormNumber']) ? trim((string)$input['cFormNumber']) : null);
+                    $filedAt = $filed ? date('Y-m-d H:i:s') : null;
+
+                    $stmt = $pdo->prepare("UPDATE guests SET c_form_filed_at = ?, c_form_number = ? WHERE id = ? AND property_id = ?");
+                    $stmt->execute([$filedAt, $filed ? $cFormNumber : null, $guestId, $propertyId]);
+
+                    // Send Telegram notification when C-Form is saved
+                    if ($filed) {
+                        try {
+                            $gStmt = $pdo->prepare("SELECT guest_name FROM guests WHERE id = ? AND property_id = ?");
+                            $gStmt->execute([$guestId, $propertyId]);
+                            $guestName = $gStmt->fetchColumn() ?: 'Guest';
+
+                            require_once __DIR__ . '/../telegram/sender.php';
+                            require_once __DIR__ . '/../telegram/templates.php';
+
+                            $cNumText = !empty($cFormNumber) ? $cFormNumber : '(none)';
+                            $editMsg = TelegramTemplates::render($pdo, 'booking_updated', [
+                                'guest_name'   => $guestName,
+                                'booking_id'   => $guestId,
+                                'changes_list' => "• <b>C-Form Status:</b> Filed (No: {$cNumText})",
+                            ]);
+                            sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $editMsg);
+                        } catch (Exception $e) {
+                            error_log("Failed to send C-Form Telegram notification: " . $e->getMessage());
+                        }
+                    }
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => $filed ? 'C-Form marked as filed' : 'C-Form marked as not filed',
+                        'data' => [
+                            'c_form_filed_at' => $filedAt,
+                            'c_form_filed' => $filed,
+                            'c_form_number' => $cFormNumber
+                        ]
+                    ]);
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update C-Form status: ' . $e->getMessage()]);

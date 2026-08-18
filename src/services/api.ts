@@ -1193,12 +1193,12 @@ export async function checkinGuestInDB(guestId: string): Promise<boolean> {
   }
 }
 
-export async function markCFormFiled(guestId: string, filed: boolean = true): Promise<boolean> {
+export async function markCFormFiled(guestId: string, filed: boolean = true, cFormNumber?: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=mark_c_form_filed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: guestId, filed }),
+      body: JSON.stringify({ id: guestId, filed, c_form_number: cFormNumber }),
     });
     const json = await res.json();
     return json.status === 'success';

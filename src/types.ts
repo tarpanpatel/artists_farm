@@ -21,6 +21,8 @@ export interface Guest {
   idVerificationStatus?: 'Pending' | 'Complete';
   isForeignGuest?: boolean;
   cFormFiledAt?: string | null;
+  cFormNumber?: string | null;
+  c_form_number?: string | null;
   otaSource?: string | null;
   otaSourceLabel?: string | null;
   icalExternalEventId?: string | null;
