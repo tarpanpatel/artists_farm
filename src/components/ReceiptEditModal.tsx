@@ -291,7 +291,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setGstEnabled(false);
       setGuestGstin('');
       setGuestBillingName('');
-      setAdvanceReceivedBy('');
+      // Was hardcoded to '' regardless of what's already on the guest record
+      // - "Received By (Booking)" always opened blank at checkout even when
+      // the advance was recorded as received by someone at booking time,
+      // while "Pending Received By" right next to it correctly loaded from
+      // the guest. Same fix BookingDetailsModal.tsx already applies.
+      setAdvanceReceivedBy((guest as any).advance_received_by || guest.advanceReceivedBy || '');
       setPendingReceivedBy((guest as any).pending_received_by || guest.pendingReceivedBy || '');
 
       const lodgingDue = (guest.totalAmount ?? guest.roomRate ?? 0) - (guest.advanceAmount || 0);
@@ -487,6 +492,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       foodBill: updatedFoodBill,
       totalAmount: totalChargesCalculated,
       advanceAmount: advancePaid,
+      // advanceReceivedBy (the "Received By (Booking)" dropdown) was never
+      // included here - the ...guest spread above always won with the
+      // original, unedited value, so correcting who received the advance at
+      // checkout was silently discarded on save. Same bug class as
+      // pendingReceivedBy below, which already had this fix.
+      advanceReceivedBy: advanceReceivedBy || guest.advanceReceivedBy,
       pendingReceivedBy: pendingReceivedBy || guest.pendingReceivedBy,
     });
     return true;

@@ -198,8 +198,9 @@ label,
 .app-label,
 .input__label {
   font-family: inherit !important;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 10px !important;
+  line-height: 1.3 !important;
+  font-weight: 600;
 }
 
 /* Global Date Input - Click Anywhere to Open Picker */
