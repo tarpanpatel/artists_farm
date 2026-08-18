@@ -65,3 +65,9 @@ This document defines the core visual design tokens, component architecture patt
 ## 6. Section Headers & Horizontal Alignment Rules
 - **Container Padding Integrity**: All sub-section headers (e.g. *Current Guest Served Dishes*, *Active System Users & Staff*, *Recent Receipt Audit Logs*) must include horizontal padding (`px-1`) matching the outer bounds of cards and search boxes below them. Never allow section titles to sit unpadded or flush against left margins.
 - **Title & Pill Counter Hierarchy**: Section headers must feature bold title typography (`font-extrabold text-slate-900 dark:text-white text-sm tracking-wide`) accompanied by an aligned Lucide SVG icon and a structured pill badge counter (`text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60`).
+
+---
+
+## 7. Quantity Steppers & Mobile Cart Pull Tab
+- **Square Quantity Step Buttons**: All `+` and `-` quantity steppers (in POS cards, cart rows, and order sheets) must use square shapes (`w-8 h-8 rounded-lg` / `w-9 h-9 rounded-xl font-extrabold flex items-center justify-center`) with generous touch targets. Do not use small circular pill buttons.
+- **Top Pull-Tab Mobile Cart Handle**: Mobile cart bottom sheets must be expandable/collapsible via a top center pull-tab handle attached to the upper edge of the cart sheet featuring `<ChevronUp>` when collapsed and `<ChevronDown>` when expanded.
