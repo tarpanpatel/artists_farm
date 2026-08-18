@@ -136,6 +136,18 @@ const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/gi, replace: '📝 <b>Details:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Method:(<\/b>)?/gi, replace: '💳 <b>Method:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:(<\/b>)?/gi, replace: '🔴 <b>DEBIT AMOUNT:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Checked In:(<\/b>)?/gi, replace: '📅 <b>Checked In:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Uploaded:(<\/b>)?/gi, replace: '📋 <b>Uploaded:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<i>)?Open Complete Check-in for this booking to finish it\.(<\/i>)?/gi, replace: '👉 <i>Open Complete Check-in for this booking to finish it.</i>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Requested by:(<\/b>)?/gi, replace: '👤 <b>Requested by:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Requested By:(<\/b>)?/gi, replace: '👤 <b>Requested By:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Scheduled:(<\/b>)?/gi, replace: '📅 <b>Scheduled:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfilled By:(<\/b>)?/gi, replace: '👤 <b>Fulfilled By:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfilled by:(<\/b>)?/gi, replace: '👤 <b>Fulfilled by:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Pending for:(<\/b>)?/gi, replace: '⏱️ <b>Pending for:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW SERVICE REQUEST(<\/b>)?/gi, replace: '🛎️ <b>NEW SERVICE REQUEST</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST FULFILLED(<\/b>)?/gi, replace: '✅ <b>SERVICE REQUEST FULFILLED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST STILL PENDING(<\/b>)?/gi, replace: '⏰ <b>SERVICE REQUEST STILL PENDING</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/gi, replace: '🏃‍♂️ <i>Staff, please collect and tap below when' },
 ];
 

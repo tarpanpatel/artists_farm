@@ -257,7 +257,18 @@ if ($action === 'get_templates') {
                 $rows = $pdo->query("SELECT * FROM system_telegram_templates ORDER BY category ASC, title ASC")->fetchAll(PDO::FETCH_ASSOC);
             }
 
+            require_once __DIR__ . '/templates.php';
             foreach ($rows as $r) {
+                if (class_exists('TelegramTemplates') && method_exists('TelegramTemplates', 'restoreEmojis')) {
+                    $cleanContent = TelegramTemplates::restoreEmojis($r['content']);
+                    if ($cleanContent !== $r['content']) {
+                        try {
+                            $upd = $pdo->prepare("UPDATE system_telegram_templates SET content = ? WHERE id = ?");
+                            $upd->execute([$cleanContent, $r['id']]);
+                            $r['content'] = $cleanContent;
+                        } catch (Exception $ex) {}
+                    }
+                }
                 $templates[$r['template_key']] = $r;
             }
         } catch (Exception $e) {

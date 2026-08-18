@@ -117,6 +117,18 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/i' => '📝 <b>Details:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Method:(<\/b>)?/i' => '💳 <b>Method:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/i' => '🔴 <b>DEBIT AMOUNT:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Checked In:(<\/b>)?/i' => '📅 <b>Checked In:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Uploaded:(<\/b>)?/i' => '📋 <b>Uploaded:</b>',
+                '/\?[^\x00-\x7F]*\s*(<i>)?Open Complete Check-in for this booking to finish it\.(<\/i>)?/i' => '👉 <i>Open Complete Check-in for this booking to finish it.</i>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Requested by:(<\/b>)?/i' => '👤 <b>Requested by:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Requested By:(<\/b>)?/i' => '👤 <b>Requested By:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Scheduled:(<\/b>)?/i' => '📅 <b>Scheduled:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Fulfilled By:(<\/b>)?/i' => '👤 <b>Fulfilled By:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Fulfilled by:(<\/b>)?/i' => '👤 <b>Fulfilled by:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Pending for:(<\/b>)?/i' => '⏱️ <b>Pending for:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?NEW SERVICE REQUEST/i' => '🛎️ <b>NEW SERVICE REQUEST</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST FULFILLED/i' => '✅ <b>SERVICE REQUEST FULFILLED</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST STILL PENDING/i' => '⏰ <b>SERVICE REQUEST STILL PENDING</b>',
                 '/\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/i' => '🏃‍♂️ <i>Staff, please collect and tap below when',
             ];
             
