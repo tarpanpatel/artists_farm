@@ -1544,11 +1544,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {t('order_billing_target_label', 'Billing')}
                 </span>
                 {/* Segmented Switcher */}
-                <div className="inline-flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0">
+                <div className="inline-flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 border border-slate-200 dark:border-slate-700">
                   <button
                     type="button"
                     onClick={() => setOrderMode('guest')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       orderMode === 'guest'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1559,7 +1559,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => setOrderMode('walkin')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       orderMode === 'walkin'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
