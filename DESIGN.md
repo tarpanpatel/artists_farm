@@ -155,3 +155,15 @@ This document defines the core visual design tokens, component architecture patt
 - **Global CSS Enforcement (`src/index.css`)**: The global `label, .app-label, .input__label` rules enforce `font-size: 10px !important; line-height: 1.3 !important; font-weight: 600;` to guarantee 100% uniform label typography across all forms, filters, modals, search inputs, and settings panels site-wide.
 - **Section Headings Are a Separate Role**: Section headings (e.g. *Food Orders & Incidentals Log*, *Final Checkout Split Settlement*) are visually distinct section dividers (`text-xs` to `text-sm font-bold`), separate from field `<label>` elements.
 
+---
+
+## 19. Tab Navigation Bar Scrollbar Prohibition
+- **No Visible Scrollbars on Tab Bars**: ALL tab navigation bars, sub-tab controls, category pill bars, and filter strips MUST NEVER display visible scrollbars on the right or bottom of the tabs.
+- **Implementation Rule**: Tab containers must use `overflow-x-auto no-scrollbar` (which applies `scrollbar-width: none` and hides WebKit scrollbars via `::-webkit-scrollbar { display: none }`). This ensures tabs remain touch-swipeable on mobile and trackpad without showing any scrollbar line or thumb artifact.
+
+---
+
+## 20. Tab Font Weight Consistency Rule (No Font-Bold Switch on Selection)
+- **No Font Weight Jump on Selection**: ALL tab buttons (primary navigation tabs, sub-tab bars, category pills, filter toggles) MUST preserve a consistent font weight whether active or inactive (`font-semibold`).
+- **Forbidden Font Weight Toggling**: Do NOT switch tab font weight to `font-bold` or `font-extrabold` when selected. Changing font weight on active selection alters text element width, causing layout reflow, text jitter, and pixel shifting. Active tab states must be communicated exclusively via background color, text color, border accents, or subtle shadows.
+
