@@ -226,8 +226,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   }, []);
 
-  // Smart Polling / Auto-Refresh state (15s interval matching kitchen.php)
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  // Smart Polling / Auto-Refresh state (15s interval matching kitchen.php).
+  // Always on, deliberately not user-toggleable - a KDS's whole job is
+  // showing new orders as they arrive, and a staff member pausing it during
+  // a rush (then forgetting to turn it back on) means orders silently stop
+  // appearing until someone happens to hit manual Sync. The manual Sync
+  // button below covers "I want fresh data right now" without needing a way
+  // to disable the automatic one.
   const [lastSyncTime, setLastSyncTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   const [syncCountdown, setSyncCountdown] = useState(15);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -261,8 +266,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   // Smart Polling countdown & 15-second background sync logic
   React.useEffect(() => {
-    if (!autoSyncEnabled) return;
-
     const timer = setInterval(() => {
       setTickNow(Date.now()); // drives live elapsed timers on KDS ticket cards
       setSyncCountdown((prev) => {
@@ -275,7 +278,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoSyncEnabled, executeSync]);
+  }, [executeSync]);
 
   const triggerManualSync = () => {
     executeSync(true);
@@ -1148,32 +1151,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             {/* Smart Polling / Live Sync Bar */}
             <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAutoSyncEnabled(!autoSyncEnabled)}
-                  className={`app-toggle-switch relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    autoSyncEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
-                  }`}
-                  role="switch"
-                  aria-checked={autoSyncEnabled}
-                  title={autoSyncEnabled ? t('auto_sync_active_tooltip') : t('auto_sync_paused_tooltip')}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      autoSyncEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-                {/* Static label instead of swapping "Live KDS Sync"/"Sync Paused" text,
-                    and no separate status dot - the toggle's own position/color and the
-                    Sync button's spin state (below) already carry that signal. */}
+                {/* Always-on live indicator, not a toggle - see the state
+                    declaration above for why this can't be paused. */}
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" title={t('auto_sync_active_tooltip')} />
                 <span className="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
                   {t('auto_sync_label', 'Auto-sync')}
-                  {autoSyncEnabled && (
-                    <span className="font-mono text-slate-400 dark:text-slate-500 font-normal ml-1">
-                      ({syncCountdown}s)
-                    </span>
-                  )}
+                  <span className="font-mono text-slate-400 dark:text-slate-500 font-normal ml-1">
+                    ({syncCountdown}s)
+                  </span>
                 </span>
               </div>
 
