@@ -6,6 +6,39 @@
     <title>Ground Code Resort Management</title>
     <link rel="icon" type="image/png" href="/icons/favicon-32x32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <style>
+      /* Static first-paint loader (18 Aug 2026) - lives here, not in React,
+         specifically so it renders instantly from the HTML alone before the
+         app bundle has even started downloading/parsing/executing, let
+         alone mounted. Any real lag (slow network, cold cache, a low-end
+         phone, or the stale-bundle recovery reload above) would otherwise
+         show a blank white #root for however long that takes. No JS needed
+         to remove it - ReactDOM's render() replaces #root's entire content
+         the moment the real app mounts, so this just gets overwritten. */
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+      }
+      #initial-loader__spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #dbeafe;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: initial-loader-spin 0.8s linear infinite;
+      }
+      @keyframes initial-loader-spin {
+        to { transform: rotate(360deg); }
+      }
+      @media (prefers-color-scheme: dark) {
+        #initial-loader { background: #0f172a; }
+        #initial-loader__spinner { border-color: #1e293b; border-top-color: #60a5fa; }
+      }
+    </style>
     <script>
       // Custom CSS override, injected via runtime DOM API rather than a
       // static <link> tag on purpose: Vite's HTML plugin treats a literal
@@ -26,9 +59,45 @@
         document.head.appendChild(link);
       })();
     </script>
+    <script>
+      // Self-healing recovery for "blank white page after reopening a
+      // backgrounded PWA" (18 Aug 2026): sw.js is network-first for this
+      // HTML, but falls back to whatever copy it last cached if the
+      // network fetch fails - which can happen for a moment right as a
+      // suspended/killed PWA wakes up and reconnects. If that cached copy
+      // predates a deploy since then, it references a hashed JS bundle
+      // (deploy-staging.ps1 runs `rsync --delete`) that no longer exists
+      // on the server, so the module script below 404s - main.tsx never
+      // runs, so there's nothing left to catch or display this failure.
+      // Listening for that one specific failure and forcing a real,
+      // cache-busted reload resolves it automatically within a second or
+      // two instead of leaving a permanently blank screen. Guarded by
+      // sessionStorage so a genuinely offline device (no network at all,
+      // reload would fail the same way) gets exactly one retry, not a
+      // reload loop.
+      (function () {
+        var alreadyRetried = sessionStorage.getItem('sw_stale_reload_attempted');
+        window.addEventListener('error', function (event) {
+          var target = event.target;
+          if (
+            target &&
+            target.tagName === 'SCRIPT' &&
+            target.src &&
+            target.src.indexOf('/assets/') !== -1 &&
+            !alreadyRetried
+          ) {
+            sessionStorage.setItem('sw_stale_reload_attempted', '1');
+            window.location.href = window.location.pathname + window.location.search +
+              (window.location.search ? '&' : '?') + '_r=' + Date.now() + window.location.hash;
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-loader"><div id="initial-loader__spinner"></div></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
