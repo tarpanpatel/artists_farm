@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { AlertTriangle, Info, Trash2, X } from 'lucide-react';
 import { t } from '../i18n/en';
 
@@ -69,6 +69,26 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
       setPendingDialog(null);
     }
   };
+
+  // A pending confirm() is a promise some now-possibly-unmounted component is
+  // still awaiting - this provider sits at the app root above the router, so
+  // without this, a delete confirmation queued right before the user clicks
+  // to a different tab (an ordinary "clicked delete, had second thoughts,
+  // clicked away" flow, not an edge case) would silently resurface later,
+  // stacked on top of unrelated UI on a page that has nothing to do with the
+  // original delete. Auto-cancel on navigation instead of leaving it pending.
+  const pendingDialogRef = useRef(pendingDialog);
+  pendingDialogRef.current = pendingDialog;
+  useEffect(() => {
+    const cancelPending = () => {
+      if (pendingDialogRef.current) {
+        pendingDialogRef.current.resolve(false);
+        setPendingDialog(null);
+      }
+    };
+    window.addEventListener('hashchange', cancelPending);
+    return () => window.removeEventListener('hashchange', cancelPending);
+  }, []);
 
   return (
     <ConfirmContext.Provider value={{ confirm, alertModal }}>

@@ -139,12 +139,29 @@ if (!class_exists('TelescopeLogger')) {
             // Unshift new entry to top
             array_unshift($logs, $entry);
 
-            // Cap at last 300 log entries
-            if (count($logs) > 300) {
-                $logs = array_slice($logs, 0, 300);
+            // Cap at 300 entries PER PORTAL, not 300 total - a single portal
+            // (typically 'requests', which logs every API call at INFO level)
+            // would otherwise flush out rare-but-critical entries in every
+            // other portal ('js', 'php', 'sql', 'security', 'telegram', ...)
+            // within minutes of ordinary traffic, silently, with no
+            // indication anything was ever lost. Confirmed 18 Aug 2026: a
+            // single Playwright testing session generated ~280 'requests'
+            // entries in a few minutes, which had already evicted every
+            // earlier 'js'/'telegram' error that same session had found only
+            // moments before - Telescope is meant to be the last line of
+            // defense for spotting real bugs, and a flat shared cap defeats
+            // that the moment traffic volume is nontrivial.
+            $perPortalCounts = [];
+            $capped = [];
+            foreach ($logs as $log) {
+                $p = $log['portal'] ?? 'requests';
+                $perPortalCounts[$p] = ($perPortalCounts[$p] ?? 0) + 1;
+                if ($perPortalCounts[$p] <= 300) {
+                    $capped[] = $log;
+                }
             }
 
-            @file_put_contents($file, json_encode($logs, JSON_PRETTY_PRINT), LOCK_EX);
+            @file_put_contents($file, json_encode($capped, JSON_PRETTY_PRINT), LOCK_EX);
         }
 
         /**

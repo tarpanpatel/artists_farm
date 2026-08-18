@@ -379,9 +379,16 @@ export const Navigation: React.FC<NavigationProps> = ({
       };
       return (
         <div key={node.id} className="pt-1 navigation__node">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={handleHeaderClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleHeaderClick();
+              }
+            }}
             className={`w-full flex items-center justify-between ${depth === 0 ? 'px-3 py-2.5 text-sm font-semibold' : 'px-2.5 py-2 text-[13px] font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
@@ -412,7 +419,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 )}
               </button>
             </div>
-          </button>
+          </div>
 
           {isExpanded && (
             <div className={`${depth === 0 ? 'pl-3 border-l-2 border-slate-100 dark:border-slate-700 ml-3' : 'pl-3 border-l border-amber-200 dark:border-amber-800/50 ml-2'} py-1 space-y-1 my-1 navigation__node-children`}>

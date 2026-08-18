@@ -538,12 +538,19 @@ function generateDemoData($pdo, $propertyId) {
         // for the new "Convert to Booking" feature to act on. clearDemoData()
         // below has always known how to clean these up (scoped per-room, same
         // as ICalSyncManager::getBlockedDates()) but nothing ever actually
-        // generated them - this was the missing half. Placed well past the
-        // guest-booking window (+7 days max above) so there's no risk of
-        // colliding with a real generated stay on the same room; real OTA
-        // blocks are also typically booked further ahead than confirmed
-        // walk-ins anyway, so this reads as realistic, not just conveniently
-        // empty.
+        // generated them - this was the missing half. Originally placed at a
+        // fixed +12/+20 day offset on the assumption that guest bookings only
+        // ever reached +7 days out - that stopped being true once the "Advance
+        // bookings beyond $windowEnd" block above started generating real
+        // stays up to +84 days out, and a fixed offset then had no way to
+        // notice a collision (confirmed 18 Aug 2026: Room 102's "Booking.com
+        // Calendar (Demo)" block landed directly on top of a real future
+        // guest's stay, showing the room as simultaneously booked and
+        // OTA-closed). Retry against this room's own bookings the same way
+        // the future-booking placement above does, instead of trusting a
+        // fixed offset - still tries the original 12/20-day placement first
+        // since that's what reads as realistic, only falling back to a
+        // search once that specific offset is actually taken.
         if (count($rooms) >= 2) {
             $otaDemoBlocks = [
                 [
@@ -568,6 +575,34 @@ function generateDemoData($pdo, $propertyId) {
 
             foreach ($otaDemoBlocks as $block) {
                 if (empty($block['room']['id'])) continue;
+
+                $blockRoomId = $block['room']['id'];
+                $ownBookingRanges = [];
+                foreach ($allBookings as $b) {
+                    if ((int)$b['room_id'] === (int)$blockRoomId) {
+                        $ownBookingRanges[] = ['start' => new DateTime($b['checkin']), 'end' => new DateTime($b['checkout'])];
+                    }
+                }
+
+                $candidateOffset = $block['start_offset'];
+                $placedStart = null;
+                $placedEnd = null;
+                for ($attempt = 0; $attempt < 30; $attempt++) {
+                    $candidateStart = (clone $today)->modify('+' . $candidateOffset . ' days');
+                    $candidateEnd = (clone $today)->modify('+' . ($candidateOffset + $block['nights']) . ' days');
+                    $overlaps = false;
+                    foreach ($ownBookingRanges as $range) {
+                        if ($candidateStart < $range['end'] && $candidateEnd > $range['start']) { $overlaps = true; break; }
+                    }
+                    if (!$overlaps) {
+                        $placedStart = $candidateStart;
+                        $placedEnd = $candidateEnd;
+                        break;
+                    }
+                    $candidateOffset = rand(7, 80);
+                }
+                if ($placedStart === null) continue;
+
                 $configStmt = $pdo->prepare("
                     INSERT INTO ical_sync_configs (property_id, service_type, service_name, ical_url, sync_enabled, sync_direction, is_demo, last_sync)
                     VALUES (?, ?, ?, ?, 1, 'bidirectional', 1, NOW())
@@ -580,8 +615,8 @@ function generateDemoData($pdo, $propertyId) {
                 ]);
                 $configId = $pdo->lastInsertId();
 
-                $eventStart = (clone $today)->modify('+' . $block['start_offset'] . ' days')->format('Y-m-d 00:00:00');
-                $eventEnd = (clone $today)->modify('+' . ($block['start_offset'] + $block['nights']) . ' days')->format('Y-m-d 00:00:00');
+                $eventStart = $placedStart->format('Y-m-d 00:00:00');
+                $eventEnd = $placedEnd->format('Y-m-d 00:00:00');
                 $eventData = json_encode(['source' => 'ical', 'source_label' => $block['service_name']]);
 
                 $eventStmt = $pdo->prepare("

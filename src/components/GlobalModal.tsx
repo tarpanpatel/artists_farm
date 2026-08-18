@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { t } from '../i18n/en';
 
@@ -15,6 +15,25 @@ interface ModalOptions {
 
 export const GlobalModal = () => {
   const [modal, setModal] = useState<ModalOptions | null>(null);
+  const modalRef = useRef(modal);
+  modalRef.current = modal;
+
+  // Same fix as ConfirmDialogContext.tsx's route-change auto-cancel, and for
+  // the same reason: this modal is mounted once at the app root, so without
+  // this, a pending window.showConfirm() (e.g. InventoryManagement.tsx's
+  // "Delete category?") queued right before the user clicks to a different
+  // tab would silently resurface later, stacked on unrelated UI on a page
+  // that has nothing to do with the original action - confirmed 18 Aug 2026.
+  useEffect(() => {
+    const cancelPending = () => {
+      if (modalRef.current) {
+        modalRef.current.onCancel?.();
+        setModal(null);
+      }
+    };
+    window.addEventListener('hashchange', cancelPending);
+    return () => window.removeEventListener('hashchange', cancelPending);
+  }, []);
 
   useEffect(() => {
     // Override window.alert

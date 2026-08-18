@@ -1072,14 +1072,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setAutoSyncEnabled(!autoSyncEnabled)}
-                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    autoSyncEnabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                  className={`app-toggle-switch relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    autoSyncEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
                   }`}
+                  role="switch"
+                  aria-checked={autoSyncEnabled}
                   title={autoSyncEnabled ? t('auto_sync_active_tooltip') : t('auto_sync_paused_tooltip')}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                      autoSyncEnabled ? 'translate-x-3' : 'translate-x-0'
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      autoSyncEnabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -1101,10 +1103,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <button
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 font-semibold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
                   title={t('check_for_updates_tooltip')}
                 >
-                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
                   <span>{t('sync_button')}</span>
                 </button>
               </div>
@@ -1242,26 +1244,28 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isServed ? (
-                              <span className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-700/60 dark:text-slate-400 dark:border-slate-600 min-h-11 flex items-center">
-                                <Check className="w-3.5 h-3.5 inline mr-1" />{t('served_badge')}
+                              <span className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 shrink-0 select-none">
+                                <Check className="w-3.5 h-3.5 shrink-0" />
+                                <span>{t('served_badge', 'Served')}</span>
                               </span>
                             ) : isReady ? (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => handleSendPickupReminder(ord, idx, item)}
-                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
+                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1 cursor-pointer shrink-0"
                                   title={t('send_pickup_reminder_tooltip')}
                                 >
-                                  <Bell className="w-3.5 h-3.5" />
+                                  <Bell className="w-3.5 h-3.5 shrink-0" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="btn-kds-item-served border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-800 font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
+                                  className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                   title={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
                                 >
-                                  {t('served_action_button', 'Mark Served')}
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{t('served_action_button', 'Mark Served')}</span>
                                 </button>
                               </>
                             ) : (
@@ -1269,17 +1273,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSendKitchenReminder(ord, idx, item)}
-                                  className="border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
+                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1 cursor-pointer shrink-0"
                                   title={t('send_reminder_tooltip')}
                                 >
-                                  <Bell className="w-3.5 h-3.5" />
+                                  <Bell className="w-3.5 h-3.5 shrink-0" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
-                                  className="btn-kds-complete border border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer min-h-11 active:scale-95"
+                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                 >
-                                  {t('ready_button', 'Ready?')}
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{t('ready_button', 'Mark Ready')}</span>
                                 </button>
                               </>
                             )}
@@ -2206,64 +2211,121 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <span className="text-slate-400 font-semibold text-[10px]">{smLogsLoading ? '…' : smLogs.length} {t('entries_suffix')}</span>
             </h3>
             
-            <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
-              <DataTable
-                columns={[
-                  {
-                    name: t('date_time_column'),
-                    selector: (row: any) => row.date,
-                    sortable: true,
-                    grow: 1,
-                    cell: (row: any) => (
-                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                        {row.date.split('\n').map((l: string, idx: number) => <div key={idx}>{l}</div>)}
+            <div className="flex-1 overflow-auto pr-2 custom-scrollbar space-y-4">
+              {/* Mobile Card Stack View (md:hidden) */}
+              <div className="md:hidden space-y-2.5">
+                {smLogs.slice((smPage - 1) * 10, smPage * 10).map((row: any, idx: number) => (
+                  <div key={row.id || idx} className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                      <span className="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {row.date}
                       </span>
-                    ),
-                  },
-                  {
-                    name: t('staff_members_column'),
-                    selector: (row: any) => row.staff,
-                    sortable: true,
-                    grow: 2,
-                    cell: (row: any) => (
-                      <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">{row.staff}</span>
-                    ),
-                  },
-                  {
-                    name: t('total_food_consumed_column'),
-                    selector: (row: any) => row.food,
-                    grow: 2,
-                    cell: (row: any) => (
-                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 relative">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-md border border-cyan-200 dark:border-cyan-800 text-[10px]">
+                        {row.type || 'Staff Meal'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Staff Members:</div>
+                      <div className="font-semibold text-slate-800 dark:text-slate-200">{row.staff}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Food Consumed:</div>
+                      <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         {row.food}
                         {row.hasTag && (
-                          <span className="ml-1.5 w-3 h-3 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[7px] text-amber-700 font-semibold border border-amber-300">G</span>
+                          <span className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[8px] text-amber-700 font-semibold border border-amber-300">G</span>
                         )}
-                      </span>
-                    ),
-                  },
-                ]}
-                data={smLogs}
-                progressPending={smLogsLoading}
-                progressComponent={
-                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
+                      </div>
+                    </div>
                   </div>
-                }
-                pagination
-                paginationPerPage={10}
-                paginationRowsPerPageOptions={[10, 25, 50]}
-                highlightOnHover
-                noHeader
-                customStyles={{
-                  headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', backgroundColor: '#f8fafc', paddingLeft: '12px' } },
-                  cells: { style: { fontSize: '10px', paddingLeft: '12px' } },
-                  rows: { style: { minHeight: '44px' } },
-                }}
-                noDataComponent={
-                  <div className="py-8 text-center text-slate-400 font-semibold text-xs">{t('no_meal_logs_text')}</div>
-                }
-              />
+                ))}
+
+                {/* Mobile 10-Item Pagination Controls */}
+                {smLogs.length > 10 && (
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      disabled={smPage === 1}
+                      onClick={() => setSmPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Page {smPage} of {Math.ceil(smLogs.length / 10)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={smPage >= Math.ceil(smLogs.length / 10)}
+                      onClick={() => setSmPage((p) => Math.min(Math.ceil(smLogs.length / 10), p + 1))}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop DataTable (hidden md:block) */}
+              <div className="hidden md:block">
+                <DataTable
+                  columns={[
+                    {
+                      name: t('date_time_column'),
+                      selector: (row: any) => row.date,
+                      sortable: true,
+                      grow: 1,
+                      cell: (row: any) => (
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                          {row.date.split('\n').map((l: string, idx: number) => <div key={idx}>{l}</div>)}
+                        </span>
+                      ),
+                    },
+                    {
+                      name: t('staff_members_column'),
+                      selector: (row: any) => row.staff,
+                      sortable: true,
+                      grow: 2,
+                      cell: (row: any) => (
+                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">{row.staff}</span>
+                      ),
+                    },
+                    {
+                      name: t('total_food_consumed_column'),
+                      selector: (row: any) => row.food,
+                      grow: 2,
+                      cell: (row: any) => (
+                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 relative">
+                          {row.food}
+                          {row.hasTag && (
+                            <span className="ml-1.5 w-3 h-3 inline-flex items-center justify-center bg-amber-200 rounded-sm text-[7px] text-amber-700 font-semibold border border-amber-300">G</span>
+                          )}
+                        </span>
+                      ),
+                    },
+                  ]}
+                  data={smLogs}
+                  progressPending={smLogsLoading}
+                  progressComponent={
+                    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
+                    </div>
+                  }
+                  pagination
+                  paginationPerPage={10}
+                  paginationRowsPerPageOptions={[10, 25, 50]}
+                  highlightOnHover
+                  noHeader
+                  customStyles={{
+                    headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, color: '#94a3b8', backgroundColor: '#f8fafc', paddingLeft: '12px' } },
+                    cells: { style: { fontSize: '10px', paddingLeft: '12px' } },
+                    rows: { style: { minHeight: '44px' } },
+                  }}
+                  noDataComponent={
+                    <div className="py-8 text-center text-slate-400 font-semibold text-xs">{t('no_meal_logs_text')}</div>
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -3006,54 +3068,97 @@ const CurrentGuestServedDishes: React.FC<{ servedLogs: ServedLogEntry[] }> = ({ 
         <span>{t('current_guest_served_dishes_heading')}</span>
         <span className="text-xs text-slate-400 ml-1">({servedLogs.length} {t('total_suffix')})</span>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs overflow-hidden">
-        <DataTable
-          columns={[
-            { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
-            { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-semibold text-slate-900 dark:text-white">#{row.orderId}</span> },
-            { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
-            { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, width: '60px', center: true },
-            { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || '-'}</span> },
-            { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.roomNumber || '-'}</span> },
-            { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
-            {
-              name: t('serve_time_column', 'Serve Delay'),
-              selector: (row: ServedLogEntry) => row.readyAt,
-              width: '100px',
-              cell: (row: ServedLogEntry) => {
-                const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
-                return <span className="font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
-              }
-            },
-            { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
-            { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
-          ]}
-          data={filteredLogs}
-          subHeader={
-            <Input
-              type="text"
-              placeholder={t('search_served_dishes_placeholder')}
-              className="w-full max-w-sm"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-            />
-          }
-          pagination
-          paginationPerPage={15}
-          paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
-          highlightOnHover
-          customStyles={{
-            subHeader: {
-              style: {
-                padding: 0,
-                minHeight: 0,
-                backgroundColor: 'transparent',
-              },
-            },
-            headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-            cells: { style: { paddingTop: '10px', paddingBottom: '10px', paddingLeft: '12px' } },
-          }}
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-xs p-3 space-y-3">
+        <Input
+          type="text"
+          placeholder={t('search_served_dishes_placeholder')}
+          className="w-full"
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
         />
+
+        {/* Mobile Card Stack View (md:hidden) */}
+        <div className="md:hidden space-y-2.5">
+          {filteredLogs.map((row, idx) => {
+            const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
+            return (
+              <div
+                key={row.id || idx}
+                className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs"
+              >
+                {/* Header: Ticket + Dish + Qty + Delay */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">#{row.orderId}</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">
+                        {row.quantity}x {row.itemName}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                      👤 <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || 'Walk-in Resident'}</span>
+                      {row.roomNumber && <span className="text-slate-500 dark:text-slate-400"> ({row.roomNumber})</span>}
+                    </div>
+                  </div>
+                  {diff ? (
+                    <span className="font-mono text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0">
+                      ⏱️ {diff}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Footer: Timestamps & Served By */}
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center gap-x-2 font-mono text-[10px]">
+                    {row.readyAt ? (
+                      <span>Ready: <strong className="text-slate-700 dark:text-slate-300">{formatDateTimeDDMMYYYY(row.readyAt)}</strong></span>
+                    ) : null}
+                    <span>Served: <strong className="text-slate-700 dark:text-slate-300">{formatDateTimeDDMMYYYY(row.servedAt)}</strong></span>
+                  </div>
+                  <div>
+                    By <span className="font-semibold text-slate-800 dark:text-slate-200">{row.servedBy}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop DataTable (hidden md:block) */}
+        <div className="hidden md:block overflow-hidden">
+          <DataTable
+            columns={[
+              { name: 'ID', selector: (row: ServedLogEntry) => row.id, omit: true },
+              { name: t('ticket_column'), selector: (row: ServedLogEntry) => row.orderId, width: '80px', cell: (row: ServedLogEntry) => <span className="font-mono font-semibold text-slate-900 dark:text-white">#{row.orderId}</span> },
+              { name: t('dish_column'), selector: (row: ServedLogEntry) => row.itemName, grow: 2, cell: (row: ServedLogEntry) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">{row.itemName}</span> },
+              { name: t('qty_column'), selector: (row: ServedLogEntry) => row.quantity, width: '60px', center: true },
+              { name: t('guest_column'), selector: (row: ServedLogEntry) => row.guestName, cell: (row: ServedLogEntry) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.guestName || '-'}</span> },
+              { name: t('room_column'), selector: (row: ServedLogEntry) => row.roomNumber, width: '70px', cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.roomNumber || '-'}</span> },
+              { name: t('served_by_column'), selector: (row: ServedLogEntry) => row.servedBy, cell: (row: ServedLogEntry) => <span className="text-slate-600 dark:text-slate-400">{row.servedBy}</span> },
+              {
+                name: t('serve_time_column', 'Serve Delay'),
+                selector: (row: ServedLogEntry) => row.readyAt,
+                width: '100px',
+                cell: (row: ServedLogEntry) => {
+                  const diff = parseAndDiffMinutes(row.readyAt || '', row.servedAt || '');
+                  return <span className="font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-500 whitespace-nowrap">{diff}</span>;
+                }
+              },
+              { name: t('ready_time_column', 'Ready At'), selector: (row: ServedLogEntry) => row.readyAt || '', width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.readyAt ? formatDateTimeDDMMYYYY(row.readyAt) : '-'}</span> },
+              { name: t('served_time_column', 'Served At'), selector: (row: ServedLogEntry) => row.servedAt, width: '140px', cell: (row: ServedLogEntry) => <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDateTimeDDMMYYYY(row.servedAt)}</span> },
+            ]}
+            data={filteredLogs}
+            pagination
+            paginationPerPage={15}
+            paginationRowsPerPageOptions={[10, 15, 25, 50, 100]}
+            highlightOnHover
+            customStyles={{
+              headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+              cells: { style: { paddingTop: '10px', paddingBottom: '10px', paddingLeft: '12px' } },
+            }}
+          />
+        </div>
       </div>
     </div>
   );

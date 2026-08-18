@@ -500,6 +500,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 transition-all outline-none"
                 disabled={isLoading}
                 autoFocus
+                autoComplete="username"
                 ref={mobileInputRef}
               />
             </div>
@@ -539,6 +540,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
                 inputMode="numeric"
                 className="w-full h-11 pl-[72px] pr-4 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 rounded-xl text-left text-sm tracking-[0.25em] font-mono text-slate-900 dark:text-white placeholder:text-slate-400 placeholder:tracking-normal transition-all outline-none"
                 disabled={isLoading}
+                autoComplete="current-password"
                 ref={passcodeInputRef}
               />
             </div>

@@ -511,7 +511,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     </button>
                   </div>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-xs text-slate-500">in Goa Homes</p>
+                    {propertyName && <p className="text-xs text-slate-500">in {propertyName}</p>}
                     {roomId && <p className="text-xs text-slate-400">(ID: {roomId})</p>}
                   </div>
                 </div>
