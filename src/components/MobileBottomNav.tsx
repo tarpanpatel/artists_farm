@@ -135,7 +135,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* Docked Mobile Bottom Navigation Bar */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-lg px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] transition-transform duration-200"
+        className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[54] md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] transition-transform duration-200"
       >
         <div className="flex items-center justify-around max-w-md mx-auto">
           {navItems.map((item) => {

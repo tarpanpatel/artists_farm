@@ -57,14 +57,14 @@ export const strings: Record<string, string> = {
   no_of_guests_label: "No. of Guests",
   checkin_date_label: "Check-In Date *",
   checkout_date_label: "Check-Out Date *",
-  checkin_time_label: "Check-In Time (Optional)",
-  checkout_time_label: "Check-Out Time (Optional)",
+  checkin_time_label: "Check-In Time",
+  checkout_time_label: "Check-Out Time",
   pending_balance_label: "Pending Balance (₹)",
   pending_received_by_label: "Pending Received By",
   pending_received_by_not_received: "Not received",
   guest_notes_label: "Guest Notes",
   foreign_national_guest_label: "Foreign National Guest",
-  additional_charges_label: "Additional Charges (Optional)",
+  additional_charges_label: "Additional Charges",
   save_guest_booking_button: "Save Guest Booking",
 
   // Operational Dashboard

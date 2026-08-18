@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -7,25 +7,6 @@ import { OperationalDashboard } from './components/OperationalDashboard';
 import { PropertySetupWizard } from './components/PropertySetupWizard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
-import { KitchenDashboard } from './components/KitchenDashboard';
-import { KitchenManagement } from './components/KitchenManagement';
-import { InventoryManagement } from './components/InventoryManagement';
-import { PettyCashManagement } from './components/PettyCashManagement';
-import { CashDrawerManager } from './components/CashDrawerManager';
-import { ExpenseItemsManagement } from './components/ExpenseItemsManagement';
-import { StaffManagement } from './components/StaffManagement';
-import { TeamOverviewDashboard } from './components/TeamOverviewDashboard';
-import { AdminControlOverviewDashboard } from './components/AdminControlOverviewDashboard';
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
-import { AuditLogsView } from './components/AuditLogsView';
-import { DataExportCenter } from './components/DataExportCenter';
-import { MenuManager } from './components/MenuManager';
-import { MiscChargesManagement } from './components/MiscChargesManagement';
-import { ServiceRequestsManagement } from './components/ServiceRequestsManagement';
-import { LicenseManagement } from './components/LicenseManagement';
-import { TelegramNotificationModal } from './components/TelegramNotificationModal';
-import { EditPropertyPage } from './components/EditPropertyPage';
-import { WhatsAppTemplateSettings } from './components/WhatsAppTemplateSettings';
 import { GlobalModal } from './components/GlobalModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { ToastProvider, useToast } from './components/ToastContext';
@@ -49,11 +30,47 @@ import { DataLoader, PreloadedData } from './components/DataLoader';
 import { Smartphone, Download, X as CloseIcon, Share, ChevronDown, PlusSquare, MoreVertical } from 'lucide-react';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
-import { PlatformPropertyManagement } from './components/PlatformPropertyManagement';
-import { TenantDashboard } from './components/TenantDashboard';
-import { RootAdminDashboard } from './components/RootAdminDashboard';
 import { MultiKeyPropertyOverview } from './components/MultiKeyPropertyOverview';
 import { getPropertyAndRoomSlugs } from './services/api';
+
+// Code-split: everything below is either a secondary/admin tab that most
+// sessions never open (Kitchen management, Inventory, Analytics, Admin
+// Control, etc.) or a rarely-visited top-level admin route (Tenant/Root
+// dashboards, Platform property management). Keeping these out of the main
+// bundle is what lets the initial paint (login + default dashboard tab) ship
+// a much smaller slice of JS - see TabContentFallback/Suspense usage below.
+const KitchenDashboard = lazy(() => import('./components/KitchenDashboard').then(m => ({ default: m.KitchenDashboard })));
+const KitchenManagement = lazy(() => import('./components/KitchenManagement').then(m => ({ default: m.KitchenManagement })));
+const InventoryManagement = lazy(() => import('./components/InventoryManagement').then(m => ({ default: m.InventoryManagement })));
+const PettyCashManagement = lazy(() => import('./components/PettyCashManagement').then(m => ({ default: m.PettyCashManagement })));
+const CashDrawerManager = lazy(() => import('./components/CashDrawerManager').then(m => ({ default: m.CashDrawerManager })));
+const ExpenseItemsManagement = lazy(() => import('./components/ExpenseItemsManagement').then(m => ({ default: m.ExpenseItemsManagement })));
+const StaffManagement = lazy(() => import('./components/StaffManagement').then(m => ({ default: m.StaffManagement })));
+const TeamOverviewDashboard = lazy(() => import('./components/TeamOverviewDashboard').then(m => ({ default: m.TeamOverviewDashboard })));
+const AdminControlOverviewDashboard = lazy(() => import('./components/AdminControlOverviewDashboard').then(m => ({ default: m.AdminControlOverviewDashboard })));
+const AnalyticsDashboard = lazy(() => import('./components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
+const AuditLogsView = lazy(() => import('./components/AuditLogsView').then(m => ({ default: m.AuditLogsView })));
+const DataExportCenter = lazy(() => import('./components/DataExportCenter').then(m => ({ default: m.DataExportCenter })));
+const MenuManager = lazy(() => import('./components/MenuManager').then(m => ({ default: m.MenuManager })));
+const MiscChargesManagement = lazy(() => import('./components/MiscChargesManagement').then(m => ({ default: m.MiscChargesManagement })));
+const ServiceRequestsManagement = lazy(() => import('./components/ServiceRequestsManagement').then(m => ({ default: m.ServiceRequestsManagement })));
+const LicenseManagement = lazy(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })));
+const TelegramNotificationModal = lazy(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })));
+const EditPropertyPage = lazy(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })));
+const WhatsAppTemplateSettings = lazy(() => import('./components/WhatsAppTemplateSettings').then(m => ({ default: m.WhatsAppTemplateSettings })));
+const PlatformPropertyManagement = lazy(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })));
+const TenantDashboard = lazy(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })));
+const RootAdminDashboard = lazy(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })));
+
+// Small inline fallback for tab-content Suspense boundaries - deliberately
+// NOT LoadingScreen (that's a fixed-inset-0 full-page overlay meant for app
+// boot; using it here would blank out the still-loaded header/sidebar every
+// time someone switches to a not-yet-downloaded tab).
+const TabContentFallback: React.FC = () => (
+  <div className="flex items-center justify-center py-24">
+    <div className="w-8 h-8 rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 animate-spin" />
+  </div>
+);
 
 
 
@@ -1650,22 +1667,25 @@ ${itemsStr}
           />
         )}
 
-        <TelegramNotificationModal
-          isOpen={isTelegramModalOpen}
-          onClose={() => setIsTelegramModalOpen(false)}
-          telegramConfig={telegramConfig}
-          onUpdateConfig={setTelegramConfig}
-          dispatchLogs={telegramLogs}
-          onSendTestNotification={handleSendTestNotification}
-          kitchenModuleEnabled={kitchenEnabled}
-          templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
-        />
+        <Suspense fallback={null}>
+          <TelegramNotificationModal
+            isOpen={isTelegramModalOpen}
+            onClose={() => setIsTelegramModalOpen(false)}
+            telegramConfig={telegramConfig}
+            onUpdateConfig={setTelegramConfig}
+            dispatchLogs={telegramLogs}
+            onSendTestNotification={handleSendTestNotification}
+            kitchenModuleEnabled={kitchenEnabled}
+            templateCustomizationEnabled={!!preloadedData.currentProperty?.telegram_template_customization_enabled}
+          />
+        </Suspense>
 
 
         {/* Main Dashboard Container */}
         {isAuthenticated && (
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
             <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-20 md:pb-4">
+              <Suspense fallback={<TabContentFallback />}>
 
               {/* Property setup wizard - shown at the top when setup is incomplete */}
               {preloadedData.currentProperty && (
@@ -2061,6 +2081,7 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
+              </Suspense>
             </main>
           </div>
         )}
@@ -2337,15 +2358,17 @@ export function App() {
     }
 
     return (
-      <TenantDashboard
-        username={userSession.username}
-        tenantId={dashboardTenantId}
-        tenantInfo={resolvedTenant}
-        onLogout={() => {
-          setUserSession(null);
-          localStorage.removeItem('artists_farm_user_session');
-        }}
-      />
+      <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+        <TenantDashboard
+          username={userSession.username}
+          tenantId={dashboardTenantId}
+          tenantInfo={resolvedTenant}
+          onLogout={() => {
+            setUserSession(null);
+            localStorage.removeItem('artists_farm_user_session');
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -2369,14 +2392,16 @@ export function App() {
       // entire page (not just the Account Settings section).
       <ToastProvider>
         <ConfirmDialogProvider>
-          <RootAdminDashboard
-            username={userSession.username}
-            onLogout={() => {
-              setUserSession(null);
-              localStorage.removeItem('artists_farm_user_session');
-            }}
-            activeRole="Root Admin"
-          />
+          <Suspense fallback={<LoadingScreen message="Loading root admin dashboard..." />}>
+            <RootAdminDashboard
+              username={userSession.username}
+              onLogout={() => {
+                setUserSession(null);
+                localStorage.removeItem('artists_farm_user_session');
+              }}
+              activeRole="Root Admin"
+            />
+          </Suspense>
         </ConfirmDialogProvider>
       </ToastProvider>
     );
@@ -2394,13 +2419,15 @@ export function App() {
     }
 
     return (
-      <PlatformPropertyManagement
-        username={userSession.username}
-        onLogout={() => {
-          setUserSession(null);
-          localStorage.removeItem('artists_farm_user_session');
-        }}
-      />
+      <Suspense fallback={<LoadingScreen message="Loading property management..." />}>
+        <PlatformPropertyManagement
+          username={userSession.username}
+          onLogout={() => {
+            setUserSession(null);
+            localStorage.removeItem('artists_farm_user_session');
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -2419,14 +2446,16 @@ export function App() {
         return <LoadingScreen message="Redirecting to root admin dashboard..." />;
       } else if (userSession.default_tenant_id) {
         return (
-          <TenantDashboard
-            username={userSession.username}
-            tenantId={userSession.default_tenant_id}
-            onLogout={() => {
-              setUserSession(null);
-              localStorage.removeItem('artists_farm_user_session');
-            }}
-          />
+          <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+            <TenantDashboard
+              username={userSession.username}
+              tenantId={userSession.default_tenant_id}
+              onLogout={() => {
+                setUserSession(null);
+                localStorage.removeItem('artists_farm_user_session');
+              }}
+            />
+          </Suspense>
         );
       }
     }
@@ -2453,14 +2482,16 @@ export function App() {
     // Tenant manager - render dashboard directly
     if (userSession.default_tenant_id) {
       return (
-        <TenantDashboard
-          username={userSession.username}
-          tenantId={userSession.default_tenant_id}
-          onLogout={() => {
-            setUserSession(null);
-            localStorage.removeItem('artists_farm_user_session');
-          }}
-        />
+        <Suspense fallback={<LoadingScreen message="Loading tenant dashboard..." />}>
+          <TenantDashboard
+            username={userSession.username}
+            tenantId={userSession.default_tenant_id}
+            onLogout={() => {
+              setUserSession(null);
+              localStorage.removeItem('artists_farm_user_session');
+            }}
+          />
+        </Suspense>
       );
     }
 

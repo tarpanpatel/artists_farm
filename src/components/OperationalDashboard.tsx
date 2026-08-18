@@ -1029,11 +1029,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Add Guest Modal */}
       {showAddGuestModal && (
         <div
-          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-20 sm:pt-24 pb-6 overflow-y-auto"
+          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           onClick={() => setShowAddGuestModal(false)}
         >
           <div
-            className="w-full max-w-lg max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl shadow-2xl relative z-[100000]"
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl relative z-[100000]"
             onClick={(e) => e.stopPropagation()}
           >
             <GuestManagement

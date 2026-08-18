@@ -884,19 +884,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   if (activeMenuItemKey === 'guest_registration') {
     return (
-      <div className="guest-management w-full flex justify-center items-start">
+      <div className="guest-management w-full flex justify-center items-center min-h-[calc(100vh-120px)] my-auto">
         {/* Form Card */}
         <div className="guest-management__registration-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
             <h3 className="guest-management__subtitle text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>
-              {isMultiKeyProperty && roomNumber ? (
+              {isMultiKeyProperty && roomNumber && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 normal-case">
                   {roomNumber}
-                </span>
-              ) : (
-                <span className="font-extrabold">
-                  (Backdating Allowed)
                 </span>
               )}
             </h3>
@@ -1135,18 +1131,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Input
-                  label={t('checkin_time_label', 'Check-In Time (Optional)')}
+                  label={t('checkin_time_label', 'Check-In Time')}
                   type="time"
                   value={checkinTime}
                   onChange={e => setCheckinTime(e.target.value)}
+                  className="text-xs"
                 />
               </div>
               <div>
                 <Input
-                  label={t('checkout_time_label', 'Check-Out Time (Optional)')}
+                  label={t('checkout_time_label', 'Check-Out Time')}
                   type="time"
                   value={checkoutTime}
                   onChange={e => setCheckoutTime(e.target.value)}
+                  className="text-xs"
                 />
               </div>
             </div>
@@ -1161,9 +1159,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Checkboxes Row: Guest Notes, Foreign Guest, Additional Charges (Optional) */}
+            {/* Checkboxes Row: Guest Notes, Foreign Guest, Additional Charges */}
             <div className="flex flex-wrap items-center gap-4 py-1">
-              <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showGuestNotes}
@@ -1173,7 +1171,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <span>Guest Notes</span>
               </label>
 
-              <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isForeignGuest}
@@ -1183,14 +1181,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <span>Foreign National Guest</span>
               </label>
 
-              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showBookingExtraCharges}
                   onChange={(e) => handleToggleExtraChargesCheckbox(e.target.checked)}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span>{t('extra_charges_optional_label', 'Additional Charges (Optional)')}</span>
+                <span>{t('additional_charges_label', 'Additional Charges')}</span>
               </label>
             </div>
 

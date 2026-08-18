@@ -69,8 +69,28 @@ export const Header: React.FC<HeaderProps> = ({
   const { orders } = useKitchenContext();
   const { pendingRequests } = useServiceRequestContext();
   const recentServiceRequests = pendingRequests.slice(0, 5);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY <= 50) {
+        setIsHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 70) {
+        setIsHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        setIsHeaderVisible(true);
+      }
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [lastSeenHash, setLastSeenHash] = useState<string>('');
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
 
   // Calendar Sync quick-action - only shown once at least one iCal feed
   // exists (any room for a MultiKey property, or the property itself for a
@@ -169,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
     // toggle button stays usable while the drawer is open, and below real
     // page modals (bumped to z-[58] by that same CSS rule) and toasts/
     // confirm dialog (z-[9999]/[99999]).
-    <header className="header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 pt-[env(safe-area-inset-top,0px)] transition-colors">
+    <header className={`header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 pt-[env(safe-area-inset-top,0px)] transition-transform duration-300 ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">

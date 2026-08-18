@@ -1394,7 +1394,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       }
                     }}
                     disabled={inCartQty === 0}
-                    className={`w-7 h-7 rounded-md font-bold text-xs flex items-center justify-center transition-all shadow-2xs ${
+                    className={`aspect-square w-8 h-8 rounded-md font-extrabold text-xs flex items-center justify-center transition-all shadow-2xs ${
                       inCartQty === 0
                         ? 'bg-slate-200/60 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 active:scale-90 cursor-pointer'
@@ -1416,7 +1416,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       e.stopPropagation();
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`w-7 h-7 rounded-md font-bold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
+                    className={`aspect-square w-8 h-8 rounded-md font-extrabold text-xs flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-2xs ${
                       isRecentlyAdded
                         ? 'bg-emerald-600 text-white scale-95 animate-pulse'
                         : 'bg-emerald-600 text-white hover:bg-emerald-700'
@@ -1658,19 +1658,19 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                             </h4>
                           </div>
 
-                          <div className="flex items-center border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 overflow-hidden shrink-0">
+                          <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                              className="btn-cart-qty-minus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-minus w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
                               -
                             </button>
-                            <span className="w-6 text-center font-semibold text-slate-900 dark:text-white text-xs">
+                            <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                               {ci.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                              className="btn-cart-qty-plus w-7 h-7 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold text-slate-600 dark:text-slate-400 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                              className="btn-cart-qty-plus w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                             >
                               +
                             </button>
@@ -1708,41 +1708,28 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </div>
             </div>
 
-            {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
+            {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable, Floats Above MobileBottomNav) */}
             {cartItems.length > 0 && (
               <div
-                className={`fixed bottom-0 left-0 right-0 z-[60] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
+                className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-t-2xl shadow-2xl border-t border-slate-200 dark:border-slate-700 transition-all duration-300 flex flex-col ${
                   isCartDrawerExpanded ? 'h-[50vh]' : 'max-h-[260px]'
                 }`}
               >
-                {/* Header Bar */}
-                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-t-2xl border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <div className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-semibold text-xs px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1">
-                      <ShoppingCart className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-500" />
-                      <span>{totalCartCount} Items</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-wider">TOTAL: </span>
-                      <span className="text-emerald-600 font-semibold text-sm">₹{totalCartSum.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                    className="bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-cyan-700 dark:text-cyan-400 font-semibold text-xs px-3 py-1.5 rounded-xl border border-cyan-300 dark:border-cyan-700 shadow-2xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                  >
-                    {isCartDrawerExpanded ? (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    )}
-                    {t(isCartDrawerExpanded ? 'collapse_button' : 'expand_cart_button')}
-                  </button>
-                </div>
+                {/* Right-Aligned White Pull-Tab Attached to Top Edge of Cart */}
+                <button
+                  onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
+                  className="absolute top-0 right-4 -translate-y-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-2px_rgba(0,0,0,0.06)] flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 z-20"
+                  aria-label="Toggle Cart Drawer"
+                >
+                  {isCartDrawerExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[2.5]" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4 text-slate-700 dark:text-slate-300 stroke-[2.5]" />
+                  )}
+                </button>
 
                 {/* Items List (Displays Last 3 items in Collapsed mode, All items in 50vh Expanded mode) */}
-                <div className="pos-cart-items-list p-3 flex-1 overflow-y-auto space-y-2">
+                <div className="pos-cart-items-list p-3 pt-4 flex-1 overflow-y-auto space-y-2">
                   {!isCartDrawerExpanded && cartItems.length > 3 && (
                     <p className="text-[10px] text-cyan-700 font-semibold tracking-wide uppercase text-center pb-1">
                       {t('showing_last_3_items_prefix')} {cartItems.length} {t('showing_last_3_items_suffix')}
@@ -1751,27 +1738,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {visibleDrawerItems.map((ci) => (
                     <div
                       key={ci.menuItem.id}
-                      className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 text-xs text-slate-900"
+                      className="bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <div className="flex-1 pr-1 truncate">
-                        <h4 className="kitchen-management__caption font-semibold text-slate-900 text-xs truncate">
+                        <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate">
                           {ci.menuItem.name} <span className="text-slate-500 font-normal">({`₹${ci.menuItem.price}`})</span>
                         </h4>
                       </div>
 
-                      <div className="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shrink-0">
+                      <div className="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-minus w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           -
                         </button>
-                        <span className="w-6 text-center font-semibold text-slate-900 text-xs">
+                        <span className="w-6 text-center font-extrabold text-slate-900 dark:text-white text-xs">
                           {ci.quantity}
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus w-8 h-8 hover:bg-slate-100 font-semibold text-slate-700 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           +
                         </button>
@@ -1781,12 +1768,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
 
                 {/* Action Footer */}
-                <div className="p-3 bg-white border-t border-slate-200 shrink-0">
+                <div className="p-3 pb-3.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0">
                   <button
                     onClick={handleOrderSubmit}
                     disabled={isOrderSubmitDisabled}
                     title={orderSubmitTitle}
-                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[40px]"
+                    className="btn-send-order-kitchen w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider active:scale-[0.98] min-h-[42px]"
                   >
                     <span>{isSubmittingOrder ? t('sending_order_button', 'Sending...') : 'Send Order to Kitchen'}</span>
                   </button>
