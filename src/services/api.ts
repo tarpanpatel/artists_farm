@@ -1556,7 +1556,8 @@ export async function fetchServiceRequestTypesFromDB(propertyId?: number): Promi
 
 export async function saveServiceRequestTypeInDB(
   type: {
-    type_id: string;
+    id?: number;
+    type_id?: string;
     category: string;
     label: string;
   },

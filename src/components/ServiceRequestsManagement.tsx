@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, X, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, X, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings } from 'lucide-react';
 import {
   ServiceRequestType,
   createServiceRequestInDB,
@@ -8,12 +8,14 @@ import {
   checkStaleServiceRequests,
   fetchServiceRequestTypesFromDB,
   saveServiceRequestTypeInDB,
+  deleteServiceRequestTypeInDB,
   resolveTelegramTemplate,
   getPropertySlug,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { useToast } from './ToastContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { StyledSelect } from './StyledSelect';
 import { Textarea } from './Textarea';
 import { t } from '../i18n/en';
@@ -35,6 +37,8 @@ interface ServiceRequestsManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
 }
 
+const REMINDER_THRESHOLD_MINUTES = 15;
+
 export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps> = ({
   rooms = [],
   isMultiKeyProperty = false,
@@ -42,10 +46,14 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { miscCharges } = useConfigurationData();
   const { requests, loading, refreshRequests } = useServiceRequestContext();
   const [requestTypes, setRequestTypes] = useState<ServiceRequestType[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [editingTypeId, setEditingTypeId] = useState<number | null>(null);
+  const [editingTypeLabel, setEditingTypeLabel] = useState('');
   const [newRoomId, setNewRoomId] = useState<string>('');
   const [newRequestType, setNewRequestType] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -82,25 +90,25 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     loadTypes();
   }, []);
 
-  // DB-driven merged list (system global + property custom types) + Custom addition entry
+  // DB-driven merged list with Custom option AT THE VERY TOP
   const typeOptions = [
-    ...requestTypes.map((rt) => ({
-      value: rt.typeId,
-      label: rt.label,
-      group: rt.category,
-      searchText: `${rt.label} ${rt.category}`.toLowerCase(),
-    })),
     {
       value: '__CUSTOM__',
       label: '➕ Add Custom Service / Charge...',
       group: 'Custom',
       searchText: 'custom add create new charge service request',
     },
+    ...requestTypes.map((rt) => ({
+      value: rt.typeId,
+      label: rt.label,
+      group: rt.category,
+      searchText: `${rt.label} ${rt.category}`.toLowerCase(),
+    })),
   ];
 
-  // Set default selection when types load
+  // Set default selection when types load (default to first non-custom request type if available)
   useEffect(() => {
-    if (requestTypes.length > 0 && !newRequestType) {
+    if (requestTypes.length > 0 && (!newRequestType || newRequestType === '__CUSTOM__')) {
       setNewRequestType(requestTypes[0].typeId);
     }
   }, [requestTypes]);
@@ -123,6 +131,44 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       setNewChargeAmount(String(matchedCharge.default_amount));
     }
   }, [newRequestType, requestTypes, miscCharges]);
+
+  const handleSaveTypeEdit = async (rt: ServiceRequestType) => {
+    if (!editingTypeLabel.trim()) return;
+    const ok = await saveServiceRequestTypeInDB(
+      {
+        id: rt.id,
+        category: rt.category || 'Guest Charges',
+        label: editingTypeLabel.trim(),
+      },
+      rt.propertyId
+    );
+
+    if (ok) {
+      showToast('Custom type updated', { type: 'success' });
+      setEditingTypeId(null);
+      loadTypes();
+    } else {
+      showToast('Failed to update custom type', { type: 'error' });
+    }
+  };
+
+  const handleDeleteType = async (rt: ServiceRequestType) => {
+    const ok = await confirm({
+      title: 'Delete Custom Service Type',
+      message: `Delete "${rt.label}" from your property catalog? Existing logged requests will remain intact.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    const success = await deleteServiceRequestTypeInDB(rt.id, rt.propertyId);
+    if (success) {
+      showToast('Custom type deleted', { type: 'success' });
+      loadTypes();
+    } else {
+      showToast('Failed to delete custom type', { type: 'error' });
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,9 +298,15 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         title={t('guest_service_requests_heading', 'Guest Service Requests')}
         subtitle={t('service_requests_description', 'Housekeeping, maintenance, and other ad-hoc requests — logged by any staff member, nudged to Admin on Telegram.')}
       >
-        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-          {t('new_request_button', 'New Request')}
-        </PageHeaderButton>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="secondary" size="sm" onClick={() => setIsManageModalOpen(true)} className="flex items-center gap-1.5 shadow-xs text-xs">
+            <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            Manage Custom Types
+          </Button>
+          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+            {t('new_request_button', 'New Request')}
+          </PageHeaderButton>
+        </div>
       </PageHeader>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 service-requests-management__list-card">
@@ -383,7 +435,16 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </div>
               )}
               <div className="service-requests-management__form-group">
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">{t('request_type_label', 'Request Type')}</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 service-requests-management__form-label">{t('request_type_label', 'Request Type')}</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsManageModalOpen(true)}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                  >
+                    <Settings className="w-3 h-3" /> Edit / Delete Custom Types
+                  </button>
+                </div>
                 <StyledSelect
                   value={newRequestType}
                   onChange={setNewRequestType}
@@ -453,6 +514,84 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isManageModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-indigo-500" />
+                Manage Custom Service Types
+              </h3>
+              <button onClick={() => setIsManageModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Edit or delete custom charges & service request types added for your property.
+            </p>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
+                <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+                  No custom service types added yet. Use "➕ Add Custom Service / Charge..." in the request modal to create your first custom type.
+                </div>
+              ) : (
+                requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
+                  <div key={rt.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {editingTypeId === rt.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={editingTypeLabel}
+                          onChange={(e) => setEditingTypeLabel(e.target.value)}
+                          className="w-full text-xs"
+                        />
+                        <Button size="sm" variant="success" onClick={() => handleSaveTypeEdit(rt)}>
+                          Save
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setEditingTypeId(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 block truncate">{rt.label}</span>
+                          <span className="text-[10px] text-slate-400 block">{rt.category}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => { setEditingTypeId(rt.id); setEditingTypeLabel(rt.label); }}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteType(rt)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="secondary" size="md" onClick={() => setIsManageModalOpen(false)}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}
