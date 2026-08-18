@@ -6,6 +6,16 @@
     <title>Ground Code Resort Management</title>
     <link rel="icon" type="image/png" href="/icons/favicon-32x32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Mirrors manifest.php's background_color/theme_color (#0B84FF) here
+         in the HTML head - without this, the OS's pre-paint transition frame
+         (between process cold-start and first pixel) defaults to black
+         instead of the app's blue, and iOS has no splash image at all
+         without the apple-mobile-web-app-* tags below. -->
+    <meta name="theme-color" content="#0B84FF" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AF POS" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <style>
       /* Static first-paint loader (18 Aug 2026) - lives here, not in React,
          specifically so it renders instantly from the HTML alone before the

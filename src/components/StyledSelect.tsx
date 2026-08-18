@@ -37,6 +37,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [dropdownPos, setDropdownPos] = useState<{ openUpward: boolean; maxHeight: number }>({ openUpward: false, maxHeight: 240 });
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,25 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
       requestAnimationFrame(() => searchInputRef.current?.focus());
     }
   }, [isOpen, searchable]);
+
+  // Flip the panel above the trigger (and cap its scroll height to whatever
+  // room is actually available) whenever there isn't enough space below -
+  // without this, a select near the bottom of a scrollable modal opens
+  // downward regardless and gets clipped by the modal's own overflow, so
+  // most of a long option list is unreachable no matter how the user
+  // scrolls. Recomputed each time the panel opens rather than tracked
+  // continuously, since the trigger's position only matters at open time.
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const margin = 12;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const available = openUpward ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(120, Math.min(240, available));
+    setDropdownPos({ openUpward, maxHeight });
+  }, [isOpen]);
 
   const selected = options.find((o) => o.value === value);
 
@@ -104,7 +124,9 @@ return (
       </button>
 
       {isOpen && (
-        <div className="app-select-dropdown absolute z-50 mt-1 w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm styled-select__dropdown">
+        <div
+          className={`app-select-dropdown absolute z-50 ${dropdownPos.openUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-full bg-[var(--select-dropdown-bg)] border border-[var(--select-dropdown-border)] rounded-lg shadow-lg overflow-hidden text-sm styled-select__dropdown`}
+        >
           {searchable && (
             <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--select-dropdown-border)] styled-select__search">
               <Search className="w-4 h-4 text-slate-400 shrink-0" />
@@ -118,7 +140,7 @@ return (
               />
             </div>
           )}
-          <div className="max-h-60 overflow-auto py-1 styled-select__options">
+          <div className="overflow-auto py-1 styled-select__options" style={{ maxHeight: dropdownPos.maxHeight }}>
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-2 text-[var(--input-placeholder)] styled-select__empty">{t('no_matches_text')}</div>
             ) : (

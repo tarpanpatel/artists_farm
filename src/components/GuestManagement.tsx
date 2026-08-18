@@ -1215,7 +1215,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     <Plus className="w-3 h-3" />
-                    Add Line
+                    Add Charges
                   </button>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">e.g. Pet Stay, Decoration, Misc</span>
                 </div>
@@ -1233,8 +1233,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             options={[
                               ...miscChargesList.map((m) => {
                                 const chargeLabel = m.label || (m as any).name || 'Misc Charge';
-                                const chargePrice = m.default_amount ?? (m as any).defaultPrice ?? 0;
-                                return { value: chargeLabel, label: `${chargeLabel} (₹${chargePrice})` };
+                                return { value: chargeLabel, label: chargeLabel };
                               }),
                               { value: 'Decoration Fees', label: 'Decoration Fees' },
                               { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
@@ -1242,6 +1241,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                               { value: 'Misc', label: 'Misc (Custom Note)' },
                             ]}
                             buttonClassName="!h-[36px] !rounded-lg !text-xs"
+                            searchable
                           />
                         </div>
 
