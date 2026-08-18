@@ -430,16 +430,21 @@ if ($action === 'fetch_logs' || $action === 'log_event' || $action === 'reset_lo
         const unseenCounts = getUnseenCounts(allLogs);
         updateUnseenBadges(unseenCounts);
 
-        let filtered = allLogs.filter(l => (l.portal || '').toLowerCase() === activePortal.toLowerCase());
+        let filtered = allLogs;
 
         if (search.trim()) {
             const term = search.toLowerCase();
+            // Search across ALL log fields, message, origin, user, severity, portal, and full JSON payload
             filtered = filtered.filter(l =>
                 (l.msg || '').toLowerCase().includes(term) ||
                 (l.origin || '').toLowerCase().includes(term) ||
                 (l.severity || '').toLowerCase().includes(term) ||
-                JSON.stringify(l.details || {}).toLowerCase().includes(term)
+                (l.portal || '').toLowerCase().includes(term) ||
+                (l.user || '').toLowerCase().includes(term) ||
+                JSON.stringify(l).toLowerCase().includes(term)
             );
+        } else {
+            filtered = filtered.filter(l => (l.portal || '').toLowerCase() === activePortal.toLowerCase());
         }
 
         filtered = filtered.filter(l => matchesTimeframe(l, timeframe, dateFrom, dateTo));

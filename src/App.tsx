@@ -1129,12 +1129,19 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
+    // Automatically append current debug URL if not present
+    let outboundMessage = message;
+    if (!outboundMessage.includes('http://') && !outboundMessage.includes('https://')) {
+      const currentUrl = window.location.href;
+      outboundMessage += `\n\n🔗 <b>Source Page:</b> <a href="${currentUrl}">${currentUrl}</a>`;
+    }
+
     // Add pending log entry
     const newLog: TelegramDispatchLog = {
       id: logId,
       timestamp,
       eventType,
-      message,
+      message: outboundMessage,
       status: 'Delivered',
       replyMarkup,
     };
@@ -1148,7 +1155,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       outcome = await sendTelegramAlertDB({
         eventType,
         category,
-        message,
+        message: outboundMessage,
         replyMarkup,
         templateKey,
       });

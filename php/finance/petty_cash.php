@@ -498,8 +498,24 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                        OR (is_system_default = TRUE AND category NOT IN ('Guest Charges', 'Transport', 'Event & Services', 'Services', 'Incidentals', 'Accommodation'))
                 ");
 
-                $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM miscellaneous_catalog WHERE property_id = ? OR property_id = 1");
-                $cntStmt->execute([$propertyId]);
+                // The SELECT below treats property_id=1 as the shared system-default
+                // bucket every property's list is unioned with (WHERE property_id = ?
+                // OR property_id = 1). The seed check used to count property_id = ?
+                // OR property_id = 1 combined, then insert at $propertyId - so
+                // whichever property happened to load this page FIRST (with zero rows
+                // between the two) silently got its own private copy of the 11
+                // defaults seeded onto ITS OWN property_id instead of property_id=1.
+                // Any other property whose own count was 0 but property_id=1's wasn't
+                // (yet) empty then went on to independently self-seed its own copy
+                // too - producing two rows with the identical label (one at each
+                // property_id) that both surface in the same property's unioned
+                // SELECT, which is exactly the "duplicate React key" bug this caused
+                // in GuestManagement.tsx's extra-charge dropdowns (confirmed 19 Aug
+                // 2026: 'Pet Stay Fee'/'Extra Housekeeping' both duplicated). Seeding
+                // must always target property_id=1 specifically, checked in
+                // isolation, so there is only ever one canonical copy.
+                $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM miscellaneous_catalog WHERE property_id = 1 AND is_system_default = TRUE");
+                $cntStmt->execute();
                 if ($cntStmt->fetchColumn() == 0) {
                     $defaultGuestCharges = [
                         ['label' => 'Extra Bed / Mattress', 'default_amount' => 500.00, 'category' => 'Guest Charges'],
@@ -514,11 +530,17 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                         ['label' => 'Room Damage / Replacement', 'default_amount' => 0.00, 'category' => 'Incidentals'],
                         ['label' => 'Miscellaneous Charge', 'default_amount' => 0.00, 'category' => 'Incidentals'],
                     ];
-                    $ins = $pdo->prepare("INSERT IGNORE INTO miscellaneous_catalog (property_id, label, default_amount, category, is_system_default) VALUES (?, ?, ?, ?, TRUE)");
+                    $ins = $pdo->prepare("INSERT IGNORE INTO miscellaneous_catalog (property_id, label, default_amount, category, is_system_default) VALUES (1, ?, ?, ?, TRUE)");
                     foreach ($defaultGuestCharges as $chg) {
-                        $ins->execute([$propertyId, $chg['label'], $chg['default_amount'], $chg['category']]);
+                        $ins->execute([$chg['label'], $chg['default_amount'], $chg['category']]);
                     }
                 }
+
+                // Self-heal any previously-mis-seeded private copies (see comment
+                // above) sitting at the wrong property_id - the canonical set at
+                // property_id=1 (seeded just above) already covers every property
+                // via the SELECT's "OR property_id = 1", so these are pure duplicates.
+                $pdo->exec("DELETE FROM miscellaneous_catalog WHERE property_id != 1 AND is_system_default = TRUE");
 
                 $stmt = $pdo->prepare("
                     SELECT id, label, default_amount, category, description, is_system_default

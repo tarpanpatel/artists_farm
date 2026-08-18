@@ -54,7 +54,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             label: 'Kitchen',
             icon: UtensilsCrossed,
             tab: 'kitchen' as TabType,
-            itemKey: 'kitchen',
+            itemKey: 'take_food_order',
           },
         ]
       : []),
