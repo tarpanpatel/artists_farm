@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Paintbrush, Save, RotateCcw, Copy, Check, Trash2, Download, Upload, Eye, Code, Search, ChevronDown, ChevronUp, Palette, Minus, Plus, X, Lock, Loader2 } from 'lucide-react';
 import { t } from '../i18n/en';
 import { Input } from './Input';
@@ -874,7 +874,7 @@ export const CustomCSSOverride: React.FC<CustomCSSOverrideProps> = ({ activeRole
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-lg animate-toast-in custom-css-override__toast">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl animate-toast-in custom-css-override__toast">
           {toast}
         </div>
       )}

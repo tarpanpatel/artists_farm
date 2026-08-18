@@ -359,7 +359,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 tenant-dashboard__main">
         {/* ── Success Toast ── */}
         {successMsg && (
-          <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2 animate-pulse tenant-dashboard__success-toast">
             <CheckCircle className="w-4 h-4 tenant-dashboard__success-toast-icon" />
             {successMsg}
           </div>

@@ -1697,4 +1697,14 @@ export const strings: Record<string, string> = {
   license_doc_invalid_type_label: "कृपया PDF, JPG, PNG या WEBP फाइल अपलोड करें।",
   license_doc_too_large_label: "फाइल बहुत बड़ी है (अधिकतम 10MB)।",
   license_doc_upload_failed_label: "डॉक्यूमेंट अपलोड नहीं हो पाया। दोबारा कोशिश करें।",
+
+  // Kitchen KDS - order/dish cancellation (whole-order trash icon + per-dish remove)
+  cancel_order_title: "ऑर्डर कैंसिल करें",
+  cancel_order_confirm_button: "ऑर्डर कैंसिल करें",
+  cancel_order_tooltip: "यह ऑर्डर कैंसिल करें",
+  status_in_queue: "कतार में",
+  status_preparing: "बन रहा है",
+  delete_dish_title: "डिश हटाएं",
+  delete_dish_confirm_button: "डिश हटाएं",
+  delete_dish_tooltip: "यह डिश हटाएं",
 };

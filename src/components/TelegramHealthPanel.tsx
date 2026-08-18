@@ -300,7 +300,7 @@ export const TelegramHealthPanel: React.FC = () => {
       </div>
 
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-lg">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl animate-toast-in">
           {toast}
         </div>
       )}

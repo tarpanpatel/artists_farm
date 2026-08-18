@@ -131,6 +131,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   };
   const [readyItemKeys, setReadyItemKeys] = useState<Record<string, boolean>>({});
   const [servedItemKeys, setServedItemKeys] = useState<Record<string, boolean>>({});
+  const [cancelledItemKeys, setCancelledItemKeys] = useState<Record<string, boolean>>({});
   // Short display string ("03:48 AM") shown inline next to a ready/served
   // item on its ticket card. Separate from itemReadyTimestamps below (the
   // full canonical timestamp served_logs actually needs) since this one is
@@ -199,6 +200,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     // readyAt the moment orders refreshed, producing a null readyAt in the
     // served log and blank "Ready At" / "Serve Delay" columns (found 17 Aug 2026).
     const nextReadyTimestamps: Record<string, string> = {};
+    const nextCancelled: Record<string, boolean> = {};
     orders.forEach((ord: Order) => {
       ord.items.forEach((item: OrderItem, idx: number) => {
         const key = `${ord.id}_${idx}`;
@@ -210,6 +212,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           }
         } else if (item.itemStatus === 'Served') {
           nextServed[key] = true;
+        } else if (item.itemStatus === 'Cancelled') {
+          nextCancelled[key] = true;
         }
       });
     });
@@ -217,6 +221,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     setServedItemKeys((prev) => ({ ...nextServed, ...prev }));
     setItemReadyTimes((prev) => ({ ...nextReadyTimes, ...prev }));
     setItemReadyTimestamps((prev) => ({ ...nextReadyTimestamps, ...prev }));
+    setCancelledItemKeys((prev) => ({ ...nextCancelled, ...prev }));
   }, [orders]);
 
   const [ingredientCategoryNames, setIngredientCategoryNames] = useState<string[]>([]);
@@ -325,6 +330,60 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     });
   };
 
+  // Removes a single dish from a ticket without cancelling the whole order -
+  // e.g. a guest changes their mind about one item but still wants the rest.
+  // Reuses the same 'Cancelled' item_status update_order_item_status already
+  // persists (server treats it as an arbitrary string, no schema change
+  // needed) and the same local-key pattern as ready/served tracking above,
+  // so a refresh/auto-sync keeps the dish hidden via the hydration effect.
+  const handleDeleteItem = async (ord: Order, itemIndex: number, item: OrderItem) => {
+    const cleanTicketId = ord.id.replace('#', '');
+    const confirmed = await confirm({
+      title: t('delete_dish_title', 'Remove Dish'),
+      message: t('delete_dish_confirm_message', `Remove ${item.quantity}x ${item.name} from Order #${cleanTicketId}? This cannot be undone.`),
+      confirmText: t('delete_dish_confirm_button', 'Remove Dish'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    const key = `${ord.id}_${itemIndex}`;
+    setCancelledItemKeys((prev) => ({ ...prev, [key]: true }));
+
+    if (item.id) {
+      await updateOrderItemStatus(item.id, 'Cancelled');
+    }
+    showToast(t('dish_removed_toast', `${item.name} removed from Order #${cleanTicketId}.`), { type: 'success' });
+
+    // Mirrors the server-side auto-complete check in update_order_item_status -
+    // if every OTHER item on this ticket is already served or removed, the
+    // order should still resolve instead of sitting active forever because
+    // one dish's key never flips to "served". Two different outcomes though:
+    // if at least one dish was actually served, this is a normal completion
+    // (Fulfilled). If every item on the ticket was individually removed and
+    // nothing was ever served, "Fulfilled" would be a lie - that ticket
+    // never delivered anything, so it should read as Cancelled instead.
+    const isEveryOtherItemDone = ord.items.every((_, idx) =>
+      idx === itemIndex || servedItemKeys[`${ord.id}_${idx}`] || cancelledItemKeys[`${ord.id}_${idx}`]
+    );
+    const wasAnythingServed = ord.items.some((_, idx) => servedItemKeys[`${ord.id}_${idx}`]);
+    if (isEveryOtherItemDone) {
+      if (wasAnythingServed) {
+        triggerOrderCompletion(ord);
+      } else {
+        updateOrderStatus(ord.id, 'Cancelled');
+        await updateOrderStatusDB(ord.orderId != null ? String(ord.orderId) : ord.id, 'Cancelled');
+      }
+    }
+
+    recordTelescopeLog({
+      portal: 'requests',
+      severity: 'INFO',
+      msg: `PATCH /api/kitchen/orders/${ord.id}/items/${itemIndex} - Dish Removed (${item.name})`,
+      origin: '/src/components/KitchenManagement.tsx -> handleDeleteItem',
+      details: { orderId: ord.id, itemIndex, item },
+    });
+  };
+
   // Fires once the LAST item on an order gets marked Served - shows an
   // immediate "Completed" confirmation, then a beat later a spinning
   // "Processing..." cue, then actually flips the order to Fulfilled (both
@@ -391,7 +450,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       updateOrderItemStatus(item.id, 'Served');
     }
 
-    const isLastItemOnOrder = ord.items.every((_, idx) => idx === itemIndex || servedItemKeys[`${ord.id}_${idx}`]);
+    const isLastItemOnOrder = ord.items.every((_, idx) =>
+      idx === itemIndex || servedItemKeys[`${ord.id}_${idx}`] || cancelledItemKeys[`${ord.id}_${idx}`]
+    );
     if (isLastItemOnOrder) {
       triggerOrderCompletion(ord);
     }
@@ -959,6 +1020,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     if (cartItems.length === 0 || isSubmittingOrder) return;
     const guest = orderMode === 'guest' ? guests.find((g) => g.id === selectedGuestId) : null;
     if (orderMode === 'guest' && !guest) return;
+    if (orderMode === 'walkin' && selectedWalkInTabId === null && newTabLabel.trim() === '') return;
 
     const orderItems: OrderItem[] = cartItems.map((ci) => ({
       menuItemId: ci.menuItem.id,
@@ -1305,6 +1367,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   <div className="kds-ticket-items-list space-y-2 text-xs">
                     {ord.items.map((item, idx) => {
                       const itemKey = `${ord.id}_${idx}`;
+                      if (cancelledItemKeys[itemKey] || item.itemStatus === 'Cancelled') return null;
                       const isReady = readyItemKeys[itemKey];
                       const isServed = servedItemKeys[itemKey];
                       const readyTime = itemReadyTimes[itemKey];
@@ -1355,6 +1418,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                   <span>{t('served_action_button', 'Mark Served')}</span>
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem(ord, idx, item)}
+                                  className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
+                                  title={t('delete_dish_tooltip', 'Remove this dish')}
+                                  aria-label="Remove dish"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </>
                             ) : (
                               <>
@@ -1373,6 +1445,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                   <span>{t('ready_button', 'Mark Ready')}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem(ord, idx, item)}
+                                  className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
+                                  title={t('delete_dish_tooltip', 'Remove this dish')}
+                                  aria-label="Remove dish"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             )}
@@ -1518,11 +1599,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const visibleDrawerItems = isCartDrawerExpanded ? [...cartItems].reverse() : [...cartItems].slice(-3).reverse();
 
         // Walk-in mode never needs a checked-in guest - that's the whole point of it.
-        const isOrderSubmitDisabled = cartItems.length === 0 || isSubmittingOrder || (orderMode === 'guest' && (!selectedGuest || checkedInGuests.length === 0));
+        const isWalkInNameMissing = orderMode === 'walkin' && selectedWalkInTabId === null && newTabLabel.trim() === '';
+        const isOrderSubmitDisabled = cartItems.length === 0 || isSubmittingOrder || (orderMode === 'guest' && (!selectedGuest || checkedInGuests.length === 0)) || isWalkInNameMissing;
         const orderSubmitTitle = orderMode === 'guest' && checkedInGuests.length === 0
           ? t('no_active_resident_tooltip')
           : cartItems.length === 0
           ? t('order_cart_empty_tooltip')
+          : isWalkInNameMissing
+          ? t('walk_in_name_required_tooltip', 'Enter a table or customer name to start a new tab')
           : t('send_order_to_kitchen_button');
 
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
@@ -1590,9 +1674,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               {/* Walk-in Tab Controls */}
               {orderMode === 'walkin' && (
                 <div className="w-full pt-2.5 mt-0.5 border-t border-slate-100 dark:border-slate-700/80 flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                    {t('walk_in_tab_picker_label', 'Add to tab')}:
-                  </span>
                   <button
                     type="button"
                     onClick={() => setSelectedWalkInTabId(null)}
@@ -1604,6 +1685,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   >
                     + {t('new_tab_button', 'New Tab')}
                   </button>
+                  {selectedWalkInTabId === null && (
+                    <div className="w-full sm:w-auto sm:flex-1 sm:max-w-xs mt-1 sm:mt-0">
+                      <Input
+                        type="text"
+                        value={newTabLabel}
+                        onChange={(e) => setNewTabLabel(e.target.value)}
+                        placeholder={t('walk_in_name_placeholder', 'Table / customer name')}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
                   {openTabs.map((tab) => (
                     <button
                       key={tab.id}
@@ -1618,17 +1710,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
                     </button>
                   ))}
-                  {selectedWalkInTabId === null && (
-                    <div className="w-full sm:w-auto sm:flex-1 sm:max-w-xs mt-1 sm:mt-0">
-                      <Input
-                        type="text"
-                        value={newTabLabel}
-                        onChange={(e) => setNewTabLabel(e.target.value)}
-                        placeholder={t('walk_in_name_placeholder', 'Table / customer name (optional)')}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  )}
                 </div>
               )}
             </div>

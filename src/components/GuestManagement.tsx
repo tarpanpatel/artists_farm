@@ -883,8 +883,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
 
   if (activeMenuItemKey === 'guest_registration') {
+    // The full-viewport min-height centers this as a standalone page (reached
+    // from the sidebar). When rendered inside App.tsx's "Global Add Booking
+    // Modal" instead (onClose only gets passed in that case - see the X
+    // button below), the modal overlay already centers the whole card in the
+    // viewport, so this same min-height was centering an ~800px box inside
+    // an already-centered modal - pushing the visible form down and leaving
+    // a large empty gap above it.
     return (
-      <div className="guest-management w-full flex justify-center items-center min-h-[calc(100vh-120px)] my-auto">
+      <div className={`guest-management w-full flex justify-center items-center ${onClose ? '' : 'min-h-[calc(100vh-120px)] my-auto'}`}>
         {/* Form Card */}
         <div className="guest-management__registration-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
@@ -1374,11 +1381,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         {/* Add Booking Modal Overlay inside GuestManagement */}
         {isAddBookingModalOpen && (
           <div
-            className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-3 pt-20 sm:pt-24 pb-6 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
             onClick={() => setIsAddBookingModalOpen(false)}
           >
             <div
-              className="w-full max-w-[550px] max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4 relative z-[100000]"
+              className="w-full max-w-[550px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4"
               onClick={(e) => e.stopPropagation()}
             >
               <GuestManagement

@@ -1783,6 +1783,21 @@ export const strings: Record<string, string> = {
   gst_settings_action: "GST",
   room_setup_action: "Rooms",
   select_property_label: "Select Property",
+
+  // Kitchen KDS - order/dish cancellation (whole-order trash icon + per-dish remove)
+  // NOTE: cancel_order_confirm_message / order_cancelled_toast / delete_dish_confirm_message /
+  // dish_removed_toast are deliberately NOT listed here - their call sites pass an
+  // already-interpolated string (order/dish name baked in) as the t() fallback, and a
+  // static key here would silently win over that per t()'s `strings[key] || fallback`
+  // lookup order, replacing the specific message with a generic one.
+  cancel_order_title: "Cancel Order",
+  cancel_order_confirm_button: "Cancel Order",
+  cancel_order_tooltip: "Cancel this order",
+  status_in_queue: "In Queue",
+  status_preparing: "Preparing",
+  delete_dish_title: "Remove Dish",
+  delete_dish_confirm_button: "Remove Dish",
+  delete_dish_tooltip: "Remove this dish",
 };
 
 export function t(key: string, fallback?: string): string {

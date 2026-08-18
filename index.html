@@ -12,6 +12,11 @@
          instead of the app's blue, and iOS has no splash image at all
          without the apple-mobile-web-app-* tags below. -->
     <meta name="theme-color" content="#0B84FF" />
+    <!-- mobile-web-app-capable is the standards-track tag (Chrome/Android);
+         apple-mobile-web-app-capable is the older Safari-only equivalent -
+         Chrome now warns if only the Apple one is present, so both are
+         needed rather than one covering the other. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AF POS" />
@@ -24,14 +29,35 @@
          phone, or the stale-bundle recovery reload above) would otherwise
          show a blank white #root for however long that takes. No JS needed
          to remove it - ReactDOM's render() replaces #root's entire content
-         the moment the real app mounts, so this just gets overwritten. */
+         the moment the real app mounts, so this just gets overwritten.
+         Deliberately no text ("Loading..." etc) - just a logo + spinner, so
+         this reads as an app launching rather than a status message, and
+         visually matches LoadingScreen.tsx (the React loader that can follow
+         this one) so there's never a jarring style change mid-boot. */
       #initial-loader {
         position: fixed;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #f8fafc;
+        gap: 2rem;
+        background: linear-gradient(to bottom right, #f8fafc, #f1f5f9);
+      }
+      #initial-loader__logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 1rem;
+        background: linear-gradient(to bottom right, #3b82f6, #4f46e5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: initial-loader-pulse 2s ease-in-out infinite;
+      }
+      #initial-loader__logo img {
+        width: 36px;
+        height: 36px;
+        border-radius: 0.5rem;
       }
       #initial-loader__spinner {
         width: 40px;
@@ -44,8 +70,12 @@
       @keyframes initial-loader-spin {
         to { transform: rotate(360deg); }
       }
+      @keyframes initial-loader-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
       @media (prefers-color-scheme: dark) {
-        #initial-loader { background: #0f172a; }
+        #initial-loader { background: linear-gradient(to bottom right, #020617, #0f172a); }
         #initial-loader__spinner { border-color: #1e293b; border-top-color: #60a5fa; }
       }
     </style>
@@ -106,7 +136,10 @@
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
     <div id="root">
-      <div id="initial-loader"><div id="initial-loader__spinner"></div></div>
+      <div id="initial-loader">
+        <div id="initial-loader__logo"><img src="/icons/apple-touch-icon.png" alt="" width="36" height="36" /></div>
+        <div id="initial-loader__spinner"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

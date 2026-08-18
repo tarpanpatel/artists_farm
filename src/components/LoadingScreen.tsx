@@ -21,6 +21,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center z-50 loading-screen">
+      {/* Screen-reader only - sighted users get a clean branded splash with
+          no visible "Loading..."/"Redirecting..." text, but assistive tech
+          still announces what's actually happening. */}
+      <span className="sr-only" role="status">{message}</span>
       <div className="flex flex-col items-center gap-8 loading-screen__container">
         {/* Animated Logo */}
         <div className="relative w-16 h-16 loading-screen__logo">
@@ -36,15 +40,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500 animate-spin loading-screen__spinner-indicator" />
         </div>
 
-        {/* Message */}
-        <div className="text-center loading-screen__message">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 loading-screen__title">
-            {t('artists_farm_brand')}
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 loading-screen__text">
-            {message}
-          </p>
-        </div>
+        {/* Brand - no visible routine "Loading..."/"Redirecting..." text on
+            purpose: this splash should read as an app launch, not a status
+            message. The sr-only span above still carries `message` for
+            assistive tech. */}
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white loading-screen__title">
+          {t('artists_farm_brand')}
+        </h2>
 
         {/* Loading Dots */}
         <div className="flex gap-2 loading-screen__dots">

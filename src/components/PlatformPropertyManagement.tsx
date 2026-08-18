@@ -45,7 +45,7 @@ interface PlatformPropertyManagementProps {
 
 export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProps> = ({
   username: _username,
-  onLogout: _onLogout,
+  onLogout,
 }) => {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -132,15 +132,17 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
         setTenants(tenantsData.data || []);
       } else if (tenantsRes.status === 401 || tenantsRes.status === 403) {
         // A 401/403 here silently rendered as "0 tenants / 0 properties" before
-        // this check existed - indistinguishable from an actually-empty
-        // platform, and once caused a real "did we lose all our data?" scare
-        // that turned out to just be an expired session (PHP's session GC
-        // cleans up the server-side session file after enough inactivity,
-        // but the browser's login cookie and the app's own client-side auth
-        // state don't know that happened, so the UI kept rendering as
-        // logged-in Root Admin while every API call quietly 403'd).
-        setError(t('root_admin_session_expired_message', 'Your session has expired. Please sign out and log back in.'));
-        setLoading(false);
+        // an earlier check added an error banner instead - better, but still
+        // left the half-populated dashboard shell (sidebar, 0/0/0 stat cards,
+        // empty tenant list) visible behind the message, which itself reads
+        // as broken. PHP's session GC cleans up the server-side session file
+        // after enough inactivity, but the browser's login cookie and the
+        // app's own client-side auth state don't know that happened, so the
+        // UI kept rendering as logged-in Root Admin while every API call
+        // quietly 401/403'd. Once the session is confirmed truly invalid,
+        // there's nothing to show here - go straight back to the login
+        // screen instead of showing a page that looks broken.
+        onLogout();
         return;
       } else {
         setError(tenantsData.message || t('failed_to_load_tenants_message', 'Failed to load tenants.'));
@@ -685,7 +687,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 platform-property-management">
       {/* Success Toast */}
       {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse flex items-center gap-2">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> {successMessage}
         </div>
       )}

@@ -283,22 +283,30 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                     }
                     $stmt->execute([$status, $itemId]);
 
-                    // When the last unserved item on an order is marked Served, auto-complete
-                    // the order so the KDS card heading matches reality (mirrors the Telegram
-                    // webhook behaviour in webhook_handler.php).
-                    if ($status === 'Served') {
+                    // When every item on an order has been resolved (Served or
+                    // individually Cancelled via the KDS "remove dish" control), the
+                    // order itself needs to move out of the active queue. Two outcomes:
+                    // - at least one dish was actually served -> Completed (mirrors the
+                    //   Telegram webhook behaviour in webhook_handler.php)
+                    // - every single item on the order was removed and nothing was ever
+                    //   served -> Cancelled instead, since "Completed" would misreport a
+                    //   ticket that never delivered anything.
+                    if ($status === 'Served' || $status === 'Cancelled') {
                         $orderIdStmt = $pdo->prepare("SELECT order_id FROM order_items WHERE id = ?");
                         $orderIdStmt->execute([$itemId]);
                         $orderId = $orderIdStmt->fetchColumn();
                         if ($orderId) {
-                            $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) != 'served')");
+                            $pendingStmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE order_id = ? AND (item_status IS NULL OR LOWER(item_status) NOT IN ('served', 'cancelled'))");
                             $pendingStmt->execute([$orderId]);
                             if ((int)$pendingStmt->fetchColumn() === 0) {
+                                $servedCountStmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE order_id = ? AND LOWER(item_status) = 'served'");
+                                $servedCountStmt->execute([$orderId]);
+                                $finalStatus = (int)$servedCountStmt->fetchColumn() > 0 ? 'Completed' : 'Cancelled';
                                 try {
-                                    $pdo->prepare("UPDATE orders SET status = 'Completed', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND property_id = ?")->execute([$orderId, $propertyId]);
+                                    $pdo->prepare("UPDATE orders SET status = ?, served_at = COALESCE(served_at, NOW()) WHERE id = ? AND property_id = ?")->execute([$finalStatus, $orderId, $propertyId]);
                                 } catch (PDOException $eOrder) {
                                     try {
-                                        $pdo->prepare("UPDATE kitchen_orders SET status = 'Completed' WHERE id = ? AND property_id = ?")->execute([$orderId, $propertyId]);
+                                        $pdo->prepare("UPDATE kitchen_orders SET status = ? WHERE id = ? AND property_id = ?")->execute([$finalStatus, $orderId, $propertyId]);
                                     } catch (PDOException $eKot) {}
                                 }
                             }
