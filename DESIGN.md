@@ -76,7 +76,7 @@ This document defines the core visual design tokens, component architecture patt
 
 ## 8. Navigation Tabs vs. Content Filter Buttons
 - **Main Navigation Tabs (Tab Switchers)**:
-  - Active Tab: Solid primary fill (`bg-blue-600 text-white shadow-xs font-bold`).
+  - Active Tab: Solid primary fill (`bg-blue-600 text-white shadow-xs font-semibold`) — **not** `font-bold`; see §20/§21, a weight change here shifts text width and reflows the whole bar.
   - Inactive Tab: Clean outline / ghost button (`bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold`).
 - **In-Page Content Filters (Category Pills, Status Filters)**:
   - Active Filter: Accent border & soft background tint (`border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-2xs`).
@@ -166,4 +166,11 @@ This document defines the core visual design tokens, component architecture patt
 ## 20. Tab Font Weight Consistency Rule (No Font-Bold Switch on Selection)
 - **No Font Weight Jump on Selection**: ALL tab buttons (primary navigation tabs, sub-tab bars, category pills, filter toggles) MUST preserve a consistent font weight whether active or inactive (`font-semibold`).
 - **Forbidden Font Weight Toggling**: Do NOT switch tab font weight to `font-bold` or `font-extrabold` when selected. Changing font weight on active selection alters text element width, causing layout reflow, text jitter, and pixel shifting. Active tab states must be communicated exclusively via background color, text color, border accents, or subtle shadows.
+
+---
+
+## 21. Tabs Must Never Move or Resize on Click (General Box-Model Stability Rule)
+- **Same Box, Every State**: This generalizes §20 beyond font-weight. For ANY tab/pill/filter-toggle component (main nav tabs, sub-tab bars, category pills, status filters), the active and inactive states MUST render at the exact same size, shape, and position — same `padding`, same `border` width on all 4 sides, same `border-radius` on all 4 corners (per §10, `rounded-xl` uniformly - never `rounded-t-xl` active vs `rounded-xl` inactive, or vice versa), same `margin`/position (never a negative margin or `-mb-px` trick that shifts one state relative to its neighbors). Only `background-color`, `text color`, `border-color`, and `box-shadow` may differ between active/inactive.
+- **No "Merged Panel" / Folder-Tab Effects**: Do not build a tab that visually fuses into the content panel below it by dropping its bottom border or overlapping via negative margin when active (the "merged panel" pattern used in Kitchen's sub-tab bar until 19 Aug 2026, removed for exactly this reason). It makes the active tab a visibly different shape/size than its inactive siblings, and the surrounding content panel then needs matching partial-border hacks (`border-x border-b` instead of a full `border`) to line up - fragile, and the actual bug this rule exists to prevent: clicking between tabs visibly resizes/shifts them instead of just recoloring them.
+- **Why This Matters**: A tab bar the user's eye already knows the shape and position of should never make them re-locate a tab after clicking it. Any layout property that differs between a tab's active and inactive class strings is a bug under this rule, not a design choice - if it's not color/shadow, don't switch it.
 
