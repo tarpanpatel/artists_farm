@@ -183,6 +183,20 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
+        // MySQL's own session timezone is independent of PHP's
+        // date_default_timezone_set('Asia/Kolkata') (set in errors/logger.php,
+        // required above) - it defaults to whatever the DB server/OS is
+        // configured to (commonly UTC on shared hosting), regardless of that
+        // PHP setting. Every NOW()-stamped column (order_time being the one
+        // that surfaced this - see KitchenManagement.tsx's elapsed-time
+        // display) was silently written in a different timezone than every
+        // PHP-generated timestamp elsewhere in the app (audit_logs, Telescope
+        // logs, etc.), and the frontend's `new Date(naiveString)` parses a
+        // timezone-less string as local (IST) time - so a UTC-stamped
+        // order_time read back and compared against a real IST "now" was
+        // showing hours of bogus extra elapsed time. Pin the session to IST
+        // so every timestamp this app writes or reads means the same thing.
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+05:30'",
     ]);
 
     // Self-healing schema checks: cache check result so DDL ALTER TABLE and SHOW queries run once
@@ -275,15 +289,17 @@ try {
             $pdo_sys = new PDO("mysql:host=$db_host;dbname=$live_db;charset=utf8mb4", $db_user, $db_pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+05:30'",
             ]);
             clone_database_tables($pdo_sys, $live_db, $test_db);
-            
+
             // Try connecting to $test_db again
             try {
                 $pdo = new PDO("mysql:host=$db_host;dbname=$test_db;charset=utf8mb4", $db_user, $db_pass, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+05:30'",
                 ]);
             } catch (PDOException $ex2) {
                 // Shared hosting fallback: use $live_db
