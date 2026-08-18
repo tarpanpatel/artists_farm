@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
 import { PropertySetupWizard } from './components/PropertySetupWizard';
@@ -1632,6 +1633,16 @@ ${itemsStr}
           />
         )}
 
+        {isAuthenticated && (
+          <MobileBottomNav
+            activeTab={activeTab}
+            onNavigateTab={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            isSidebarOpen={isSidebarOpen}
+            kitchenModuleEnabled={kitchenEnabled}
+          />
+        )}
+
         <TelegramNotificationModal
           isOpen={isTelegramModalOpen}
           onClose={() => setIsTelegramModalOpen(false)}
@@ -1647,7 +1658,7 @@ ${itemsStr}
         {/* Main Dashboard Container */}
         {isAuthenticated && (
           <div className={`${isIconOnly ? 'pl-16' : 'md:pl-64 pl-0'} pt-16 flex-1 flex flex-col min-h-screen transition-[padding] duration-200`}>
-            <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4">
+            <main className="flex-1 px-1 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-20 md:pb-4">
 
               {/* Property setup wizard - shown at the top when setup is incomplete */}
               {preloadedData.currentProperty && (
