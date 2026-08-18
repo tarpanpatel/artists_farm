@@ -52,7 +52,23 @@ function ensureSystemServiceRequestCatalogSchema($pdo) {
 require_once __DIR__ . '/../config/schema_cache.php';
 
 function ensureServiceRequestsSchema($pdo) {
-    if (isSchemaVerified('schema_service_requests')) return;
+    // Column additions execute outside cache guard so existing tables are upgraded immediately
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'scheduled_at'");
+        if ($stmt && $stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `scheduled_at` DATETIME NULL DEFAULT NULL AFTER `description`");
+        }
+    } catch (PDOException $e) {}
+
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'charge_amount'");
+        if ($stmt && $stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `charge_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `description`");
+        }
+    } catch (PDOException $e) {}
+
+    if (isSchemaVerified('schema_service_requests_v3')) return;
+
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `service_request_types` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -67,22 +83,6 @@ function ensureServiceRequestsSchema($pdo) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     } catch (PDOException $e) {}
 
-    // Add scheduled_at column to service_requests if it doesn't exist
-    try {
-        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'scheduled_at'");
-        if ($stmt->rowCount() === 0) {
-            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `scheduled_at` DATETIME NULL DEFAULT NULL AFTER `description`");
-        }
-    } catch (PDOException $e) {}
-
-    // Add charge_amount column to service_requests if it doesn't exist
-    try {
-        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'charge_amount'");
-        if ($stmt->rowCount() === 0) {
-            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `charge_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `description`");
-        }
-    } catch (PDOException $e) {}
-
     // Nav items are DB-driven and shared across every property (see get_nav_menu
     // in php/kitchen/menu.php) - insert this feature's entry once, the same way
     // Telegram templates get backfilled, rather than requiring an admin to add
@@ -93,7 +93,7 @@ function ensureServiceRequestsSchema($pdo) {
             VALUES ('nav-svcreq', 1, 'Service Requests', 'service_requests', 'service_requests', 'Residents & Billing', 'Bell', 4)");
     } catch (PDOException $e) {}
 
-    markSchemaVerified('schema_service_requests');
+    markSchemaVerified('schema_service_requests_v3');
 }
 
 // seedServiceRequestTypes removed: types now come from system_service_request_catalog (global)
@@ -345,6 +345,7 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
 
         case 'create_service_request':
             if ($request_method === 'POST') {
+                ensureServiceRequestsSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true) ?: [];
                 $requestType = trim($input['request_type'] ?? '');
                 $requestedBy = trim($input['requested_by'] ?? '');
@@ -358,12 +359,18 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 $chargeAmount = !empty($input['charge_amount']) ? max(0, floatval($input['charge_amount'])) : 0.00;
                 $scheduledAt = !empty($input['scheduled_at']) ? date('Y-m-d H:i:s', strtotime($input['scheduled_at'])) : null;
 
-                $stmt = $pdo->prepare("
-                    INSERT INTO service_requests (property_id, room_id, request_type, description, charge_amount, requested_by, scheduled_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmt->execute([$propertyId, $roomId, $requestType, $description, $chargeAmount, $requestedBy, $scheduledAt]);
-                $requestId = $pdo->lastInsertId();
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO service_requests (property_id, room_id, request_type, description, charge_amount, requested_by, scheduled_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmt->execute([$propertyId, $roomId, $requestType, $description, $chargeAmount, $requestedBy, $scheduledAt]);
+                    $requestId = $pdo->lastInsertId();
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+                    break;
+                }
 
                 $roomName = 'N/A';
                 if ($roomId) {
