@@ -1,5 +1,5 @@
-import { test as setup, expect } from '@playwright/test';
-import { DEMO_PROPERTY_PATH } from './helpers';
+import { test as setup } from '@playwright/test';
+import { DEMO_PROPERTY_PATH, waitForDemoLogin } from './helpers';
 
 // Standard Playwright "auth setup" pattern: log into the public demo
 // property once and save the session cookie, so the feature specs
@@ -14,6 +14,6 @@ const authFile = 'tests/e2e/.auth/demo.json';
 
 setup('authenticate against the public demo property', async ({ page }) => {
   await page.goto(DEMO_PROPERTY_PATH);
-  await expect(page.getByText('Luxe Stays').first()).toBeVisible({ timeout: 20000 });
+  await waitForDemoLogin(page);
   await page.context().storageState({ path: authFile });
 });

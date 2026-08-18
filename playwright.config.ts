@@ -17,6 +17,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  // login.spec.ts deliberately opts out of storageState (it tests the real
+  // cold, cookie-less first visit) - every other spec gets it via
+  // testIgnore below, rather than an allow-list, so a new spec file added
+  // later is scheduled automatically instead of silently matching nothing.
   projects: [
     {
       name: 'setup',
@@ -24,22 +28,25 @@ export default defineConfig({
     },
     {
       name: 'desktop',
-      testMatch: /(bookings-edit|checkout|staff)\.spec\.ts/,
+      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: 'tests/e2e/.auth/demo.json' },
     },
     {
       name: 'mobile',
-      testMatch: /(bookings-edit|checkout|staff)\.spec\.ts/,
+      testIgnore: [/auth\.setup\.ts/, /login\.spec\.ts/],
       dependencies: ['setup'],
       use: { ...devices['Pixel 7'], storageState: 'tests/e2e/.auth/demo.json' },
     },
     {
-      // Deliberately excludes login.spec.ts from storageState - it tests
-      // the real cold, cookie-less first visit.
-      name: 'cold-start',
+      name: 'cold-start-desktop',
       testMatch: /login\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'cold-start-mobile',
+      testMatch: /login\.spec\.ts/,
+      use: { ...devices['Pixel 7'] },
     },
   ],
 

@@ -29,7 +29,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 
       {children}
       <span
         role="tooltip"
-        className={`absolute z-[99999] ${positionClasses[position]} w-max max-w-xs sm:max-w-sm px-3 py-2 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-xs text-white text-xs sm:text-sm font-medium leading-normal rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none text-center border border-slate-700/60`}
+        className={`absolute z-[99999] ${positionClasses[position]} w-max max-w-xs px-3 py-2 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-xs text-white text-xs sm:text-sm font-medium leading-normal rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200 pointer-events-none text-center border border-slate-700/60`}
       >
         {content}
         <span className={`absolute border-4 border-transparent ${arrowClasses[position]}`} />
