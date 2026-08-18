@@ -111,8 +111,6 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     });
     if (ok) {
       showToast('Service request logged', { type: 'success' });
-      const createdMsg = `🆕 <b>SERVICE REQUEST CREATED</b>\n━━━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${selectedTypeLabel}\n🚪 <b>Room:</b> ${roomLabel}\n👤 <b>Requested by:</b> ${getCurrentUserName()}\n${newDescription.trim() ? `📝 <b>Details:</b> ${newDescription.trim()}\n` : ''}━━━━━━━━━━━━━━━━━━━━`;
-      onDispatchTelegram?.('Service Request Created', createdMsg, 'admin');
       setIsAddModalOpen(false);
       setNewRoomId('');
       setNewRequestType(typeOptions[0]?.value ?? '');
@@ -124,14 +122,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     setSaving(false);
   };
 
-  const handleFulfill = async (id: number, requestType: string, roomName: string) => {
+  const handleFulfill = async (id: number, _requestType: string, _roomName: string) => {
     setFulfillingId(id);
     const ok = await fulfillServiceRequestInDB(id, getCurrentUserName());
     setFulfillingId(null);
     if (ok) {
       showToast('Marking completed and removing from the queue...', { type: 'success' });
-      const fulfilledMsg = `✅ <b>SERVICE REQUEST FULFILLED</b>\n━━━━━━━━━━━━━━━━━━━━\n🧾 <b>Type:</b> ${requestType}\n🚪 <b>Room:</b> ${roomName}\n👤 <b>Fulfilled by:</b> ${getCurrentUserName()}\n🕒 <b>Time:</b> ${new Date().toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━━━━━`;
-      onDispatchTelegram?.('Service Request Fulfilled', fulfilledMsg, 'admin');
       refreshRequests();
     } else {
       showToast('Failed to update request', { type: 'error' });

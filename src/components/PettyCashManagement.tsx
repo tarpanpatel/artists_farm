@@ -18,7 +18,7 @@ import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 interface PettyCashManagementProps {
   activeRole?: string;
-  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string) => void;
+  onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[]) => void;
 }
 
 interface FormState {
@@ -767,10 +767,24 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     }
 
     if (onDispatchTelegram) {
+      const mode = formState.paymentMode || 'Cash';
       const d = Number(formState.drawerAmount || 0);
       const s = Number(formState.staffAmount || 0);
-      const msg = `<b>💸 EXPENSE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📂 <b>Category:</b> ${formState.category}\n📝 <b>Description:</b> ${finalDescription}\n👤 <b>Paid By:</b> ${formState.paidBy}\n🏦 <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\n👝 <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}\n💰 <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
-      onDispatchTelegram('Expense', msg, 'finance');
+      const isCashOrSplit = mode === 'Cash' || d > 0 || s > 0;
+
+      let paymentLine = `💳 <b>Payment Mode:</b> ${mode}`;
+      if (isCashOrSplit) {
+        paymentLine += `\n🏦 <b>Farm Cash:</b> ₹${d.toLocaleString('en-IN')}\n👝 <b>Out of Pocket:</b> ₹${s.toLocaleString('en-IN')}`;
+      }
+
+      const msg = `<b>💸 EXPENSE RECORDED</b>\n━━━━━━━━━━━━━━━━\n📂 <b>Category:</b> ${formState.category}\n📝 <b>Description:</b> ${finalDescription}\n👤 <b>Paid By:</b> ${formState.paidBy}\n${paymentLine}\n💰 <b>Total:</b> ₹${Number(formState.amount).toLocaleString('en-IN')}\n━━━━━━━━━━━━━━━━`;
+
+      const allMedia = [
+        ...(formState.invoiceBillUrls || []),
+        ...(formState.paymentScreenshotUrls || []),
+      ].filter((url): url is string => Boolean(url && typeof url === 'string' && url.trim()));
+
+      onDispatchTelegram('Expense', msg, 'finance', undefined, undefined, allMedia);
     }
 
     // Update item price tracking map locally

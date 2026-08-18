@@ -239,6 +239,7 @@ if (!function_exists('sendPropertyTelegramPhoto')) {
         }
 
         $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
+        $caption = appendAppUrlToMessage($pdo, $propertyId, $category, $caption);
 
         $chatId = null;
         if ($templateKey && isset($config['routing'][$templateKey])) {

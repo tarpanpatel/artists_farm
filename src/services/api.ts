@@ -2226,6 +2226,7 @@ export async function sendTelegramAlertDB(payload: {
   message: string;
   replyMarkup?: any;
   templateKey?: string;
+  mediaUrls?: string[];
 }): Promise<TelegramSendOutcome> {
   try {
     const res = await apiFetch(`${API_BASE}?action=send_telegram_alert`, {

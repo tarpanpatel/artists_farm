@@ -1123,7 +1123,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     message: string,
     category: 'kitchen' | 'admin' | 'finance' | 'all' = 'all',
     replyMarkup?: any,
-    templateKey?: string
+    templateKey?: string,
+    mediaUrls?: string[]
   ) => {
     const logId = `tg-${Date.now().toString().slice(-4)}`;
     const now = new Date();
@@ -1158,6 +1159,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         message: outboundMessage,
         replyMarkup,
         templateKey,
+        mediaUrls,
       });
       if (!outcome.success) {
         hasError = true;

@@ -22,14 +22,35 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
     switch ($action) {
         case 'send_telegram_alert':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                $input = json_decode(file_get_contents('php://input'), true) ?: [];
                 $eventType   = $input['eventType'] ?? 'Alert';
                 $category    = $input['category'] ?? 'all';
                 $message     = $input['message'] ?? '';
                 $replyMarkup = $input['replyMarkup'] ?? null;
                 $templateKey = $input['templateKey'] ?? null;
+                $mediaUrls   = is_array($input['mediaUrls'] ?? null) ? $input['mediaUrls'] : [];
 
-                $result = sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup, $templateKey);
+                $filePaths = [];
+                if (!empty($mediaUrls)) {
+                    $rootDir = realpath(__DIR__ . '/../../');
+                    if ($rootDir) {
+                        foreach ($mediaUrls as $rawUrl) {
+                            if (!is_string($rawUrl) || empty($rawUrl)) continue;
+                            $path = parse_url($rawUrl, PHP_URL_PATH);
+                            if (!$path) continue;
+                            $localPath = $rootDir . '/' . ltrim($path, '/');
+                            if (file_exists($localPath)) {
+                                $filePaths[] = $localPath;
+                            }
+                        }
+                    }
+                }
+
+                if (!empty($filePaths)) {
+                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $message, $templateKey);
+                } else {
+                    $result = sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup, $templateKey);
+                }
 
                 echo json_encode([
                     'status' => 'success',
