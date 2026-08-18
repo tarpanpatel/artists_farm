@@ -140,6 +140,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   if (!guest) return null;
 
   const g = guest as any;
+  const isCFormFiled = !!(guest.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
@@ -394,8 +395,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           )}
 
           {/* Action Banner 1.5: Foreign Guest C-Form Warning */}
-          {guest.isForeignGuest && !g.c_form_filed && !g.cFormFiled && !isEditing && (
-            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
+          {guest.isForeignGuest && !isCFormFiled && !isEditing && (
+            <div className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>Foreign Guest: C-Form Filing Required</span>
@@ -403,10 +404,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <button
                 type="button"
                 onClick={async () => {
-                  const ok = await markCFormFiled(guest.id);
+                  const ok = await markCFormFiled(guest.id, true);
                   if (ok) {
+                    const filedAt = new Date().toISOString();
                     showToast('C-Form marked as filed', { type: 'success' });
-                    onSave({ ...guest, cFormFiled: true, c_form_filed: true } as any);
+                    await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: true, c_form_filed: true } as any);
+                  } else {
+                    showToast('Failed to update C-Form status', { type: 'error' });
                   }
                 }}
                 className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-2xs shrink-0"
@@ -685,27 +689,36 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                     </div>
                   )}
                   {guest.isForeignGuest && (
-                    <div>
+                    <div
+                      id="c-form-checkbox-container"
+                      className={`p-3 rounded-xl border transition-all ${
+                        !isCFormFiled
+                          ? 'border-rose-400 dark:border-rose-700 bg-rose-50/70 dark:bg-rose-950/40 ring-2 ring-rose-300 dark:ring-rose-800 animate-pulse'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'
+                      }`}
+                    >
                       <label className={fieldLabelClass}>{t('foreign_national_guest_label', 'Foreign National Guest')}</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200 select-none">
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-100 select-none">
                           <input
                             type="checkbox"
-                            checked={!!guest.cFormFiledAt}
+                            checked={isCFormFiled}
                             onChange={async (e) => {
                               const isChecked = e.target.checked;
                               const ok = await markCFormFiled(guest.id, isChecked);
                               if (ok) {
                                 const filedAt = isChecked ? new Date().toISOString() : null;
-                                guest.cFormFiledAt = filedAt;
                                 showToast(isChecked ? `C-Form marked as filed` : `C-Form marked as pending`, { type: 'success' });
+                                await onSave({ ...guest, cFormFiledAt: filedAt, cFormFiled: isChecked, c_form_filed: isChecked } as any);
                               } else {
                                 showToast('Failed to update C-Form status', { type: 'error' });
                               }
                             }}
-                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                            className="w-4.5 h-4.5 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer"
                           />
-                          <span>C-Form Filed</span>
+                          <span className={!isCFormFiled ? 'text-rose-700 dark:text-rose-300 font-extrabold' : ''}>
+                            {isCFormFiled ? 'C-Form Filed' : '⚠️ C-Form Pending — Check to Mark Filed'}
+                          </span>
                           {guest.cFormFiledAt && (
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
                               ({formatDateDDMMYYYY(guest.cFormFiledAt)})
