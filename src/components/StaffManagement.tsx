@@ -1688,7 +1688,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="••••••"
                         inputMode="numeric"
-                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                     <div>
@@ -1702,7 +1702,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Re-enter new passcode"
                         inputMode="numeric"
-                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                   </div>
@@ -1848,7 +1848,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Leave blank to keep current"
                         inputMode="numeric"
-                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                     <div>
@@ -1861,7 +1861,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Re-enter new passcode"
                         inputMode="numeric"
-                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                   </div>
@@ -1885,33 +1885,32 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   )}
 
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={updateDailyWage}
+                      onChange={(e) => setUpdateDailyWage(e.target.value)}
+                      placeholder="e.g. 800"
+                      className="text-slate-900 dark:text-white"
+                    />
+                  </div>
+
                   {isEditingSuperAdmin ? (
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
                       {t('super_admin_locked_fields_hint', "Super Admin's role can't be reassigned - it's the tenant's own login, not an assignable position - and it's always a Cash Handler with Access All Properties, so there's nothing to toggle here.")}
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div>
-                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
-                          <StyledSelect
-                            value={updateRole}
-                            onChange={(val) => setUpdateRole(val as any)}
-                            placeholder="-- Keep Current Role --"
-                            options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={updateDailyWage}
-                            onChange={(e) => setUpdateDailyWage(e.target.value)}
-                            placeholder="e.g. 800"
-                            className="text-slate-900 dark:text-white"
-                          />
-                        </div>
+                      <div>
+                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
+                        <StyledSelect
+                          value={updateRole}
+                          onChange={(val) => setUpdateRole(val as any)}
+                          placeholder="-- Keep Current Role --"
+                          options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                        />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
