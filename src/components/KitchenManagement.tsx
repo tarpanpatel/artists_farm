@@ -1373,7 +1373,23 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   {/* Items List */}
                   <div className="kds-ticket-items-list space-y-2 text-xs">
-                    {ord.items.map((item, idx) => {
+                    {ord.items
+                      .map((item, idx) => ({ item, idx }))
+                      // Served dishes sink to the bottom of the ticket - once
+                      // delivered they no longer need kitchen/floor attention,
+                      // so leaving them wherever they happened to be added
+                      // just buries the items still in play. Sort is display
+                      // order only; idx stays each item's original position
+                      // so itemKey/handlers below still target the right
+                      // item_status row. Array.prototype.sort is stable
+                      // (ES2019+), so relative order within each group (both
+                      // served, or both not) is preserved.
+                      .sort((a, b) => {
+                        const aServed = servedItemKeys[`${ord.id}_${a.idx}`] ? 1 : 0;
+                        const bServed = servedItemKeys[`${ord.id}_${b.idx}`] ? 1 : 0;
+                        return aServed - bServed;
+                      })
+                      .map(({ item, idx }) => {
                       const itemKey = `${ord.id}_${idx}`;
                       if (cancelledItemKeys[itemKey] || item.itemStatus === 'Cancelled') return null;
                       const isReady = readyItemKeys[itemKey];
@@ -1468,7 +1484,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           </div>
                         </div>
                       );
-                    })}
+                      })}
                   </div>
                 </div>
               </div>
