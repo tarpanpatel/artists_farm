@@ -698,6 +698,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // below so whichever fetch cycle started last wins, regardless of which
   // effect it belongs to.
   useEffect(() => {
+    if (!isAuthenticated) return;
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
     const isStale = () => hydrationTokenRef.current !== myToken;
@@ -722,7 +723,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       if (data && data.length > 0) setReceipts(data); else setReceipts([]);
     });
-  }, [isModuleEnabled, preloadedData.currentProperty?.id]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated]);
 
 
 
@@ -738,6 +739,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // result here is reliably a transient failure, not real data - safe to
   // retry a few times rather than accept it as final.
   useEffect(() => {
+    if (!isAuthenticated) return;
     refreshStaff();
     let cancelled = false;
     const applyNavItems = (data: any[]) => {
@@ -782,7 +784,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     loadWithRetry(3);
 
     return () => { cancelled = true; };
-  }, []);
+  }, [isAuthenticated]);
 
   // Apply property color scheme to document.documentElement using CSS variables
   useEffect(() => {
@@ -827,6 +829,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // data. The token below discards any resolution that isn't from the most
   // recently started fetch cycle.
   useEffect(() => {
+    if (!isAuthenticated) return;
     hydrationTokenRef.current += 1;
     const myToken = hydrationTokenRef.current;
     const isStale = () => hydrationTokenRef.current !== myToken;
@@ -863,14 +866,15 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (isStale()) return;
       setServiceRequests(data || []);
     });
-  }, [isModuleEnabled, preloadedData.currentProperty?.id]);
+  }, [isModuleEnabled, preloadedData.currentProperty?.id, isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     if (activeTab === 'dashboard') {
       fetchGuestsFromDB().then((data) => setGuests(data || []));
       fetchServiceRequestsFromDB().then((data) => setServiceRequests(data || []));
     }
-  }, [activeTab]);
+  }, [activeTab, isAuthenticated]);
 
   // Helper to check if a route key is allowed for current activeRole
   const isRouteAllowed = (key: string, role: string, items: NavMenuItem[]) => {

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { fetchMiscCatalogFromDB, fetchMaterialCategoriesFromDB } from '../services/api';
 import { useModules } from './ModulesContext';
+import { useAuth } from './AuthContext';
 
 export interface MiscChargeTemplate {
   id: string | number;
@@ -35,6 +36,7 @@ export const useConfigurationData = (): ConfigurationDataContextValue => {
 
 export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isEnabled } = useModules();
+  const { isAuthenticated } = useAuth();
   const [miscCharges, setMiscCharges] = useState<MiscChargeTemplate[]>([]);
   const [materialCategories, setMaterialCategories] = useState<MaterialCategory[]>([]);
   // Default true, not false (14 Aug 2026 fix): both start an unconditional
@@ -74,6 +76,7 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchMiscCharges();
     if (isEnabled('kitchen')) {
       fetchMaterialCategories();
@@ -82,7 +85,7 @@ export const ConfigurationDataProvider: React.FC<{ children: React.ReactNode }> 
       // stuck true forever now that it defaults true.
       setIsLoadingCategories(false);
     }
-  }, [isEnabled]);
+  }, [isEnabled, isAuthenticated]);
 
   return (
     <ConfigurationDataContext.Provider

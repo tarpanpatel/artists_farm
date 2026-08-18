@@ -6,6 +6,7 @@ import {
   addStaffUserDB,
   updateStaffUserDB,
 } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface StaffContextValue {
   staff: StaffMember[];
@@ -37,6 +38,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   onLogAudit,
   currentUser,
 }) => {
+  const { isAuthenticated } = useAuth();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
@@ -124,6 +126,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   }, [loadStaff]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadStaff();
     let cancelled = false;
     fetchAttendanceFromDB().then((data) => {
@@ -131,7 +134,7 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
       if (data && data.length > 0) setAttendance(data);
     });
     return () => { cancelled = true; };
-  }, [loadStaff]);
+  }, [loadStaff, isAuthenticated]);
 
   const refreshAttendance = useCallback(() => {
     fetchAttendanceFromDB().then((data) => {

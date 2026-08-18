@@ -82,6 +82,21 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           return;
         }
 
+        // Fired now (before the property/modules fetches below) so it's
+        // already resolving in the background and adds ~zero latency by the
+        // time it's actually awaited further down - see there for why this
+        // exists (18 Aug 2026): nav/telegram/guests/receipts/menu are
+        // authenticated-only data, but were being preloaded unconditionally
+        // here even for a logged-out visitor sitting on the login screen,
+        // guaranteed to 401 every single time - and each 401 looks exactly
+        // like a transient failure to the retry logic below, so it burned
+        // through a full extra retry round chasing something that could
+        // never succeed without a session.
+        const sessionCheckPromise = apiFetch('/php/api/router.php?action=check_session')
+          .then(res => res.json())
+          .then(json => !!json?.authenticated)
+          .catch(() => false);
+
         // Create a timeout promise that resolves after 6 seconds (was 3s -
         // too tight for a cold first load right after login: several
         // sequential+parallel requests against cold caches/connections
@@ -192,10 +207,21 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
             : Promise.resolve({ value: [] as any[], failed: false }),
         ]);
 
-        const realDataPromise = runRealDataFetches();
+        const isAuthenticated = await sessionCheckPromise;
+
+        // No valid session - none of the 5 fetches above will ever succeed
+        // (see the note by sessionCheckPromise), so skip them entirely
+        // rather than firing all 5, having every one 401, then retrying the
+        // whole batch again below thinking it was a transient failure.
+        // failed:false on each is deliberate - it's what keeps
+        // anyRealDataFetchFailed (below) false, so that retry never fires.
+        const emptyEntry = { value: [] as any[], failed: false };
+        const unauthenticatedResults = [emptyEntry, { value: null as any, failed: false }, emptyEntry, emptyEntry, emptyEntry];
+
+        const realDataPromise = isAuthenticated ? runRealDataFetches() : Promise.resolve(unauthenticatedResults);
 
         let timedOut = false;
-        const results = await Promise.race([
+        const results = !isAuthenticated ? unauthenticatedResults : await Promise.race([
           realDataPromise,
           timeoutPromise.then(() => {
             timedOut = true;
@@ -256,7 +282,10 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         }
 
         // Modules fetch failed above - same treatment, retry once in the background.
-        if (modulesFetchFailed) {
+        // But not if that failure was just "no session" (isAuthenticated already
+        // resolved by this point) - retrying without a session is guaranteed to
+        // fail the same way again, it's not a transient error to recover from.
+        if (modulesFetchFailed && isAuthenticated) {
           fetchPropertyModulesFromDB()
             .then((freshModules) => {
               if (isStale() || !Array.isArray(freshModules) || freshModules.length === 0) return;

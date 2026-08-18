@@ -100,7 +100,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
 
   useEffect(() => {
@@ -520,10 +520,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // last_reminder_at the auto-check reads, so either path resets the countdown.
   const [reminderThresholdMinutes, setReminderThresholdMinutes] = useState(5);
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchTelegramConfigDB().then((cfg) => {
       if (cfg.reminderThresholdMinutes) setReminderThresholdMinutes(cfg.reminderThresholdMinutes);
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const autoFireKitchenReminder = async (stale: StaleReminderItem) => {
     const reminderVars: Record<string, string> = {
