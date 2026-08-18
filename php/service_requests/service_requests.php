@@ -160,13 +160,13 @@ function fulfillServiceRequest($pdo, $id, $staffName) {
 
     $fulfilledText = serviceRequestEditedText($pdo, $req, $staffName);
 
-    // 1. Edit original Telegram message to update status and remove button if linked
+    // Edit original Telegram message to update status and remove inline button if linked.
+    // If original message exists, editing it is sufficient and avoids posting a duplicate second message in Telegram.
     if (!empty($req['telegram_chat_id']) && !empty($req['telegram_message_id'])) {
         editTelegramMessageText($req['telegram_chat_id'], $req['telegram_message_id'], $fulfilledText, null, $botToken);
+    } else {
+        sendPropertyTelegramMessage($pdo, $propId, 'admin', $fulfilledText, null, 'service_request_fulfilled_edit');
     }
-
-    // 2. Dispatch a "SERVICE REQUEST FULFILLED" notification to Admin Telegram group so team is notified
-    sendPropertyTelegramMessage($pdo, $propId, 'admin', $fulfilledText, null, 'service_request_fulfilled_edit');
 
     return ['status' => 'success', 'already' => false, 'message' => 'Service request marked fulfilled'];
 }
