@@ -4,6 +4,8 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 
 ## 🎨 UI & Design Rules
 
+**See also `DESIGN.md`** (project root) - the detailed design system spec (theme tokens, responsive table/mobile-card-stack pattern, modal grid layout, KPI card layout, tooltip/badge rules). This CLAUDE.md section covers the load-bearing basics; DESIGN.md goes deeper on specific component patterns. Read it before building any new table, modal form, or summary-card UI.
+
 ### Icon Library (CRITICAL)
 - **Use ONLY Lucide React icons** (`lucide-react` package)
 - NO other icon libraries (FontAwesome, Material-UI, etc.)

@@ -3,6 +3,7 @@
 - Do not open files in editor tabs when viewing or making code edits unless explicitly requested by the user.
 - Never deploy automatically unless explicitly requested by the user.
 - When explicitly asked to deploy, deploy ONLY to the Staging environment (`staging.artistic-sthan.com` via `.\deploy-staging.ps1`), never directly to Production unless Production deployment is explicitly requested by name.
+- Strictly adhere to visual design tokens, iconography, modal form grid rules, and responsive mobile layouts defined in [DESIGN.md](file:///c:/xampp/htdocs/artists_farm/DESIGN.md).
 
 ---
 
