@@ -537,7 +537,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               return (
                 <li
                   key={g.id}
-                  className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 ${
+                  className={`flex items-center justify-between gap-3 rounded-xl border p-2.5 ${
                     due.overdue
                       ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
                       : 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'

@@ -5,6 +5,7 @@ import { t } from '../i18n/en';
 
 import { Button } from './Button';
 import { Input } from './Input';
+import { ToggleSwitch } from './ToggleSwitch';
 
 function slugify(name: string, existingKeys: string[]): string {
   const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'group';
@@ -69,18 +70,10 @@ export const TelegramConnectionSettings: React.FC<TelegramConnectionSettingsProp
             {t('telegram_toggle_description')}
           </div>
         </div>
-        <button
-          onClick={() => onChange({ enabled: !config.enabled })}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
-            config.enabled ? 'bg-emerald-500' : 'bg-slate-600'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              config.enabled ? 'translate-x-6' : 'translate-x-1'
-            }`}
-          />
-        </button>
+        <ToggleSwitch
+          enabled={!!config.enabled}
+          onChange={(val) => onChange({ enabled: val })}
+        />
       </div>
 
       {/* Bot token */}

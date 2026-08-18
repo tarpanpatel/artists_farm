@@ -1084,6 +1084,25 @@ html.dark .payees-registry-table tr:hover {
   animation: slide-in 0.25s ease-out;
 }
 
+/* Bottom sheet panels (e.g. MobileBottomNav's Quick Action drawer): slides
+   the whole panel up from off-screen rather than slide-in's small 16px
+   nudge. Note: "animate-in"/"slide-in-from-bottom" (the shadcn/
+   tailwindcss-animate naming) look similar but aren't real classes here -
+   that plugin isn't installed, so those class names are inert. */
+@keyframes sheet-slide-up {
+  0% {
+    transform: translateY(100%);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Telegram notification template manager overrides */
 .active-template-item {
   background-color: #0284c7;

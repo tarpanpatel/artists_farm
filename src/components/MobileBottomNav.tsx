@@ -69,7 +69,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setIsQuickActionOpen(false)}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
           />
-          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-2xl space-y-3 animate-in slide-in-from-bottom duration-200 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-2xl space-y-3 animate-sheet-slide-up pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
             {/* Close Button Sitting Outside the Panel */}
             <button
               type="button"

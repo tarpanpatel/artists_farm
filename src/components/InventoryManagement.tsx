@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, type LucideIcon } from 'lucide-react';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Calendar, Eye, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
@@ -279,6 +279,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   // Category filter for catalog
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [fulfillPage, setFulfillPage] = useState<number>(1);
 
   // Category management state
   const [catalogView, setCatalogView] = useState<'items' | 'categories'>('items');
@@ -484,6 +485,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const [reqSearch, setReqSearch] = useState('');
   const [reqCategory, setReqCategory] = useState('All Items');
+  const [showReqCategoryFilters, setShowReqCategoryFilters] = useState(false);
   const [reqBasket, setReqBasket] = useState<{ id: string; name: string; unit: string; qty: number; rate?: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('stock_request_basket') || '[]'); } catch { return []; }
   });
@@ -1144,55 +1146,52 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   if (activeTab === 'catalog') {
     return (
-      <div className="stock-inventory-container space-y-4">
-        <PageHeader
-          title="Edit Kitchen Stock"
-          subtitle="Manage the master list of raw materials - pricing, pack sizes, units, and categories."
-        />
+      <div className="stock-inventory-container">
+        <div className="mb-4">
+          <PageHeader
+            title="Edit Kitchen Stock"
+            subtitle="Manage the master list of raw materials - pricing, pack sizes, units, and categories."
+          />
+        </div>
 
-        {/* Consolidated Sub-Nav Header (Aligned with #stock_requests & all pages) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCatalogView('items')}
-              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
-                catalogView === 'items'
-                  ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
-              }`}
-            >
-              <Package className="w-4 h-4 shrink-0" />
-              <span>{t('master_materials_catalog_header')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCatalogView('categories')}
-              className={`btn-manage-categories px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
-                catalogView === 'categories'
-                  ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
-              }`}
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span>{t('manage_categories_button')}</span>
-            </button>
-          </div>
-
-          {catalogView === 'items' && (
-            <button
-              onClick={handleCreateNewCatalogItem}
-              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('register_new_item_button')}</span>
-            </button>
-          )}
+        {/* Unified Sub-Tab Navigation Bar - same "merged panel" folder-tab
+            style as Kitchen and Stock Requests (18 Aug 2026): active tab
+            shares one solid background with the panel directly beneath it
+            (no seam), centered, no track background behind the row,
+            inactive tabs get only a faint ghost border. items-end (not
+            items-center) is required so the active tab's bottom edge -
+            shorter than inactive tabs since it has no bottom border - still
+            lands flush with the panel below instead of floating above it. */}
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
+          <button
+            type="button"
+            onClick={() => setCatalogView('items')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              catalogView === 'items'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <Package className="w-4 h-4 shrink-0" />
+            <span>{t('master_materials_catalog_header')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCatalogView('categories')}
+            className={`btn-manage-categories flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              catalogView === 'categories'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            <span>{t('manage_categories_button')}</span>
+          </button>
         </div>
 
         {/* Categories Tab */}
         {catalogView === 'categories' && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 space-y-3">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Input
                 type="text"
@@ -1300,7 +1299,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
 
         {catalogView === 'items' && (
-        <>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4 space-y-4">
+        {/* Panel header - "Register New Item" moved here from the tab row
+            (18 Aug 2026) now that the tabs are centered pure navigation. */}
+        <div className="flex items-center justify-end">
+          <button
+            onClick={handleCreateNewCatalogItem}
+            className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('register_new_item_button')}</span>
+          </button>
+        </div>
+
         {/* Bulk Action Bar */}
         {selectedCatalogItemIds.length > 0 && (
           <div className="bulk-category-action-bar bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-250">
@@ -1452,10 +1463,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         key={cat}
                         type="button"
                         onClick={() => setSelectedCategory(cat)}
-                        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                           isActive
-                            ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
-                            : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                            ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                            : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
                         }`}
                       >
                         {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
@@ -1562,10 +1573,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                       isActive
-                        ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
-                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                        ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                        : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
                     }`}
                   >
                     {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
@@ -1693,7 +1704,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             );
           })()}
         </div>
-        </>
+        </div>
         )}
 
         {/* Add/Edit Modal */}
@@ -1786,55 +1797,63 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const pendingSheetsCount = recentSheets.filter(s => s.status === 'PENDING').length;
 
     return (
-      <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col space-y-4 lg:pb-0">
-        {/* Consolidated Sub-Nav Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('requisitions')}
-              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
-                activeTab === 'requisitions'
-                  ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 shadow-xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
-              }`}
-            >
-              <PackagePlus className="w-4 h-4 shrink-0" />
-              <span>Request Materials</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('fulfill')}
-              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
-                activeTab === 'fulfill'
-                  ? 'border border-emerald-600 text-emerald-700 dark:text-emerald-300 dark:border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 shadow-xs'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Fulfill & Pending Approvals ({pendingSheetsCount})</span>
-            </button>
-          </div>
+      <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col lg:pb-0">
+        {/* Unified Sub-Tab Navigation Bar - same "merged panel" folder-tab
+            style as the Kitchen page (18 Aug 2026): active tab shares one
+            solid background with the panel directly beneath it (no seam),
+            centered, no track background behind the row, inactive tabs get
+            only a faint ghost border. items-end (not items-center) is
+            required so the active tab's bottom edge - shorter than inactive
+            tabs since it has no bottom border - still lands flush with the
+            panel below instead of floating above it. */}
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
+          <button
+            type="button"
+            onClick={() => setActiveTab('requisitions')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'requisitions'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <PackagePlus className="w-4 h-4 shrink-0" />
+            <span>Request Materials</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('fulfill')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'fulfill'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>Fulfill & Pending Approvals</span>
+            {pendingSheetsCount > 0 && (
+              <span className="px-2 py-0.5 rounded-xl text-[10px] font-extrabold bg-red-600 text-white shadow-2xs">
+                {pendingSheetsCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {activeTab === 'fulfill' ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="font-semibold text-slate-800 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Pending Material Requisitions & Approvals</span>
-              </div>
-
+          <div className="space-y-4 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-700/80">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setFulfillRangeOpen(true)}
-                  className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 shadow-xs hover:border-slate-400 dark:hover:border-slate-500 transition-colors cursor-pointer"
+                  className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-2xs flex items-center gap-2 cursor-pointer active:scale-95"
                 >
-                  <span className="inline-flex items-center gap-1">{formatDateDDMMYYYY(fulfillFromDraft)} <ArrowRight className="w-3 h-3" /> {formatDateDDMMYYYY(fulfillToDraft)}</span>
-                </button>
-                <button onClick={handleFilterFulfill} className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs px-4 py-1.5 rounded-md shadow-2xs cursor-pointer transition-all active:scale-95">
-                  {t('enter_button', 'Enter')}
+                  <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="inline-flex items-center gap-1.5">
+                    {formatDateDDMMYYYY(fulfillFromDraft)}
+                    <ArrowRight className="w-3 h-3 text-slate-400" />
+                    {formatDateDDMMYYYY(fulfillToDraft)}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
                 </button>
               </div>
             </div>
@@ -1854,32 +1873,35 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               />
             )}
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
+            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden">
               <DataTable
                 columns={[
                   {
-                    name: 'Sheet ID',
+                    name: 'Request ID',
                     selector: (row: any) => row.id,
                     sortable: true,
-                    width: '90px',
-                    cell: (row: any) => <span className="font-mono font-bold text-slate-700 dark:text-slate-200 text-xs">#{row.id}</span>,
+                    width: '100px',
+                    cell: (row: any) => (
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                        #{row.id}
+                      </span>
+                    ),
                   },
                   {
-                    name: 'Request Date & Time',
+                    name: 'Date',
                     selector: (row: any) => row.date,
                     sortable: true,
-                    width: '180px',
-                    cell: (row: any) => <span className="font-mono text-slate-500 text-xs">{row.date}</span>,
+                    width: '120px',
                   },
                   {
-                    name: 'Requested Material Items',
+                    name: 'Requested Items',
                     selector: (row: any) => Array.isArray(row.items) ? row.items.join(', ') : row.items,
                     grow: 3,
                     cell: (row: any) => (
                       <div className="py-2 space-y-1">
                         <div className="flex flex-wrap gap-1">
                           {Array.isArray(row.items) && row.items.map((itemStr: string, idx: number) => (
-                            <span key={idx} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
+                            <span key={idx} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] px-2 py-0.5 rounded-xl border border-slate-200 dark:border-slate-600">
                               {itemStr}
                             </span>
                           ))}
@@ -1894,7 +1916,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     center: true,
                     width: '120px',
                     cell: (row: any) => (
-                      <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-md ${
+                      <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-xl ${
                         row.status === 'PENDING'
                           ? 'bg-amber-100 text-amber-700 border border-amber-200'
                           : row.status === 'FULFILLED'
@@ -1911,12 +1933,18 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     width: '240px',
                     cell: (row: any) => (
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-blue-200 shadow-2xs active:scale-95">
-                          <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
-                        </button>
-                        {row.status === 'PENDING' && (
-                          <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-2xs active:scale-95">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                        {row.status === 'PENDING' ? (
+                          <>
+                            <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-blue-200 shadow-2xs active:scale-95">
+                              <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
+                            </button>
+                            <button onClick={() => handleQuickComplete(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-[11px] px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-emerald-200 shadow-2xs active:scale-95">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => handleEditFulfill(row)} className="whitespace-nowrap inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-[11px] px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-2xs active:scale-95">
+                            <Eye className="w-3.5 h-3.5" /> View Request
                           </button>
                         )}
                       </div>
@@ -1952,6 +1980,137 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   <div className="p-8 text-center text-slate-400 text-sm">No material requisition sheets found.</div>
                 }
               />
+            </div>
+
+            {/* Mobile Card Stack View with 10-Item Pagination */}
+            <div className="md:hidden space-y-3">
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-3 shadow-xs">
+                <Input
+                  type="text"
+                  placeholder="Search requests by item name, status..."
+                  value={fulfillSearch}
+                  onChange={(e) => setFulfillSearch(e.target.value)}
+                  className="w-full"
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                />
+              </div>
+
+              {(() => {
+                const filtered = filteredFulfillSheets.filter((row) => {
+                  if (!fulfillSearch.trim()) return true;
+                  const term = fulfillSearch.toLowerCase();
+                  const itemsStr = Array.isArray(row.items) ? row.items.join(' ').toLowerCase() : '';
+                  return row.date.toLowerCase().includes(term) || row.status.toLowerCase().includes(term) || itemsStr.includes(term);
+                });
+                const totalPages = Math.max(1, Math.ceil(filtered.length / 10));
+                const paginated = filtered.slice((fulfillPage - 1) * 10, fulfillPage * 10);
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center text-slate-400 text-xs font-medium">
+                      No material requisition sheets found.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {paginated.map((row) => (
+                      <div
+                        key={row.id}
+                        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 space-y-3 shadow-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-slate-900 dark:text-white">
+                              Request #{row.id}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              · {row.date}
+                            </span>
+                          </div>
+                          <span className={`font-semibold text-[10px] px-2.5 py-1 rounded-xl ${
+                            row.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                              : row.status === 'FULFILLED'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                          }`}>
+                            {row.status}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Requested Items ({Array.isArray(row.items) ? row.items.length : 1})
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(row.items) && row.items.map((itemStr: string, idx: number) => (
+                              <span key={idx} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-600">
+                                {itemStr}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                          {row.status === 'PENDING' ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditFulfill(row)}
+                                className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-blue-200 dark:border-blue-800 shadow-2xs active:scale-95"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Edit & Deliver
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickComplete(row)}
+                                className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-semibold text-xs px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-2xs active:scale-95"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleEditFulfill(row)}
+                              className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-slate-200 dark:border-slate-600 shadow-2xs active:scale-95"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> View Request
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* 10-Item Mobile Pagination Bar */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 shadow-2xs text-xs">
+                        <button
+                          type="button"
+                          disabled={fulfillPage <= 1}
+                          onClick={() => setFulfillPage((p) => Math.max(1, p - 1))}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          Previous
+                        </button>
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">
+                          Page {fulfillPage} of {totalPages} ({filtered.length} total)
+                        </span>
+                        <button
+                          type="button"
+                          disabled={fulfillPage >= totalPages}
+                          onClick={() => setFulfillPage((p) => Math.min(totalPages, p + 1))}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Fulfill Edit Modal */}
@@ -2042,61 +2201,75 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         ) : (
           <>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
           <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
             {/* Sticky Search & Category Pills Bar */}
             <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-2xs rounded-t-xl">
-              {/* Quick Search Bar */}
-              <div className="relative">
-                <Input
-                  type="text"
-                  value={reqSearch}
-                  onChange={(e) => setReqSearch(e.target.value)}
-                  placeholder={t('quick_search_catalog_placeholder')}
-                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                  className="pr-9"
-                />
-                {reqSearch && (
-                  <button
-                    onClick={() => setReqSearch('')}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Category Pills Bar (Horizontal Scrollable) */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
-                {categories.map((cat) => {
-                  const isSelected = reqCategory === cat;
-                  return (
+              {/* Quick Search Bar + Category Filter Toggle */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type="text"
+                    value={reqSearch}
+                    onChange={(e) => setReqSearch(e.target.value)}
+                    placeholder={t('quick_search_catalog_placeholder')}
+                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                    className="pr-9"
+                  />
+                  {reqSearch && (
                     <button
-                      key={cat}
-                      onClick={() => setReqCategory(cat)}
-                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
-                        isSelected
-                          ? 'bg-cyan-500 text-white border-cyan-500 shadow-sm'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'
-                      }`}
+                      onClick={() => setReqSearch('')}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      {cat}
+                      <X className="w-4 h-4" />
                     </button>
-                  );
-                })}
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReqCategoryFilters((v) => !v)}
+                  className={`relative h-10 w-10 shrink-0 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                    showReqCategoryFilters
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                  }`}
+                  title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                  aria-label="Toggle category filters"
+                  aria-expanded={showReqCategoryFilters}
+                >
+                  <Filter className="w-4 h-4" />
+                  {reqCategory !== 'All Items' && !showReqCategoryFilters && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                  )}
+                </button>
               </div>
+
+              {/* Category Pills Bar - hidden by default, revealed via the Filter button above */}
+              {showReqCategoryFilters && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+                  {categories.map((cat) => {
+                    const isSelected = reqCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setReqCategory(cat)}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                            : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Selected Category Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="inventory-management__subtitle font-semibold text-slate-700 text-xs tracking-wider uppercase">
-                {reqCategory === 'All Items' ? t('all_stock_catalog_items_header') : reqCategory.toUpperCase()}
-              </h3>
-              <span className="text-[11px] text-slate-400 font-semibold">
-                {inventoryLoading ? '…' : filteredCatalog.length} items
-              </span>
-            </div>
+
 
             {/* Stock Items Grid with Row Items (Mobile: 1 col, Sm: 2 cols, Lg: 3 cols) */}
             {inventoryLoading ? (
@@ -2248,6 +2421,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
           </div>
         </div>
+            </div>
 
         {/* MOBILE ONLY Light-Theme Bottom Cart Drawer (lg:hidden, Collapsible & 50vh Expandable) */}
         {(reqBasket.length > 0 || specialRequestText.trim()) && (
@@ -2516,10 +2690,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                     isActive
-                      ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
-                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                      ? 'border-blue-600 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-2xs'
+                      : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-semibold'
                   }`}
                 >
                   {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})

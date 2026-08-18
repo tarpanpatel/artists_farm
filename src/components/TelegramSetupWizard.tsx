@@ -28,6 +28,7 @@ import {
 } from '../services/api';
 import { PropertyTelegramConfig } from '../types';
 import { t } from '../i18n/en';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface WizardStep {
   key: 'settings' | 'kitchen' | 'admin' | 'finance';
@@ -376,19 +377,10 @@ export const TelegramSetupWizard: React.FC<TelegramSetupWizardProps> = ({
                     {t('enable_telegram_notifications_description', 'Toggle to enable or disable all Telegram notifications.')}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateConfigField('enabled', !wizardConfig?.enabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
-                    wizardConfig?.enabled ? 'bg-emerald-500' : 'bg-slate-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      wizardConfig?.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                <ToggleSwitch
+                  enabled={!!wizardConfig?.enabled}
+                  onChange={(val) => handleUpdateConfigField('enabled', val)}
+                />
               </div>
 
               {/* Bot API Token */}

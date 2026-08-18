@@ -11,14 +11,14 @@ interface ScrollToTopButtonProps {
 
 /**
  * Mobile-only "back to top" button - appears after scrolling past `threshold`
- * (default 1000px) and smooth-scrolls back to the top of the page on click.
+ * (default 500px) and smooth-scrolls back to the top of the page on click.
  * Positioned bottom-left (not bottom-right, which the toast container and the
  * install-app banner both use) and sits above them (z-40) with enough bottom
  * offset to stay clear of the install banner when it's showing.
  */
 export const ScrollToTopButton: React.FC<ScrollToTopButtonProps> = ({
   scrollContainerRef,
-  threshold = 1000,
+  threshold = 500,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 

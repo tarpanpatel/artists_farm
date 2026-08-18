@@ -432,7 +432,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
             {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
-              const isToday = isSameDate(day, today);
 
               return (
                 <div
@@ -441,14 +440,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                     if (idx === scrollTargetIdx) scrollTargetRef.current = el;
                     if (idx === 0) columnWidthRef.current = el;
                   }}
-                  className={`w-16 min-w-16 shrink-0 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold ${
-                    isToday
-                      ? 'bg-blue-600 text-white dark:bg-blue-600'
-                      : 'text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800'
-                  }`}
+                  className="w-16 min-w-16 shrink-0 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800"
                 >
                   <div className="text-[8px] uppercase tracking-wide">{dayName}</div>
-                  <div className={`text-sm font-semibold ${isToday ? 'text-white' : ''}`}>{day.getDate()}</div>
+                  <div className="text-sm font-semibold">{day.getDate()}</div>
                 </div>
               );
             })}
@@ -607,17 +602,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                   {/* Days Grid - Background with diagonal stripes */}
                   <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
-                    {daysArray.map((day) => {
-                      const isToday = isSameDate(day, today);
-                      return (
-                        <div
-                          key={`bg-${day.toISOString()}`}
-                          className={`w-16 min-w-16 shrink-0 border-r border-slate-100 dark:border-slate-700/50 transition ${
-                            isToday ? 'bg-blue-50/60 dark:bg-blue-900/15' : 'bg-white dark:bg-slate-800/30'
-                          }`}
-                        />
-                      );
-                    })}
+                    {daysArray.map((day) => (
+                      <div
+                        key={`bg-${day.toISOString()}`}
+                        className="w-16 min-w-16 shrink-0 border-r border-slate-100 dark:border-slate-700/50 transition bg-white dark:bg-slate-800/30"
+                      />
+                    ))}
 
                     {/* Spanning capsules overlaid */}
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
@@ -710,10 +700,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <span>{t('legend_heading', 'Legend:')}</span>
         </div>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-2xs" />
-            <span>{t('legend_today', 'Today Column')}</span>
-          </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-2xs" />
             <span>{t('legend_direct_booking', 'Direct Booking')}</span>

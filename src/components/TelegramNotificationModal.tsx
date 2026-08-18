@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
   ShieldCheck,
@@ -927,32 +927,34 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const contentBody = (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-4 sm:p-6 space-y-5 w-full">
       {/* Page Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
             <Send className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="telegram-notification-modal__title text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 m-0">
-              {t('telegram_template_manager_heading', 'Telegram Template Manager')}
-              <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="telegram-notification-modal__title text-base sm:text-lg font-bold text-slate-900 dark:text-white m-0">
+                {t('telegram_template_manager_heading', 'Telegram Template Manager')}
+              </h2>
+              <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-xl border border-emerald-300 dark:border-emerald-800 inline-flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 {t('bot_connected_badge', 'Bot Connected')}
               </span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 pt-0.5">
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 pt-0.5 leading-relaxed">
               {t('telegram_manager_subtitle', 'Customize automated Telegram notification formats, variables & live previews')}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {!hideRoutingControls && (
             <>
               <button
                 onClick={handleTest}
                 disabled={testSending}
-                className={`text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed ${
+                className={`flex-1 md:flex-none justify-center whitespace-nowrap text-xs font-semibold text-white transition-all flex items-center gap-1.5 px-3.5 py-2 rounded-xl cursor-pointer shadow-sm active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed ${
                   testSent
                     ? 'bg-emerald-600 hover:bg-emerald-500'
                     : testError
@@ -973,7 +975,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
               </button>
               <button
                 onClick={() => setShowSetupWizard(true)}
-                className="text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                className="flex-1 md:flex-none justify-center whitespace-nowrap text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
               >
                 <Rocket className="w-4 h-4" />
                 <span>{t('telegram_setup_button', 'Telegram Setup')}</span>
@@ -983,7 +985,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           {!isEmbedded && onClose && (
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors min-h-[36px] min-w-[36px]"
+              className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors min-h-[36px] min-w-[36px] ml-auto md:ml-0"
             >
               <X className="w-5 h-5" />
             </button>
