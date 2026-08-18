@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, Users, UtensilsCrossed, Wallet, Menu, Plus, UserPlus, Handshake, Receipt, PackagePlus, X } from 'lucide-react';
 import { TabType } from './Navigation';
+import { t } from '../i18n/en';
 
 interface MobileBottomNavProps {
   activeTab: TabType;

@@ -1107,7 +1107,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <Clock className="w-4 h-4" />
             <span>{t('live_active_orders_label', 'Live Tickets')}</span>
             {pendingOrdersCount > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
                 activeTab === 'kds'
                   ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
                   : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
@@ -1129,7 +1129,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             <Receipt className="w-4 h-4" />
             <span>{t('walk_in_bills_button', 'Walk-in Bills & Tabs')}</span>
             {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
                 activeTab === 'walk_in_bills'
                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
                   : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
