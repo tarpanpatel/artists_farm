@@ -95,10 +95,6 @@ This document defines the core visual design tokens, component architecture patt
 ---
 
 ## 10. Unified Border Radius Standard
-- **Strict Site-Wide Consistency**: Border radius tokens must be completely unified across all cards, containers, images, buttons, and inputs throughout the application. Ad-hoc or mismatched border radius classes (e.g. mixing random `rounded-md`, `rounded-3xl`, `rounded-sm`, `rounded-lg` on similar elements) are strictly prohibited.
-- **Unified Corner Radius Hierarchy**:
-  - **Outer Cards, Containers, Drawers & Modals**: `rounded-2xl` (16px / 1rem) — Used for all outer boxes, card containers, bottom sheets, dialog modals, and section panels.
-  - **Buttons, Form Inputs, Select Controls & Tabs**: `rounded-xl` (12px / 0.75rem) — Used for interactive UI controls, action buttons, search inputs, dropdown triggers, and navigation tab pills.
-  - **Images, Food Dish Media & Item Thumbnails**: `rounded-xl` (12px / 0.75rem) — All dish photos, material thumbnails, and uploaded media images must match the `rounded-xl` container radius.
-  - **Status Pills, Counter Badges & Avatars**: `rounded-full` — Reserved strictly for circular user avatars and pill-style status badges.
+- **Single Universal Border Radius Rule**: EVERY element in the entire application that has a border radius—including outer card boxes, panels, section containers, bottom drawers, modals, buttons, form inputs, search bars, select dropdowns, navigation tabs, images, dish thumbnails, status badges, counter tags, and info labels—MUST use the exact same unified corner radius: **`rounded-xl` (12px / 0.75rem)**.
+- **Absolute Visual Uniformity**: Zero variations in corner roundness are permitted across the site. Ad-hoc mixing of `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-2xl`, `rounded-3xl`, or capsule `rounded-full` shapes is strictly prohibited (with the sole exception of 1:1 circular user profile avatars and tiny notification dot indicators).
 
