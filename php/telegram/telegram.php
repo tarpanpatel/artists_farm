@@ -31,23 +31,51 @@ function handleTelegramRequests($pdo, $request_method, $action, $propertyId) {
                 $mediaUrls   = is_array($input['mediaUrls'] ?? null) ? $input['mediaUrls'] : [];
 
                 $filePaths = [];
+                $fileTypes = [];
+                $tempFilesToDelete = [];
+
                 if (!empty($mediaUrls)) {
                     $rootDir = realpath(__DIR__ . '/../../');
-                    if ($rootDir) {
-                        foreach ($mediaUrls as $rawUrl) {
-                            if (!is_string($rawUrl) || empty($rawUrl)) continue;
-                            $path = parse_url($rawUrl, PHP_URL_PATH);
-                            if (!$path) continue;
+                    foreach (array_values($mediaUrls) as $i => $rawUrl) {
+                        if (!is_string($rawUrl) || empty(trim($rawUrl))) continue;
+                        $trimUrl = trim($rawUrl);
+
+                        // Check if it's a base64 Data URL (e.g. data:image/jpeg;base64,... or data:application/pdf;base64,...)
+                        if (preg_match('/^data:(image\/[a-zA-Z0-9\+\-]+|application\/pdf);base64,(.+)$/s', $trimUrl, $matches)) {
+                            $mimeType = $matches[1];
+                            $base64Data = $matches[2];
+                            $binary = base64_decode($base64Data);
+                            if ($binary !== false && strlen($binary) > 0) {
+                                $isPdf = ($mimeType === 'application/pdf');
+                                $ext = $isPdf ? 'pdf' : (($mimeType === 'image/png') ? 'png' : 'jpg');
+                                $tempPath = sys_get_temp_dir() . '/tg_expense_' . time() . '_' . $i . '_' . uniqid() . '.' . $ext;
+                                if (file_put_contents($tempPath, $binary) !== false) {
+                                    $filePaths[] = $tempPath;
+                                    $fileTypes[] = $isPdf ? 'document' : 'photo';
+                                    $tempFilesToDelete[] = $tempPath;
+                                }
+                            }
+                            continue;
+                        }
+
+                        // Otherwise check if it's a relative or absolute URL to a file on disk
+                        $path = parse_url($trimUrl, PHP_URL_PATH);
+                        if ($path && $rootDir) {
                             $localPath = $rootDir . '/' . ltrim($path, '/');
                             if (file_exists($localPath)) {
                                 $filePaths[] = $localPath;
+                                $isPdf = strtolower(pathinfo($localPath, PATHINFO_EXTENSION)) === 'pdf';
+                                $fileTypes[] = $isPdf ? 'document' : 'photo';
                             }
                         }
                     }
                 }
 
                 if (!empty($filePaths)) {
-                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $message, $templateKey);
+                    $result = sendPropertyTelegramPhoto($pdo, $propertyId, $category, $filePaths, $message, $templateKey, $fileTypes);
+                    foreach ($tempFilesToDelete as $tmp) {
+                        if (file_exists($tmp)) @unlink($tmp);
+                    }
                 } else {
                     $result = sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup, $templateKey);
                 }
