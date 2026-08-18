@@ -91,12 +91,34 @@ function ensureServiceRequestsSchema($pdo) {
 // seedServiceRequestTypes removed: types now come from system_service_request_catalog (global)
 // and property-specific service_request_types (custom). No seeding needed.
 
+function getServiceRequestTypeLabel($pdo, $propertyId, $typeId) {
+    if (empty($typeId)) return 'General Service';
+    try {
+        if ($pdo && $propertyId) {
+            $stmt = $pdo->prepare("SELECT label FROM service_request_types WHERE (type_id = ? OR LOWER(type_id) = LOWER(?)) AND property_id = ? LIMIT 1");
+            $stmt->execute([$typeId, $typeId, $propertyId]);
+            $label = $stmt->fetchColumn();
+            if ($label) return $label;
+        }
+        if ($pdo) {
+            $stmt = $pdo->prepare("SELECT label FROM system_service_request_catalog WHERE type_id = ? OR LOWER(type_id) = LOWER(?) LIMIT 1");
+            $stmt->execute([$typeId, $typeId]);
+            $label = $stmt->fetchColumn();
+            if ($label) return $label;
+        }
+    } catch (Exception $e) {}
+
+    // Fallback: convert snake_case to Title Case (e.g. amenities_extra_bed -> Amenities Extra Bed)
+    return ucwords(str_replace(['_', '-'], ' ', $typeId));
+}
+
 function serviceRequestEditedText($pdo, $req, $staffName) {
+    $typeLabel = getServiceRequestTypeLabel($pdo, $req['property_id'] ?? 1, $req['request_type']);
     return TelegramTemplates::render($pdo, 'service_request_fulfilled_edit', [
-        'request_type' => $req['request_type'],
+        'request_type' => $typeLabel,
         'room_name' => $req['room_name'] ?? 'N/A',
         'staff_name' => $staffName,
-        'fulfill_time' => date('h:i A'),
+        'fulfill_time' => date('d/m/Y, h:i:s a'),
     ]);
 }
 
@@ -124,9 +146,19 @@ function fulfillServiceRequest($pdo, $id, $staffName) {
     $pdo->prepare("UPDATE service_requests SET status = 'Fulfilled', fulfilled_at = NOW(), fulfilled_by = ? WHERE id = ?")
         ->execute([$staffName, $id]);
 
+    $propId = intval($req['property_id'] ?? 1);
+    $config = getPropertyTelegramConfig($pdo, $propId);
+    $botToken = !empty($config['botToken']) ? $config['botToken'] : (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+
+    $fulfilledText = serviceRequestEditedText($pdo, $req, $staffName);
+
+    // 1. Edit original Telegram message to update status and remove button if linked
     if (!empty($req['telegram_chat_id']) && !empty($req['telegram_message_id'])) {
-        editTelegramMessageText($req['telegram_chat_id'], $req['telegram_message_id'], serviceRequestEditedText($pdo, $req, $staffName), null);
+        editTelegramMessageText($req['telegram_chat_id'], $req['telegram_message_id'], $fulfilledText, null, $botToken);
     }
+
+    // 2. Dispatch a "SERVICE REQUEST FULFILLED" notification to Admin Telegram group so team is notified
+    sendPropertyTelegramMessage($pdo, $propId, 'admin', $fulfilledText, null, 'service_request_fulfilled_edit');
 
     return ['status' => 'success', 'already' => false, 'message' => 'Service request marked fulfilled'];
 }
