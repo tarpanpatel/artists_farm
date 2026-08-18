@@ -139,3 +139,13 @@ This document defines the core visual design tokens, component architecture patt
   - **Knob (Thumb)**: `h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out` (`translate-x-5` when On, `translate-x-0` when Off).
 - **Prohibited Custom Toggles**: Ad-hoc raw buttons with unconstrained dimensions, misaligned absolute spans, or stretched flex tracks are strictly forbidden. All toggles must use `<ToggleSwitch />`.
 
+---
+
+## 16. Universal Toast Notification Placement Guidelines
+- **Universal Screen Centering Rule**: ALL toast notifications, alert banners, popups, and floating feedback status messages across the entire site MUST appear directly in the **center of the screen** (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]`).
+- **Prohibited Toast Placements**: Corner placements such as bottom-right (`bottom-4 right-4`), top-right (`top-4 right-4` / `top-20 right-6`), bottom-center, or top-center are strictly prohibited.
+- **Toast Styling Tokens**:
+  - **Positioning**: Fixed screen centering (`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] pointer-events-none`).
+  - **Radius & Elevation**: Universal `rounded-xl` corners with `shadow-2xl` elevation.
+  - **Z-Index Layering**: High `z-[9999]` elevation ensuring toast notifications float above all page modals, slide-over drawers, and navigation headers.
+
