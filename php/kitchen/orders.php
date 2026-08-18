@@ -197,6 +197,21 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ? AND property_id = ?");
                     $stmt->execute([$input['status'], $id, $propertyId]);
+
+                    // Whole-order status changes (e.g. the "Cancel Order" button)
+                    // only ever touched orders.status - check_stale_reminders keys
+                    // off order_items.item_status instead, which this left
+                    // untouched. A cancelled order vanished from the Live Tickets
+                    // queue but any item still sitting at item_status='Pending'
+                    // kept matching that query forever, so the 60s reminder poll
+                    // in KitchenManagement.tsx just kept re-sending "still
+                    // pending" Telegram nudges for a ticket that no longer
+                    // existed anywhere in the UI. Mirror the item->order cascade
+                    // update_order_item_status already does, in this direction too.
+                    if ($input['status'] === 'Cancelled') {
+                        $pdo->prepare("UPDATE order_items SET item_status = 'Cancelled' WHERE order_id = ? AND (item_status IS NULL OR item_status NOT IN ('Served', 'Cancelled'))")
+                            ->execute([$id]);
+                    }
                 } catch (PDOException $e) {
                     try {
                         $stmt = $pdo->prepare("UPDATE kitchen_orders SET status = ? WHERE id = ? AND property_id = ?");
