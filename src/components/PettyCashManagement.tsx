@@ -475,6 +475,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
     return cat || 'Other';
   };
 
+  const normalizePaymentMode = (mode?: string): string => {
+    if (!mode) return 'UPI / QR';
+    const m = mode.trim();
+    if (m === 'Online / UPI / QR' || m === 'Online' || m === 'UPI' || m === 'QR' || m === 'UPI / QR') return 'UPI / QR';
+    if (m === 'Cash' || m === 'Farm Cash') return 'Cash';
+    if (m === 'Bank Transfer' || m === 'Bank') return 'Bank Transfer';
+    if (m === 'Card' || m === 'Credit Card' || m === 'Debit Card') return 'Card';
+    return m;
+  };
+
   // Root Admin's system_expenses catalog groups items far more granularly
   // (21 categories - Appliances, Booking & Marketing, Swimming Pool, etc.)
   // than this form's Cost Category Group. Route each granular group to
@@ -1255,10 +1265,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div>
                 <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">2. Payment Mode</label>
                 <StyledSelect
-                  value={formState.paymentMode}
+                  value={normalizePaymentMode(formState.paymentMode)}
                   onChange={val => dispatch({ type: 'SET_FIELD', field: 'paymentMode', value: val })}
                   options={[
-                    { value: 'UPI / QR', label: t('payment_mode_upi_qr_label', 'UPI / QR') },
+                    { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
                     { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
                     { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
                     { value: 'Card', label: t('payment_mode_card_label', 'Card') },
@@ -1735,11 +1745,13 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
               <div>
                 <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('payment_mode_label', 'Payment Mode')}</label>
                 <StyledSelect
-                  value={editingEntry.paymentMode || 'Online / UPI / QR'}
+                  value={normalizePaymentMode(editingEntry.paymentMode)}
                   onChange={val => setEditingEntry({ ...editingEntry, paymentMode: val })}
                   options={[
-                    { value: 'Online / UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
+                    { value: 'UPI / QR', label: t('payment_mode_online_upi_qr_label', 'Online / UPI / QR') },
                     { value: 'Cash', label: t('payment_mode_cash_label', 'Cash') },
+                    { value: 'Bank Transfer', label: t('payment_mode_bank_transfer_label', 'Bank Transfer') },
+                    { value: 'Card', label: t('payment_mode_card_label', 'Card') },
                   ]}
                 />
               </div>
