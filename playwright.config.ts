@@ -19,12 +19,27 @@ export default defineConfig({
 
   projects: [
     {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: 'desktop',
-      use: { ...devices['Desktop Chrome'] },
+      testMatch: /(bookings-edit|checkout|staff)\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], storageState: 'tests/e2e/.auth/demo.json' },
     },
     {
       name: 'mobile',
-      use: { ...devices['Pixel 7'] },
+      testMatch: /(bookings-edit|checkout|staff)\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { ...devices['Pixel 7'], storageState: 'tests/e2e/.auth/demo.json' },
+    },
+    {
+      // Deliberately excludes login.spec.ts from storageState - it tests
+      // the real cold, cookie-less first visit.
+      name: 'cold-start',
+      testMatch: /login\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

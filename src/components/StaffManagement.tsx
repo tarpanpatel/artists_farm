@@ -1638,20 +1638,20 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <div className="p-6">
               {userFormTab === 'create' ? (
                 <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-4 text-xs">
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
-                    <Input
-                      type="text"
-                      required
-                      value={newFullName}
-                      onChange={(e) => setNewFullName(e.target.value)}
-                      placeholder="e.g. Ratan Singh"
-                      className="text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone (Username)')} *</label>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
+                      <Input
+                        type="text"
+                        required
+                        value={newFullName}
+                        onChange={(e) => setNewFullName(e.target.value)}
+                        placeholder="e.g. Ratan Singh"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')} *</label>
                       <Input
                         type="tel"
                         required
@@ -1662,94 +1662,101 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         className="text-slate-900 dark:text-white"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
-                        <Input
-                          type="password"
-                          autoComplete="new-password"
-                          required
-                          maxLength={6}
-                          value={newPasscode}
-                          onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="••••••"
-                          inputMode="numeric"
-                          className="text-slate-900 dark:text-white text-center font-mono font-semibold tracking-widest"
-                        />
-                      </div>
-                      <div>
-                        <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm Passcode PIN *</label>
-                        <Input
-                          type="password"
-                          autoComplete="new-password"
-                          required
-                          maxLength={6}
-                          value={newConfirmPasscode}
-                          onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="••••••"
-                          inputMode="numeric"
-                          className="text-slate-900 dark:text-white text-center font-mono font-semibold tracking-widest"
-                        />
-                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        maxLength={6}
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="••••••"
+                        inputMode="numeric"
+                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        maxLength={6}
+                        value={newConfirmPasscode}
+                        onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Re-enter new passcode"
+                        inputMode="numeric"
+                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                      />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'Team Role')}</label>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('team_role', 'System Role')}</label>
                       <StyledSelect
                         value={newRole}
                         onChange={(val) => setNewRole(val as any)}
                         options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
                       />
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newDailyWage}
+                        onChange={(e) => setNewDailyWage(e.target.value)}
+                        placeholder="e.g. 800"
+                        className="text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                    <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
                       <input
                         type="checkbox"
                         id="isFinancialHandlerCheck"
                         checked={newIsFinancialHandler}
                         onChange={(e) => setNewIsFinancialHandler(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
                       />
-                      <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
-                        <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
+                      <label htmlFor="isFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
                         <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
-                          <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                          <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+                      <input
+                        type="checkbox"
+                        id="newAccessAllPropertiesCheck"
+                        checked={newAccessAllProperties}
+                        onChange={(e) => setNewAccessAllProperties(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                      />
+                      <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
+                        <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
+                          <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                             <HelpCircle className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
                       </label>
                     </div>
                   </div>
+
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={newDailyWage}
-                      onChange={(e) => setNewDailyWage(e.target.value)}
-                      placeholder="e.g. 800"
-                      className="text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                    <input
-                      type="checkbox"
-                      id="newAccessAllPropertiesCheck"
-                      checked={newAccessAllProperties}
-                      onChange={(e) => setNewAccessAllProperties(e.target.checked)}
-                      className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                    />
-                    <label htmlFor="newAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
-                      <span>{t('access_all_properties_label', 'Access All Properties')}</span>
-                      <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
-                        <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
-                          <HelpCircle className="w-3.5 h-3.5" />
-                        </button>
-                      </Tooltip>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Staff Payment QR Code Image (Optional)')}</label>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_qr_upload_label', 'Payment QR Code Image (Optional)')}</label>
                     <Input
                       type="file"
                       accept="image/*"
@@ -1761,7 +1768,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700"
                     />
                   </div>
 
@@ -1787,7 +1794,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </form>
               ) : (
                 <form onSubmit={handleUpdateUserSubmit} className="app-form app-form--update-user space-y-4 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('staff_name_label', 'Staff Name')} *</label>
                       <Input
@@ -1800,7 +1807,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone (Username)')}</label>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('phone_login_username_label', 'Phone Number (Login Username)')}</label>
                       <Input
                         type="tel"
                         maxLength={10}
@@ -1817,7 +1824,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
                       <Input
@@ -1828,7 +1836,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Leave blank to keep current"
                         inputMode="numeric"
-                        className="text-center font-mono font-semibold tracking-widest text-xs"
+                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                     <div>
@@ -1841,26 +1849,28 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Re-enter new passcode"
                         inputMode="numeric"
-                        className="text-center font-mono font-semibold tracking-widest text-xs"
+                        className="text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                       />
                     </div>
                   </div>
 
                   {canShareLogins && !!(updateUsername || updateTargetUser?.username) && (
-                    <Button
-                      type="button"
-                      onClick={() => handleShareLogin({
-                        fullName: updateFullName || updateTargetUser?.fullName || '',
-                        username: updateUsername || updateTargetUser?.username || '',
-                        passcodePin: updatePasscode || updateTargetUser?.passcodePin,
-                      })}
-                      variant="secondary"
-                      size="xs"
-                      className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      {t('share_login_details_button', 'Share Login Details')}
-                    </Button>
+                    <div className="pt-0.5">
+                      <Button
+                        type="button"
+                        onClick={() => handleShareLogin({
+                          fullName: updateFullName || updateTargetUser?.fullName || '',
+                          username: updateUsername || updateTargetUser?.username || '',
+                          passcodePin: updatePasscode || updateTargetUser?.passcodePin,
+                        })}
+                        variant="secondary"
+                        size="xs"
+                        className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        {t('share_login_details_button', 'Share Login Details')}
+                      </Button>
+                    </div>
                   )}
 
                   {isEditingSuperAdmin ? (
@@ -1869,9 +1879,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         <div>
-                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'System Role')}</label>
+                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
                           <StyledSelect
                             value={updateRole}
                             onChange={(val) => setUpdateRole(val as any)}
@@ -1879,54 +1889,59 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
                           />
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 h-[38px] mb-0.5">
+                        <div>
+                          <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={updateDailyWage}
+                            onChange={(e) => setUpdateDailyWage(e.target.value)}
+                            placeholder="e.g. 800"
+                            className="text-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
                           <input
                             type="checkbox"
                             id="updateIsFinancialHandlerCheck"
                             checked={updateIsFinancialHandler}
                             onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
+                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
                           />
-                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
-                            <span>{t('cash_handling_user_label', 'Cash Handling User')}</span>
+                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
                             <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
-                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
+                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                                <HelpCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
+                          </label>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+                          <input
+                            type="checkbox"
+                            id="updateAccessAllPropertiesCheck"
+                            checked={updateAccessAllProperties}
+                            onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
+                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                          />
+                          <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
+                            <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
+                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
                                 <HelpCircle className="w-3.5 h-3.5" />
                               </button>
                             </Tooltip>
                           </label>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                        <input
-                          type="checkbox"
-                          id="updateAccessAllPropertiesCheck"
-                          checked={updateAccessAllProperties}
-                          onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
-                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer"
-                        />
-                        <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5">
-                          <span>{t('access_all_properties_label', 'Access All Properties')}</span>
-                          <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
-                            <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors">
-                              <HelpCircle className="w-3.5 h-3.5" />
-                            </button>
-                          </Tooltip>
-                        </label>
-                      </div>
                     </>
                   )}
-                  <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={updateDailyWage}
-                      onChange={(e) => setUpdateDailyWage(e.target.value)}
-                      placeholder="e.g. 800"
-                      className="text-slate-900 dark:text-white"
-                    />
-                  </div>
+
                   <div>
                     <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('replace_qr_label', 'Replace Payment QR Code Image')}</label>
                     <Input
@@ -1940,7 +1955,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-700"
+                      className="w-full text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700"
                     />
                   </div>
 

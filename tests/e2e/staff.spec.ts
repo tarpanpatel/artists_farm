@@ -5,7 +5,7 @@ test('opens and closes the Create Team Member modal from Staff & Permissions', a
   const { getErrors } = trackConsoleErrors(page);
 
   await page.goto(`${DEMO_PROPERTY_PATH}#staff_permissions`);
-  await expect(page.getByText('Active System Users & Staff')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Property Payroll & Payee Control Center')).toBeVisible({ timeout: 15000 });
 
   await page.getByRole('button', { name: 'Create Team Member' }).click();
 
