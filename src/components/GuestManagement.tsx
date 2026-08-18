@@ -892,8 +892,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     // a large empty gap above it.
     return (
       <div className={`guest-management w-full flex justify-center items-center ${onClose ? '' : 'min-h-[calc(100vh-120px)] my-auto'}`}>
-        {/* Form Card */}
-        <div className="guest-management__registration-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-3 max-w-[550px] w-full">
+        {/* Form Card - standalone (sidebar) page needs its own card chrome;
+            inside App.tsx's "Global Add Booking Modal" that chrome is already
+            provided by the modal's own wrapper div, so applying it again here
+            doubled up the border/background/padding into a visible nested-card
+            look (found 19 Aug 2026, same root cause class as the min-height
+            fix above - two independent wrappers each styling themselves as
+            "the card" instead of only the outer one doing it). */}
+        <div className={`guest-management__registration-card space-y-3 max-w-[550px] w-full ${onClose ? '' : 'bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5'}`}>
           <div className="border-b border-slate-100 dark:border-slate-700 pb-2 flex items-center justify-between">
             <h3 className="guest-management__subtitle text-slate-800 dark:text-slate-200 text-[10px] uppercase tracking-wide flex items-center gap-2">
               <span className="font-normal">{t('add_guest_booking_header', 'Add Guest Booking')} </span>

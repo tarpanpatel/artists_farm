@@ -416,11 +416,28 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                            {guest.guestName}
+                          <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate m-0">
+                              {guest.guestName}
+                            </h4>
                             <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
                               ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
                             </span>
+                            {guest.phoneNumber ? (
+                              <a
+                                href={`tel:${guest.phoneNumber}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold shrink-0"
+                                title={`Call ${guest.phoneNumber}`}
+                              >
+                                <Phone className="w-3 h-3 text-blue-500" />
+                                <span>{guest.phoneNumber}</span>
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500 italic shrink-0">
+                                ({t('no_contact', 'No contact')})
+                              </span>
+                            )}
                             {guest.otaSource && (
                               <span
                                 className="billing-checkout__ota-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[9px] font-semibold shrink-0"
@@ -431,10 +448,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                                 {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
                               </span>
                             )}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {guest.phoneNumber || t('no_contact', 'No contact')}
-                          </p>
+                          </div>
                         </div>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 shadow-2xs ${stayStatus.color}`}>
                           {stayStatus.label}
@@ -588,8 +602,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             )}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-            <Phone className="w-3 h-3 text-slate-400" />
-            <span>{row.phoneNumber || t('no_contact', 'No contact')}</span>
+            {row.phoneNumber ? (
+              <a
+                href={`tel:${row.phoneNumber}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono"
+                title={`Call ${row.phoneNumber}`}
+              >
+                <Phone className="w-3 h-3 text-blue-500" />
+                <span>{row.phoneNumber}</span>
+              </a>
+            ) : (
+              <span>{t('no_contact', 'No contact')}</span>
+            )}
           </div>
         </div>
       ),

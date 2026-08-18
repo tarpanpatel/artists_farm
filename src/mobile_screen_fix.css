@@ -3,10 +3,16 @@
    Act as: @mobile-design
 
    Core Philosophy:
-   - Touch-first (minimum 44x44px hit targets, thumb-zone ergonomics, bottom sheet modals)
+   - Touch-first (minimum 44x44px hit targets, thumb-zone ergonomics)
    - Battery-conscious (efficient active scale feedback, no GPU hover thrashes)
    - Platform-respectful (iOS Safe Area insets, native feel)
    - Mobile is NOT a small desktop.
+   - Modals stay true dialogs (vertically centered per their own classes,
+     e.g. items-center) - no blanket bottom-sheet transformation. (19 Aug
+     2026: the site-wide bottom-sheet override was removed; it force-pinned
+     every fixed.inset-0.z-50.flex.items-center modal to align-items:
+     flex-end !important with no way to opt out, which nobody had actually
+     asked for.)
    ========================================================================== */
 
 /* 1. Global Viewport & Mobile Body Scaling Safeguards */
@@ -69,27 +75,6 @@ body {
     min-width: 22px;
     min-height: 22px;
     cursor: pointer;
-  }
-
-  /* C. Mobile Bottom Sheet Modal Transformation */
-  .fixed.inset-0.z-50.flex.items-center,
-  .fixed.inset-0.z-50.flex.items-start,
-  .modal-overlay,
-  .modal-backdrop {
-    align-items: flex-end !important;
-    padding: 0 !important;
-  }
-
-  .fixed.inset-0.z-50 > div:not(.backdrop-blur-sm):not(.bg-black\/40):not(.bg-slate-900\/60),
-  .modal-sheet-container {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-    border-top-left-radius: 1.5rem !important;
-    border-top-right-radius: 1.5rem !important;
-    max-height: 92vh !important;
-    width: 100% !important;
-    margin-bottom: 0 !important;
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)) !important;
   }
 
   /* D. Table Touch Ergonomics */

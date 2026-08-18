@@ -944,100 +944,105 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           subtitle="Formally record spillage, spoilage, or kitchen damage with full accountability and audit trail."
         />
 
-        {/* Wastage Form */}
-        <div className="record-wastage-card max-w-[550px] w-full bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
-          <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
-            <ClipboardEdit className="w-4 h-4" /> RECORD WASTAGE / SPILLAGE INCIDENT
-          </h3>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          {/* Form Column (Left Side on Desktop) */}
+          <div className="xl:col-span-5 record-wastage-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+            <h3 className="inventory-management__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700 pb-3">
+              <ClipboardEdit className="w-4 h-4 text-amber-500" /> RECORD WASTAGE / SPILLAGE INCIDENT
+            </h3>
 
-          <form onSubmit={handleRecordWastage} className="record-wastage-form app-form app-form--record-wastage space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Select Material Item *</label>
-                <StyledSelect
-                  searchable
-                  value={wastedItem}
-                  onChange={setWastedItem}
-                  placeholder="-- Choose Catalog Item --"
-                  options={catalogItems.map(item => ({ value: item.name, label: `${item.name} (${item.category})` }))}
-                />
-              </div>
-
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Wasted / Spilled Quantity *</label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    required
-                    min="0.1"
-                    step="any"
-                    value={wastedQty}
-                    onChange={e => setWastedQty(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="0.00"
-                    className="wastage-qty-input w-full font-semibold"
-                  />
+            <form onSubmit={handleRecordWastage} className="record-wastage-form app-form app-form--record-wastage space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Select Material Item *</label>
                   <StyledSelect
-                    className="w-28 shrink-0"
-                    value={wastedUnit}
-                    onChange={setWastedUnit}
-                    options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pcs', 'Pack'].map(u => ({ value: u, label: u }))}
+                    searchable
+                    value={wastedItem}
+                    onChange={setWastedItem}
+                    placeholder="-- Choose Catalog Item --"
+                    options={catalogItems.map(item => ({ value: item.name, label: `${item.name} (${item.category})` }))}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Wasted / Spilled Quantity *</label>
+                    <div className="flex gap-1.5">
+                      <Input
+                        type="number"
+                        required
+                        min="0.1"
+                        step="any"
+                        value={wastedQty}
+                        onChange={e => setWastedQty(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="0.00"
+                        className="wastage-qty-input w-full font-semibold"
+                      />
+                      <StyledSelect
+                        className="w-24 shrink-0"
+                        value={wastedUnit}
+                        onChange={setWastedUnit}
+                        options={['Kg', 'Gm', 'Ltr', 'Ml', 'Pcs', 'Pack'].map(u => ({ value: u, label: u }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Reason for Loss *</label>
+                    <StyledSelect
+                      value={wastedReason}
+                      onChange={setWastedReason}
+                      options={[
+                        { value: 'Spillage / Leakage', label: 'Spillage / Leakage' },
+                        { value: 'Spoilage / Expiry', label: 'Spoilage / Expiry' },
+                        { value: 'Cooking Wastage', label: 'Cooking Wastage' },
+                        { value: 'Damaged Packaging', label: 'Damaged Packaging' },
+                        { value: 'Theft / Loss', label: 'Theft / Discrepancy' },
+                        { value: 'Other', label: 'Other Incident' },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      label="Reported By"
+                      type="text"
+                      disabled
+                      readOnly
+                      value={currentUser?.name || wastedReportedBy || 'Tarpan'}
+                      className="bg-slate-100 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 cursor-not-allowed border-slate-200 dark:border-slate-700 opacity-75 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Incident Notes / Explanation"
+                      type="text"
+                      value={wastedNotes}
+                      onChange={e => setWastedNotes(e.target.value)}
+                      placeholder="e.g. Container dropped..."
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Reason for Loss *</label>
-                <StyledSelect
-                  value={wastedReason}
-                  onChange={setWastedReason}
-                  options={[
-                    { value: 'Spillage / Leakage', label: 'Spillage / Leakage' },
-                    { value: 'Spoilage / Expiry', label: 'Spoilage / Expiry' },
-                    { value: 'Cooking Wastage', label: 'Cooking Wastage' },
-                    { value: 'Damaged Packaging', label: 'Damaged Packaging' },
-                    { value: 'Theft / Loss', label: 'Theft / Discrepancy' },
-                    { value: 'Other', label: 'Other Incident' },
-                  ]}
-                />
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="btn-log-wastage w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs py-3 rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  <ClipboardEdit className="w-4 h-4" />
+                  <span>LOG WASTAGE INCIDENT</span>
+                </button>
               </div>
-            </div>
+            </form>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Input
-                  label="Reported By"
-                  type="text"
-                  required
-                  value={wastedReportedBy}
-                  onChange={e => setWastedReportedBy(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Input
-                  label="Incident Notes / Explanation"
-                  type="text"
-                  value={wastedNotes}
-                  onChange={e => setWastedNotes(e.target.value)}
-                  placeholder="e.g. Container dropped during morning prep..."
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="btn-log-wastage bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-2xs cursor-pointer transition-colors flex items-center gap-2"
-              >
-                <span>LOG WASTAGE INCIDENT</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Wastage Logs Mobile Card Stack & Desktop DataTable */}
-        <div className="wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+          {/* Audit History Column (Right Side on Desktop) */}
+          <div className="xl:col-span-7 wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
             <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
             <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? '…' : wastageLogs.length} incidents</span>
           </div>
@@ -1141,8 +1146,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (activeTab === 'catalog') {
     return (

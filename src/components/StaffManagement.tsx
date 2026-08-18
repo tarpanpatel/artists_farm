@@ -653,7 +653,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     width: '150px',
                     cell: (row: any) => {
                       const phoneVal = (row.username || '').replace(/\D/g, '');
-                      return <span className="font-mono text-slate-500 dark:text-slate-400">{phoneVal || row.username}</span>;
+                      return phoneVal ? (
+                        <a
+                          href={`tel:${phoneVal}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                          title={`Call ${phoneVal}`}
+                        >
+                          <Phone className="w-3 h-3 text-blue-500" />
+                          <span>{phoneVal}</span>
+                        </a>
+                      ) : (
+                        <span className="font-mono text-slate-500 dark:text-slate-400">{row.username}</span>
+                      );
                     },
                   },
                   {
@@ -774,9 +786,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   return (
                     <div key={row.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{row.fullName}</h4>
-                          <span className="font-mono text-xs text-slate-500 dark:text-slate-400 block">{phoneVal || row.username}</span>
+                        <div className="min-w-0 flex-1 flex items-center flex-wrap gap-2">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate m-0">{row.fullName}</h4>
+                          {phoneVal ? (
+                            <a
+                              href={`tel:${phoneVal}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                              title={`Call ${phoneVal}`}
+                            >
+                              <Phone className="w-3 h-3 text-blue-500" />
+                              <span>{phoneVal}</span>
+                            </a>
+                          ) : (
+                            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.username}</span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -1620,10 +1644,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
       {/* TEAM MEMBER MODAL (CREATE / UPDATE) */}
       {isTeamMemberModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-xl ${userFormTab === 'create' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'}`}>
                   {userFormTab === 'create' ? <Plus className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
@@ -1647,7 +1671,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
 
             {/* Modal Form Content */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6 flex-1 overflow-y-auto scrollbar-thin">
               {userFormTab === 'create' ? (
                 <form onSubmit={handleCreateUser} className="app-form app-form--create-user space-y-4 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1676,35 +1700,34 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        maxLength={6}
-                        value={newPasscode}
-                        onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="••••••"
-                        inputMode="numeric"
-                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        maxLength={6}
-                        value={newConfirmPasscode}
-                        onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="Re-enter new passcode"
-                        inputMode="numeric"
-                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
-                      />
-                    </div>
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('six_digit_passcode_label', '6-Digit Passcode PIN')} *</label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      maxLength={6}
+                      value={newPasscode}
+                      onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="••••••"
+                      inputMode="numeric"
+                      className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN *</label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      maxLength={6}
+                      value={newConfirmPasscode}
+                      onChange={(e) => setNewConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Re-enter new passcode"
+                      inputMode="numeric"
+                      className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1784,21 +1807,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="md"
-                      onClick={() => setIsTeamMemberModalOpen(false)}
-                      className="font-semibold cursor-pointer"
-                    >
-                      Cancel
-                    </Button>
+                  <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
                     <Button
                       type="submit"
                       variant="primary"
                       size="md"
-                      className="font-semibold cursor-pointer"
+                      className="font-semibold cursor-pointer ml-auto"
                     >
                       Register Team Member
                     </Button>
@@ -1837,120 +1851,103 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN')}</label>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        maxLength={6}
-                        value={updatePasscode}
-                        onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="Leave blank to keep current"
-                        inputMode="numeric"
-                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        maxLength={6}
-                        value={updateConfirmPasscode}
-                        onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="Re-enter new passcode"
-                        inputMode="numeric"
-                        className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {canShareLogins && !!(updateUsername || updateTargetUser?.username) && (
-                    <div className="pt-0.5">
-                      <Button
-                        type="button"
-                        onClick={() => handleShareLogin({
-                          fullName: updateFullName || updateTargetUser?.fullName || '',
-                          username: updateUsername || updateTargetUser?.username || '',
-                          passcodePin: updatePasscode || updateTargetUser?.passcodePin,
-                        })}
-                        variant="secondary"
-                        size="xs"
-                        className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        {t('share_login_details_button', 'Share Login Details')}
-                      </Button>
-                    </div>
-                  )}
-
                   <div>
-                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_passcode_optional_label', 'New 6-Digit Passcode PIN (Leave blank to keep current)')}</label>
                     <Input
-                      type="number"
-                      min="0"
-                      value={updateDailyWage}
-                      onChange={(e) => setUpdateDailyWage(e.target.value)}
-                      placeholder="e.g. 800"
-                      className="text-slate-900 dark:text-white"
+                      type="password"
+                      autoComplete="new-password"
+                      maxLength={6}
+                      value={updatePasscode}
+                      onChange={(e) => setUpdatePasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Leave blank to keep current"
+                      inputMode="numeric"
+                      className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
                     />
                   </div>
 
-                  {isEditingSuperAdmin ? (
-                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
-                      {t('super_admin_locked_fields_hint', "Super Admin's role can't be reassigned - it's the tenant's own login, not an assignable position - and it's always a Cash Handler with Access All Properties, so there's nothing to toggle here.")}
+                  <div>
+                    <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Confirm New Passcode PIN</label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      maxLength={6}
+                      value={updateConfirmPasscode}
+                      onChange={(e) => setUpdateConfirmPasscode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Re-enter new passcode"
+                      inputMode="numeric"
+                      className="text-center text-slate-900 dark:text-white font-mono font-semibold tracking-widest text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('daily_wage_label', 'Daily Wage (₹)')}</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={updateDailyWage}
+                        onChange={(e) => setUpdateDailyWage(e.target.value)}
+                        placeholder="e.g. 800"
+                        className="text-slate-900 dark:text-white"
+                      />
                     </div>
-                  ) : (
-                    <>
+                    {!isEditingSuperAdmin && (
                       <div>
                         <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('new_system_role_label', 'New System Role')}</label>
                         <StyledSelect
                           value={updateRole}
                           onChange={(val) => setUpdateRole(val as any)}
-                          placeholder="-- Keep Current Role --"
+                          placeholder="-- Keep Role --"
                           options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
                         />
                       </div>
+                    )}
+                  </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                          <input
-                            type="checkbox"
-                            id="updateIsFinancialHandlerCheck"
-                            checked={updateIsFinancialHandler}
-                            onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
-                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
-                          />
-                          <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
-                            <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
-                            <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
-                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
-                                <HelpCircle className="w-3.5 h-3.5" />
-                              </button>
-                            </Tooltip>
-                          </label>
-                        </div>
+                  {isEditingSuperAdmin && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+                      {t('super_admin_locked_fields_hint', "Super Admin's role can't be reassigned - it's the tenant's own login, not an assignable position - and it's always a Cash Handler with Access All Properties, so there's nothing to toggle here.")}
+                    </div>
+                  )}
 
-                        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
-                          <input
-                            type="checkbox"
-                            id="updateAccessAllPropertiesCheck"
-                            checked={updateAccessAllProperties}
-                            onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
-                            className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
-                          />
-                          <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
-                            <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
-                            <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
-                              <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
-                                <HelpCircle className="w-3.5 h-3.5" />
-                              </button>
-                            </Tooltip>
-                          </label>
-                        </div>
+                  {!isEditingSuperAdmin && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                      <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+                        <input
+                          type="checkbox"
+                          id="updateIsFinancialHandlerCheck"
+                          checked={updateIsFinancialHandler}
+                          onChange={(e) => setUpdateIsFinancialHandler(e.target.checked)}
+                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="updateIsFinancialHandlerCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{t('cash_handling_user_label', 'Cash Handling User')}</span>
+                          <Tooltip content="Allows this team member to collect cash payments, open/reconcile cash drawers, and record checkout settlements.">
+                            <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
+                        </label>
                       </div>
-                    </>
+
+                      <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[44px]">
+                        <input
+                          type="checkbox"
+                          id="updateAccessAllPropertiesCheck"
+                          checked={updateAccessAllProperties}
+                          onChange={(e) => setUpdateAccessAllProperties(e.target.checked)}
+                          className="w-4 h-4 text-cyan-600 rounded cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="updateAccessAllPropertiesCheck" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer text-xs flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{t('access_all_properties_label', 'Access All Properties')}</span>
+                          <Tooltip content="Grants this team member full multi-property access across all properties under this tenant workspace.">
+                            <button type="button" className="inline-flex items-center justify-center p-0.5 rounded-full text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-help transition-colors shrink-0">
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
+                        </label>
+                      </div>
+                    </div>
                   )}
 
                   <div>
@@ -1970,21 +1967,29 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="md"
-                      onClick={() => setIsTeamMemberModalOpen(false)}
-                      className="font-semibold cursor-pointer"
-                    >
-                      Cancel
-                    </Button>
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 flex-wrap">
+                    {canShareLogins && !!(updateUsername || updateTargetUser?.username) ? (
+                      <Button
+                        type="button"
+                        onClick={() => handleShareLogin({
+                          fullName: updateFullName || updateTargetUser?.fullName || '',
+                          username: updateUsername || updateTargetUser?.username || '',
+                          passcodePin: updatePasscode || updateTargetUser?.passcodePin,
+                        })}
+                        variant="secondary"
+                        size="sm"
+                        className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>{t('share_login_details_button', 'Share Login Details')}</span>
+                      </Button>
+                    ) : <div />}
+
                     <Button
                       type="submit"
                       variant="primary"
                       size="md"
-                      className="font-semibold cursor-pointer"
+                      className="font-semibold cursor-pointer ml-auto"
                     >
                       Save Team Member
                     </Button>

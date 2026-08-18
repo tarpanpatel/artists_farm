@@ -89,7 +89,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   propertyName = '',
   propertyUpiId = '',
 }) => {
-  const { activeRole, currentUser } = useAuth();
+  const { activeRole } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
   const { showToast } = useToast();
   const { staff } = useStaff();
@@ -114,7 +114,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [checkinDate, setCheckinDate] = useState('');
   const [checkoutDate, setCheckoutDate] = useState('');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
-  const [deskCashier, setDeskCashier] = useState('Root Admin');
+  const [pendingReceivedBy, setPendingReceivedBy] = useState('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -290,12 +290,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setGuestGstin('');
       setGuestBillingName('');
       setAdvanceReceivedBy('');
-      setDeskCashier(currentUser?.name || 'Root Admin');
+      setPendingReceivedBy((guest as any).pending_received_by || guest.pendingReceivedBy || '');
 
       const lodgingDue = (guest.totalAmount ?? guest.roomRate ?? 0) - (guest.advanceAmount || 0);
       setSplitRows([{ id: '1', mode: 'Cash', amount: Math.max(0, lodgingDue) }]);
     }
-  }, [guest, isOpen, currentUser]);
+  }, [guest, isOpen]);
 
   if (!isOpen || !guest) return null;
 
@@ -484,6 +484,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       roomRate: roomCharges,
       foodBill: updatedFoodBill,
       totalAmount: totalChargesCalculated,
+      pendingReceivedBy: pendingReceivedBy || guest.pendingReceivedBy,
     });
     return true;
   };
@@ -493,6 +494,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       saveGuestEdits();
       onClose();
     } else {
+      // Persist who's collecting the pending due (and any other edits) to
+      // the guest record before settling - this branch used to skip
+      // saveGuestEdits entirely when the modal opens straight into checkout
+      // mode (not via "Save and Proceed"), so pending_received_by picked
+      // here was silently dropped instead of reaching guests.php.
+      saveGuestEdits();
+
       const receipt: BillingReceipt = {
         id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
         guestId: guest.id,
@@ -1072,17 +1080,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                {/* Desk Cashier - always whoever is actually logged in, not
-                    freely editable, so checkout accountability can't be
-                    misattributed to someone who wasn't at the desk. */}
+                {/* Who actually collected the pending lodging due at checkout -
+                    same guests.pending_received_by column set at booking time
+                    (GuestManagement's "Pending Received By") and editable later
+                    via BookingDetailsModal, so it stays one consistent field
+                    across the whole guest lifecycle instead of a separate
+                    checkout-only record. Restricted to real cash handlers,
+                    same as "Received By (Booking)" above. */}
                 <div>
-                  <Input
-                    label={t('desk_cashier_label', 'Desk Cashier Handling Checkout')}
-                    type="text"
-                    value={deskCashier}
-                    readOnly
-                    disabled
-                    className="font-semibold cursor-not-allowed"
+                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
+                  <StyledSelect
+                    value={pendingReceivedBy}
+                    onChange={setPendingReceivedBy}
+                    placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
+                    options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
                   />
                 </div>
 
