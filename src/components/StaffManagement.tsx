@@ -632,15 +632,6 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     <div className="space-y-6 staff-management">
           {/* ROW 1: FULL WIDTH Active System Users & Staff */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="staff-management__subtitle font-extrabold text-slate-900 dark:text-white text-sm">
-                {t('active_system_users_heading', 'Active System Users & Staff')}
-              </h3>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">{staffLoading ? '…' : users.length} {t('registered_suffix', 'Registered')}</span>
-              </div>
-            </div>
-
             {/* Desktop View: Full DataTable */}
             <div className="hidden md:block">
               <DataTable
@@ -667,7 +658,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     selector: (row: any) => row.role,
                     sortable: true,
                     width: '160px',
-                    cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2.5 py-1 rounded font-semibold text-[10px]">{row.role}</span>,
+                    cell: (row: any) => <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{row.role}</span>,
                   },
                   {
                     name: t('cash_handling_column', 'Cash Handling'),
@@ -676,9 +667,9 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                     center: true,
                     width: '160px',
                     cell: (row: any) => row.isFinancialHandler ? (
-                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-xs">{t('cash_handler_badge', '💳 Cash Handler')}</span>
                     ) : (
-                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium text-xs">{t('no_finances_badge', 'No Finances')}</span>
                     ),
                   },
                   {
@@ -1636,6 +1627,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
               <button
                 onClick={() => setIsTeamMemberModalOpen(false)}
+                aria-label="Close"
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />

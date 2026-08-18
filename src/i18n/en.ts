@@ -1231,7 +1231,7 @@ export const strings: Record<string, string> = {
   register_new_material_heading: "Register New Material",
   kitchen_ticketing_header: "Kitchen Orders & Menu Management",
   kitchen_subtitle: "Manage live kitchen display system (KDS), create room orders, manage menu items & raw material requisitions",
-  create_resident_order_button: "Create Resident Order",
+  create_resident_order_button: "Take Order",
   filter_orders_label: "Filter Orders:",
   all_filter_button: "All",
   pending_filter_button: "Pending",

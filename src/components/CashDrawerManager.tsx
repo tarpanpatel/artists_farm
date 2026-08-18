@@ -678,10 +678,10 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
       </div>
 
       {/* MONTHLY PAYOUT CALCULATOR */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors space-y-4">
-        <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
-          <h3 className="cash-drawer-manager__subtitle font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
-            <IndianRupee className="w-4 h-4" />
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors space-y-4">
+        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="cash-drawer-manager__subtitle font-semibold text-slate-900 dark:text-white text-xs tracking-wider uppercase flex items-center gap-2">
+            <IndianRupee className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             {t('monthly_payout_calculator_heading', 'Monthly Payout Calculator')}
           </h3>
           <div className="flex items-center gap-2">
@@ -690,11 +690,11 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
                 else { setSelectedMonth(m => m - 1); }
               }}
-              className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 text-amber-700 dark:text-amber-300 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full min-w-30 text-center">
+            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 px-3 py-1 rounded-full min-w-30 text-center shadow-2xs">
               {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
             <button
@@ -702,7 +702,7 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                 if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
                 else { setSelectedMonth(m => m + 1); }
               }}
-              className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 text-amber-700 dark:text-amber-300 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors"
+              className="bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold text-xs p-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>

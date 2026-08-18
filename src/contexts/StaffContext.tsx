@@ -63,9 +63,19 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
   // property that clearly has staff - self-corrects on any later manual
   // refresh, which lands on already-warm caches/connections. A property's
   // own tenant row is auto-seeded on creation, so a genuinely-empty result
-  // here is itself suspicious, not just "no staff yet". Retry once, after a
-  // short delay, before accepting an empty first result as final - mirrors
-  // the same self-correcting approach used for the nav menu.
+  // here is itself suspicious, not just "no staff yet". Retry with backoff
+  // before accepting an empty result as final - mirrors the same
+  // self-correcting approach used for the nav menu.
+  //
+  // 18 Aug 2026: a single retry wasn't always enough - when it also came
+  // back empty, setStaffLoading(false) fired unconditionally anyway, so
+  // PropertySetupWizard (which only hides itself while isStaffLoading is
+  // true) would render its "add your first team member" banner for a
+  // property that already had staff, and only clear it whenever some
+  // unrelated refreshStaff() call happened to land later. Retrying a couple
+  // more times with backoff gives the underlying flakiness (whatever causes
+  // the first fetch to race ahead of a warm session/connection) more chances
+  // to resolve on its own before the UI commits to "genuinely empty".
   //
   // loadTokenRef (found 13 Aug 2026, same investigation as DataLoader's
   // loadTokenRef): staff gets (re)loaded from THREE independent call sites -
@@ -85,22 +95,26 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     const myToken = loadTokenRef.current;
     const isStale = () => loadTokenRef.current !== myToken;
 
-    fetchStaffUsersFromDB().then((data) => {
-      if (isStale()) return;
-      if (data && data.length > 0) {
-        setStaff(data.map(mapStaffRow));
-        setStaffLoading(false);
-      } else {
-        setTimeout(() => {
-          if (isStale()) return;
-          fetchStaffUsersFromDB().then((retryData) => {
+    const attempt = (retriesLeft: number, delayMs: number) => {
+      fetchStaffUsersFromDB().then((data) => {
+        if (isStale()) return;
+        if (data && data.length > 0) {
+          setStaff(data.map(mapStaffRow));
+          setStaffLoading(false);
+        } else if (retriesLeft > 0) {
+          setTimeout(() => {
             if (isStale()) return;
-            if (retryData && retryData.length > 0) setStaff(retryData.map(mapStaffRow));
-            setStaffLoading(false);
-          });
-        }, 1500);
-      }
-    });
+            attempt(retriesLeft - 1, delayMs);
+          }, delayMs);
+        } else {
+          // Every attempt came back empty - accept it as genuinely no staff
+          // rather than retrying forever.
+          setStaffLoading(false);
+        }
+      });
+    };
+
+    attempt(2, 1500); // initial fetch + up to 2 retries, 1.5s apart
   }, []);
 
   // Public refresh callback (App.tsx calls this on mount and again whenever

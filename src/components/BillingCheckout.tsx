@@ -783,6 +783,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <MobileBookingCardStack
               guests={searchedGuests}
               rooms={rooms}
+              hideSearchAndFilter
               onSelectGuest={(guestId) => {
                 const guest = searchedGuests.find((g) => g.id === guestId);
                 if (guest) setSelectedGuestForDetails(guest);

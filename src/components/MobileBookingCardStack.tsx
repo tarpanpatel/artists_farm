@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, CreditCard, LogIn, LogOut, Calendar, Users, Building, Search, IndianRupee } from 'lucide-react';
+import { Phone, MessageSquare, CreditCard, LogIn, LogOut, Users, Building, Search, IndianRupee } from 'lucide-react';
 import { Guest } from '../types';
 
 interface MobileBookingCardStackProps {
@@ -10,6 +10,17 @@ interface MobileBookingCardStackProps {
   onOpenWhatsApp?: (guest: Guest) => void;
   onAddBooking?: () => void;
   selectedGuestId?: string;
+  // BillingCheckout already renders its own Today/Upcoming/Past Bookings
+  // tabs + search box above this component and hands down an
+  // already-filtered guest list - showing this component's own search/
+  // filter bar on top of that produced two independent, conflicting
+  // filters stacked on the same list (e.g. picking "Checked-Out" here while
+  // the outer tab is "Upcoming" showed 0 results, since the outer tab had
+  // already excluded checked-out guests). Set true to suppress this
+  // component's own bar when the caller already provides equivalent
+  // filtering. GuestManagement's usage has no such outer UI, so it leaves
+  // this false (default) and keeps this bar as its only filter.
+  hideSearchAndFilter?: boolean;
 }
 
 export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
@@ -20,6 +31,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
   onOpenWhatsApp,
   onAddBooking,
   selectedGuestId,
+  hideSearchAndFilter = false,
 }) => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'checked_in' | 'upcoming' | 'checked_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,68 +99,70 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
   return (
     <div className="mobile-booking-card-stack md:hidden space-y-4">
       {/* Search & Filter Header Bar */}
-      <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
-        {/* Search Input with Native Keyboard Keypad */}
-        <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-          <input
-            type="search"
-            inputMode="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search guest, room, or phone..."
-            className="w-full h-11 pl-9 pr-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      {!hideSearchAndFilter && (
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+          {/* Search Input with Native Keyboard Keypad */}
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <input
+              type="search"
+              inputMode="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search guest, room, or phone..."
+              className="w-full h-11 pl-9 pr-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-        {/* Horizontal Scrolling Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setFilterStatus('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-              filterStatus === 'all'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-            }`}
-          >
-            All ({counts.all})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterStatus('checked_in')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-              filterStatus === 'checked_in'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-            }`}
-          >
-            Checked-In ({counts.checked_in})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterStatus('upcoming')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-              filterStatus === 'upcoming'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-            }`}
-          >
-            Upcoming ({counts.upcoming})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterStatus('checked_out')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
-              filterStatus === 'checked_out'
-                ? 'bg-slate-700 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-            }`}
-          >
-            Checked-Out ({counts.checked_out})
-          </button>
+          {/* Horizontal Scrolling Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setFilterStatus('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                filterStatus === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              All ({counts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('checked_in')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                filterStatus === 'checked_in'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              Checked-In ({counts.checked_in})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('upcoming')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                filterStatus === 'upcoming'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              Upcoming ({counts.upcoming})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('checked_out')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                filterStatus === 'checked_out'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              Checked-Out ({counts.checked_out})
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Booking Cards List */}
       {filteredGuests.length === 0 ? (
@@ -169,9 +183,13 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
         <div className="space-y-3">
           {filteredGuests.map((guest) => {
             const isSelected = selectedGuestId === guest.id;
-            const totalTariff = Number((guest as any).roomTariff || (guest as any).room_tariff || (guest as any).amount || 0);
-            const advancePaid = Number((guest as any).advancePaid || (guest as any).advance_paid || (guest as any).advanceAmount || 0);
-            const pendingDue = Math.max(0, totalTariff - advancePaid);
+            // guest.roomRate is the PER-NIGHT rate; guest.totalAmount is the
+            // actual full-stay charge (nights x rate) - totalAmount must be
+            // checked first, see calculateGuestTotal in BillingCheckout.tsx
+            // for the multi-night bug this ordering avoids repeating.
+            const totalTariff = guest.totalAmount ?? guest.roomRate ?? 0;
+            const advancePaid = guest.advanceAmount ?? 0;
+            const pendingDue = totalTariff - advancePaid + (guest.foodBill ?? 0);
             const isCheckedIn = ['checked in', 'active'].includes((guest.status || '').toLowerCase());
 
             return (
@@ -184,19 +202,23 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:border-slate-300'
                 }`}
               >
-                {/* Header Row: Guest Name, Room Pill, Status */}
+                {/* Header Row: Guest Name, Room Pill, Guest Count, Status */}
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">{guest.guestName}</h4>
                       {guest.roomNumber && (
                         <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-semibold border border-blue-200 dark:border-blue-800">
                           {guest.roomNumber}
                         </span>
                       )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-semibold">
+                        <Users className="w-3 h-3 text-emerald-500" />
+                        {guest.numberOfGuests || 1} Person(s)
+                      </span>
                     </div>
                     {guest.phoneNumber && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                         <Phone className="w-3 h-3" /> {guest.phoneNumber}
                       </p>
                     )}
@@ -204,28 +226,40 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                   <div>{getStatusBadge(guest.status)}</div>
                 </div>
 
-                {/* Sub-Grid: Dates & Guests */}
+                {/* Sub-Grid: Check-In & Check-Out Dates */}
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase">Check-In</div>
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">
+                    <LogIn className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-In</div>
+                      <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                         {guest.checkinDate ? guest.checkinDate.split(' ')[0] : 'N/A'}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <Users className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase">Guests</div>
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">
-                        {guest.numberOfGuests || 1} Person(s)
+                    <LogOut className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-Out</div>
+                      <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {guest.checkoutDate || guest.expectedCheckout ? (guest.checkoutDate || guest.expectedCheckout).split(' ')[0] : 'N/A'}
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* C-Form Filing Badge (if foreign guest or past booking) */}
+                {guest.isForeignGuest && (
+                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">C-Form Filing:</span>
+                    {guest.cFormFiledAt ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">✓ Filed ({guest.cFormFiledAt})</span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">⚠️ Pending Filing</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Financial Summary Bar */}
                 <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
@@ -260,11 +294,11 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <a
                       href={`tel:${guest.phoneNumber}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
                       title="Call Guest"
                     >
                       <Phone className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                      <span className="hidden sm:inline">Call</span>
+                      <span>{guest.phoneNumber}</span>
                     </a>
                   )}
 

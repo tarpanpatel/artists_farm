@@ -1034,7 +1034,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <PageHeader title={t('kitchen_ticketing_header')} subtitle={t('kitchen_subtitle')}>
           {activeTab !== 'staff_meals' && (
             <PageHeaderButton onClick={() => setActiveTab('new_order')} icon={Plus}>
-              {t('create_resident_order_button', 'New Room Order')}
+              {t('create_resident_order_button', 'Take Order')}
             </PageHeaderButton>
           )}
           {activeTab !== 'staff_meals' && activeTab !== 'walk_in_bills' && (
