@@ -432,6 +432,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
             {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
+              const isToday = isSameDate(day, today);
 
               return (
                 <div
@@ -440,10 +441,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                     if (idx === scrollTargetIdx) scrollTargetRef.current = el;
                     if (idx === 0) columnWidthRef.current = el;
                   }}
-                  className="w-16 min-w-16 shrink-0 px-1 py-1 text-center border-r border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800"
+                  className={`w-16 min-w-16 shrink-0 px-1 py-1.5 text-center border-r transition-all ${
+                    isToday
+                      ? 'bg-blue-600 text-white shadow-sm border-blue-700 dark:border-blue-500 z-10'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'
+                  }`}
                 >
-                  <div className="text-[8px] uppercase tracking-wide">{dayName}</div>
-                  <div className="text-sm font-semibold">{day.getDate()}</div>
+                  <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
+                  <div className="text-sm font-extrabold leading-none mt-0.5">{day.getDate()}</div>
                 </div>
               );
             })}
@@ -602,12 +607,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                   {/* Days Grid - Background with diagonal stripes */}
                   <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
-                    {daysArray.map((day) => (
-                      <div
-                        key={`bg-${day.toISOString()}`}
-                        className="w-16 min-w-16 shrink-0 border-r border-slate-100 dark:border-slate-700/50 transition bg-white dark:bg-slate-800/30"
-                      />
-                    ))}
+                    {daysArray.map((day) => {
+                      const isToday = isSameDate(day, today);
+                      return (
+                        <div
+                          key={`bg-${day.toISOString()}`}
+                          className={`w-16 min-w-16 shrink-0 border-r transition ${
+                            isToday
+                              ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40'
+                              : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30'
+                          }`}
+                        />
+                      );
+                    })}
 
                     {/* Spanning capsules overlaid */}
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">

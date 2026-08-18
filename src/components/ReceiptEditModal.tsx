@@ -111,6 +111,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [editGuestName, setEditGuestName] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [roomCharges, setRoomCharges] = useState(0);
+  const [advancePaid, setAdvancePaid] = useState(0);
   const [checkinDate, setCheckinDate] = useState('');
   const [checkoutDate, setCheckoutDate] = useState('');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
@@ -284,6 +285,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       // understating both the base invoice and the GST collected on
       // multi-night stays unless staff happened to notice and correct it.
       setRoomCharges(guest.totalAmount ?? guest.roomRate ?? 0);
+      setAdvancePaid(guest.advanceAmount || 0);
       setIncidentals([]);
       setAdjustments([]);
       setGstEnabled(false);
@@ -302,8 +304,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // Food / Incidentals Subtotal
   const foodTotal = kitchenModuleEnabled ? incidentals.reduce((sum, i) => sum + i.price * i.quantity, 0) : 0;
 
-  // Lodging Pending Due
-  const advancePaid = guest.advanceAmount || 0;
+  // Lodging Pending Due - both roomCharges and advancePaid are editable
+  // fields (state), so this recalculates live as either is typed.
   const lodgingPendingDue = Math.max(0, roomCharges - advancePaid);
 
   // Manual Adjustments Subtotals
@@ -484,9 +486,20 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       roomRate: roomCharges,
       foodBill: updatedFoodBill,
       totalAmount: totalChargesCalculated,
+      advanceAmount: advancePaid,
       pendingReceivedBy: pendingReceivedBy || guest.pendingReceivedBy,
     });
     return true;
+  };
+
+  // Advance Paid and Base Lodging Charges directly determine Pending Lodging
+  // Due (see lodgingPendingDue above) - staff correcting either one at
+  // checkout (e.g. guest hands over the balance in cash right before
+  // settlement) need that reflected in the guest record immediately, not
+  // only after the final "Checkout & Close Booking" click. Fires the same
+  // save used by that button, just on blur of either field.
+  const handleMoneyFieldBlur = () => {
+    saveGuestEdits();
   };
 
   const handleSaveOrCheckout = () => {
@@ -639,14 +652,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     type="number"
                     value={roomCharges}
                     onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                    onBlur={handleMoneyFieldBlur}
                     className="text-xs font-semibold text-slate-900 dark:text-white"
                   />
                 </div>
 
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center font-semibold">
-                    <span className="text-slate-700 dark:text-slate-300">{t('advance_paid_label', 'Advance Paid:')}</span>
-                    <span className="summary-line summary-line--advance-paid text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
+                  <div className="flex justify-between items-center font-semibold gap-2">
+                    <span className="text-slate-700 dark:text-slate-300 shrink-0">{t('advance_paid_label', 'Advance Paid:')}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹</span>
+                      <input
+                        type="number"
+                        value={advancePaid}
+                        onChange={(e) => setAdvancePaid(Math.max(0, parseFloat(e.target.value) || 0))}
+                        onBlur={handleMoneyFieldBlur}
+                        className="summary-line summary-line--advance-paid w-24 text-right text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-400"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>

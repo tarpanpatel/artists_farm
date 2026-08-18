@@ -383,6 +383,7 @@ export const strings: Record<string, string> = {
   send_to_label: "Send to:",
   no_groups_found_option: "No groups found",
   not_sent_option: "Not sent",
+  default_label: "default",
   configure_groups_button: "Configure groups in Telegram Setup first",
   insert_variables_label: "Insert Available Variables (Drag and drop onto Visual Editor or click to insert):",
   drag_variable_tooltip: "Drag and drop or click to insert variable",

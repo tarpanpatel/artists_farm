@@ -193,6 +193,16 @@ if (!function_exists('sendPropertyTelegramMessage')) {
             $chatId = resolveGroupChatId($config, $config['routing'][$category]);
         }
         if (!$chatId) {
+            // Default-by-category: every call site passes $category as one of
+            // 'kitchen'/'admin'/'finance', matching the Setup Wizard's 3 core
+            // group keys. A template with no explicit per-template/per-category
+            // routing override falls back to whichever of those 3 groups the
+            // property has connected - so connecting the 3 core groups is
+            // enough for every template in that bucket to work immediately,
+            // for every property, without clicking "Send to" 26 times each.
+            $chatId = resolveGroupChatId($config, $category);
+        }
+        if (!$chatId) {
             $chatId = legacyCategoryChatId($category);
         }
         if (!$chatId) {
@@ -236,6 +246,13 @@ if (!function_exists('sendPropertyTelegramPhoto')) {
         }
         if (!$chatId && isset($config['routing'][$category])) {
             $chatId = resolveGroupChatId($config, $config['routing'][$category]);
+        }
+        if (!$chatId) {
+            // Default-by-category - see sendPropertyTelegramMessage() above for
+            // why this makes each of the 3 core groups the default for every
+            // template in its bucket, for every property, with no per-template
+            // setup required.
+            $chatId = resolveGroupChatId($config, $category);
         }
         if (!$chatId) {
             $chatId = legacyCategoryChatId($category);

@@ -1115,7 +1115,22 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                 onChange={(value) => setTemplateRouting(currentTpl.dbKey, value)}
                 disabled={tgRoutingSaving}
                 options={[
-                  { value: '', label: tgSettings.groups.filter(g => g.chatId).length === 0 ? t('no_groups_found_option', 'No groups found') : t('not_sent_option', 'Not sent') },
+                  {
+                    value: '',
+                    // No explicit per-template override saved - the backend
+                    // (sender.php) auto-routes by category bucket (Kitchen/
+                    // Admin/Finances -> the property's group literally keyed
+                    // 'kitchen'/'admin'/'finance'), same as the Setup Wizard's
+                    // 3 core groups. Reflect that real destination here
+                    // instead of claiming "Not sent" when it will actually go
+                    // out - this option only means "no per-template override".
+                    label: (() => {
+                      const defaultKey = { Kitchen: 'kitchen', Admin: 'admin', Finances: 'finance' }[getTemplateGroup(currentTpl)];
+                      const defaultGroup = tgSettings.groups.find((g) => g.key === defaultKey && g.chatId);
+                      if (defaultGroup) return `${defaultGroup.name} (${t('default_label', 'default')})`;
+                      return tgSettings.groups.filter(g => g.chatId).length === 0 ? t('no_groups_found_option', 'No groups found') : t('not_sent_option', 'Not sent');
+                    })(),
+                  },
                   ...tgSettings.groups.map((g) => ({ value: g.key, label: g.name })),
                 ]}
               />
