@@ -71,3 +71,34 @@ This document defines the core visual design tokens, component architecture patt
 ## 7. Quantity Steppers & Mobile Cart Pull Tab
 - **Square Quantity Step Buttons**: All `+` and `-` quantity steppers (in POS cards, cart rows, and order sheets) must use square shapes (`w-8 h-8 rounded-lg` / `w-9 h-9 rounded-xl font-extrabold flex items-center justify-center`) with generous touch targets. Do not use small circular pill buttons.
 - **Top Pull-Tab Mobile Cart Handle**: Mobile cart bottom sheets must be expandable/collapsible via a top center pull-tab handle attached to the upper edge of the cart sheet featuring `<ChevronUp>` when collapsed and `<ChevronDown>` when expanded.
+
+---
+
+## 8. Navigation Tabs vs. Content Filter Buttons
+- **Main Navigation Tabs (Tab Switchers)**:
+  - Active Tab: Solid primary fill (`bg-blue-600 text-white shadow-xs font-bold`).
+  - Inactive Tab: Clean outline / ghost button (`bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold`).
+- **In-Page Content Filters (Category Pills, Status Filters)**:
+  - Active Filter: Accent border & soft background tint (`border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-2xs`).
+  - Unselected Filter: Ghost/outline button (`bg-transparent text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium`).
+
+---
+
+## 9. Card Elevation & Box Shadow Standard
+- **Tailwind Box Shadow Standard**: All card containers across the application must adhere to the Tailwind CSS Box Shadow system (reference: [Tailwind CSS Box Shadow Documentation](https://tailwindcss.com/docs/box-shadow)).
+- **Card Elevation Tokens**:
+  - **Standard Cards & KPI Panels**: Styled with subtle elevation (`shadow-xs` / `shadow-sm`) combined with refined container borders (`border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl`).
+  - **Interactive / Actionable Cards**: Enhanced with hover elevation transitions (`transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer`).
+  - **Floating Drawers & Modals**: Higher elevation tiers (`shadow-xl` / `shadow-2xl`).
+- **No Flat Unbounded Cards**: Cards must always present clear structural definition and elevation depth rather than appearing flat or boundary-less.
+
+---
+
+## 10. Unified Border Radius Standard
+- **Strict Site-Wide Consistency**: Border radius tokens must be completely unified across all cards, containers, images, buttons, and inputs throughout the application. Ad-hoc or mismatched border radius classes (e.g. mixing random `rounded-md`, `rounded-3xl`, `rounded-sm`, `rounded-lg` on similar elements) are strictly prohibited.
+- **Unified Corner Radius Hierarchy**:
+  - **Outer Cards, Containers, Drawers & Modals**: `rounded-2xl` (16px / 1rem) — Used for all outer boxes, card containers, bottom sheets, dialog modals, and section panels.
+  - **Buttons, Form Inputs, Select Controls & Tabs**: `rounded-xl` (12px / 0.75rem) — Used for interactive UI controls, action buttons, search inputs, dropdown triggers, and navigation tab pills.
+  - **Images, Food Dish Media & Item Thumbnails**: `rounded-xl` (12px / 0.75rem) — All dish photos, material thumbnails, and uploaded media images must match the `rounded-xl` container radius.
+  - **Status Pills, Counter Badges & Avatars**: `rounded-full` — Reserved strictly for circular user avatars and pill-style status badges.
+
