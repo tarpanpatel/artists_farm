@@ -128,6 +128,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0) + extrasBaked)
     : Math.max(0, roomRent - advancePaid + extrasBaked);
 
+  // Naming someone in "Pending Received By" IS the payment event (confirmed
+  // with the user 19 Aug 2026), not mere attribution - it means this person
+  // just collected the outstanding balance right now (an early, mid-stay
+  // settlement). Fold it into Advance Paid so pendingDisplay reflects that
+  // immediately; the explicit Save button (not real-time here, unlike
+  // ReceiptEditModal's checkout screen) then commits it along with
+  // everything else. Clearing the dropdown back to blank does not reverse
+  // this - a mistaken selection must be fixed via Advance Paid directly.
+  const handleEditPendingReceivedByChange = (val: string) => {
+    setEditPendingReceivedBy(val);
+    if (val) {
+      setEditAdvance(String((parseFloat(editRoomRent) || 0) + extrasBaked));
+    }
+  };
+
   const startEditing = (highlightReceiver: boolean = false) => {
     setHighlightReceiverFields(highlightReceiver);
     setEditName(guest.guestName || '');
@@ -539,7 +554,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   <div className="mt-1">
                     <StyledSelect
                       value={editPendingReceivedBy}
-                      onChange={setEditPendingReceivedBy}
+                      onChange={handleEditPendingReceivedByChange}
                       placeholder="-- Select Staff/User --"
                       buttonClassName={`w-full h-10 px-3.5 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm outline-none transition-all focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100/30 ${
                         highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out')

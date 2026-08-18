@@ -476,11 +476,17 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // Shared by both "Save Booking Changes" and "Save and Proceed to Checkout" -
   // pushes the current edits back to the guest record. Returns whether there
-  // was anything to save.
-  const saveGuestEdits = (): boolean => {
+  // was anything to save. Accepts overrides so a caller that just changed
+  // roomCharges/advancePaid/pendingReceivedBy via setState can save the FRESH
+  // value immediately instead of racing React's async state update (state
+  // wouldn't be committed yet if we just read the closured variable here).
+  const saveGuestEdits = (overrides: Partial<{ roomCharges: number; advancePaid: number; pendingReceivedBy: string }> = {}): boolean => {
     if (!onUpdateGuest || !guest) return false;
+    const effectiveRoomCharges = overrides.roomCharges ?? roomCharges;
+    const effectiveAdvancePaid = overrides.advancePaid ?? advancePaid;
+    const effectivePendingReceivedBy = overrides.pendingReceivedBy ?? pendingReceivedBy;
     const updatedFoodBill = (guest.foodBill || 0) + foodTotal;
-    const totalChargesCalculated = roomCharges + updatedFoodBill + extraCharges - discounts + gstAmount;
+    const totalChargesCalculated = effectiveRoomCharges + updatedFoodBill + extraCharges - discounts + gstAmount;
 
     onUpdateGuest({
       ...guest,
@@ -488,19 +494,35 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       phoneNumber: editPhoneNumber.trim() || guest.phoneNumber,
       checkinDate: checkinDate || guest.checkinDate,
       expectedCheckout: checkoutDate || guest.expectedCheckout,
-      roomRate: roomCharges,
+      roomRate: effectiveRoomCharges,
       foodBill: updatedFoodBill,
       totalAmount: totalChargesCalculated,
-      advanceAmount: advancePaid,
+      advanceAmount: effectiveAdvancePaid,
       // advanceReceivedBy (the "Received By (Booking)" dropdown) was never
       // included here - the ...guest spread above always won with the
       // original, unedited value, so correcting who received the advance at
       // checkout was silently discarded on save. Same bug class as
       // pendingReceivedBy below, which already had this fix.
       advanceReceivedBy: advanceReceivedBy || guest.advanceReceivedBy,
-      pendingReceivedBy: pendingReceivedBy || guest.pendingReceivedBy,
+      pendingReceivedBy: effectivePendingReceivedBy || guest.pendingReceivedBy,
     });
     return true;
+  };
+
+  // Naming someone in "Pending Received By" IS the payment event (confirmed
+  // with the user 19 Aug 2026) - not mere attribution. It means this specific
+  // person just collected the outstanding lodging balance right now, so fold
+  // it straight into Advance Paid (the running "collected so far" counter -
+  // see lodgingPendingDue = roomCharges - advancePaid above) and save
+  // immediately, same real-time treatment as editing Advance Paid directly.
+  // Clearing the dropdown back to blank does NOT reverse this - money doesn't
+  // un-collect itself; a mistaken selection must be fixed via Advance Paid.
+  const handlePendingReceivedByChange = (val: string) => {
+    setPendingReceivedBy(val);
+    if (val) {
+      setAdvancePaid(roomCharges);
+      saveGuestEdits({ advancePaid: roomCharges, pendingReceivedBy: val });
+    }
   };
 
   // Advance Paid and Base Lodging Charges directly determine Pending Lodging
@@ -713,7 +735,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
                     <StyledSelect
                       value={pendingReceivedBy}
-                      onChange={setPendingReceivedBy}
+                      onChange={handlePendingReceivedByChange}
                       placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
                       options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
                     />

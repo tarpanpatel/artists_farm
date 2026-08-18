@@ -75,34 +75,45 @@ interface TelegramNotificationModalProps {
   hideRoutingControls?: boolean;
 }
 
+// Every search pattern below must consume any trailing closing tag the
+// replacement re-adds (the optional (<\/b>)?/(<\/i>)? at the end) - without
+// it, running this on text that's ALREADY correctly formed (a real emoji +
+// balanced <b>...</b>) would only match up through the opening tag, leaving
+// the original closing tag in place while the replacement adds a SECOND one.
+// That's exactly how 'kitchen_single_dish_ready' ended up saved to the DB as
+// "<b>DISH READY TO SERVE</b></b>" (found 19 Aug 2026 via a live HTTP 400
+// "Telegram rejected the message" - Telegram's parse_mode=HTML rejects
+// unbalanced tags outright) - every save-then-reedit cycle through this
+// function silently compounded one more stray </b>. Only the corrupted
+// "?"-prefixed case (real bug this function exists to fix) should ever match.
 const EMOJI_REPLACEMENTS = [
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT/gi, replace: '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?PROPERTY CHECKOUT SETTLEMENT REPORT(<\/b>)?/gi, replace: '🔔 <b>PROPERTY CHECKOUT SETTLEMENT REPORT</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Guest:(<\/b>)?/gi, replace: '👤 <b>Guest:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?ACCOMMODATION LOGISTICS/gi, replace: '🏠 <b>ACCOMMODATION LOGISTICS</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL ITEMIZED KOT/gi, replace: '🍽️ <b>FINAL ITEMIZED KOT</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL PAYOUT SPLIT/gi, replace: '💳 <b>FINAL PAYOUT SPLIT</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?Desk Cashier Executing/gi, replace: '👤 <i>Desk Cashier Executing</i>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW FINANCIAL TRANSACTION/gi, replace: '💰 <b>NEW FINANCIAL TRANSACTION</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?ACCOMMODATION LOGISTICS(<\/b>)?/gi, replace: '🏠 <b>ACCOMMODATION LOGISTICS</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL ITEMIZED KOT(<\/b>)?/gi, replace: '🍽️ <b>FINAL ITEMIZED KOT</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINAL PAYOUT SPLIT(<\/b>)?/gi, replace: '💳 <b>FINAL PAYOUT SPLIT</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Desk Cashier Executing(<\/i>)?/gi, replace: '👤 <i>Desk Cashier Executing</i>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW FINANCIAL TRANSACTION(<\/b>)?/gi, replace: '💰 <b>NEW FINANCIAL TRANSACTION</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Cashier:(<\/b>)?/gi, replace: '👤 <b>Cashier:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED/gi, replace: '🟢 <b>TOTAL CREDITED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?UPCOMING ARRIVALS TOMORROW/gi, replace: '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH READY TO SERVE/gi, replace: '🍽️ <b>DISH READY TO SERVE</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?TOTAL CREDITED(<\/b>)?/gi, replace: '🟢 <b>TOTAL CREDITED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?UPCOMING ARRIVALS TOMORROW(<\/b>)?/gi, replace: '🛎️ <b>UPCOMING ARRIVALS TOMORROW</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH READY TO SERVE(<\/b>)?/gi, replace: '🍽️ <b>DISH READY TO SERVE</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Order Ticket:(<\/b>)?/gi, replace: '🏷️ <b>Order Ticket:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW ORDER/gi, replace: '🔔 <b>NEW ORDER</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH SERVED/gi, replace: '✅ <b>DISH SERVED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUEST/gi, replace: '📦 <b>MATERIAL REQUEST</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW ORDER(<\/b>)?/gi, replace: '🔔 <b>NEW ORDER</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?DISH SERVED(<\/b>)?/gi, replace: '✅ <b>DISH SERVED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUEST(<\/b>)?/gi, replace: '📦 <b>MATERIAL REQUEST</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Processed By:(<\/b>)?/gi, replace: '👤 <b>Processed By:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Global Status:(<\/b>)?/gi, replace: '🟢 <b>Global Status:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF MEAL REQUEST/gi, replace: '🍱 <b>STAFF MEAL REQUEST</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUISITION APPROVED/gi, replace: '✅ <b>MATERIAL REQUISITION APPROVED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FULLY ITEMIZED SETTLEMENT BILL/gi, replace: '📶 <b>FULLY ITEMIZED SETTLEMENT BILL</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?KITCHEN ORDER/gi, replace: '🍽️ <b>KITCHEN ORDER</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF DUTY MEAL DISPATCHED/gi, replace: '🍛 <b>STAFF DUTY MEAL DISPATCHED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW MATERIAL REQUISITION SHEET/gi, replace: '📦 <b>NEW MATERIAL REQUISITION SHEET</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?LOW STOCK WARNING ALERT/gi, replace: '⚠️ <b>LOW STOCK WARNING ALERT</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?PETTY CASH/gi, replace: '💰 <b>PETTY CASH</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?ORDER COMPLETED/gi, replace: '✅ <b>ORDER COMPLETED</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINANCIAL TRANSACTION \(DRAWER ADJUSTMENT\)/gi, replace: '🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF MEAL REQUEST(<\/b>)?/gi, replace: '🍱 <b>STAFF MEAL REQUEST</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?MATERIAL REQUISITION APPROVED(<\/b>)?/gi, replace: '✅ <b>MATERIAL REQUISITION APPROVED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FULLY ITEMIZED SETTLEMENT BILL(<\/b>)?/gi, replace: '📶 <b>FULLY ITEMIZED SETTLEMENT BILL</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?KITCHEN ORDER(<\/b>)?/gi, replace: '🍽️ <b>KITCHEN ORDER</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?STAFF DUTY MEAL DISPATCHED(<\/b>)?/gi, replace: '🍛 <b>STAFF DUTY MEAL DISPATCHED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?NEW MATERIAL REQUISITION SHEET(<\/b>)?/gi, replace: '📦 <b>NEW MATERIAL REQUISITION SHEET</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?LOW STOCK WARNING ALERT(<\/b>)?/gi, replace: '⚠️ <b>LOW STOCK WARNING ALERT</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?PETTY CASH(<\/b>)?/gi, replace: '💰 <b>PETTY CASH</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?ORDER COMPLETED(<\/b>)?/gi, replace: '✅ <b>ORDER COMPLETED</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?FINANCIAL TRANSACTION \(DRAWER ADJUSTMENT\)(<\/b>)?/gi, replace: '🏧 <b>FINANCIAL TRANSACTION (DRAWER ADJUSTMENT)</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Staff Handler:(<\/b>)?/gi, replace: '👤 <b>Staff Handler:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Action Type:(<\/b>)?/gi, replace: '🔄 <b>Action Type:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Remarks:(<\/b>)?/gi, replace: '📝 <b>Remarks:</b>' },
@@ -115,7 +126,7 @@ const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Payment Mode:(<\/b>)?/gi, replace: '💳 <b>Payment Mode:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Room:(<\/b>)?/gi, replace: '🚪 <b>Room:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?ID Document\(s\):(<\/b>)?/gi, replace: '🪪 <b>ID Document(s):</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID VERIFICATION STILL PENDING/gi, replace: '🪪 <b>ID VERIFICATION STILL PENDING</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?ID VERIFICATION STILL PENDING(<\/b>)?/gi, replace: '🪪 <b>ID VERIFICATION STILL PENDING</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Type:(<\/b>)?/gi, replace: '📶 <b>Type:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfill Time:(<\/b>)?/gi, replace: '🕒 <b>Fulfill Time:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Fulfillment Time:(<\/b>)?/gi, replace: '📅 <b>Fulfillment Time:</b>' },
@@ -124,7 +135,7 @@ const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Paid By:(<\/b>)?/gi, replace: '👤 <b>Paid By:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Details:(<\/b>)?/gi, replace: '📝 <b>Details:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?Method:(<\/b>)?/gi, replace: '💳 <b>Method:</b>' },
-  { search: /\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:/gi, replace: '🔴 <b>DEBIT AMOUNT:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?DEBIT AMOUNT:(<\/b>)?/gi, replace: '🔴 <b>DEBIT AMOUNT:</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/gi, replace: '🏃‍♂️ <i>Staff, please collect and tap below when' },
 ];
 
@@ -1127,11 +1138,15 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                     label: (() => {
                       const defaultKey = { Kitchen: 'kitchen', Admin: 'admin', Finances: 'finance' }[getTemplateGroup(currentTpl)];
                       const defaultGroup = tgSettings.groups.find((g) => g.key === defaultKey && g.chatId);
-                      if (defaultGroup) return `${defaultGroup.name} (${t('default_label', 'default')})`;
+                      if (defaultGroup) return t('auto_default_group_option', 'Auto ({group})').replace('{group}', defaultGroup.name);
                       return tgSettings.groups.filter(g => g.chatId).length === 0 ? t('no_groups_found_option', 'No groups found') : t('not_sent_option', 'Not sent');
                     })(),
                   },
-                  ...tgSettings.groups.map((g) => ({ value: g.key, label: g.name })),
+                  // Explicit per-template pin, listed separately from the "Auto"
+                  // default above (even when it points at the same group) so the
+                  // two read as distinct choices - "follow the category default"
+                  // vs. "always use this exact group, even if the default changes".
+                  ...tgSettings.groups.map((g) => ({ value: g.key, label: t('pin_to_group_option', 'Always: {group}').replace('{group}', g.name) })),
                 ]}
               />
             ) : (
