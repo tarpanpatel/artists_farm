@@ -181,7 +181,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // Load served logs from DB on mount
   useEffect(() => {
     fetchServedLogsFromDB().then((logs) => {
-      if (logs.length > 0) setServedLogs(logs);
+      if (Array.isArray(logs)) setServedLogs(logs);
     });
   }, []);
 

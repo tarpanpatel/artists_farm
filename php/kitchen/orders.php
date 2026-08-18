@@ -250,9 +250,57 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_served_logs':
             try {
                 ensureServedLogsColumns($pdo);
-                $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at, ready_at FROM served_logs WHERE property_id = ? ORDER BY id DESC LIMIT 200");
+                $stmt = $pdo->prepare("SELECT id, order_id, item_name, quantity, served_by, guest_name, room_number, served_at, ready_at FROM served_logs WHERE property_id = ? OR property_id IS NULL OR property_id = 0 ORDER BY id DESC LIMIT 200");
                 $stmt->execute([$propertyId]);
                 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $seenKeys = [];
+                foreach ($logs as $l) {
+                    $key = trim((string)$l['order_id']) . '_' . strtolower(trim((string)$l['item_name']));
+                    $seenKeys[$key] = true;
+                }
+
+                $oiStmt = $pdo->prepare("
+                    SELECT 
+                        oi.id, 
+                        oi.order_id, 
+                        mi.name as item_name, 
+                        oi.quantity, 
+                        COALESCE(o.served_by_name, 'Staff') as served_by, 
+                        COALESCE(g.guest_name, 'Walk-in') as guest_name, 
+                        COALESCE(g.room_number, '') as room_number, 
+                        COALESCE(o.served_at, o.updated_at, NOW()) as served_at, 
+                        oi.ready_at
+                    FROM order_items oi
+                    JOIN orders o ON oi.order_id = o.id
+                    JOIN menu_items mi ON oi.menu_item_id = mi.id
+                    LEFT JOIN guests g ON o.guest_id = g.id
+                    WHERE (o.property_id = ? OR o.property_id IS NULL OR o.property_id = 0) AND LOWER(oi.item_status) = 'served'
+                    ORDER BY oi.id DESC
+                    LIMIT 200
+                ");
+                $oiStmt->execute([$propertyId]);
+                $servedItems = $oiStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($servedItems as $si) {
+                    $cleanOrdId = str_replace('#', '', (string)$si['order_id']);
+                    $key = $cleanOrdId . '_' . strtolower(trim((string)$si['item_name']));
+                    if (empty($seenKeys[$key])) {
+                        $logs[] = [
+                            'id' => 'oi_' . $si['id'],
+                            'order_id' => $cleanOrdId,
+                            'item_name' => $si['item_name'],
+                            'quantity' => $si['quantity'],
+                            'served_by' => $si['served_by'],
+                            'guest_name' => $si['guest_name'],
+                            'room_number' => $si['room_number'],
+                            'served_at' => $si['served_at'],
+                            'ready_at' => $si['ready_at'],
+                        ];
+                        $seenKeys[$key] = true;
+                    }
+                }
+
                 echo json_encode(['status' => 'success', 'data' => $logs]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
