@@ -2209,8 +2209,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <>
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-b-2xl p-4 sm:p-5 shadow-2xs space-y-4">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-          {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width) */}
-          <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
+          {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width). Card
+              chrome (bg/border/rounded/shadow/padding) is lg:-only - the
+              outer panel above already provides it, and on mobile the
+              Right Side column (hidden lg:flex, see below) doesn't exist to
+              separate this from, so applying the same card look here
+              unconditionally just doubled the border/padding on mobile
+              (found 19 Aug 2026). At lg: it's back, since there it really is
+              a distinct sibling panel next to Right Side. */}
+          <div className="lg:col-span-3 space-y-3.5 lg:bg-white lg:rounded-xl lg:border lg:border-slate-200 lg:shadow-2xs lg:p-4">
             {/* Sticky Search & Category Pills Bar */}
             <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-2xs rounded-t-xl">
               {/* Quick Search Bar + Category Filter Toggle */}

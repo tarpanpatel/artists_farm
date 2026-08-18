@@ -131,7 +131,11 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const alreadyComplete = guest.idVerificationStatus === 'Complete';
 
   const highestUploadedIndex = documents.reduce((max, d) => Math.max(max, d.guestIndex), -1);
-  const totalSlotCount = Math.max(requiredCount, highestUploadedIndex + 1) + extraSlots;
+  // Don't dump every required slot on screen at once for large bookings -
+  // start with just 2 (or fewer if only 1 guest is required) and let staff
+  // reveal the rest via "+ Add More Images" as they actually go through them.
+  const initialSlotCount = Math.min(requiredCount, 2);
+  const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
     <div className="checkin-verification-modal__overlay fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
