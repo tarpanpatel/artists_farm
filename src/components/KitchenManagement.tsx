@@ -1937,7 +1937,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   {visibleDrawerItems.map((ci) => (
                     <div
                       key={ci.menuItem.id}
-                      className="bg-slate-50 dark:bg-slate-900/60 py-1 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
+                      className="bg-slate-50 dark:bg-slate-900/60 h-[35px] px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <div className="flex-1 pr-1 truncate min-w-0">
                         <h4 className="kitchen-management__caption font-semibold text-slate-900 dark:text-white text-xs truncate m-0 p-0 leading-tight">
@@ -1945,10 +1945,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-md bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+                      <div className="flex items-center gap-1 rounded-md bg-white dark:bg-slate-800 p-0 border border-slate-200 dark:border-slate-700 shrink-0">
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, -1)}
-                          className="btn-cart-qty-minus aspect-square w-6 h-6 rounded-xs shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
+                          className="btn-cart-qty-minus btn-compact-stepper w-9 h-6 rounded-xs shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-extrabold text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 border border-slate-200 dark:border-slate-600"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
@@ -1957,7 +1957,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         </span>
                         <button
                           onClick={() => handleUpdateCartQuantity(ci.menuItem.id, 1)}
-                          className="btn-cart-qty-plus aspect-square w-6 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
+                          className="btn-cart-qty-plus btn-compact-stepper w-9 h-6 rounded-xs shrink-0 bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white flex items-center justify-center transition-colors cursor-pointer active:scale-90"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
