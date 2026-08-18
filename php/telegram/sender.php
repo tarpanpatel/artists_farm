@@ -361,6 +361,9 @@ if (!function_exists('sendPropertyTelegramPhoto')) {
 
 if (!function_exists('sendRawTelegramPhoto')) {
     function sendRawTelegramPhoto($filePath, $caption, $token, $chatId) {
+        if (class_exists('TelegramTemplates')) {
+            $caption = TelegramTemplates::restoreEmojis($caption);
+        }
         $url = "https://api.telegram.org/bot" . $token . "/sendPhoto";
         $data = [
             'chat_id' => $chatId,
@@ -500,6 +503,9 @@ if (!function_exists('sendFinanceTelegramMessage')) {
 
 if (!function_exists('sendRawTelegramMessage')) {
     function sendRawTelegramMessage($message, $token, $chatId, $replyMarkup = null) {
+        if (class_exists('TelegramTemplates')) {
+            $message = TelegramTemplates::restoreEmojis($message);
+        }
         $url = "https://api.telegram.org/bot" . $token . "/sendMessage";
         $data = [
             'chat_id' => $chatId,

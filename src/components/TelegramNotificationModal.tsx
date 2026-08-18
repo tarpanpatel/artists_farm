@@ -149,6 +149,18 @@ const EMOJI_REPLACEMENTS = [
   { search: /\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST FULFILLED(<\/b>)?/gi, replace: '✅ <b>SERVICE REQUEST FULFILLED</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST STILL PENDING(<\/b>)?/gi, replace: '⏰ <b>SERVICE REQUEST STILL PENDING</b>' },
   { search: /\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/gi, replace: '🏃‍♂️ <i>Staff, please collect and tap below when' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?By:(<\/b>)?/gi, replace: '👤 <b>By:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?At:(<\/b>)?/gi, replace: '📅 <b>At:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Sheet ID:(<\/b>)?/gi, replace: '🆔 <b>Sheet ID:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Items List Required:(<\/b>)?/gi, replace: '📝 <b>Items List Required:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Items Variance Manifest:(<\/b>)?/gi, replace: '📝 <b>Items Variance Manifest:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Special \/ Ad-Hoc Requests:(<\/b>)?/gi, replace: '💬 <b>Special / Ad-Hoc Requests:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Dish:(<\/b>)?/gi, replace: '🍽️ <b>Dish:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Served By:(<\/b>)?/gi, replace: '👤 <b>Served By:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<i>)?Remaining items in ticket:(<\/i>)?/gi, replace: '⏱️ <i>Remaining items in ticket:</i>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Table \/ Guest:(<\/b>)?/gi, replace: '👤 <b>Table / Guest:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Items:(<\/b>)?/gi, replace: '📝 <b>Items:</b>' },
+  { search: /\?[^\x00-\x7F]*\s*(<b>)?Time:(<\/b>)?/gi, replace: '⏰ <b>Time:</b>' },
 ];
 
 export function restoreEmojis(text: string): string {
@@ -157,6 +169,8 @@ export function restoreEmojis(text: string): string {
   for (const item of EMOJI_REPLACEMENTS) {
     cleaned = cleaned.replace(item.search, item.replace);
   }
+  // Universal Safety Net: replace any remaining orphan "?" at line starts or before tags/words
+  cleaned = cleaned.replace(/(^|\n)\?\s*(<b>|<i>)?/gi, '$1🔹 $2');
   return cleaned;
 }
 

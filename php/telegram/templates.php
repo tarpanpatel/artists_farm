@@ -126,15 +126,30 @@ if (!class_exists('TelegramTemplates')) {
                 '/\?[^\x00-\x7F]*\s*(<b>)?Fulfilled By:(<\/b>)?/i' => '👤 <b>Fulfilled By:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Fulfilled by:(<\/b>)?/i' => '👤 <b>Fulfilled by:</b>',
                 '/\?[^\x00-\x7F]*\s*(<b>)?Pending for:(<\/b>)?/i' => '⏱️ <b>Pending for:</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?NEW SERVICE REQUEST/i' => '🛎️ <b>NEW SERVICE REQUEST</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST FULFILLED/i' => '✅ <b>SERVICE REQUEST FULFILLED</b>',
-                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST STILL PENDING/i' => '⏰ <b>SERVICE REQUEST STILL PENDING</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?NEW SERVICE REQUEST(<\/b>)?/i' => '🛎️ <b>NEW SERVICE REQUEST</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST FULFILLED(<\/b>)?/i' => '✅ <b>SERVICE REQUEST FULFILLED</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?SERVICE REQUEST STILL PENDING(<\/b>)?/i' => '⏰ <b>SERVICE REQUEST STILL PENDING</b>',
                 '/\?[^\x00-\x7F]*\s*(<i>)?Staff, please collect and tap below when/i' => '🏃‍♂️ <i>Staff, please collect and tap below when',
+                '/\?[^\x00-\x7F]*\s*(<b>)?By:(<\/b>)?/i' => '👤 <b>By:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?At:(<\/b>)?/i' => '📅 <b>At:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Sheet ID:(<\/b>)?/i' => '🆔 <b>Sheet ID:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Items List Required:(<\/b>)?/i' => '📝 <b>Items List Required:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Items Variance Manifest:(<\/b>)?/i' => '📝 <b>Items Variance Manifest:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Special \/ Ad-Hoc Requests:(<\/b>)?/i' => '💬 <b>Special / Ad-Hoc Requests:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Dish:(<\/b>)?/i' => '🍽️ <b>Dish:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Served By:(<\/b>)?/i' => '👤 <b>Served By:</b>',
+                '/\?[^\x00-\x7F]*\s*(<i>)?Remaining items in ticket:(<\/i>)?/i' => '⏱️ <i>Remaining items in ticket:</i>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Table \/ Guest:(<\/b>)?/i' => '👤 <b>Table / Guest:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Items:(<\/b>)?/i' => '📝 <b>Items:</b>',
+                '/\?[^\x00-\x7F]*\s*(<b>)?Time:(<\/b>)?/i' => '⏰ <b>Time:</b>',
             ];
             
             foreach ($replacements as $pattern => $replacement) {
                 $text = preg_replace($pattern, $replacement, $text);
             }
+
+            // Universal Safety Net: replace any remaining orphan "?" at line starts or before tags/words
+            $text = preg_replace('/(^|\n)\?\s*(<b>|<i>)?/i', '$1🔹 $2', $text);
             return $text;
         }
 
