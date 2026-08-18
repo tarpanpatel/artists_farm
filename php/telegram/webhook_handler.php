@@ -41,9 +41,10 @@ if (!function_exists('handleTelegramCallbackQuery')) {
             $staff_name = $dbStaff;
         }
 
-        if (preg_match('/^serve_item_(\d+)_(\d+)$/', $callback_data, $matches)) {
+        if (preg_match('/^serve_item_([A-Za-z0-9\-\_]+)_(\d+)$/', $callback_data, $matches)) {
             $order_id = $matches[1];
             $item_index = intval($matches[2]);
+            $cleanNumeric = intval(preg_replace('/[^0-9]/', '', $order_id));
 
             // Find the specific order_item by order_id and array position
             $checkStmt = $pdo->prepare("
@@ -52,12 +53,12 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                 JOIN orders o ON oi.order_id = o.id
                 JOIN menu_items mi ON oi.menu_item_id = mi.id
                 LEFT JOIN guests g ON o.guest_id = g.id
-                WHERE oi.order_id = ?
+                WHERE oi.order_id = ? OR oi.order_id = ? OR o.id = ?
                 ORDER BY oi.id ASC
             ");
-            $checkStmt->execute([$order_id]);
+            $checkStmt->execute([$order_id, $cleanNumeric, $cleanNumeric]);
             $allItems = $checkStmt->fetchAll(PDO::FETCH_ASSOC);
-            $itemRow = $allItems[$item_index] ?? null;
+            $itemRow = $allItems[$item_index] ?? $allItems[0] ?? null;
 
             if ($itemRow && strtolower($itemRow['item_status']) !== 'served') {
 

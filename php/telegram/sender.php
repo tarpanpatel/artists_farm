@@ -174,6 +174,46 @@ if (!function_exists('appendAppUrlToMessage')) {
     }
 }
 
+if (!function_exists('ensureTelegramWebhookSet')) {
+    function ensureTelegramWebhookSet($pdo, $token = null) {
+        $token = $token ?: (defined('TELEGRAM_BOT_TOKEN') ? TELEGRAM_BOT_TOKEN : null);
+        if (empty($token)) return false;
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        
+        if ($scheme !== 'https' || empty($host) || strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+            return false;
+        }
+
+        $webhookUrl = "{$scheme}://{$host}/php/telegram/telegram_webhook.php";
+
+        $tokenHash = sha1($token . $webhookUrl);
+        static $webhookVerifiedCache = [];
+        if (isset($webhookVerifiedCache[$tokenHash])) {
+            return true;
+        }
+
+        try {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($webhookUrl));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $res = curl_exec($ch);
+            curl_close($ch);
+            $parsed = json_decode($res, true);
+            if (!empty($parsed['ok'])) {
+                $webhookVerifiedCache[$tokenHash] = true;
+                return true;
+            }
+        } catch (Exception $e) {
+            error_log("Failed to set Telegram webhook: " . $e->getMessage());
+        }
+        return false;
+    }
+}
+
 if (!function_exists('sendPropertyTelegramMessage')) {
     function sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup = null, $templateKey = null) {
         $config = getPropertyTelegramConfig($pdo, $propertyId);
@@ -182,6 +222,7 @@ if (!function_exists('sendPropertyTelegramMessage')) {
         }
 
         $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
+        ensureTelegramWebhookSet($pdo, $token);
         $message = appendAppUrlToMessage($pdo, $propertyId, $category, $message);
 
         if ($category === 'all') {
