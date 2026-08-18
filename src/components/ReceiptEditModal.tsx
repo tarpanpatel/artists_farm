@@ -6,7 +6,7 @@ import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { Button } from './Button';
 import { Input } from './Input';
-import { fetchMenuFromDB, fetchPayeesFromDB } from '../services/api';
+import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
@@ -301,6 +301,44 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
       const lodgingDue = (guest.totalAmount ?? guest.roomRate ?? 0) - (guest.advanceAmount || 0);
       setSplitRows([{ id: '1', mode: 'Cash', amount: Math.max(0, lodgingDue) }]);
+
+      // Auto-load charged service requests for this guest / room
+      fetchServiceRequestsFromDB().then((allReqs) => {
+        if (!allReqs || !Array.isArray(allReqs)) return;
+        const gRoomId = guest.roomId;
+        const gRoomName = (guest.roomNumber || '').toLowerCase().trim();
+
+        const chargedReqs = allReqs.filter((r) => {
+          const amt = Number(r.chargeAmount || (r as any).charge_amount || 0);
+          if (amt <= 0) return false;
+          if (r.status === 'Cancelled') return false;
+
+          if (gRoomId && Number(r.roomId) === Number(gRoomId)) return true;
+          const reqRoom = String(r.roomName || '').toLowerCase().trim();
+          if (reqRoom && gRoomName && (reqRoom === gRoomName || reqRoom.includes(gRoomName) || gRoomName.includes(reqRoom))) return true;
+
+          return false;
+        });
+
+        if (chargedReqs.length > 0) {
+          const serviceReqAdjustments: ManualAdjustment[] = chargedReqs.map((sr) => {
+            const raw = sr.requestType || 'Service Request';
+            const label = raw.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+            return {
+              id: `svc-req-${sr.id}`,
+              type: 'charge',
+              reason: `[Service Request] ${label}`,
+              amount: Number(sr.chargeAmount || (sr as any).charge_amount || 0),
+            };
+          });
+
+          setAdjustments((prev) => {
+            const existingIds = new Set(prev.map((a) => a.id));
+            const newItems = serviceReqAdjustments.filter((a) => !existingIds.has(a.id));
+            return [...prev, ...newItems];
+          });
+        }
+      });
     }
   }, [guest, isOpen]);
 

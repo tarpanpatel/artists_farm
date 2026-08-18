@@ -1511,6 +1511,7 @@ export interface ServiceRequest {
   roomName: string;
   requestType: string;
   description: string;
+  chargeAmount?: number;
   requestedBy: string;
   status: 'Pending' | 'Fulfilled';
   createdAt: string;
@@ -1662,6 +1663,7 @@ export async function createServiceRequestInDB(request: {
   room_id?: number | null;
   request_type: string;
   description?: string;
+  charge_amount?: number;
   requested_by: string;
   scheduled_at?: string | null;
 }): Promise<boolean> {

@@ -20,6 +20,9 @@ import { Button } from './Button';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
+import { useConfigurationData } from '../contexts/ConfigurationDataContext';
+import { Input } from './Input';
+
 interface Room {
   id: number;
   name: string;
@@ -31,15 +34,6 @@ interface ServiceRequestsManagementProps {
   onDispatchTelegram?: (eventType: string, message: string, category?: 'kitchen' | 'admin' | 'finance' | 'all', replyMarkup?: any, templateKey?: string) => void;
 }
 
-// Service request types are now fully database-driven via the system_service_request_catalog
-// global table. The DEFAULT_SERVICE_REQUEST_TYPES fallback array has been removed.
-// The backend GET /get_service_request_types returns a merged UNION of system + property custom types.
-
-// Reminder cadence for still-unfulfilled requests - same shared nudge engine
-// shape as KitchenManagement's stale-order poll (php/kitchen/orders.php's
-// check_stale_reminders), mirrored here for service requests.
-const REMINDER_THRESHOLD_MINUTES = 15;
-
 export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps> = ({
   rooms = [],
   isMultiKeyProperty = false,
@@ -47,20 +41,16 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 }) => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  // Shared with the notification bell (Header.tsx) - marking a request
-  // fulfilled here updates that badge immediately instead of waiting for an
-  // unrelated re-fetch.
+  const { miscCharges } = useConfigurationData();
   const { requests, loading, refreshRequests } = useServiceRequestContext();
   const [requestTypes, setRequestTypes] = useState<ServiceRequestType[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newRoomId, setNewRoomId] = useState<string>('');
   const [newRequestType, setNewRequestType] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newChargeAmount, setNewChargeAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
-  // Fulfilled list can grow indefinitely (every request ever fulfilled stays
-  // here) - showing all of them unconditionally made this page's height
-  // balloon over time. Paginate 5 at a time instead.
   const [fulfilledPage, setFulfilledPage] = useState(0);
   const FULFILLED_PAGE_SIZE = 5;
 
@@ -98,15 +88,30 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
     }
   }, [requestTypes]);
 
+  // Auto-prefill charge amount when request type changes
+  useEffect(() => {
+    if (!newRequestType) return;
+    const selectedOption = requestTypes.find((rt) => rt.typeId === newRequestType || rt.typeId.toLowerCase() === newRequestType.toLowerCase());
+    const matchedCharge = (miscCharges as any[])?.find((c) => {
+      const labelMatch = c.label?.toLowerCase() === selectedOption?.label?.toLowerCase();
+      const idMatch = String(c.id) === newRequestType || c.type_id === newRequestType;
+      return labelMatch || idMatch;
+    });
+
+    if (matchedCharge && matchedCharge.default_amount > 0) {
+      setNewChargeAmount(String(matchedCharge.default_amount));
+    }
+  }, [newRequestType, requestTypes, miscCharges]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const selectedTypeLabel = typeOptions.find((t) => t.value === newRequestType)?.label ?? newRequestType;
-    const roomLabel = rooms.find((r) => String(r.id) === newRoomId)?.name ?? 'Not specified';
+    const charge = newChargeAmount ? parseFloat(newChargeAmount) : 0;
     const ok = await createServiceRequestInDB({
       room_id: newRoomId ? Number(newRoomId) : null,
       request_type: newRequestType,
       description: newDescription.trim(),
+      charge_amount: charge > 0 ? charge : 0,
       requested_by: getCurrentUserName(),
     });
     if (ok) {
@@ -115,6 +120,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       setNewRoomId('');
       setNewRequestType(typeOptions[0]?.value ?? '');
       setNewDescription('');
+      setNewChargeAmount('');
       refreshRequests();
     } else {
       showToast('Failed to log service request', { type: 'error' });
@@ -209,6 +215,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
+                          {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                              ₹{Number(r.chargeAmount).toFixed(2)}
+                            </span>
+                          )}
                         </div>
                         {r.description && <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 service-requests-management__request-description">{r.description}</p>}
                         <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">{t('requested_by_text', 'Requested by')} {r.requestedBy} · {formatDateTimeDDMMYYYY(r.createdAt)}</p>
@@ -241,6 +252,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 service-requests-management__request-room">
                             <Home className="w-3 h-3" /> {r.roomName}
                           </span>
+                          {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                              ₹{Number(r.chargeAmount).toFixed(2)}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5 service-requests-management__request-meta">
                           {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {r.fulfilledAt}
@@ -312,6 +328,20 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   onChange={setNewRequestType}
                   options={typeOptions}
                   searchable
+                />
+              </div>
+              <div className="service-requests-management__form-group">
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 service-requests-management__form-label">
+                  Charge Amount (₹) <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(Optional - added to checkout bill if set)</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newChargeAmount}
+                  onChange={(e) => setNewChargeAmount(e.target.value)}
+                  placeholder="0.00 (leave blank for free)"
+                  className="w-full"
                 />
               </div>
               <div className="service-requests-management__form-group">

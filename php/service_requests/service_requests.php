@@ -75,6 +75,14 @@ function ensureServiceRequestsSchema($pdo) {
         }
     } catch (PDOException $e) {}
 
+    // Add charge_amount column to service_requests if it doesn't exist
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `service_requests` LIKE 'charge_amount'");
+        if ($stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE `service_requests` ADD COLUMN `charge_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `description`");
+        }
+    } catch (PDOException $e) {}
+
     // Nav items are DB-driven and shared across every property (see get_nav_menu
     // in php/kitchen/menu.php) - insert this feature's entry once, the same way
     // Telegram templates get backfilled, rather than requiring an admin to add
@@ -347,13 +355,14 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 }
                 $roomId = !empty($input['room_id']) ? intval($input['room_id']) : null;
                 $description = trim($input['description'] ?? '');
+                $chargeAmount = !empty($input['charge_amount']) ? max(0, floatval($input['charge_amount'])) : 0.00;
                 $scheduledAt = !empty($input['scheduled_at']) ? date('Y-m-d H:i:s', strtotime($input['scheduled_at'])) : null;
 
                 $stmt = $pdo->prepare("
-                    INSERT INTO service_requests (property_id, room_id, request_type, description, requested_by, scheduled_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO service_requests (property_id, room_id, request_type, description, charge_amount, requested_by, scheduled_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$propertyId, $roomId, $requestType, $description, $requestedBy, $scheduledAt]);
+                $stmt->execute([$propertyId, $roomId, $requestType, $description, $chargeAmount, $requestedBy, $scheduledAt]);
                 $requestId = $pdo->lastInsertId();
 
                 $roomName = 'N/A';
@@ -368,13 +377,17 @@ function handleServiceRequestActions($pdo, $request_method, $action, $propertyId
                 // Nudge Admin with an inline "Mark Fulfilled" button - resolvable by
                 // tap (production webhook or local poller) or from the app itself.
                 try {
+                    $typeLabel = getServiceRequestTypeLabel($pdo, $propertyId, $requestType);
                     $msg = TelegramTemplates::render($pdo, 'service_request_created', [
-                        'request_type' => $requestType,
+                        'request_type' => $typeLabel,
                         'room_name' => $roomName,
                         'description' => $description ?: '(none)',
                         'requested_by' => $requestedBy,
                         'scheduled_at' => $scheduledAt ? date('d M Y, h:i A', strtotime($scheduledAt)) : 'Immediate',
                     ]);
+                    if ($chargeAmount > 0) {
+                        $msg .= "\n💰 <b>Charge Amount:</b> ₹" . number_format($chargeAmount, 2);
+                    }
 
                     $replyMarkup = ['inline_keyboard' => [[
                         ['text' => '✅ Mark Fulfilled', 'callback_data' => "fulfill_request_{$requestId}"]
