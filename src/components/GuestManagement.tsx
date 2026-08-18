@@ -1225,7 +1225,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <div key={line.id} className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
                       <div className="flex items-center gap-2">
                         {/* Charge Category Select */}
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <StyledSelect
                             value={line.category}
                             onChange={(val) => handleUpdateBookingExtraChargeLine(line.id, 'category', val)}
@@ -1246,7 +1246,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         </div>
 
                         {/* Amount Input */}
-                        <div className="w-32">
+                        <div className="w-32 shrink-0">
                           <Input
                             type="number"
                             min="0"
