@@ -55,6 +55,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
   const [advanceReason, setAdvanceReason] = useState('');
   const [paidStaff, setPaidStaff] = useState<Set<string>>(new Set());
   const [payingStaff, setPayingStaff] = useState<string | null>(null);
+  const [drawerHistoryPage, setDrawerHistoryPage] = useState(1);
+  const [payrollPage, setPayrollPage] = useState(1);
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -537,29 +539,28 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
         </button>
 
         {showHistory && (
-          <div className="border-t border-slate-100 dark:border-slate-700 p-4">
-            <DataTable
-              columns={[
-                {
-                  name: t('date_time_column', 'Date & Time'),
-                  selector: (entry: CashDrawerEntry) => entry.created_at,
-                  sortable: true,
-                  width: '160px',
-                  cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
-                },
-                {
-                  name: t('staff_column', 'Staff'),
-                  selector: (entry: CashDrawerEntry) => entry.staff_name,
-                  sortable: true,
-                  width: '140px',
-                  cell: (entry: CashDrawerEntry) => <span className="font-semibold">{entry.staff_name}</span>,
-                },
-                {
-                  name: t('type_column', 'Type'),
-                  selector: (entry: CashDrawerEntry) => entry.type,
-                  sortable: true,
-                  width: '120px',
-                  cell: (entry: CashDrawerEntry) => (
+          <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+              <span className="text-slate-400 font-semibold text-xs">{isLoading ? '…' : drawerEntries.length} entries</span>
+              <div className="w-full sm:w-auto">
+                <Input
+                  type="text"
+                  value={searchHistory}
+                  onChange={e => setSearchHistory(e.target.value)}
+                  placeholder={t('search_staff_type_notes_placeholder', 'Search staff, type, notes...')}
+                  leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                />
+              </div>
+            </div>
+
+            {/* Drawer Entry Mobile Cards (md:hidden) */}
+            <div className="md:hidden space-y-2.5">
+              {filteredEntries.slice((drawerHistoryPage - 1) * 10, drawerHistoryPage * 10).map((entry: CashDrawerEntry, idx: number) => (
+                <div key={entry.id || idx} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                    <span className="font-mono text-[10px] font-semibold text-slate-500">
+                      {formatDateTimeDDMMYYYY(entry.created_at)}
+                    </span>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                       entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                       'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
@@ -567,74 +568,117 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
                       {entry.type === 'handover' ? <Handshake className="w-3 h-3" /> : <Sliders className="w-3 h-3" />}
                       <span>{entry.type === 'handover' ? 'Handover' : 'Adjustment'}</span>
                     </span>
-                  ),
-                },
-                {
-                  name: t('amount_column', 'Amount'),
-                  selector: (entry: CashDrawerEntry) => entry.amount,
-                  sortable: true,
-                  width: '120px',
-                  right: true,
-                  cell: (entry: CashDrawerEntry) => <span className="font-mono font-semibold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
-                },
-                {
-                  name: t('handed_to_column', 'Handed To'),
-                  selector: (entry: CashDrawerEntry) => entry.handed_to || '-',
-                  sortable: true,
-                  width: '140px',
-                  cell: (entry: CashDrawerEntry) => <span className="text-slate-500">{entry.handed_to || '-'}</span>,
-                },
-                {
-                  name: t('notes_column', 'Notes'),
-                  selector: (entry: CashDrawerEntry) => entry.notes || '-',
-                  sortable: true,
-                  grow: 2,
-                  cell: (entry: CashDrawerEntry) => <span className="text-slate-500 text-[10px] max-w-[200px] truncate block">{entry.notes || '-'}</span>,
-                },
-              ]}
-              data={filteredEntries}
-              progressPending={isLoading}
-              progressComponent={
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
-                </div>
-              }
-              pagination
-              paginationPerPage={10}
-              paginationRowsPerPageOptions={[10, 25, 50]}
-              highlightOnHover
-              subHeader={
-                <div className="w-full flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold text-xs">{isLoading ? '…' : drawerEntries.length} entries</span>
-                  <div>
-                    <Input
-                      type="text"
-                      value={searchHistory}
-                      onChange={e => setSearchHistory(e.target.value)}
-                      placeholder={t('search_staff_type_notes_placeholder', 'Search staff, type, notes...')}
-                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                      className="w-56"
-                    />
+                  </div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{entry.staff_name}</h4>
+                      {entry.handed_to && <p className="text-[11px] text-slate-500">Handed To: {entry.handed_to}</p>}
+                      {entry.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{entry.notes}</p>}
+                    </div>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
-              }
-              customStyles={{
-                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
-                headRow: { style: { backgroundColor: '#f8fafc' } },
-                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
-                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                rows: { style: { minHeight: '52px' } },
-              }}
-              noDataComponent={
-                <div className="text-center p-6 text-slate-400 font-semibold">{t('no_drawer_entries_label', 'No drawer entries recorded yet.')}</div>
-              }
-            />
+              ))}
+
+              {filteredEntries.length > 10 && (
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    disabled={drawerHistoryPage === 1}
+                    onClick={() => setDrawerHistoryPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Page {drawerHistoryPage} of {Math.ceil(filteredEntries.length / 10)}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={drawerHistoryPage >= Math.ceil(filteredEntries.length / 10)}
+                    onClick={() => setDrawerHistoryPage((p) => Math.min(Math.ceil(filteredEntries.length / 10), p + 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop DataTable (hidden md:block) */}
+            <div className="hidden md:block overflow-hidden">
+              <DataTable
+                columns={[
+                  {
+                    name: t('date_time_column', 'Date & Time'),
+                    selector: (entry: CashDrawerEntry) => entry.created_at,
+                    sortable: true,
+                    width: '160px',
+                    cell: (entry: CashDrawerEntry) => <span className="font-mono text-slate-500">{formatDateTimeDDMMYYYY(entry.created_at)}</span>,
+                  },
+                  {
+                    name: t('staff_column', 'Staff'),
+                    selector: (entry: CashDrawerEntry) => entry.staff_name,
+                    sortable: true,
+                    width: '140px',
+                    cell: (entry: CashDrawerEntry) => <span className="font-semibold">{entry.staff_name}</span>,
+                  },
+                  {
+                    name: t('type_column', 'Type'),
+                    selector: (entry: CashDrawerEntry) => entry.type,
+                    sortable: true,
+                    width: '120px',
+                    cell: (entry: CashDrawerEntry) => (
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        entry.type === 'handover' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                        'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+                      }`}>
+                        {entry.type === 'handover' ? <Handshake className="w-3 h-3" /> : <Sliders className="w-3 h-3" />}
+                        <span>{entry.type === 'handover' ? 'Handover' : 'Adjustment'}</span>
+                      </span>
+                    ),
+                  },
+                  {
+                    name: t('amount_column', 'Amount'),
+                    selector: (entry: CashDrawerEntry) => entry.amount,
+                    sortable: true,
+                    width: '120px',
+                    right: true,
+                    cell: (entry: CashDrawerEntry) => <span className="font-mono font-semibold text-sm">₹{Number(entry.amount).toLocaleString('en-IN')}</span>,
+                  },
+                  {
+                    name: t('handed_to_column', 'Handed To'),
+                    selector: (entry: CashDrawerEntry) => entry.handed_to || '-',
+                    sortable: true,
+                    width: '140px',
+                    cell: (entry: CashDrawerEntry) => <span className="text-slate-500">{entry.handed_to || '-'}</span>,
+                  },
+                  {
+                    name: t('notes_column', 'Notes'),
+                    selector: (entry: CashDrawerEntry) => entry.notes || '-',
+                    sortable: true,
+                    grow: 2,
+                    cell: (entry: CashDrawerEntry) => <span className="text-slate-500 text-[10px] max-w-[200px] truncate block">{entry.notes || '-'}</span>,
+                  },
+                ]}
+                data={filteredEntries}
+                progressPending={isLoading}
+                progressComponent={
+                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_drawer_data_label', 'Loading drawer data...')}
+                  </div>
+                }
+                pagination
+                paginationPerPage={10}
+                highlightOnHover
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* MONTHLY PAYOUT CALCULATOR */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden transition-colors space-y-4">
         <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-4 py-3 border-b border-amber-200 dark:border-amber-800/40">
           <h3 className="cash-drawer-manager__subtitle font-semibold text-amber-900 dark:text-amber-200 text-xs tracking-wider uppercase flex items-center gap-2">
             <IndianRupee className="w-4 h-4" />
@@ -665,152 +709,249 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
           </div>
         </div>
 
-        <DataTable
-          columns={[
-            {
-              name: 'Staff Name',
-              selector: (row: any) => row.staff.name,
-              sortable: true,
-              cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
-            },
-            {
-              name: 'Daily Wage (₹)',
-              selector: (row: any) => row.dailyWage,
-              sortable: true,
-              right: true,
-              width: '120px',
-              cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
-            },
-            {
-              name: 'Present Days',
-              selector: (row: any) => row.presentDays,
-              sortable: true,
-              center: true,
-              width: '110px',
-              cell: (row: any) => <><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
-            },
-            {
-              name: 'Total Earned (₹)',
-              selector: (row: any) => row.totalEarned,
-              sortable: true,
-              right: true,
-              width: '130px',
-              cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-            },
-            {
-              name: 'Collected (₹)',
-              selector: (row: any) => row.cashCollected,
-              sortable: true,
-              right: true,
-              width: '110px',
-              cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-            },
-            {
-              name: 'Out of Pocket (₹)',
-              selector: (row: any) => row.outOfPocket,
-              sortable: true,
-              right: true,
-              width: '120px',
-              cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-            },
-            {
-              name: 'Handovers (₹)',
-              selector: (row: any) => row.handovers,
-              sortable: true,
-              right: true,
-              width: '110px',
-              cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-            },
-            {
-              name: 'Advances (₹)',
-              selector: (row: any) => row.advances,
-              sortable: true,
-              right: true,
-              width: '120px',
-              cell: (row: any) => {
-                // Negative = a reimbursement credit (e.g. staff paid for a kitchen
-                // purchase out of pocket), which increases payout rather than
-                // reducing it - shown in green with a + sign, not hidden as ₹0.00.
-                const isCredit = row.advances < 0;
-                return (
-                  <span className={`font-semibold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </span>
-                );
-              },
-            },
-            {
-              name: 'Pending Payout (₹)',
-              selector: (row: any) => row.pendingPayout,
-              sortable: true,
-              right: true,
-              width: '140px',
-              cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
-            },
-            {
-              name: 'Actions',
-              center: true,
-              width: '240px',
-              cell: (row: any) => {
-                const isPaid = paidStaff.has(row.staff.id);
-                const isPaying = payingStaff === row.staff.id;
-                return (
-                  <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
-                      leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
-                    >
-                      Advance
-                    </Button>
-                    {isPaid ? (
-                      <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Paid
-                      </span>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="xs"
-                        disabled={isPaying || row.pendingPayout <= 0}
-                        leftIcon={<IndianRupee className="w-3 h-3" />}
-                        onClick={() => handlePayoutSubmit(row)}
-                      >
-                        {isPaying ? 'Paying...' : 'Pay Now'}
-                      </Button>
-                    )}
+        {/* Mobile Payout Cards Stack (md:hidden) */}
+        <div className="md:hidden p-4 space-y-3">
+          <div className="pb-2">
+            <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full" />
+          </div>
+
+          {filteredPayout.slice((payrollPage - 1) * 10, payrollPage * 10).map((row: any) => {
+            const isPaid = paidStaff.has(row.staff.id);
+            const isPaying = payingStaff === row.staff.id;
+            const isCredit = row.advances < 0;
+            return (
+              <div key={row.staff.id} className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                  <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{row.staff.name}</h4>
+                    <span className="text-[11px] text-slate-500">₹{row.dailyWage.toFixed(2)} / day ({row.presentDays} days)</span>
                   </div>
-                );
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Pending Payout</span>
+                    <span className="font-bold text-blue-700 dark:text-blue-400 text-sm">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Total Earned:</span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Collected:</span>
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Handovers:</span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Advances/Credits:</span>
+                    <span className={`font-semibold ${isCredit ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
+                    leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
+                  >
+                    Advance
+                  </Button>
+                  {isPaid ? (
+                    <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] px-2 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Paid
+                    </span>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      disabled={isPaying || row.pendingPayout <= 0}
+                      leftIcon={<IndianRupee className="w-3 h-3" />}
+                      onClick={() => handlePayoutSubmit(row)}
+                    >
+                      {isPaying ? 'Paying...' : 'Pay Now'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredPayout.length > 10 && (
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                disabled={payrollPage === 1}
+                onClick={() => setPayrollPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Page {payrollPage} of {Math.ceil(filteredPayout.length / 10)}
+              </span>
+              <button
+                type="button"
+                disabled={payrollPage >= Math.ceil(filteredPayout.length / 10)}
+                onClick={() => setPayrollPage((p) => Math.min(Math.ceil(filteredPayout.length / 10), p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Payout DataTable (hidden md:block) */}
+        <div className="hidden md:block overflow-hidden p-4">
+          <DataTable
+            columns={[
+              {
+                name: 'Staff Name',
+                selector: (row: any) => row.staff.name,
+                sortable: true,
+                cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.staff.name}</span>,
               },
-            },
-          ]}
-          data={filteredPayout}
-          progressPending={isLoading}
-          progressComponent={
-            <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
-            </div>
-          }
-          pagination
-          paginationPerPage={15}
-          paginationRowsPerPageOptions={[10, 15, 25, 50]}
-          highlightOnHover
-          subHeader={
-            <div className="w-full flex items-center py-2">
-              <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
-            </div>
-          }
-          customStyles={{
-            subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #fde68a' } },
-            headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#b45309', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', paddingLeft: '12px' } },
-            cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-            headRow: { style: { backgroundColor: '#fffbeb' } },
-            rows: { style: { minHeight: '52px' } },
-          }}
-          noDataComponent={
-            <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
-          }
-        />
+              {
+                name: 'Daily Wage (₹)',
+                selector: (row: any) => row.dailyWage,
+                sortable: true,
+                right: true,
+                width: '120px',
+                cell: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300">₹{row.dailyWage.toFixed(2)}</span>,
+              },
+              {
+                name: 'Present Days',
+                selector: (row: any) => row.presentDays,
+                sortable: true,
+                center: true,
+                width: '110px',
+                cell: (row: any) => <><span className="font-semibold text-slate-800 dark:text-slate-200">{row.presentDays}</span><span className="text-slate-400 dark:text-slate-500"> days</span></>,
+              },
+              {
+                name: 'Total Earned (₹)',
+                selector: (row: any) => row.totalEarned,
+                sortable: true,
+                right: true,
+                width: '130px',
+                cell: (row: any) => <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{row.totalEarned.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+              },
+              {
+                name: 'Collected (₹)',
+                selector: (row: any) => row.cashCollected,
+                sortable: true,
+                right: true,
+                width: '110px',
+                cell: (row: any) => <span className="font-semibold text-amber-700 dark:text-amber-400">₹{row.cashCollected.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+              },
+              {
+                name: 'Out of Pocket (₹)',
+                selector: (row: any) => row.outOfPocket,
+                sortable: true,
+                right: true,
+                width: '120px',
+                cell: (row: any) => <span className="font-semibold text-purple-600 dark:text-purple-400">₹{row.outOfPocket.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+              },
+              {
+                name: 'Handovers (₹)',
+                selector: (row: any) => row.handovers,
+                sortable: true,
+                right: true,
+                width: '110px',
+                cell: (row: any) => <span className="font-semibold text-indigo-600 dark:text-indigo-400">₹{row.handovers.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+              },
+              {
+                name: 'Advances (₹)',
+                selector: (row: any) => row.advances,
+                sortable: true,
+                right: true,
+                width: '120px',
+                cell: (row: any) => {
+                  const isCredit = row.advances < 0;
+                  return (
+                    <span className={`font-semibold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {isCredit ? '+' : '-'} ₹{Math.abs(row.advances).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  );
+                },
+              },
+              {
+                name: 'Pending Payout (₹)',
+                selector: (row: any) => row.pendingPayout,
+                sortable: true,
+                right: true,
+                width: '140px',
+                cell: (row: any) => <span className="font-semibold text-blue-700 dark:text-blue-400">₹{row.pendingPayout.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>,
+              },
+              {
+                name: 'Actions',
+                center: true,
+                width: '240px',
+                cell: (row: any) => {
+                  const isPaid = paidStaff.has(row.staff.id);
+                  const isPaying = payingStaff === row.staff.id;
+                  return (
+                    <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => { setAdvanceStaff(row.staff); setAdvanceAmount(0); setAdvanceReason(''); setIsAdvanceModalOpen(true); }}
+                        leftIcon={<Plus className="w-3 h-3 text-emerald-600" />}
+                      >
+                        Advance
+                      </Button>
+                      {isPaid ? (
+                        <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] px-2 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Paid
+                        </span>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="xs"
+                          disabled={isPaying || row.pendingPayout <= 0}
+                          leftIcon={<IndianRupee className="w-3 h-3" />}
+                          onClick={() => handlePayoutSubmit(row)}
+                        >
+                          {isPaying ? 'Paying...' : 'Pay Now'}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                },
+              },
+            ]}
+            data={filteredPayout}
+            progressPending={isLoading}
+            progressComponent={
+              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading staff...
+              </div>
+            }
+            pagination
+            paginationPerPage={15}
+            highlightOnHover
+            subHeader={
+              <div className="w-full flex items-center py-2">
+                <Input type="text" value={searchPayout} onChange={e => setSearchPayout(e.target.value)} placeholder="Search by staff name..." className="w-full max-w-xs" />
+              </div>
+            }
+            customStyles={{
+              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #fde68a' } },
+              headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#b45309', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', paddingLeft: '12px' } },
+              cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+              headRow: { style: { backgroundColor: '#fffbeb' } },
+              rows: { style: { minHeight: '52px' } },
+            }}
+            noDataComponent={
+              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No active staff members found</div>
+            }
+          />
+        </div>
 
         {/* Advances History for this month */}
         {monthAdvances.length > 0 && (

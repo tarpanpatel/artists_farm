@@ -29,7 +29,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
         </p>
       )}
     </div>
-    {children && <div className="flex items-center gap-2 shrink-0 page-header__actions">{children}</div>}
+    {children && <div className="flex flex-wrap items-center gap-2 shrink-0 page-header__actions">{children}</div>}
   </div>
 );
 

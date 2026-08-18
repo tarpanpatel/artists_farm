@@ -82,6 +82,7 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState('all');
+  const [mobileFeedsPage, setMobileFeedsPage] = useState(1);
 
   // Modal State for Adding Feed
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -456,22 +457,22 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
       {/* Main Content Area: API Data Table */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         {/* Table Filter Toolbar */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-2.5 ical-sync-manager__filter-toolbar">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 ical-sync-manager__filter-toolbar flex-1">
             {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
-<Input
-                 type="text"
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
-                 className="pl-9 ical-sync-manager__search-input"
-               />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('filter_feeds_placeholder', 'Filter feeds by platform or endpoint URL...')}
+                className="pl-9 ical-sync-manager__search-input w-full"
+              />
             </div>
 
             {/* Platform Filter Dropdown */}
-            <div className="w-44 shrink-0">
+            <div className="w-full sm:w-44 shrink-0">
               <StyledSelect
                 value={platformFilter}
                 onChange={setPlatformFilter}
@@ -492,8 +493,8 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop View: Full Data Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse ical-sync-manager__table">
             <thead className="bg-slate-100/70 dark:bg-slate-900/80 uppercase text-[10px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider ical-sync-manager__table-header">
               <tr className="ical-sync-manager__table-header-row">
@@ -624,6 +625,126 @@ export const ICalSyncManager: React.FC<ICalSyncManagerProps> = ({ propertyId, em
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Touch-First Mobile Cards View with 10-Item Pagination */}
+        <div className="md:hidden p-3 space-y-3">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
+            {filteredCalendars.slice((mobileFeedsPage - 1) * 10, mobileFeedsPage * 10).map((cal) => {
+              const badge = getPlatformBadge(cal.service_name);
+              const isSyncing = syncingId === cal.id;
+              const isCopied = copiedUrls.has(cal.id);
+
+              return (
+                <div key={cal.id} className="pt-3 first:pt-0 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-semibold flex items-center gap-1.5 shrink-0 ${badge.bg}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                          {badge.name}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {t('connected_badge', 'Connected')}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">{cal.service_name}</h4>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400 truncate flex-1">
+                      {cal.ical_url}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(cal.ical_url, cal.id)}
+                      className="button button--copy p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 transition cursor-pointer shrink-0"
+                      title={t('copy_feed_url_tooltip', 'Copy feed URL')}
+                    >
+                      {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Sync Mode</span>
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-[10px] font-semibold inline-block mt-0.5">
+                        {t('auto_15m_badge', 'Auto (15m)')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Last Synchronization</span>
+                      {cal.last_sync ? (
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                          {formatDateDDMMYYYY(cal.last_sync)} {new Date(cal.last_sync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">{t('never_synced_label', 'Never synced')}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                    <button
+                      onClick={() => handleManualSync(cal.id, cal.service_name)}
+                      disabled={isSyncing}
+                      className="button button--sync px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer border border-blue-200 dark:border-blue-800 text-xs"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isSyncing ? t('syncing_button', 'Syncing...') : t('sync_now_button', 'Sync Now')}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteCalendar(cal.id, cal.service_name)}
+                      className="button button--delete p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredCalendars.length === 0 && (
+              <div className="text-center p-8 text-slate-400 space-y-3">
+                <Globe className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-[1.5]" />
+                <p className="font-semibold text-xs">{t('no_ical_feeds_match_filter_message', 'No iCal integration feeds match your current filter.')}</p>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="button button--connect px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-xs inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t('connect_first_ical_feed_button', 'Connect First iCal Feed')}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile 10-Item Pagination Controls */}
+          {filteredCalendars.length > 10 && (
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="button"
+                disabled={mobileFeedsPage === 1}
+                onClick={() => setMobileFeedsPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Page {mobileFeedsPage} of {Math.ceil(filteredCalendars.length / 10)}
+              </span>
+              <button
+                type="button"
+                disabled={mobileFeedsPage >= Math.ceil(filteredCalendars.length / 10)}
+                onClick={() => setMobileFeedsPage((p) => Math.min(Math.ceil(filteredCalendars.length / 10), p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

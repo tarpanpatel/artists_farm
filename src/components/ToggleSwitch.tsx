@@ -14,21 +14,22 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   label,
 }) => {
   return (
-    <div className="app-toggle-wrapper flex items-center gap-2 toggle-switch">
+    <label className="app-toggle-wrapper flex items-center gap-2.5 cursor-pointer select-none toggle-switch">
       <button
+        type="button"
         onClick={() => !disabled && onChange(!enabled)}
         disabled={disabled}
-        className={`app-toggle-switch relative inline-flex h-6 w-11 items-center rounded-full transition-colors overflow-visible ${
+        className={`app-toggle-switch relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
           enabled
             ? 'bg-blue-600 dark:bg-blue-500'
             : 'bg-slate-300 dark:bg-slate-600'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} toggle-switch__track`}
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} toggle-switch__track`}
         role="switch"
         aria-checked={enabled}
       >
         <span
-          className={`app-toggle-thumb absolute h-4 w-4 rounded-full bg-white shadow-md transition-all ${
-            enabled ? 'translate-x-5 left-1' : 'translate-x-0.5 left-0'
+          className={`app-toggle-thumb pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+            enabled ? 'translate-x-5' : 'translate-x-0'
           } toggle-switch__thumb`}
         />
       </button>
@@ -37,6 +38,6 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
           {label}
         </span>
       )}
-    </div>
+    </label>
   );
 };

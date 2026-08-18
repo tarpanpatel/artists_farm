@@ -251,30 +251,30 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           className="booking-details-modal__content relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Sticky Floating Top-Right Close Cross Button */}
-          <button
-            type="button"
-            onClick={() => { onClose(); setIsEditing(false); }}
-            className="booking-details-modal__close-btn sticky top-0 float-right z-30 p-1.5 rounded-full bg-slate-100/90 hover:bg-slate-200 dark:bg-slate-700/90 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-xs -mr-2 -mt-2"
-            title="Close Modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="booking-details-modal__header flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3 pr-8">
-            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              {isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}
+          {/* Modal Top Header Bar with Non-Squeezable Close Button */}
+          <div className="booking-details-modal__header flex items-start justify-between gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <h2 className="booking-details-modal__title text-base font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2 pr-2">
+              <span>{isEditing ? t('edit_booking_header', 'Edit Booking') : t('today_booking_details_heading', 'Booking Details')}</span>
               {guest.otaSource && (
                 <span
                   className="booking-details-modal__ota-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold"
                   title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform')}
                 >
-                  <Globe className="w-3 h-3" />
+                  <Globe className="w-3 h-3 shrink-0" />
                   {guest.otaSourceLabel || guest.otaSource}
                   {guest.roomNumber && <span className="opacity-70">&middot; {guest.roomNumber}</span>}
                 </span>
               )}
             </h2>
+
+            <button
+              type="button"
+              onClick={() => { onClose(); setIsEditing(false); }}
+              className="booking-details-modal__close-btn shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+              title="Close Modal"
+            >
+              <X className="w-4 h-4 shrink-0" />
+            </button>
           </div>
 
           {/* Action Banner 0: OTA cancellation drift - the source calendar no longer
@@ -566,14 +566,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
             {/* Foreign Guest + Notes toggle (edit mode only - view mode shows notes text directly if present) */}
             {isEditing ? (
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} className="form-field__checkbox" />
-                  {t('guest_notes_checkbox_label', 'Guest Notes')}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                  <input type="checkbox" checked={editShowNotes} onChange={(e) => setEditShowNotes(e.target.checked)} className="form-field__checkbox shrink-0 w-4.5 h-4.5" />
+                  <span>{t('guest_notes_checkbox_label', 'Guest Notes')}</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} className="form-field__checkbox" />
-                  {t('foreign_national_guest_label', 'Foreign National Guest')}
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
+                  <input type="checkbox" checked={editIsForeignGuest} onChange={(e) => setEditIsForeignGuest(e.target.checked)} className="form-field__checkbox shrink-0 w-4.5 h-4.5" />
+                  <span>{t('foreign_national_guest_label', 'Foreign National Guest')}</span>
                 </label>
               </div>
             ) : (

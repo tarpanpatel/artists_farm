@@ -235,9 +235,12 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [propertyName] = useState<string>(
     preloadedData.currentProperty?.name || getPropertySlug().charAt(0).toUpperCase() + getPropertySlug().slice(1).replace(/-/g, ' ') || 'Property'
   );
-  const [currentPropertyColorScheme] = useState<string>(
-    preloadedData.currentProperty?.tailwind_color_scheme || 'blue'
-  );
+  // Brand color is platform-wide, not per-property (18 Aug 2026) - properties
+  // must never be able to look visually distinct from one another. This
+  // intentionally ignores `currentProperty.tailwind_color_scheme` (a leftover
+  // per-property field some existing DB rows still have a non-default value
+  // in) so every property renders identically regardless of what's stored.
+  const [currentPropertyColorScheme] = useState<string>('blue');
 
   // MultiKey room navigation handlers
   const { propertySlug: multiKeyPropertySlug } = getPropertyAndRoomSlugs();

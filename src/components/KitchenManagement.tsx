@@ -601,6 +601,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // 14 Aug 2026: "No meal logs this month" used to render off smLogs.length
   // === 0 before this fetch resolved. Defaults true.
   const [smLogsLoading, setSmLogsLoading] = useState(true);
+  const [smPage, setSmPage] = useState(1);
   useEffect(() => {
     fetchStaffMealLogsFromDB().then((data) => {
       setSmLogs(data);
@@ -1028,8 +1029,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Header (Hidden on Take Food Order POS view) */}
-      {activeTab !== 'new_order' && (
+      {/* Top Header (Hidden on Take Food Order POS view and Beta Recipe Builder, which has its own header) */}
+      {activeTab !== 'new_order' && activeTab !== 'beta_recipe_builder' && (
         <PageHeader title={t('kitchen_ticketing_header')} subtitle={t('kitchen_subtitle')}>
           {activeTab !== 'staff_meals' && (
             <PageHeaderButton onClick={() => setActiveTab('new_order')} icon={Plus}>

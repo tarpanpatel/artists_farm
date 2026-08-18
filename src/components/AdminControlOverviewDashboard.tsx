@@ -151,23 +151,21 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
               key={card.uniqueKey}
               className="admin-dashboard__card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group"
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className={`p-3 rounded-xl border w-fit ${card.color} transition-transform group-hover:scale-105`}>
-                    <IconComponent className="w-5 h-5" />
-                  </div>
+              <div className="flex items-start gap-3.5">
+                <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
+                  <IconComponent className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <h3 className="admin-control-overview-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {card.title}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{card.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{card.description}</p>
                 </div>
               </div>
 
               <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   block
                   className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"

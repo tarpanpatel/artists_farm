@@ -1501,27 +1501,6 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                 </div>
               )}
 
-              {editingProperty.property_type === 'SINGLE' && showPropertyModal === 'add' && (
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                    {t('color_scheme_label', 'Color Scheme')}
-                  </label>
-                  <StyledSelect
-                    value={editingProperty.tailwind_color_scheme}
-                    onChange={(val) =>
-                      setEditingProperty({ ...editingProperty, tailwind_color_scheme: val })
-                    }
-                    options={[
-                      { value: 'blue', label: t('color_blue', 'Blue') },
-                      { value: 'green', label: t('color_green', 'Green') },
-                      { value: 'red', label: t('color_red', 'Red') },
-                      { value: 'purple', label: t('color_purple', 'Purple') },
-                      { value: 'amber', label: t('color_amber', 'Amber') },
-                    ]}
-                  />
-                </div>
-              )}
-
               {editingProperty.property_type === 'MULTI_KEY' && showPropertyModal === 'add' && (
                 <>
                   <div className="grid grid-cols-2 gap-3">

@@ -169,11 +169,11 @@ export const Header: React.FC<HeaderProps> = ({
     // toggle button stays usable while the drawer is open, and below real
     // page modals (bumped to z-[58] by that same CSS rule) and toasts/
     // confirm dialog (z-[9999]/[99999]).
-    <header className="header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 transition-colors">
+    <header className="header fixed top-0 left-0 right-0 z-[57] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs h-16 pt-[env(safe-area-inset-top,0px)] transition-colors">
       <div className="header__inner px-3 py-2.5 lg:px-5 flex items-center justify-between h-full">
         {/* Left Section: Sidebar Toggle + Brand Logo */}
         <div className="header__left flex items-center gap-2">
-          {/* Menu Toggle for Collapsible Icon-Only / Expanded Sidebar */}
+          {/* Menu Toggle for Collapsible Icon-Only / Expanded Sidebar (Hidden on mobile) */}
           <button
             onClick={() => {
               if (window.innerWidth < 768) {
@@ -184,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             title={isIconOnly ? t('expand_sidebar_tooltip', 'Expand Sidebar Menu') : t('collapse_sidebar_tooltip', 'Collapse Sidebar Menu')}
             aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
-            className="btn-toggle-sidebar p-2 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="btn-toggle-sidebar hidden md:flex p-2 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>

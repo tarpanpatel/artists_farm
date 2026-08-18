@@ -8,6 +8,7 @@ import {
   Edit2,
   Trash2,
   X,
+  Search,
   ShieldCheck,
   CheckSquare,
   Square,
@@ -383,41 +384,57 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         />
       )}
 
-      {/* SUB-TAB 2: FOOD MENU CATALOG */}
+      {/* SUB-TAB 2: FOOD MENU CATALOG (Matching #take_food_order layout & grouping) */}
       {activeSubTab === 'food_menu' && (
         <div className="menu-manager__food-menu space-y-4">
-          {/* Controls Bar */}
-          <div className="menu-manager__controls bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="menu-manager__controls-filters flex items-center gap-2 w-full md:w-auto">
-              <div className="w-full md:w-64">
+          {/* Top Search Bar & Controls */}
+          <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
                 <Input
                   autoComplete="off"
                   value={foodSearch}
                   onChange={(e) => setFoodSearch(e.target.value)}
-                  placeholder={t('search_food_items_placeholder', 'Search food items...')}
+                  placeholder={t('search_food_items_placeholder', 'Quick search catalog metrics...')}
+                  className="pl-9 w-full"
                 />
               </div>
 
-              {/* Category Dropdown */}
-              <StyledSelect
-                className="w-40"
-                value={selectedFoodCategory}
-                onChange={setSelectedFoodCategory}
-                options={foodCategories.map((cat) => ({ value: cat, label: cat }))}
-              />
+              <button
+                type="button"
+                onClick={handleOpenAddFood}
+                className="menu-manager__add-food-btn text-white bg-blue-600 hover:bg-blue-700 active:scale-98 font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>
+              </button>
             </div>
 
-            <button
-              onClick={handleOpenAddFood}
-              className="menu-manager__add-food-btn w-full md:w-auto text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>
-            </button>
+            {/* Category Filter Carousel (Identical to #take_food_order) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+              {foodCategories.map((cat) => {
+                const isSelected = selectedFoodCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedFoodCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'bg-cyan-500 text-white shadow-2xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
+                    }`}
+                  >
+                    {cat === 'All' ? 'All Menu' : cat}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Food Grid */}
-          <div className="menu-manager__food-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {/* Food Grid (Matching #take_food_order POS 6-column grid) */}
+          <div className="menu-manager__food-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {filteredFoodItems.map((item, index) => (
               <div
                 key={item.id}
@@ -425,33 +442,35 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 onDragStart={(e) => handleFoodDragStart(e, index)}
                 onDragOver={(e) => handleFoodDragOver(e, index)}
                 onDrop={(e) => handleFoodDrop(e, index)}
-                className={`menu-manager__food-card bg-white rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
+                className={`menu-manager__food-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 p-2.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between cursor-grab active:cursor-grabbing ${
                   draggedFoodIndex === index ? 'opacity-40 border-blue-400' : ''
-                } ${item.available ? 'border-slate-200' : 'border-red-200 bg-red-50/20'}`}
+                } ${item.available ? '' : 'bg-red-50/20 dark:bg-red-950/20'}`}
               >
-                <div className="menu-manager__food-card-content space-y-2">
-                  <div className="menu-manager__food-card-top flex items-center justify-between gap-2">
-                    <div className="menu-manager__food-card-tags flex items-center gap-1.5">
-                      <GripVertical className="w-4 h-4 text-slate-300 hover:text-slate-600 shrink-0" />
-                      <span className="menu-manager__food-category text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                <div className="space-y-1.5">
+                  {/* Category Tag & Availability Badge */}
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1 overflow-hidden">
+                      <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                         {item.category}
                       </span>
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => onUpdateFoodItem(item.id, { available: !item.available })}
-                      className={`menu-manager__availability-badge text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                      className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer shrink-0 ${
                         item.available
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
-                          : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800'
                       }`}
                     >
                       {item.available ? t('available_badge', 'Available') : t('out_of_stock_badge', 'Out of Stock')}
                     </button>
                   </div>
 
-                  {/* Food Item Image Preview / Quick Upload */}
-                  <div className="menu-manager__food-image relative group rounded-lg overflow-hidden bg-slate-50 border border-slate-200 h-28 flex items-center justify-center">
+                  {/* Image Preview & Quick Upload */}
+                  <div className="relative group rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600 h-20 sm:h-16 flex items-center justify-center">
                     {item.imagePath ? (
                       <img
                         src={item.imagePath}
@@ -462,19 +481,17 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         }}
                       />
                     ) : (
-                      <div className="menu-manager__food-image-empty flex flex-col items-center gap-1 text-slate-400 p-2">
-                        <ImageIcon className="w-6 h-6" />
-                        <span className="text-[10px] font-medium">{t('no_image_uploaded_label', 'No Image Uploaded')}</span>
+                      <div className="flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 p-1">
+                        <UtensilsCrossed className="w-5 h-5" />
                       </div>
                     )}
 
-                    {/* Quick Image Upload Overlay Button */}
                     <label
-                      className="menu-manager__image-upload-overlay absolute inset-0 bg-slate-900/60 text-white flex items-center justify-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
+                      className="absolute inset-0 bg-slate-900/70 text-white flex items-center justify-center gap-1 text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-2xs"
                       title={t('upload_image_for_item_tooltip', 'Upload Image for this item')}
                     >
-                      <Upload className="w-4 h-4" />
-                      <span>{t('upload_image_button', 'Upload Image')}</span>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload</span>
                       <Input
                         type="file"
                         accept="image/*"
@@ -496,24 +513,31 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   </div>
 
                   <div>
-                    <h4 className="menu-manager__food-name font-semibold text-slate-900 text-sm">{item.name}</h4>
-                    <p className="menu-manager__food-price text-emerald-700 font-semibold text-sm mt-0.5">₹{item.price.toFixed(2)}</p>
+                    <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-tight line-clamp-2 min-h-[28px]">
+                      {item.name}
+                    </h4>
+                    <p className="text-emerald-700 dark:text-emerald-400 font-extrabold text-xs sm:text-[11px] mt-0.5">
+                      ₹{item.price}
+                    </p>
                   </div>
                 </div>
 
-                <div className="menu-manager__food-card-footer flex items-center justify-between pt-3 border-t border-slate-100 mt-3 text-xs">
-                  <span className="menu-manager__food-id text-[10px] font-mono text-slate-400">ID: {item.id}</span>
-                  <div className="menu-manager__food-actions flex items-center gap-1">
+                {/* Footer Controls: Edit & Delete */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between mt-1 text-xs">
+                  <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">#{item.id}</span>
+                  <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => requirePasscode(() => handleOpenEditFood(item))}
-                      className="menu-manager__food-action-btn p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                      className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                       title={t('edit_item_tooltip', 'Edit Item')}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => requirePasscode(() => onDeleteFoodItem(item.id))}
-                      className="menu-manager__food-action-btn menu-manager__food-action-btn--danger p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
+                      className="p-1 rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
                       title={t('delete_item_tooltip', 'Delete Item')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />

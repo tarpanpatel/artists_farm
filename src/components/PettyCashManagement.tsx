@@ -186,6 +186,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [newPayeeForm, setNewPayeeForm] = useState({ name: '', upiId: '', qrCodeUrl: '' });
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
   const [isSavingPayee, setIsSavingPayee] = useState(false);
+  const [costLogsPage, setCostLogsPage] = useState(1);
 
   const handleSavePayee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1404,8 +1405,91 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         </div>
       </div>
 
-      {/* Cost Logs DataTable */}
-      <div className="petty-cash-management__table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+      {/* Cost Logs Mobile Cards with 10-Item Pagination (md:hidden) */}
+      <div className="md:hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-3 space-y-2.5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="petty-cash-management__subtitle font-semibold text-slate-800 dark:text-white text-xs">
+            {t('cost_logs_for_label', 'Cost Logs for')} {new Date(Number(selectedMonth.split('-')[0]), Number(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+          </h3>
+          <span className="text-slate-400 font-semibold text-[10px]">{filteredEntries.length} entries</span>
+        </div>
+
+        <div className="space-y-2.5">
+          {filteredEntries.slice((costLogsPage - 1) * 10, costLogsPage * 10).map((entry: any) => {
+            const cat = entry.category || entry.costCategory || '';
+            const payer = entry.paidBy || entry.vendor;
+            return (
+              <div key={entry.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-slate-900 dark:text-white">{entry.description}</div>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">₹{entry.amount.toFixed(2)}</span>
+                </div>
+
+                {payer && (
+                  <div className="text-[11px] text-slate-500">
+                    Vendor/Payee: <span className="font-semibold text-slate-700 dark:text-slate-300">{payer}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-slate-500 pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
+                  <span className="px-2 py-0.5 rounded font-semibold text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    {cat}
+                  </span>
+                  <span className="font-mono text-[11px]">{formatDateDDMMYYYY(entry.date)}</span>
+                </div>
+
+                {canManageExpense && (
+                  <div className="pt-1.5 flex justify-end gap-2 border-t border-slate-200/60 dark:border-slate-800">
+                    <button
+                      onClick={() => setEditingEntry({ ...entry, time: entry.time || new Date().toTimeString().slice(0, 5) })}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 className="w-3 h-3" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteExpense(entry.id, entry.description)}
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filteredEntries.length === 0 && (
+            <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_expense_entries_found_message', 'No expense entries found.')}</div>
+          )}
+        </div>
+
+        {/* Mobile 10-Item Pagination Controls */}
+        {filteredEntries.length > 10 && (
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+            <button
+              type="button"
+              disabled={costLogsPage === 1}
+              onClick={() => setCostLogsPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Page {costLogsPage} of {Math.ceil(filteredEntries.length / 10)}
+            </span>
+            <button
+              type="button"
+              disabled={costLogsPage >= Math.ceil(filteredEntries.length / 10)}
+              onClick={() => setCostLogsPage((p) => Math.min(Math.ceil(filteredEntries.length / 10), p + 1))}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cost Logs Desktop DataTable (hidden md:block) */}
+      <div className="petty-cash-management__table hidden md:block bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
         <DataTable
           columns={[
             {

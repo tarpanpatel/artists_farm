@@ -153,6 +153,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const { staff } = useStaff();
   const { miscCharges } = useConfigurationData();
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
+  const [shareGuest, setShareGuest] = useState<Guest | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
 
   // Form Checkin State

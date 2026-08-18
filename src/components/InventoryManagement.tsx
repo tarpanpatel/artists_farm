@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from 'react-data-table-component';
-import { Boxes, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, type LucideIcon } from 'lucide-react';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Upload, Search, ShoppingCart, Settings, Landmark, Wallet, Coins, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, ArrowRight, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, type LucideIcon } from 'lucide-react';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader } from './PageHeader';
@@ -177,6 +177,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [selectedCatalogItemIds, setSelectedCatalogItemIds] = useState<number[]>([]);
   const [bulkTargetCategory, setBulkTargetCategory] = useState<string>('');
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [wastagePage, setWastagePage] = useState(1);
 
   // Sync catalogItems from live DB inventory data
   useEffect(() => {
@@ -278,7 +281,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   // Category management state
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [catalogView, setCatalogView] = useState<'items' | 'categories'>('items');
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -1030,77 +1033,110 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </form>
         </div>
 
-        {/* Wastage Logs DataTable */}
-        <div className="wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-          <DataTable
-            columns={[
-              {
-                name: 'Date',
-                selector: (log: any) => log.date,
-                sortable: true,
-                width: '110px',
-                cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{formatDateDDMMYYYY(log.date)}</span>,
-              },
-              {
-                name: 'Item Name',
-                selector: (log: any) => log.itemName,
-                sortable: true,
-                grow: 2,
-                cell: (log: any) => <span className="font-semibold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
-              },
-              {
-                name: 'Wasted Qty',
-                selector: (log: any) => log.wastedQty,
-                sortable: true,
-                width: '100px',
-                cell: (log: any) => <span className="font-semibold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
-              },
-              {
-                name: 'Reason',
-                selector: (log: any) => log.reason,
-                sortable: true,
-                width: '140px',
-                cell: (log: any) => (
-                  <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
-                ),
-              },
-              {
-                name: 'Reported By',
-                selector: (log: any) => log.reportedBy,
-                sortable: true,
-                width: '120px',
-                cell: (log: any) => <span className="font-semibold text-xs">{log.reportedBy}</span>,
-              },
-              {
-                name: 'Incident Notes',
-                selector: (log: any) => log.notes || '',
-                grow: 2,
-                cell: (log: any) => <span className="text-slate-500 italic text-xs">{log.notes || '—'}</span>,
-              },
-            ]}
-            data={wastageLogs}
-            progressPending={wastageLoading}
-            progressComponent={tableLoadingIndicator('Loading wastage log...')}
-            pagination
-            paginationPerPage={10}
-            paginationRowsPerPageOptions={[10, 25, 50]}
-            highlightOnHover
-            subHeader={
-              <div className="w-full flex items-center justify-between py-2">
-                <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
-                <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? '…' : wastageLogs.length} incidents</span>
+        {/* Wastage Logs Mobile Card Stack & Desktop DataTable */}
+        <div className="wastage-logs-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+            <h3 className="inventory-management__subtitle font-semibold text-slate-800 dark:text-white text-sm">Wastage & Spillage Audit History</h3>
+            <span className="text-slate-400 font-semibold text-xs">{wastageLoading ? '…' : wastageLogs.length} incidents</span>
+          </div>
+
+          {/* Mobile Card Stack View (md:hidden) */}
+          <div className="md:hidden space-y-2.5">
+            {wastageLogs.slice((wastagePage - 1) * 10, wastagePage * 10).map((log: any, idx: number) => (
+              <div key={log.id || idx} className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                  <span className="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                    {formatDateDDMMYYYY(log.date)}
+                  </span>
+                  <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-[10px] px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                    {log.reason}
+                  </span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{log.itemName}</h4>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Reported By: {log.reportedBy}</span>
+                  </div>
+                  <span className="font-bold text-red-600 dark:text-red-400 text-xs shrink-0">{log.wastedQty} {log.unit}</span>
+                </div>
               </div>
-            }
-            customStyles={{
-              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-              headCells: { style: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#94a3b8', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-              cells: { style: { fontSize: '12px', color: '#334155', paddingLeft: '12px' } },
-              rows: { style: { minHeight: '48px' } },
-            }}
-            noDataComponent={
-              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No wastage or spillage incidents recorded.</div>
-            }
-          />
+            ))}
+
+            {/* Mobile 10-Item Pagination Controls */}
+            {wastageLogs.length > 10 && (
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  disabled={wastagePage === 1}
+                  onClick={() => setWastagePage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Page {wastagePage} of {Math.ceil(wastageLogs.length / 10)}
+                </span>
+                <button
+                  type="button"
+                  disabled={wastagePage >= Math.ceil(wastageLogs.length / 10)}
+                  onClick={() => setWastagePage((p) => Math.min(Math.ceil(wastageLogs.length / 10), p + 1))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop DataTable (hidden md:block) */}
+          <div className="hidden md:block overflow-hidden">
+            <DataTable
+              columns={[
+                {
+                  name: 'Date',
+                  selector: (log: any) => log.date,
+                  sortable: true,
+                  width: '110px',
+                  cell: (log: any) => <span className="font-mono text-[11px] text-slate-500">{formatDateDDMMYYYY(log.date)}</span>,
+                },
+                {
+                  name: 'Item Name',
+                  selector: (log: any) => log.itemName,
+                  sortable: true,
+                  grow: 2,
+                  cell: (log: any) => <span className="font-semibold text-slate-900 dark:text-white text-xs">{log.itemName}</span>,
+                },
+                {
+                  name: 'Wasted Qty',
+                  selector: (log: any) => log.wastedQty,
+                  sortable: true,
+                  width: '100px',
+                  cell: (log: any) => <span className="font-semibold text-red-600 dark:text-red-400 text-xs">{log.wastedQty} {log.unit}</span>,
+                },
+                {
+                  name: 'Reason',
+                  selector: (log: any) => log.reason,
+                  sortable: true,
+                  width: '140px',
+                  cell: (log: any) => (
+                    <span className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">{log.reason}</span>
+                  ),
+                },
+                {
+                  name: 'Reported By',
+                  selector: (log: any) => log.reportedBy,
+                  sortable: true,
+                  grow: 1,
+                  cell: (log: any) => <span className="text-[11px] text-slate-600 dark:text-slate-400">{log.reportedBy}</span>,
+                },
+              ]}
+              data={wastageLogs}
+              pagination
+              paginationPerPage={10}
+              highlightOnHover
+              noDataComponent={<div className="p-8 text-center text-slate-400 text-xs font-semibold">No wastage incidents logged.</div>}
+            />
+          </div>
         </div>
       </div>
     );
@@ -1109,31 +1145,53 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   if (activeTab === 'catalog') {
     return (
       <div className="stock-inventory-container space-y-4">
-        {/* Header Title & Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="text-slate-800 font-semibold text-[10px] uppercase tracking-wider flex items-center gap-2">
-            <Package className="w-4 h-4 text-slate-700" /> {t('master_materials_catalog_header')}
-          </div>
-          
-          <div className="flex items-center gap-2">
+        <PageHeader
+          title="Edit Kitchen Stock"
+          subtitle="Manage the master list of raw materials - pricing, pack sizes, units, and categories."
+        />
+
+        {/* Consolidated Sub-Nav Header (Aligned with #stock_requests & all pages) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setShowCategoryManager(!showCategoryManager)}
-              className="btn-manage-categories bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              type="button"
+              onClick={() => setCatalogView('items')}
+              className={`px-3.5 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
+                catalogView === 'items'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
             >
-              <Settings className="w-3.5 h-3.5 text-slate-500" />
-              <span>{showCategoryManager ? t('hide_categories_button') : t('manage_categories_button')}</span>
+              <Package className="w-4 h-4 shrink-0" />
+              <span>{t('master_materials_catalog_header')}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setCatalogView('categories')}
+              className={`btn-manage-categories px-3.5 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
+                catalogView === 'categories'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              <span>{t('manage_categories_button')}</span>
+            </button>
+          </div>
+
+          {catalogView === 'items' && (
             <button
               onClick={handleCreateNewCatalogItem}
-              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+              className="btn-add-stock-item bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
             >
-              <span>+ {t('register_new_item_button')}</span>
+              <Plus className="w-4 h-4" />
+              <span>{t('register_new_item_button')}</span>
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Category Manager Panel */}
-        {showCategoryManager && (
+        {/* Categories Tab */}
+        {catalogView === 'categories' && (
           <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Input
@@ -1178,7 +1236,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 {t('add_category_button')}
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {catalogCategories.filter(c => c !== 'All').map(cat => {
                   const dbCat = dbCategories.find(c => c.name === cat);
                   return (
@@ -1241,6 +1299,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         )}
 
+        {catalogView === 'items' && (
+        <>
         {/* Bulk Action Bar */}
         {selectedCatalogItemIds.length > 0 && (
           <div className="bulk-category-action-bar bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-250">
@@ -1278,7 +1338,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
 
         {/* Catalog DataTable */}
-        <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        {/* Catalog Items Container: Desktop Table vs Touch-First Mobile Cards */}
+        <div className="hidden md:block rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
           <DataTable
             key={catalogTableKey}
             columns={[
@@ -1288,8 +1349,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 cell: (row: CatalogItem) => {
                   const ItemIcon = getStockItemIcon(row.name, row.category);
                   return (
-                    <div className="w-11 h-11 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center">
-                      <ItemIcon className="w-5 h-5 text-cyan-600" />
+                    <div className="w-11 h-11 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center">
+                      <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                     </div>
                   );
                 },
@@ -1300,7 +1361,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 selector: (row: CatalogItem) => row.name,
                 sortable: true,
                 grow: 2,
-                cell: (row: CatalogItem) => <span className="font-semibold text-slate-800">{row.name}</span>,
+                cell: (row: CatalogItem) => <span className="font-semibold text-slate-800 dark:text-white">{row.name}</span>,
               },
               {
                 name: t('category_label'),
@@ -1308,7 +1369,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 sortable: true,
                 width: '140px',
                 cell: (row: CatalogItem) => (
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold">{row.category}</span>
+                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold">{row.category}</span>
                 ),
               },
               {
@@ -1316,7 +1377,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 selector: (row: CatalogItem) => `${row.packSize} ${row.packUnit}`,
                 sortable: true,
                 width: '120px',
-                cell: (row: CatalogItem) => <span className="text-slate-600">{row.packSize} {row.packUnit}</span>,
+                cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">{row.packSize} {row.packUnit}</span>,
               },
               {
                 name: t('cost_column_header'),
@@ -1324,7 +1385,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 sortable: true,
                 width: '90px',
                 right: true,
-                cell: (row: CatalogItem) => <span className="text-slate-600">₹{row.price.toFixed(2)}</span>,
+                cell: (row: CatalogItem) => <span className="text-slate-600 dark:text-slate-300">₹{row.price.toFixed(2)}</span>,
               },
               {
                 name: t('status_column_header'),
@@ -1333,9 +1394,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 width: '100px',
                 cell: (row: CatalogItem) => (
                   row.is_verified ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 badge badge--success">{t('active_status_badge')}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 badge badge--success">{t('active_status_badge')}</span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 badge badge--warning">{t('review_status_badge')}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 badge badge--warning">{t('review_status_badge')}</span>
                   )
                 ),
               },
@@ -1349,13 +1410,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         {t('approve_button')}
                       </button>
                     )}
-                    <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                    <button onClick={() => handleEditCatalogItem(row)} className="button button--edit inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                       <Pencil className="w-3.5 h-3.5" />
                       {t('edit_button')}
                     </button>
                     {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
                       <button onClick={() => handleDeleteCatalogItem(row.id, row.name)} className="button button--delete text-red-600 hover:text-red-700 font-medium text-xs cursor-pointer">
-                  {t('delete_button')}
+                        {t('delete_button')}
                       </button>
                     )}
                   </div>
@@ -1370,35 +1431,37 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               return matchesSearch && matchesCategory;
             })}
             subHeader={
-              <div className="w-full flex flex-col gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-500 font-medium shrink-0 text-xs">{t('filter_label')}</span>
+              <div className="w-full flex flex-col gap-3 px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-sm">
+                <div className="relative max-w-sm w-full">
+                  <Input
+                    type="text"
+                    placeholder={t('search_by_name_category_placeholder')}
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
                   {catalogCategories.map(cat => {
                     const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter(i => i.category === cat).length;
                     const isActive = selectedCategory === cat;
                     return (
                       <button
                         key={cat}
+                        type="button"
                         onClick={() => setSelectedCategory(cat)}
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer ${
+                        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
                           isActive
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                            ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
+                            : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
                         }`}
                       >
-                        {cat} ({count})
+                        {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
                       </button>
                     );
                   })}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder={t('search_by_name_category_placeholder')}
-                    value={catalogSearch}
-                    onChange={(e) => setCatalogSearch(e.target.value)}
-                    className="w-full max-w-sm"
-                  />
                 </div>
               </div>
             }
@@ -1474,6 +1537,164 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             }}
           />
         </div>
+
+        {/* Touch-First Mobile Cards View with 10-Item Pagination */}
+        <div className="md:hidden bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-3 space-y-3">
+          {/* Mobile Search & Category Filter Carousel */}
+          <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder={t('search_by_name_category_placeholder')}
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+              {catalogCategories.map((cat) => {
+                const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter((i) => i.category === cat).length;
+                const isActive = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                      isActive
+                        ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Cards List */}
+          {(() => {
+            const filtered = catalogItems.filter((item) => {
+              const matchesSearch = !catalogSearch.trim() || item.name.toLowerCase().includes(catalogSearch.toLowerCase()) || item.category.toLowerCase().includes(catalogSearch.toLowerCase());
+              const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || !selectedCategory || item.category === selectedCategory;
+              return matchesSearch && matchesCategory;
+            });
+            const paginated = filtered.slice((catalogPage - 1) * 10, catalogPage * 10);
+
+            return (
+              <>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
+                  {paginated.map((item) => {
+                    const ItemIcon = getStockItemIcon(item.name, item.category);
+
+                    return (
+                      <div key={item.id} className="pt-3 first:pt-0 space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center shrink-0">
+                              <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{item.name}</h4>
+                              <span className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold inline-block mt-0.5">
+                                {item.category}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {item.is_verified ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                {t('active_status_badge')}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                {t('review_status_badge')}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleEditCatalogItem(item)}
+                              className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs px-2.5 py-1 rounded-lg transition cursor-pointer shrink-0"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              <span>{t('edit_button')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('pack_column_header')}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.packSize} {item.packUnit}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('cost_column_header')}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">₹{item.price.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {(!item.is_verified || currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+                          <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                            {!item.is_verified && (
+                              <button
+                                onClick={() => handleApproveItem(item.id)}
+                                className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold text-xs rounded-lg transition cursor-pointer"
+                              >
+                                {t('approve_button')}
+                              </button>
+                            )}
+                            {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+                              <button
+                                onClick={() => handleDeleteCatalogItem(item.id, item.name)}
+                                className="px-2.5 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700 font-semibold text-xs rounded-lg transition cursor-pointer"
+                              >
+                                {t('delete_button')}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {filtered.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-sm">{t('no_catalog_items_search_message')}</div>
+                  )}
+                </div>
+
+                {/* Mobile 10-Item Pagination Controls */}
+                {filtered.length > 10 && (
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <button
+                      type="button"
+                      disabled={catalogPage === 1}
+                      onClick={() => setCatalogPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Page {catalogPage} of {Math.ceil(filtered.length / 10)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={catalogPage >= Math.ceil(filtered.length / 10)}
+                      onClick={() => setCatalogPage((p) => Math.min(Math.ceil(filtered.length / 10), p + 1))}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        </>
+        )}
 
         {/* Add/Edit Modal */}
         {isCatalogModalOpen && (
@@ -1567,29 +1788,31 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return (
       <div className="stock-requisitions-container min-h-[calc(100vh-120px)] flex flex-col space-y-4 lg:pb-0">
         {/* Consolidated Sub-Nav Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
               onClick={() => setActiveTab('requisitions')}
-              className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
                 activeTab === 'requisitions'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
-              <Boxes className="w-4 h-4" />
-              <span>📝 Request Materials</span>
+              <PackagePlus className="w-4 h-4 shrink-0" />
+              <span>Request Materials</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('fulfill')}
-              className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shrink-0 active:scale-98 ${
                 activeTab === 'fulfill'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>✅ Fulfill & Pending Approvals ({pendingSheetsCount})</span>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Fulfill & Pending Approvals ({pendingSheetsCount})</span>
             </button>
           </div>
         </div>
@@ -2269,10 +2492,45 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         />
       </div>
 
-      {/* Mobile Cards */}
-      <div className="md:hidden bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="divide-y divide-slate-100 p-3 space-y-3">
-          {filteredInventory.map((item) => {
+      {/* Mobile Cards with Search, Category Filter Carousel & 10-Item Pagination */}
+      <div className="md:hidden bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-3 space-y-3">
+        {/* Search Bar & Category Pills Carousel */}
+        <div className="space-y-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder={t('search_by_name_category_placeholder')}
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+            {catalogCategories.map((cat) => {
+              const count = cat === 'All' || cat === 'All Items' ? catalogItems.length : catalogItems.filter((i) => i.category === cat).length;
+              const isActive = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                    isActive
+                      ? 'bg-cyan-500 text-white border-cyan-500 shadow-2xs'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  {cat === 'All Items' || cat === 'All' ? 'All Menu' : cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
+          {filteredInventory.slice((inventoryPage - 1) * 10, inventoryPage * 10).map((item) => {
             const isLow = item.currentStock <= item.minThreshold;
             return (
               <div key={item.id} className="pt-3 first:pt-0 space-y-2">
@@ -2286,7 +2544,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         <span className="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[8px]">System</span>
                       )}
                     </span>
-                    <h4 className="inventory-management__caption font-semibold text-slate-900 text-sm">{item.name}</h4>
+                    <h4 className="inventory-management__caption font-semibold text-slate-900 dark:text-white text-sm">{item.name}</h4>
                   </div>
                   {isLow ? (
                     <span className="bg-red-100 text-red-800 border border-red-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -2298,14 +2556,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('current_stock_column_header')}</span>
-                    <span className="font-semibold text-slate-900 text-sm">{item.currentStock} {item.unit}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white text-sm">{item.currentStock} {item.unit}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('min_threshold_column_header')}</span>
-                    <span className="font-semibold text-slate-600">{item.minThreshold} {item.unit}</span>
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">{item.minThreshold} {item.unit}</span>
                   </div>
                 </div>
               </div>
@@ -2315,6 +2573,31 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_inventory_items_message')}</div>
           )}
         </div>
+
+        {/* Mobile 10-Item Pagination Controls */}
+        {filteredInventory.length > 10 && (
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+            <button
+              type="button"
+              disabled={inventoryPage === 1}
+              onClick={() => setInventoryPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Page {inventoryPage} of {Math.ceil(filteredInventory.length / 10)}
+            </span>
+            <button
+              type="button"
+              disabled={inventoryPage >= Math.ceil(filteredInventory.length / 10)}
+              onClick={() => setInventoryPage((p) => Math.min(Math.ceil(filteredInventory.length / 10), p + 1))}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add Item Modal */}

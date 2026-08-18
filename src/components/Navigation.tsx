@@ -378,7 +378,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
       };
       return (
-        <div key={node.id} className="pt-1 navigation__node">
+        <div key={node.id} className="navigation__node">
           <div
             role="button"
             tabIndex={0}
@@ -389,7 +389,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 handleHeaderClick();
               }
             }}
-            className={`w-full flex items-center justify-between ${depth === 0 ? 'px-3 py-2.5 text-sm font-semibold' : 'px-2.5 py-2 text-[13px] font-semibold'} rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between ${depth === 0 ? 'h-12 px-3 py-2.5 text-sm font-semibold' : 'h-11 px-2.5 py-2 text-[13px] font-semibold'} rounded-lg transition-colors cursor-pointer ${
               isActive
                 ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
                 : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -449,7 +449,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           e.preventDefault();
           handleTabClick({ tabKey: node.tabKey, uniqueKey: itemKey, customUrl: node.customUrl, openInNewTab: node.openInNewTab });
         }}
-        className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'px-3 py-2.5 text-sm font-semibold' : depth === 1 ? 'px-2.5 py-2 text-[13px] font-medium' : 'px-2 py-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
+        className={`w-full flex items-center justify-between no-underline ${depth === 0 ? 'h-12 px-3 py-2.5 text-sm font-semibold' : depth === 1 ? 'h-11 px-2.5 py-2 text-[13px] font-medium' : 'px-2 py-1.5 text-xs font-medium'} rounded-lg transition-all cursor-pointer ${
           isActive
             ? 'bg-blue-600 text-white shadow-xs dark:bg-blue-600 dark:text-white font-semibold'
             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'

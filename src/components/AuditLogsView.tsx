@@ -42,6 +42,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   // Edit Receipt Modal State
   const [editingReceipt, setEditingReceipt] = useState<BillingReceipt | null>(null);
   const [receiptsSearch, setReceiptsSearch] = useState('');
+  const [receiptsPage, setReceiptsPage] = useState(1);
 
   const filteredReceipts = useMemo(() => {
     if (!receiptsSearch.trim()) return receipts;
@@ -290,138 +291,245 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
 
       {/* TAB CONTENT: PAST RECEIPTS LOG */}
       {activeTab === 'receipts' && (
-        <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <DataTable
-            columns={[
-              {
-                name: t('receipt_id_column', 'Receipt ID'),
-                selector: (rec: BillingReceipt) => rec.id,
-                width: '100px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="font-mono font-semibold text-slate-900 dark:text-white">{rec.id}</span>
-                ),
-              },
-              {
-                name: t('resident_group_column', 'Resident / Group'),
-                selector: (rec: BillingReceipt) => rec.guestName,
-                sortable: true,
-                grow: 1,
-                cell: (rec: BillingReceipt) => (
-                  <span className="font-semibold">{rec.guestName}</span>
-                ),
-              },
-              {
-                name: t('room_cottage_column', 'Room / Cottage'),
-                selector: (rec: BillingReceipt) => rec.roomNumber,
-                sortable: true,
-                width: '120px',
-              },
-              {
-                name: t('checkout_date_column', 'Checkout Date'),
-                selector: (rec: BillingReceipt) => rec.checkoutDate || '',
-                sortable: true,
-                width: '130px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="text-slate-500">{formatDateDDMMYYYY(rec.checkoutDate) || '—'}</span>
-                ),
-              },
-              {
-                name: t('room_rent_column', 'Room Rent'),
-                selector: (rec: BillingReceipt) => rec.roomRent || rec.roomTotal || 0,
-                sortable: true,
-                width: '110px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="font-mono">₹{rec.roomRent || rec.roomTotal || 0}</span>
-                ),
-              },
-              {
-                name: t('food_bill_column', 'Food Bill'),
-                selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
-                sortable: true,
-                width: '100px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="font-mono">₹{rec.foodTotal || rec.kitchenTotal || 0}</span>
-                ),
-              },
-              {
-                name: t('gst_column', 'GST'),
-                selector: (rec: BillingReceipt) => rec.gstRate || 0,
-                sortable: true,
-                width: '90px',
-                cell: (rec: BillingReceipt) => (
-                  rec.gstEnabled
-                    ? <span className="font-mono text-blue-600">₹{rec.gstAmount} @{rec.gstRate}%</span>
-                    : <span className="text-slate-400 text-[11px]">—</span>
-                ),
-              },
-              {
-                name: t('grand_total_column', 'Grand Total'),
-                selector: (rec: BillingReceipt) => rec.grandTotal || 0,
-                sortable: true,
-                width: '120px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</span>
-                ),
-              },
-              {
-                name: t('payment_column', 'Payment'),
-                selector: (rec: BillingReceipt) => rec.paymentMethod || 'Cash',
-                width: '120px',
-                cell: (rec: BillingReceipt) => (
-                  <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">
-                    {rec.paymentMethod || 'Cash'}
-                  </span>
-                ),
-              },
-              {
-                name: t('actions_column', 'Actions'),
-                width: '120px',
-                cell: (rec: BillingReceipt) => (
-                  <button
-                    onClick={() => handleOpenEditModal(rec)}
-                    className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-semibold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    {t('edit_button', 'Edit')}
-                  </button>
-                ),
-              },
-            ]}
-            data={filteredReceipts}
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[15, 30, 50, 100]}
-            subHeader={
-              <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-blue-600" />
-                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
-                  <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-500">{receipts.length} receipts</span>
+        <div className="audit-logs__receipts bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-4 sm:p-0">
+          <div className="hidden md:block">
+            <DataTable
+              columns={[
+                {
+                  name: t('receipt_id_column', 'Receipt ID'),
+                  selector: (rec: BillingReceipt) => rec.id,
+                  width: '100px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">{rec.id}</span>
+                  ),
+                },
+                {
+                  name: t('resident_group_column', 'Resident / Group'),
+                  selector: (rec: BillingReceipt) => rec.guestName,
+                  sortable: true,
+                  grow: 1,
+                  cell: (rec: BillingReceipt) => (
+                    <span className="font-semibold">{rec.guestName}</span>
+                  ),
+                },
+                {
+                  name: t('room_cottage_column', 'Room / Cottage'),
+                  selector: (rec: BillingReceipt) => rec.roomNumber,
+                  sortable: true,
+                  width: '120px',
+                },
+                {
+                  name: t('checkout_date_column', 'Checkout Date'),
+                  selector: (rec: BillingReceipt) => rec.checkoutDate || '',
+                  sortable: true,
+                  width: '130px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="text-slate-500">{formatDateDDMMYYYY(rec.checkoutDate) || '—'}</span>
+                  ),
+                },
+                {
+                  name: t('room_rent_column', 'Room Rent'),
+                  selector: (rec: BillingReceipt) => rec.roomRent || rec.roomTotal || 0,
+                  sortable: true,
+                  width: '110px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="font-mono">₹{rec.roomRent || rec.roomTotal || 0}</span>
+                  ),
+                },
+                {
+                  name: t('food_bill_column', 'Food Bill'),
+                  selector: (rec: BillingReceipt) => rec.foodTotal || rec.kitchenTotal || 0,
+                  sortable: true,
+                  width: '100px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="font-mono">₹{rec.foodTotal || rec.kitchenTotal || 0}</span>
+                  ),
+                },
+                {
+                  name: t('gst_column', 'GST'),
+                  selector: (rec: BillingReceipt) => rec.gstRate || 0,
+                  sortable: true,
+                  width: '90px',
+                  cell: (rec: BillingReceipt) => (
+                    rec.gstEnabled
+                      ? <span className="font-mono text-blue-600">₹{rec.gstAmount} @{rec.gstRate}%</span>
+                      : <span className="text-slate-400 text-[11px]">—</span>
+                  ),
+                },
+                {
+                  name: t('grand_total_column', 'Grand Total'),
+                  selector: (rec: BillingReceipt) => rec.grandTotal || 0,
+                  sortable: true,
+                  width: '120px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</span>
+                  ),
+                },
+                {
+                  name: t('payment_column', 'Payment'),
+                  selector: (rec: BillingReceipt) => rec.paymentMethod || 'Cash',
+                  width: '120px',
+                  cell: (rec: BillingReceipt) => (
+                    <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">
+                      {rec.paymentMethod || 'Cash'}
+                    </span>
+                  ),
+                },
+                {
+                  name: t('actions_column', 'Actions'),
+                  width: '120px',
+                  cell: (rec: BillingReceipt) => (
+                    <button
+                      onClick={() => handleOpenEditModal(rec)}
+                      className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-3 py-1 rounded-lg font-semibold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-[11px]"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      {t('edit_button', 'Edit')}
+                    </button>
+                  ),
+                },
+              ]}
+              data={filteredReceipts}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[15, 30, 50, 100]}
+              subHeader={
+                <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-blue-600" />
+                    <span className="font-extrabold text-slate-900 dark:text-white text-sm">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
+                    <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-500">{receipts.length} receipts</span>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={receiptsSearch}
+                      onChange={(e) => setReceiptsSearch(e.target.value)}
+                      placeholder={t('search_receipts_placeholder', 'Search receipts...')}
+                      leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={receiptsSearch}
-                    onChange={(e) => setReceiptsSearch(e.target.value)}
-                    placeholder={t('search_receipts_placeholder', 'Search receipts...')}
-                    leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-                  />
+              }
+              customStyles={{
+                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
+                headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
+                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
+                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                rows: { style: { minHeight: '52px' } },
+              }}
+              noDataComponent={
+                <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                  {t('no_billing_receipts_message', 'No billing receipts found in database.')}
                 </div>
+              }
+            />
+          </div>
+
+          {/* Touch-First Mobile Cards View with 10-Item Pagination */}
+          <div className="md:hidden space-y-3">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-blue-600" />
+                <span className="font-extrabold text-slate-900 dark:text-white text-sm">{t('past_billing_receipts_heading', 'Past Billing Receipts & Settlement Log')}</span>
               </div>
-            }
-            customStyles={{
-              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent' } },
-              headRow: { style: { backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' } },
-              headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', paddingLeft: '12px' } },
-              cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-              rows: { style: { minHeight: '52px' } },
-            }}
-            noDataComponent={
-              <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-                {t('no_billing_receipts_message', 'No billing receipts found in database.')}
-              </div>
-            }
-          />
+            </div>
+
+            <div className="relative">
+              <Input
+                type="text"
+                value={receiptsSearch}
+                onChange={(e) => setReceiptsSearch(e.target.value)}
+                placeholder={t('search_receipts_placeholder', 'Search receipts...')}
+                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                className="w-full"
+              />
+            </div>
+
+            {(() => {
+              const paginatedReceipts = filteredReceipts.slice((receiptsPage - 1) * 10, receiptsPage * 10);
+              return (
+                <>
+                  <div className="space-y-3">
+                    {paginatedReceipts.map((rec) => (
+                      <div key={rec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-mono font-bold text-xs text-slate-400 block">{rec.id}</span>
+                            <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-0.5 truncate">{rec.guestName}</h4>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{rec.roomNumber}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">
+                              {rec.paymentMethod || 'Cash'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(rec)}
+                              className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 px-2.5 py-1 rounded-lg font-semibold hover:bg-blue-100 cursor-pointer transition-colors flex items-center gap-1 text-xs shrink-0"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>{t('edit_button', 'Edit')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('checkout_date_column', 'Checkout Date')}</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateDDMMYYYY(rec.checkoutDate) || '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('room_rent_column', 'Room Rent')}</span>
+                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">₹{rec.roomRent || rec.roomTotal || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('food_bill_column', 'Food Bill')}</span>
+                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">₹{rec.foodTotal || rec.kitchenTotal || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-semibold block">{t('grand_total_column', 'Grand Total')}</span>
+                            <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.grandTotal}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {filteredReceipts.length === 0 && (
+                      <div className="text-center p-8 text-slate-400 font-semibold text-xs">
+                        {t('no_billing_receipts_message', 'No billing receipts found in database.')}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 10-Item Mobile Pagination Controls */}
+                  {filteredReceipts.length > 10 && (
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        disabled={receiptsPage === 1}
+                        onClick={() => setReceiptsPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Page {receiptsPage} of {Math.ceil(filteredReceipts.length / 10)}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={receiptsPage >= Math.ceil(filteredReceipts.length / 10)}
+                        onClick={() => setReceiptsPage((p) => Math.min(Math.ceil(filteredReceipts.length / 10), p + 1))}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
 

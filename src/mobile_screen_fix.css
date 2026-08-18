@@ -1,15 +1,12 @@
 /* ==========================================================================
    Ground Code Resort SaaS — Mobile Screen & Touch UI Optimization
-   Act as: @agency-ui-designer
+   Act as: @mobile-design
 
-   Primary Mission:
-   Fix iOS Safari, Mobile Chrome, and WebApp PWA auto-zoom issues on input focus.
-   iOS WebKit triggers auto-zoom whenever an input, select, textarea, or contenteditable
-   element has a computed font-size < 16px. Once zoomed in, iOS does not auto-zoom out.
-
-   This stylesheet enforces 16px minimum font size on mobile screens (max-width: 768px)
-   and touch devices, eliminating auto-zoom while maintaining a clean, touch-friendly,
-   and accessible UI layout.
+   Core Philosophy:
+   - Touch-first (minimum 44x44px hit targets, thumb-zone ergonomics, bottom sheet modals)
+   - Battery-conscious (efficient active scale feedback, no GPU hover thrashes)
+   - Platform-respectful (iOS Safe Area insets, native feel)
+   - Mobile is NOT a small desktop.
    ========================================================================== */
 
 /* 1. Global Viewport & Mobile Body Scaling Safeguards */
@@ -23,7 +20,7 @@ body {
 /* 2. Mobile Screen & Touch Device Specific Rules */
 @media screen and (max-width: 768px), (pointer: coarse) {
 
-  /* Prevent iOS WebKit focus auto-zoom by enforcing 16px font-size */
+  /* A. 16px Minimum Font Size to Prevent iOS WebKit Auto-Zoom */
   input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]),
   select,
   textarea,
@@ -34,7 +31,6 @@ body {
   .styled-select__value,
   .app-input {
     font-size: 16px !important;
-    /* Touch target padding optimization for mobile ergonomics */
     line-height: 1.4 !important;
   }
 
@@ -53,6 +49,56 @@ body {
     font-size: 16px !important;
   }
 
+  /* B. Touch Target Ergonomics: 44px Minimum Target Height */
+  button:not(.inline-link):not(.var-chip):not(.app-toggle-switch):not([role="switch"]):not(.scroll-to-top-button),
+  .btn,
+  .app-input,
+  .styled-select__trigger,
+  .app-select-button,
+  .form-field__input,
+  .form-field__select {
+    min-height: 44px;
+  }
+
+  /* Touch-friendly Checkbox & Radio sizes */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 22px;
+    min-height: 22px;
+    cursor: pointer;
+  }
+
+  /* C. Mobile Bottom Sheet Modal Transformation */
+  .fixed.inset-0.z-50.flex.items-center,
+  .fixed.inset-0.z-50.flex.items-start,
+  .modal-overlay,
+  .modal-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .fixed.inset-0.z-50 > div:not(.backdrop-blur-sm):not(.bg-black\/40):not(.bg-slate-900\/60),
+  .modal-sheet-container {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    max-height: 92vh !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* D. Table Touch Ergonomics */
+  table {
+    font-size: 13px;
+  }
+
+  th, td {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
   /* Smooth momentum scrolling for iOS WebKit scroll containers */
   .overflow-y-auto,
   .overflow-x-auto,
@@ -63,9 +109,19 @@ body {
   }
 }
 
-/* 3. Standalone Web App / PWA Display Mode Adjustments */
-@media (display-mode: standalone) {
+/* 3. Battery-Conscious Physical Touch Feedback (Active Scale) */
+@media (pointer: coarse) {
+  button:active,
+  a:active,
+  .btn:active {
+    transform: scale(0.98) !important;
+    opacity: 0.92 !important;
+    transition: transform 0.08s ease, opacity 0.08s ease !important;
+  }
+}
 
+/* 4. Standalone Web App / PWA Display Mode Adjustments */
+@media (display-mode: standalone) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]),
   select,
   textarea,

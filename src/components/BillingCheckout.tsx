@@ -21,6 +21,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Badge } from './Badge';
 import { useToast } from './ToastContext';
+import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -775,30 +776,49 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         </div>
       </div>
 
-      {/* Upcoming & Past Bookings: single table view.
-          Today: room-first grid view. */}
+      {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop DataTable on md+ */}
       {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
-        <div className="billing-checkout__past-table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
-          <DataTable
-            columns={pastBookingsColumns}
-            data={searchedGuests}
-            customStyles={pastBookingsTableStyles}
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
-            noDataComponent={
-              <div className="p-12 text-center">
-                <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                  {t('no_guest_records_found', 'No Guest Records Found')}
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
-                </p>
-              </div>
-            }
-          />
-        </div>
+        <>
+          <div className="md:hidden">
+            <MobileBookingCardStack
+              guests={searchedGuests}
+              rooms={rooms}
+              onSelectGuest={(guestId) => {
+                const guest = searchedGuests.find((g) => g.id === guestId);
+                if (guest) setSelectedGuestForDetails(guest);
+              }}
+              onCheckoutGuest={(guestId) => {
+                const guest = searchedGuests.find((g) => g.id === guestId);
+                if (guest) {
+                  setGuestForReceipt(guest);
+                  setReceiptModalOpen(true);
+                }
+              }}
+            />
+          </div>
+
+          <div className="hidden md:block billing-checkout__past-table bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-xs">
+            <DataTable
+              columns={pastBookingsColumns}
+              data={searchedGuests}
+              customStyles={pastBookingsTableStyles}
+              pagination
+              paginationPerPage={15}
+              paginationRowsPerPageOptions={[10, 15, 20, 30, 50]}
+              noDataComponent={
+                <div className="p-12 text-center">
+                  <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                  <h3 className="billing-checkout__subtitle text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                    {t('no_guest_records_found', 'No Guest Records Found')}
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {t('no_guest_records_description', 'No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.')}
+                  </p>
+                </div>
+              }
+            />
+          </div>
+        </>
       ) : (
         renderRoomGroupsGrid(filteredGroups)
       )}

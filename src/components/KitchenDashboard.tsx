@@ -279,33 +279,30 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
                   : 'border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-md'
               }`}
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, card.id)}
-                      className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing p-1 -m-1 rounded-md transition-colors"
-                      title="Drag handle - click & drag to reorder"
-                    >
-                      <GripVertical className="w-5 h-5" />
-                    </div>
-                    <div className={`p-3 rounded-xl border ${card.color} transition-transform group-hover:scale-105`}>
-                      <IconComponent className="w-6 h-6" />
-                    </div>
-                  </div>
-                  {card.badgeText && (
-                    <Badge variant={card.badgeVariant} className="font-semibold text-xs">
-                      {card.badgeText}
-                    </Badge>
-                  )}
+              <div className="flex items-start gap-3">
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, card.id)}
+                  className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 cursor-grab active:cursor-grabbing p-1 -m-1 rounded-md transition-colors shrink-0 pt-3"
+                  title="Drag handle - click & drag to reorder"
+                >
+                  <GripVertical className="w-5 h-5" />
                 </div>
-
-                <div>
-                  <h3 className="kitchen-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                <div className={`p-3 rounded-xl border shrink-0 ${card.color} transition-transform group-hover:scale-105`}>
+                  <IconComponent className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="kitchen-dashboard__subtitle text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {card.title}
+                    </h3>
+                    {card.badgeText && (
+                      <Badge variant={card.badgeVariant} className="font-semibold text-xs shrink-0">
+                        {card.badgeText}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                     {card.description}
                   </p>
                 </div>
@@ -313,7 +310,7 @@ export const KitchenDashboard: React.FC<KitchenDashboardProps> = ({ onNavigate, 
 
               <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   block
                   className="justify-center gap-2 font-semibold cursor-pointer rounded-xl"

@@ -16,7 +16,8 @@ import {
   Loader2,
   HelpCircle,
   Edit2,
-  Share2
+  Share2,
+  TrendingUp
 } from 'lucide-react';
 import { StaffMember, AttendanceRecord, UserAccount } from '../types';
 import { useToast } from './ToastContext';
@@ -156,6 +157,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [editStaffPhone, setEditStaffPhone] = useState('');
   const [editStaffSalary, setEditStaffSalary] = useState(0);
   const [editStaffStatus, setEditStaffStatus] = useState('Active');
+
+  // Mobile UI State
+  const [mobileAttMode, setMobileAttMode] = useState<'daily' | 'summary'>('daily');
+  const [mobileDayNum, setMobileDayNum] = useState<number>(new Date().getDate());
+  const [staffPermissionsPage, setStaffPermissionsPage] = useState(1);
 
   useEffect(() => {
     setUsers(staff.map((member) => ({
@@ -635,119 +641,220 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
               </div>
             </div>
 
-            <DataTable
-              columns={[
-                {
-                  name: t('staff_name_label', 'Staff Name'),
-                  selector: (row: any) => row.fullName,
-                  sortable: true,
-                  width: '200px',
-                  cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">{row.fullName}</span>,
-                },
-                {
-                  name: t('username_column', 'Username'),
-                  selector: (row: any) => row.username,
-                  sortable: true,
-                  width: '150px',
-                  cell: (row: any) => {
-                    const phoneVal = (row.username || '').replace(/\D/g, '');
-                    return <span className="font-mono text-slate-500 dark:text-slate-400">{phoneVal || row.username}</span>;
+            {/* Desktop View: Full DataTable */}
+            <div className="hidden md:block">
+              <DataTable
+                columns={[
+                  {
+                    name: t('staff_name_label', 'Staff Name'),
+                    selector: (row: any) => row.fullName,
+                    sortable: true,
+                    width: '200px',
+                    cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white">{row.fullName}</span>,
                   },
-                },
-                {
-                  name: t('role_group_column', 'Role Group'),
-                  selector: (row: any) => row.role,
-                  sortable: true,
-                  width: '160px',
-                  cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2.5 py-1 rounded font-semibold text-[10px]">{row.role}</span>,
-                },
-                {
-                  name: t('cash_handling_column', 'Cash Handling'),
-                  selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
-                  sortable: true,
-                  center: true,
-                  width: '160px',
-                  cell: (row: any) => row.isFinancialHandler ? (
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
-                  ) : (
-                    <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
-                  ),
-                },
-                {
-                  name: t('upi_qr_code_column', 'UPI QR Code'),
-                  center: true,
-                  width: '140px',
-                  cell: (row: any) => row.qrCodeUrl ? (
-                    <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
-                  ) : (
-                    <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
-                  ),
-                },
-                {
-                  name: t('actions_column', 'Actions'),
-                  right: true,
-                  width: '210px',
-                  cell: (row: any) => {
-                    const isCurrentUser = currentUser?.id === row.id;
-                    const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
-                    const canDelete = !isCurrentUser && canEdit;
-                    return (
-                      <div className="flex items-center gap-1.5 justify-end">
-                        {canShareLogins && !!row.username && (
-                          <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2" title={t('share_login_tooltip', 'Share login details')}>
-                            <Share2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                        {isCurrentUser ? (
-                          <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
-                        ) : (
-                          <>
-                            {canEdit && (
-                              <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
-                            )}
-                            {canDelete && (
-                              <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
-                            )}
-                            {!canEdit && !canDelete && (
-                              <span className="text-slate-400 italic text-[11px]">-</span>
-                            )}
-                          </>
-                        )}
+                  {
+                    name: t('username_column', 'Username'),
+                    selector: (row: any) => row.username,
+                    sortable: true,
+                    width: '150px',
+                    cell: (row: any) => {
+                      const phoneVal = (row.username || '').replace(/\D/g, '');
+                      return <span className="font-mono text-slate-500 dark:text-slate-400">{phoneVal || row.username}</span>;
+                    },
+                  },
+                  {
+                    name: t('role_group_column', 'Role Group'),
+                    selector: (row: any) => row.role,
+                    sortable: true,
+                    width: '160px',
+                    cell: (row: any) => <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2.5 py-1 rounded font-semibold text-[10px]">{row.role}</span>,
+                  },
+                  {
+                    name: t('cash_handling_column', 'Cash Handling'),
+                    selector: (row: any) => row.isFinancialHandler ? 'Cash Handler' : 'No Finances',
+                    sortable: true,
+                    center: true,
+                    width: '160px',
+                    cell: (row: any) => row.isFinancialHandler ? (
+                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('cash_handler_badge', '💳 Cash Handler')}</span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">{t('no_finances_badge', 'No Finances')}</span>
+                    ),
+                  },
+                  {
+                    name: t('upi_qr_code_column', 'UPI QR Code'),
+                    center: true,
+                    width: '140px',
+                    cell: (row: any) => row.qrCodeUrl ? (
+                      <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] gap-1 mx-auto">{t('view_qr_button', '📸 View QR')}</Button>
+                    ) : (
+                      <span className="text-slate-400 italic text-[11px]">{t('none_label', 'None')}</span>
+                    ),
+                  },
+                  {
+                    name: t('actions_column', 'Actions'),
+                    right: true,
+                    width: '210px',
+                    cell: (row: any) => {
+                      const isCurrentUser = currentUser?.id === row.id;
+                      const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                      const canDelete = !isCurrentUser && canEdit;
+                      return (
+                        <div className="flex items-center gap-1.5 justify-end">
+                          {canShareLogins && !!row.username && (
+                            <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2" title={t('share_login_tooltip', 'Share login details')}>
+                              <Share2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          {isCurrentUser ? (
+                            <span className="text-slate-400 italic text-[11px]">{t('active_session_badge', 'Active Session')}</span>
+                          ) : (
+                            <>
+                              {canEdit && (
+                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">{t('edit_button', 'Edit')}</Button>
+                              )}
+                              {canDelete && (
+                                <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer">{t('delete_button', 'Delete')}</Button>
+                              )}
+                              {!canEdit && !canDelete && (
+                                <span className="text-slate-400 italic text-[11px]">-</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    },
+                  },
+                ]}
+                data={visibleUsers}
+                progressPending={staffLoading}
+                progressComponent={
+                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                  </div>
+                }
+                pagination
+                paginationPerPage={15}
+                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                highlightOnHover
+                subHeader={
+                  <div className="w-full flex items-center py-2">
+                    <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
+                  </div>
+                }
+                customStyles={{
+                  subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+                  headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
+                  cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
+                  headRow: { style: { backgroundColor: '#f8fafc' } },
+                  rows: { style: { minHeight: '52px' } },
+                }}
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+                }
+              />
+            </div>
+
+            {/* Mobile View: Touch-First Mobile Cards with 10-Item Pagination */}
+            <div className="md:hidden p-3 space-y-3">
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={searchUsers}
+                  onChange={e => setSearchUsers(e.target.value)}
+                  placeholder="Search staff by name or role..."
+                  className="w-full"
+                />
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-700 space-y-3">
+                {visibleUsers.slice((staffPermissionsPage - 1) * 10, staffPermissionsPage * 10).map((row: any) => {
+                  const isCurrentUser = currentUser?.id === row.id;
+                  const canEdit = !isCurrentUser && canEditUser(currentUser?.role || 'Staff', row.role);
+                  const canDelete = !isCurrentUser && canEdit;
+                  const phoneVal = (row.username || '').replace(/\D/g, '');
+
+                  return (
+                    <div key={row.id} className="pt-3 first:pt-0 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{row.fullName}</h4>
+                          <span className="font-mono text-xs text-slate-500 dark:text-slate-400 block">{phoneVal || row.username}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-semibold text-[10px] shrink-0">{row.role}</span>
+                          {canShareLogins && !!row.username && (
+                            <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0" title="Share login details">
+                              <Share2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          {!isCurrentUser && (
+                            <>
+                              {canEdit && (
+                                <Button onClick={() => handleEditUser(row)} variant="secondary" size="xs" leftIcon={<Edit2 className="w-3 h-3" />} className="font-semibold text-blue-600 cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
+                              )}
+                              {canDelete && (
+                                <Button onClick={() => handleDeleteUser(row.id)} variant="danger" size="xs" className="font-semibold cursor-pointer px-2 shrink-0">{t('delete_button', 'Delete')}</Button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
-                    );
-                  },
-                },
-              ]}
-              data={visibleUsers}
-              progressPending={staffLoading}
-              progressComponent={
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+
+                      <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Cash Handling</span>
+                          {row.isFinancialHandler ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">💳 Cash Handler</span>
+                          ) : (
+                            <span className="text-slate-400 font-medium">No Finances</span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">UPI QR Code</span>
+                          {row.qrCodeUrl ? (
+                            <Button onClick={() => setLightboxUrl(row.qrCodeUrl!)} variant="link" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">📸 View QR</Button>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">None</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {visibleUsers.length === 0 && (
+                  <div className="text-center p-6 text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
+                )}
+              </div>
+
+              {/* Mobile 10-Item Pagination Controls */}
+              {visibleUsers.length > 10 && (
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <button
+                    type="button"
+                    disabled={staffPermissionsPage === 1}
+                    onClick={() => setStaffPermissionsPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Page {staffPermissionsPage} of {Math.ceil(visibleUsers.length / 10)}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={staffPermissionsPage >= Math.ceil(visibleUsers.length / 10)}
+                    onClick={() => setStaffPermissionsPage((p) => Math.min(Math.ceil(visibleUsers.length / 10), p + 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
+                  >
+                    Next
+                  </button>
                 </div>
-              }
-              pagination
-              paginationPerPage={15}
-              paginationRowsPerPageOptions={[10, 15, 25, 50]}
-              highlightOnHover
-              subHeader={
-                <div className="w-full flex items-center py-2">
-                  <Input type="text" value={searchUsers} onChange={e => setSearchUsers(e.target.value)} placeholder="Search by name, username, or role..." className="w-full max-w-xs" />
-                </div>
-              }
-              customStyles={{
-                subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
-                headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
-                cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
-                headRow: { style: { backgroundColor: '#f8fafc' } },
-                rows: { style: { minHeight: '52px' } },
-              }}
-              noDataComponent={
-                <div className="p-8 text-center text-slate-400 font-semibold text-xs">{t('no_system_users_message', 'No system users registered.')}</div>
-              }
-            />
+              )}
+            </div>
           </div>
-
-
         </div>
       )}
 
@@ -824,158 +931,390 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </div>
           )}
 
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-            <button
-              onClick={() => {
-                if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
-                else { setSelectedMonth(m => m - 1); }
-              }}
-              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" /> Prev
-            </button>
-            <div className="font-semibold text-sm text-slate-800 dark:text-white">
-              {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </div>
-            <div className="flex items-center gap-2">
+          {/* MOBILE ATTENDANCE & SALARY CARDS VIEW (md:hidden) */}
+          <div className="md:hidden space-y-4">
+            {/* View Mode Switcher Pills */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
               <button
-                onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); }}
-                className="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                type="button"
+                onClick={() => setMobileAttMode('daily')}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileAttMode === 'daily'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
               >
-                Today
+                <Calendar className="w-3.5 h-3.5" /> Daily Quick Duty
               </button>
               <button
+                type="button"
+                onClick={() => setMobileAttMode('summary')}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileAttMode === 'summary'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" /> Monthly Heatmaps
+              </button>
+            </div>
+
+            {/* Mode 1: Daily Duty Quick-Mark Stack */}
+            {mobileAttMode === 'daily' && (
+              <div className="space-y-3">
+                {/* Date Navigator Header & Quick Mark Button */}
+                <div className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setMobileDayNum((d) => Math.max(1, d - 1))}
+                      disabled={mobileDayNum <= 1}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    </button>
+                    <div className="text-center">
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-xs block">
+                        {new Date(selectedYear, selectedMonth, mobileDayNum).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      {mobileDayNum === now.getDate() && selectedMonth === now.getMonth() && selectedYear === now.getFullYear() && (
+                        <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Today</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMobileDayNum((d) => Math.min(daysInMonth, d + 1))}
+                      disabled={mobileDayNum >= daysInMonth}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(mobileDayNum).padStart(2, '0')}`;
+                      staff.filter(s => s.status === 'Active').forEach(s => {
+                        recordAttendance({
+                          id: `att-${Date.now().toString().slice(-4)}`,
+                          date: dateStr,
+                          staffId: s.id,
+                          staffName: s.name,
+                          status: 'Present',
+                        });
+                      });
+                      showToast(`Marked all active staff Present for ${mobileDayNum} ${new Date(selectedYear, selectedMonth).toLocaleString('en-US', { month: 'short' })}`, { type: 'success' });
+                    }}
+                    className="w-full py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-emerald-600" /> Mark All Active Staff Present
+                  </button>
+                </div>
+
+                {/* Staff Cards List */}
+                <div className="space-y-2.5">
+                  {filteredStaff.map((member) => {
+                    const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(mobileDayNum).padStart(2, '0')}`;
+                    const cellKey = `${member.id}_${dateStr}`;
+                    const currentStatus = attendanceMap.get(cellKey);
+                    const dailyRate = daysInMonth > 0 ? (member.monthlySalary / daysInMonth).toFixed(0) : '0';
+
+                    return (
+                      <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
+                            <p className="text-[11px] text-slate-500">{member.role} • ₹{dailyRate}/day</p>
+                          </div>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            {member.status}
+                          </span>
+                        </div>
+
+                        {/* 1-Tap Duty Status Pills */}
+                        <div className="grid grid-cols-5 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                          {[
+                            { status: 'Present', label: 'P', activeBg: 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-bold' },
+                            { status: 'Absent', label: 'A', activeBg: 'ring-2 ring-red-500 bg-red-600 text-white font-bold' },
+                            { status: 'Half Day', label: 'H', activeBg: 'ring-2 ring-amber-500 bg-amber-600 text-white font-bold' },
+                            { status: 'Paid Leave', label: 'L', activeBg: 'ring-2 ring-purple-500 bg-purple-600 text-white font-bold' },
+                            { status: 'Clear', label: '-', activeBg: 'ring-2 ring-slate-400 bg-slate-300 dark:bg-slate-600 font-bold' },
+                          ].map((item) => {
+                            const isActive = (item.status === 'Clear' && !currentStatus) || currentStatus === item.status;
+                            return (
+                              <button
+                                key={item.status}
+                                type="button"
+                                onClick={() => {
+                                  recordAttendance({
+                                    id: `att-${Date.now().toString().slice(-4)}`,
+                                    date: dateStr,
+                                    staffId: member.id,
+                                    staffName: member.name,
+                                    status: item.status as AttendanceRecord['status'],
+                                  });
+                                }}
+                                className={`py-2 rounded-xl text-xs font-semibold flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                  isActive
+                                    ? item.activeBg
+                                    : 'bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                <span className="text-sm leading-none font-bold">{item.label}</span>
+                                <span className="text-[9px] mt-0.5 opacity-80">
+                                  {item.status === 'Paid Leave' ? 'Leave' : item.status === 'Half Day' ? 'Half' : item.status}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Mode 2: Monthly Staff Heatmaps & Earned Pay */}
+            {mobileAttMode === 'summary' && (
+              <div className="space-y-3">
+                {filteredStaff.map((member) => {
+                  let presentDays = 0;
+                  let absentDays = 0;
+                  let halfDays = 0;
+                  let leaveDays = 0;
+
+                  monthDays.forEach((d) => {
+                    const st = attendanceMap.get(`${member.id}_${d.dateStr}`);
+                    if (st === 'Present') presentDays += 1;
+                    else if (st === 'Absent') absentDays += 1;
+                    else if (st === 'Half Day') halfDays += 1;
+                    else if (st === 'Paid Leave') leaveDays += 1;
+                  });
+
+                  const effectiveDays = presentDays + (halfDays * 0.5) + leaveDays;
+                  const dailyRate = daysInMonth > 0 ? member.monthlySalary / daysInMonth : 0;
+                  const earnedSalary = (effectiveDays * dailyRate).toFixed(0);
+
+                  return (
+                    <div key={member.id} className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white text-xs">{member.name}</h4>
+                          <p className="text-[11px] text-slate-500">{member.role} • Base ₹{member.monthlySalary.toLocaleString('en-IN')}/mo</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Earned So Far</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">₹{Number(earnedSalary).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      {/* Attendance Breakdown Pills */}
+                      <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-semibold">
+                        <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 p-1.5 rounded-lg border border-emerald-200/60">
+                          <span className="block font-bold text-xs">{presentDays}</span> Present
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 p-1.5 rounded-lg border border-red-200/60">
+                          <span className="block font-bold text-xs">{absentDays}</span> Absent
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 p-1.5 rounded-lg border border-amber-200/60">
+                          <span className="block font-bold text-xs">{halfDays}</span> Half Day
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 p-1.5 rounded-lg border border-purple-200/60">
+                          <span className="block font-bold text-xs">{leaveDays}</span> Leave
+                        </div>
+                      </div>
+
+                      {/* Monthly Calendar Mini Heatmap */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Monthly Heatmap (Tap day to cycle status)</p>
+                        <div className="grid grid-cols-7 gap-1">
+                          {monthDays.map((d) => {
+                            const cellKey = `${member.id}_${d.dateStr}`;
+                            const st = attendanceMap.get(cellKey);
+                            return (
+                              <button
+                                key={d.dayNum}
+                                type="button"
+                                onClick={() => handleCellClick(member, d.dateStr)}
+                                className={`h-7 rounded-md text-[10px] font-bold flex flex-col items-center justify-center transition-all cursor-pointer select-none ${
+                                  st === 'Present' ? 'bg-emerald-500 text-white' :
+                                  st === 'Absent' ? 'bg-red-500 text-white' :
+                                  st === 'Half Day' ? 'bg-amber-500 text-white' :
+                                  st === 'Paid Leave' ? 'bg-purple-500 text-white' :
+                                  'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200'
+                                }`}
+                                title={`${d.dayNum} ${d.dayName}: ${st || 'Unmarked'}`}
+                              >
+                                <span>{d.dayNum}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* DESKTOP ATTENDANCE MATRIX TABLE (hidden md:block) */}
+          <div className="hidden md:block space-y-4">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+              <button
                 onClick={() => {
-                  if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
-                  else { setSelectedMonth(m => m + 1); }
+                  if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+                  else { setSelectedMonth(m => m - 1); }
                 }}
                 className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
               >
-                Next <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-3.5 h-3.5" /> Prev
               </button>
+              <div className="font-semibold text-sm text-slate-800 dark:text-white">
+                {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); }}
+                  className="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+                    else { setSelectedMonth(m => m + 1); }
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
-            <div className="overflow-x-auto relative">
-              <table className="datatable w-full text-center border-collapse text-xs staff-management__table">
-                <thead className="staff-management__table-header">
-                  <tr className="bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-semibold staff-management__table-header-row">
-                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white staff-management__table-header-cell">
-                      Staff Member
-                    </th>
-                    {monthDays.map((d) => (
-                      <th
-                        key={`num-${d.dayNum}`}
-                        className={`px-2 py-2 min-w-[36px] max-w-[40px] text-[11px] border-r border-slate-200 dark:border-slate-700/60 ${
-                          d.isToday ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-semibold' : ''
-                        }`}
-                      >
-                        {d.dayNum}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
+              <div className="overflow-x-auto relative">
+                <table className="datatable w-full text-center border-collapse text-xs staff-management__table">
+                  <thead className="staff-management__table-header">
+                    <tr className="bg-slate-50 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-semibold staff-management__table-header-row">
+                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 text-left px-4 py-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white staff-management__table-header-cell">
+                        Staff Member
                       </th>
-                    ))}
-                  </tr>
-
-                  <tr className="bg-slate-50/70 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 font-medium text-[10px]">
-                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 border-r border-slate-200 dark:border-slate-700"></th>
-                    {monthDays.map((d) => (
-                      <th
-                        key={`name-${d.dayNum}`}
-                        className={`px-2 py-1.5 border-r border-slate-200 dark:border-slate-700/60 ${
-                          d.isToday ? 'bg-amber-100/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-semibold' : ''
-                        }`}
-                      >
-                        {d.dayName}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-800 dark:text-slate-200">
-                  {staff.map((member) => (
-                    <tr key={member.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
-                      <td className="staff-management__cell sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/60 z-10 text-left px-4 py-3 font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-700 truncate min-w-[150px]">
-                        {member.name}
-                      </td>
-
-                      {monthDays.map((d) => {
-                        const cellKey = `${member.id}_${d.dateStr}`;
-                        const status = attendanceMap.get(cellKey);
-                        const isSelected = selectedCells.has(cellKey);
-
-                        return (
-                          <td
-                            key={cellKey}
-                            onClick={() => handleCellClick(member, d.dateStr)}
-                            className={`px-1 py-2 border-r border-slate-100 dark:border-slate-700/40 cursor-pointer transition-all select-none ${
-                              isSelected
-                                ? 'bg-blue-100 dark:bg-blue-900/80 ring-2 ring-blue-500 z-10'
-                                : d.isToday
-                                ? 'bg-amber-50/40 dark:bg-amber-950/20'
-                                : ''
-                            }`}
-                          >
-                            {status === 'Present' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold text-xs shadow-2xs">
-                                P
-                              </span>
-                            )}
-
-                            {status === 'Absent' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold text-xs shadow-2xs">
-                                A
-                              </span>
-                            )}
-
-                            {status === 'Half Day' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold text-xs shadow-2xs">
-                                H
-                              </span>
-                            )}
-
-                            {status === 'Paid Leave' && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold text-xs shadow-2xs">
-                                L
-                              </span>
-                            )}
-
-                            {!status && (
-                              <span className="text-slate-300 dark:text-slate-600 font-semibold text-xs">
-                                -
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
+                      {monthDays.map((d) => (
+                        <th
+                          key={`num-${d.dayNum}`}
+                          className={`px-2 py-2 min-w-[36px] max-w-[40px] text-[11px] border-r border-slate-200 dark:border-slate-700/60 ${
+                            d.isToday ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-semibold' : ''
+                          }`}
+                        >
+                          {d.dayNum}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* ATTENDANCE LEGEND BAR */}
-            <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <span className="font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[11px]">Attendance Legend:</span>
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold flex items-center justify-center text-xs">P</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Present (Full Day)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold flex items-center justify-center text-xs">A</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Absent (0 Wage)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold flex items-center justify-center text-xs">H</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Half Day (0.5 Wage)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold flex items-center justify-center text-xs">L</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Paid Leave</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-slate-400 px-1.5">-</span>
-                  <span className="font-semibold text-slate-500 dark:text-slate-400">Unmarked</span>
+                    <tr className="bg-slate-50/70 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 font-medium text-[10px]">
+                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 border-r border-slate-200 dark:border-slate-700"></th>
+                      {monthDays.map((d) => (
+                        <th
+                          key={`name-${d.dayNum}`}
+                          className={`px-2 py-1.5 border-r border-slate-200 dark:border-slate-700/60 ${
+                            d.isToday ? 'bg-amber-100/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-semibold' : ''
+                          }`}
+                        >
+                          {d.dayName}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-800 dark:text-slate-200">
+                    {staff.map((member) => (
+                      <tr key={member.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
+                        <td className="staff-management__cell sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700/60 z-10 text-left px-4 py-3 font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-700 truncate min-w-[150px]">
+                          {member.name}
+                        </td>
+
+                        {monthDays.map((d) => {
+                          const cellKey = `${member.id}_${d.dateStr}`;
+                          const status = attendanceMap.get(cellKey);
+                          const isSelected = selectedCells.has(cellKey);
+
+                          return (
+                            <td
+                              key={cellKey}
+                              onClick={() => handleCellClick(member, d.dateStr)}
+                              className={`px-1 py-2 border-r border-slate-100 dark:border-slate-700/40 cursor-pointer transition-all select-none ${
+                                isSelected
+                                  ? 'bg-blue-100 dark:bg-blue-900/80 ring-2 ring-blue-500 z-10'
+                                  : d.isToday
+                                  ? 'bg-amber-50/40 dark:bg-amber-950/20'
+                                  : ''
+                              }`}
+                            >
+                              {status === 'Present' && (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold text-xs shadow-2xs">
+                                  P
+                                </span>
+                              )}
+
+                              {status === 'Absent' && (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold text-xs shadow-2xs">
+                                  A
+                                </span>
+                              )}
+
+                              {status === 'Half Day' && (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold text-xs shadow-2xs">
+                                  H
+                                </span>
+                              )}
+
+                              {status === 'Paid Leave' && (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold text-xs shadow-2xs">
+                                  L
+                                </span>
+                              )}
+
+                              {!status && (
+                                <span className="text-slate-300 dark:text-slate-600 font-semibold text-xs">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ATTENDANCE LEGEND BAR */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[11px]">Attendance Legend:</span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold flex items-center justify-center text-xs">P</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Present (Full Day)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 font-semibold flex items-center justify-center text-xs">A</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Absent (0 Wage)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold flex items-center justify-center text-xs">H</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Half Day (0.5 Wage)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-semibold flex items-center justify-center text-xs">L</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">Paid Leave</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-slate-400 px-1.5">-</span>
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">Unmarked</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -995,131 +1334,168 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             </span>
           </div>
 
-          <DataTable
-            columns={[
-              {
-                name: 'Staff ID',
-                selector: (row: any) => row.id,
-                sortable: true,
-                width: '100px',
-                cell: (row: any) => <span className="font-mono font-semibold text-slate-500 dark:text-slate-400">{row.id}</span>,
-              },
-              {
-                name: 'Full Name',
-                selector: (row: any) => row.name,
-                sortable: true,
-                cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.name}</span>,
-              },
-              {
-                name: 'Role',
-                selector: (row: any) => row.role,
-                sortable: true,
-                width: '150px',
-                cell: (row: any) => editingStaffId === row.id ? (
-                  <StyledSelect
-                    value={editStaffRole}
-                    onChange={setEditStaffRole}
-                    options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
-                  />
-                ) : (
-                  <span className="font-medium text-slate-600 dark:text-slate-300">{row.role}</span>
-                ),
-              },
-              {
-                name: 'Phone',
-                selector: (row: any) => row.phone,
-                sortable: true,
-                width: '140px',
-                cell: (row: any) => editingStaffId === row.id ? (
-                  <Input
-                    type="tel"
-                    value={editStaffPhone}
-                    onChange={e => setEditStaffPhone(e.target.value)}
-                    className="font-mono text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
-                    fullWidth={false}
-                  />
-                ) : (
-                  <span className="font-mono text-slate-600 dark:text-slate-300">{row.phone}</span>
-                ),
-              },
-              {
-                name: 'Monthly Base',
-                selector: (row: any) => row.monthlySalary,
-                sortable: true,
-                right: true,
-                width: '130px',
-                cell: (row: any) => editingStaffId === row.id ? (
-                  <Input
-                    type="number"
-                    value={editStaffSalary}
-                    onChange={e => setEditStaffSalary(Number(e.target.value))}
-                    className="font-semibold text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
-                    fullWidth={false}
-                  />
-                ) : (
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.monthlySalary.toLocaleString('en-IN')}</span>
-                ),
-              },
-              {
-                name: 'Status',
-                selector: (row: any) => row.status,
-                sortable: true,
-                width: '110px',
-                center: true,
-                cell: (row: any) => editingStaffId === row.id ? (
-                  <StyledSelect
-                    value={editStaffStatus}
-                    onChange={setEditStaffStatus}
-                    options={[
-                      { value: 'Active', label: 'Active' },
-                      { value: 'Inactive', label: 'Inactive' },
-                    ]}
-                  />
-                ) : (
-                  <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">{row.status}</span>
-                ),
-              },
-              ...(updateStaff ? [{
-                name: 'Actions',
-                right: true,
-                width: '130px',
-                cell: (row: any) => editingStaffId === row.id ? (
-                  <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('save_button', 'Save')}</button>
-                    <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+          <div className="p-3 space-y-3">
+            <Input type="text" value={searchStaff} onChange={e => setSearchStaff(e.target.value)} placeholder="Search by name or role..." className="w-full max-w-sm" />
+
+            {/* Mobile Cards Stack View (md:hidden) */}
+            <div className="md:hidden space-y-2.5">
+              {filteredStaff.map((s) => (
+                <div key={s.id} className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white text-sm">{s.name}</div>
+                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 inline-block mt-0.5">
+                        {s.role}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.status === 'Active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700'}`}>
+                      {s.status}
+                    </span>
                   </div>
-                ) : (
-                  <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Edit2 className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
-                ),
-              }] : []),
-            ]}
-            data={filteredStaff}
-            progressPending={staffLoading}
-            progressComponent={
-              <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
-              </div>
-            }
-            pagination
-            paginationPerPage={15}
-            paginationRowsPerPageOptions={[10, 15, 25, 50]}
-            highlightOnHover
-            subHeader={
-              <div className="w-full flex items-center py-2">
-                <Input type="text" value={searchStaff} onChange={e => setSearchStaff(e.target.value)} placeholder="Search by name or role..." className="w-full max-w-xs" />
-              </div>
-            }
-            customStyles={{
-              subHeader: { style: { padding: 0, minHeight: 0, backgroundColor: 'transparent', borderBottom: '1px solid #e2e8f0' } },
+
+                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                    <span className="font-mono text-slate-500">📞 {s.phone || 'No phone'}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{s.monthlySalary.toLocaleString('en-IN')} / mo</span>
+                  </div>
+
+                  {updateStaff && (
+                    <div className="pt-1 flex justify-end">
+                      <button
+                        onClick={() => { setEditingStaffId(s.id); setEditStaffRole(s.role); setEditStaffPhone(s.phone); setEditStaffSalary(s.monthlySalary); setEditStaffStatus(s.status); }}
+                        className="min-h-[38px] px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Edit Details</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop DataTable (hidden md:block) */}
+            <div className="hidden md:block">
+              <DataTable
+                columns={[
+                  {
+                    name: 'Staff ID',
+                    selector: (row: any) => row.id,
+                    sortable: true,
+                    width: '100px',
+                    cell: (row: any) => <span className="font-mono font-semibold text-slate-500 dark:text-slate-400">{row.id}</span>,
+                  },
+                  {
+                    name: 'Full Name',
+                    selector: (row: any) => row.name,
+                    sortable: true,
+                    cell: (row: any) => <span className="font-semibold text-slate-900 dark:text-white text-sm">{row.name}</span>,
+                  },
+                  {
+                    name: 'Role',
+                    selector: (row: any) => row.role,
+                    sortable: true,
+                    width: '150px',
+                    cell: (row: any) => editingStaffId === row.id ? (
+                      <StyledSelect
+                        value={editStaffRole}
+                        onChange={setEditStaffRole}
+                        options={roleOptions.map((roleName) => ({ value: roleName, label: roleName }))}
+                      />
+                    ) : (
+                      <span className="font-medium text-slate-600 dark:text-slate-300">{row.role}</span>
+                    ),
+                  },
+                  {
+                    name: 'Phone',
+                    selector: (row: any) => row.phone,
+                    sortable: true,
+                    width: '140px',
+                    cell: (row: any) => editingStaffId === row.id ? (
+                      <Input
+                        type="tel"
+                        value={editStaffPhone}
+                        onChange={e => setEditStaffPhone(e.target.value)}
+                        className="font-mono text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
+                        fullWidth={false}
+                      />
+                    ) : (
+                      <span className="font-mono text-slate-600 dark:text-slate-300">{row.phone}</span>
+                    ),
+                  },
+                  {
+                    name: 'Monthly Base',
+                    selector: (row: any) => row.monthlySalary,
+                    sortable: true,
+                    right: true,
+                    width: '130px',
+                    cell: (row: any) => editingStaffId === row.id ? (
+                      <Input
+                        type="number"
+                        value={editStaffSalary}
+                        onChange={e => setEditStaffSalary(Number(e.target.value))}
+                        className="font-semibold text-xs border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-700"
+                        fullWidth={false}
+                      />
+                    ) : (
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{row.monthlySalary.toLocaleString('en-IN')}</span>
+                    ),
+                  },
+                  {
+                    name: 'Status',
+                    selector: (row: any) => row.status,
+                    sortable: true,
+                    width: '110px',
+                    center: true,
+                    cell: (row: any) => editingStaffId === row.id ? (
+                      <StyledSelect
+                        value={editStaffStatus}
+                        onChange={setEditStaffStatus}
+                        options={[
+                          { value: 'Active', label: 'Active' },
+                          { value: 'Inactive', label: 'Inactive' },
+                        ]}
+                      />
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">{row.status}</span>
+                    ),
+                  },
+                  ...(updateStaff ? [{
+                    name: 'Actions',
+                    right: true,
+                    width: '130px',
+                    cell: (row: any) => editingStaffId === row.id ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => { updateStaff!(row.id, { role: editStaffRole, phone: editStaffPhone, monthlySalary: editStaffSalary, status: editStaffStatus }); setEditingStaffId(null); if (onLogAudit) onLogAudit(`Updated staff ${row.name}: role=${editStaffRole}, phone=${editStaffPhone}, salary=₹${editStaffSalary}, status=${editStaffStatus}`); }} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('save_button', 'Save')}</button>
+                        <button onClick={() => setEditingStaffId(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setEditingStaffId(row.id); setEditStaffRole(row.role); setEditStaffPhone(row.phone); setEditStaffSalary(row.monthlySalary); setEditStaffStatus(row.status); }} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"><Edit2 className="w-3 h-3 text-slate-500" /> {t('edit_button', 'Edit')}</button>
+                    ),
+                  }] : []),
+                ]}
+                data={filteredStaff}
+                progressPending={staffLoading}
+                progressComponent={
+                  <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" /> {t('loading_staff_message', 'Loading staff...')}
+                  </div>
+                }
+                pagination
+                paginationPerPage={15}
+                paginationRowsPerPageOptions={[10, 15, 25, 50]}
+                highlightOnHover
+                customStyles={{
                   headCells: { style: { fontSize: '11px', fontWeight: 600, color: '#64748b', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', paddingLeft: '12px' } },
                   cells: { style: { fontSize: '13px', color: '#334155', padding: '12px' } },
                   headRow: { style: { backgroundColor: '#f8fafc' } },
                   rows: { style: { minHeight: '52px' } },
                 }}
-            noDataComponent={
-              <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
-            }
-          />
+                noDataComponent={
+                  <div className="p-8 text-center text-slate-400 font-semibold text-xs">No staff members found.</div>
+                }
+              />
+            </div>
+          </div>
         </div>
       )}
 

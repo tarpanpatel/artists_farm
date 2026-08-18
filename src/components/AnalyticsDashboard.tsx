@@ -1164,85 +1164,92 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
       </div>
 
-      {/* Dynamic Navigation Tabs */}
-      <div className="analytics-tab-bar flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl gap-1 flex-wrap">
+      {/* Dynamic Navigation Tabs (High-Affordance Touch-Friendly Buttons) */}
+      <div className="analytics-tab-bar flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 pt-0.5">
         <button
+          type="button"
           onClick={() => setActiveTab('overview')}
-          className={`btn-analytics-tab-overview px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-overview px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'overview'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <TrendingUp className="w-4 h-4" />
+          <TrendingUp className="w-4 h-4 shrink-0" />
           <span>{t('overview_tab_label', 'Overview')}</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('bookings')}
-          className={`btn-analytics-tab-bookings px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-bookings px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'bookings'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4 shrink-0" />
           <span>{t('bookings_tab_label', 'Bookings')}</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('pace')}
-          className={`btn-analytics-tab-pace px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-pace px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'pace'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <CalendarClock className="w-4 h-4" />
+          <CalendarClock className="w-4 h-4 shrink-0" />
           <span>{t('pace_tab_label', 'Pace')}</span>
         </button>
         {kitchenModuleEnabled && (
           <button
+            type="button"
             onClick={() => setActiveTab('kitchen')}
-            className={`btn-analytics-tab-kitchen px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`btn-analytics-tab-kitchen px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
               activeTab === 'kitchen'
-                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
             }`}
           >
-            <Utensils className="w-4 h-4" />
+            <Utensils className="w-4 h-4 shrink-0" />
             <span>{t('kitchen_food_pos_tab_label', 'Kitchen & Food POS')}</span>
           </button>
         )}
         <button
+          type="button"
           onClick={() => setActiveTab('expenses')}
-          className={`btn-analytics-tab-purchases px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`btn-analytics-tab-purchases px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'expenses'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <ShoppingBag className="w-4 h-4" />
+          <ShoppingBag className="w-4 h-4 shrink-0" />
           <span>{t('expenses_tab_label', 'Expenses')}</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('profit_loss')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'profit_loss'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <BarChart3 className="w-4 h-4" />
+          <BarChart3 className="w-4 h-4 shrink-0" />
           <span>{t('pnl_tab_label', 'P&L')}</span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('fluctuations')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-98 ${
             activeTab === 'fluctuations'
-              ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              ? 'bg-blue-600 text-white shadow-2xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-slate-300 shadow-2xs'
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-4 h-4 shrink-0" />
           <span>{t('fluctuations_tab_label', 'Fluctuations')}</span>
         </button>
       </div>
