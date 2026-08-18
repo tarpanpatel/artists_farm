@@ -902,58 +902,6 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // same, so no upload after a booking's completion means
                     // the files still get cleaned).
                     cleanupExpiredIdDocuments($pdo, 24, $propertyId);
-
-                    // Live progress ping - lets the tenant follow along in Telegram as
-                    // photos come in, rather than only hearing about it at completion.
-                    try {
-                        $guestStmt = $pdo->prepare("
-                            SELECT g.guest_name, g.no_of_guests, COALESCE(r.name, 'Unassigned') as room_name
-                            FROM guests g
-                            LEFT JOIN properties r ON g.room_id = r.id
-                            WHERE g.id = ? AND g.property_id = ?
-                        ");
-                        $guestStmt->execute([$guestId, $propertyId]);
-                        $guestInfo = $guestStmt->fetch(PDO::FETCH_ASSOC);
-                        if ($guestInfo) {
-                            $required = max(1, intval($guestInfo['no_of_guests'] ?? 1));
-                            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
-                            $countStmt->execute([$guestId, $propertyId]);
-                            $uploadedCount = intval($countStmt->fetchColumn());
-                            require_once __DIR__ . '/../telegram/sender.php';
-                            $msg = "📸 <b>ID Document Uploaded</b>\n\n";
-                            $msg .= "👤 <b>Guest:</b> {$guestInfo['guest_name']}\n";
-                            $msg .= "🚪 <b>Room:</b> {$guestInfo['room_name']}\n";
-                            $msg .= "✅ <b>Progress:</b> {$uploadedCount}/{$required} required ID(s) uploaded";
-                            // templateKey only steers routing - the content is the
-                            // raw message above, routed to the same admin group the
-                            // check-in completion photos go to.
-                            //
-                            // Send the actual photo (caption = the same progress text
-                            // above) instead of a text-only ping, so the tenant can see
-                            // the ID as it comes in rather than just a counter. $filePath
-                            // is the stored URL ("/uploads/images/id_documents/xyz.jpg");
-                            // reconstruct the real disk path the same way
-                            // deleteIdDocumentFiles()/cleanupExpiredIdDocuments() do.
-                            $photoSent = false;
-                            $uploadsPos = strpos((string)$filePath, '/uploads/');
-                            if ($uploadsPos !== false) {
-                                $diskPath = __DIR__ . '/../' . substr((string)$filePath, $uploadsPos + 1);
-                                $photoResult = sendPropertyTelegramPhoto($pdo, $propertyId, 'admin', [$diskPath], $msg, 'checkin_verification_complete');
-                                // sendPropertyTelegramPhoto returns an array only when it
-                                // skipped (Telegram off / no group / file missing) -
-                                // anything else is the raw sendPhoto API response, i.e. it
-                                // actually went out.
-                                $photoSent = !is_array($photoResult);
-                            }
-                            // Fall back to the text-only ping if the photo couldn't be
-                            // sent, so the progress notification is never silently dropped.
-                            if (!$photoSent) {
-                                sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $msg, null, 'checkin_verification_complete');
-                            }
-                        }
-                    } catch (Exception $e) {
-                        error_log("Failed to send ID upload Telegram notification: " . $e->getMessage());
-                    }
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to save ID document: ' . $e->getMessage()]);
@@ -1000,14 +948,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'Guest not found']);
                     break;
                 }
-                $required = max(1, intval($guest['no_of_guests'] ?? 1));
+                $required = 1;
                 $docsStmt = $pdo->prepare("SELECT file_path FROM guest_id_documents WHERE guest_id = ? AND property_id = ?");
                 $docsStmt->execute([$guestId, $propertyId]);
                 $docPaths = $docsStmt->fetchAll(PDO::FETCH_COLUMN);
                 $uploadedCount = count($docPaths);
                 if ($uploadedCount < $required) {
                     http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => "Only {$uploadedCount} of {$required} required ID document(s) uploaded"]);
+                    echo json_encode(['status' => 'error', 'message' => "At least {$required} ID document is required"]);
                     break;
                 }
                 $pdo->prepare("UPDATE guests SET id_verification_status = 'Complete' WHERE id = ? AND property_id = ?")->execute([$guestId, $propertyId]);

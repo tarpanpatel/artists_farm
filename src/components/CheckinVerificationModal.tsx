@@ -48,7 +48,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   // guests who show up later than the original headcount.
   const [extraSlots, setExtraSlots] = useState(0);
 
-  const requiredCount = Math.max(1, guest.numberOfGuests || 1);
+  const requiredCount = 1;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -125,16 +125,12 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     }
   };
 
-  const requiredUploadedCount = documents.filter((d) => d.guestIndex < requiredCount).length;
-  const extraUploadedCount = documents.length - requiredUploadedCount;
-  const allUploaded = requiredUploadedCount >= requiredCount;
+  const requiredUploadedCount = documents.length;
+  const allUploaded = documents.length >= requiredCount;
   const alreadyComplete = guest.idVerificationStatus === 'Complete';
 
   const highestUploadedIndex = documents.reduce((max, d) => Math.max(max, d.guestIndex), -1);
-  // Don't dump every required slot on screen at once for large bookings -
-  // start with just 2 (or fewer if only 1 guest is required) and let staff
-  // reveal the rest via "+ Add More Images" as they actually go through them.
-  const initialSlotCount = Math.min(requiredCount, 2);
+  const initialSlotCount = 1;
   const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
@@ -270,8 +266,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
         {/* Footer */}
         <div className="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center">
-            {requiredUploadedCount} {t('required_uploaded_text')} {requiredCount} {t('required_uploaded_suffix')}{requiredCount > 1 ? 's' : ''} {t('uploaded_suffix')}
-            {extraUploadedCount > 0 && ` (+${extraUploadedCount} ${t('extra_uploaded_suffix')})`}
+            {requiredUploadedCount} of {requiredCount} required ID document uploaded
           </p>
           <div className="flex gap-2">
             <button
