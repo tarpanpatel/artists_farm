@@ -12,6 +12,7 @@ import {
   Download,
   ClipboardList,
   RefreshCw,
+  HelpCircle,
   Home as RoomIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -266,6 +267,21 @@ export const Header: React.FC<HeaderProps> = ({
               <RefreshCw className={`w-5 h-5 ${isSyncingIcal ? 'animate-spin' : ''}`} />
             </button>
           )}
+
+          {/* Help Link Button */}
+          <a
+            href="#help"
+            onClick={(e) => {
+              e.preventDefault();
+              // Placeholder help action — target destination/modal to be configured
+            }}
+            title={t('help_tooltip', 'Help & Support')}
+            aria-label={t('help_aria', 'Help & Support')}
+            className="btn-header-help relative px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
+          >
+            <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Help?</span>
+          </a>
 
           {/* Notification Bell Button */}
           <div className="header__notification relative">

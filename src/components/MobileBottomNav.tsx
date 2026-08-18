@@ -68,22 +68,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             onClick={() => setIsQuickActionOpen(false)}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
           />
-          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-2xl space-y-3 animate-in slide-in-from-bottom duration-200 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            {/* Close Button Sitting Outside the Panel */}
+            <button
+              type="button"
+              onClick={() => setIsQuickActionOpen(false)}
+              className="absolute -top-11 right-4 p-2 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title={t('close_button', 'Close')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             {/* Drag Handle Indicator */}
-            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-2" />
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">Quick Mobile Actions</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Thumb-friendly resort shortcuts</p>
-              </div>
-              <button
-                onClick={() => setIsQuickActionOpen(false)}
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-1" />
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <button

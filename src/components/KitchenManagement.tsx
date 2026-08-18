@@ -28,7 +28,10 @@ import {
   ChevronRight,
   Loader2,
   Receipt,
-  User
+  User,
+  BookOpen,
+  Package,
+  Filter
 } from 'lucide-react';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -98,7 +101,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { orders, addOrder, refreshOrders, updateOrderStatus } = useKitchenContext();
+  const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
   const { currentUser, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'walk_in_bills' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>('kds');
@@ -338,6 +341,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         });
       }, 700);
     }, 900);
+  };
+
+  // Manual order cancellation - the 'Cancelled' status has always been a
+  // valid Order.status value and updateOrderStatusDB already accepts it
+  // (used internally by triggerOrderCompletion for 'Fulfilled'), but no
+  // button ever called it, so a mistaken/duplicate order had no way to be
+  // removed from the live KDS queue short of a DB edit.
+  const handleCancelOrder = async (ord: Order) => {
+    const cleanTicketId = ord.id.replace('#', '');
+    const confirmed = await confirm({
+      title: t('cancel_order_title', 'Cancel Order'),
+      message: t('cancel_order_confirm_message', `Cancel Order #${cleanTicketId}? This removes it from the kitchen queue and cannot be undone.`),
+      confirmText: t('cancel_order_confirm_button', 'Cancel Order'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    updateOrderStatus(ord.id, 'Cancelled');
+    await updateOrderStatusDB(ord.orderId != null ? String(ord.orderId) : ord.id, 'Cancelled');
+    showToast(t('order_cancelled_toast', `Order #${cleanTicketId} cancelled.`), { type: 'success' });
+
+    recordTelescopeLog({
+      portal: 'requests',
+      severity: 'INFO',
+      msg: `PATCH /api/kitchen/orders/${ord.id} - Order Cancelled`,
+      origin: '/src/components/KitchenManagement.tsx -> handleCancelOrder',
+      details: { orderId: ord.id },
+    });
   };
 
   const handleMarkDishServed = async (ord: Order, itemIndex: number, item: OrderItem) => {
@@ -858,6 +889,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   });
   const [posSearch, setPosSearch] = useState('');
   const [selectedPosCategory, setSelectedPosCategory] = useState<string>('all');
+  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
@@ -1033,29 +1065,77 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Top Header (Hidden on Take Food Order POS view and Beta Recipe Builder, which has its own header) */}
-      {activeTab !== 'new_order' && activeTab !== 'beta_recipe_builder' && (
-        <PageHeader title={t('kitchen_ticketing_header')} subtitle={t('kitchen_subtitle')}>
-          {activeTab !== 'staff_meals' && (
-            <PageHeaderButton onClick={() => setActiveTab('new_order')} icon={Plus}>
-              {t('create_resident_order_button', 'Take Order')}
-            </PageHeaderButton>
-          )}
-          {activeTab !== 'staff_meals' && activeTab !== 'walk_in_bills' && (
-            <PageHeaderButton variant="secondary" onClick={() => setActiveTab('walk_in_bills')} icon={Receipt}>
-              {t('walk_in_bills_button', 'Walk-in Bills')}
-              {walkInTabs.filter((tab) => tab.status === 'open').length > 0
-                ? ` (${walkInTabs.filter((tab) => tab.status === 'open').length})`
-                : ''}
-            </PageHeaderButton>
-          )}
-          {activeTab === 'walk_in_bills' && (
-            <PageHeaderButton variant="secondary" onClick={() => setActiveTab('kds')} icon={ArrowLeft}>
-              {t('back_to_live_orders_button', 'Live Orders')}
-            </PageHeaderButton>
-          )}
-        </PageHeader>
+    <div>
+      {/* Unified Sub-Tab Navigation Bar - "merged panel" tab style (18 Aug
+          2026): the active tab and the content panel directly beneath it
+          share one solid background with no seam at all (not just a hairline
+          border trick) - the tab visually grows out of the panel below it,
+          like a real folder tab, while inactive tabs sit flush on the page
+          with no box of their own (only a hover preview), matching the
+          reference screenshot the user provided. Centered, not left-anchored.
+          The panel's own bg/border/rounding is applied on each of the three
+          tab-content wrapper divs below (kds-orders-container,
+          take-food-order-container, and the walk_in_bills root div) so this
+          bar and whichever content is active render as one continuous card. */}
+      {activeTab !== 'beta_recipe_builder' && (
+        <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
+          <button
+            type="button"
+            onClick={() => setActiveTab('new_order')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'new_order'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <UtensilsCrossed className="w-4 h-4" />
+            <span>{t('create_resident_order_button', 'New Order (POS)')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('kds')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'kds'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>{t('live_active_orders_label', 'Live Tickets')}</span>
+            {pendingOrdersCount > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                activeTab === 'kds'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+              }`}>
+                {pendingOrdersCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('walk_in_bills')}
+            className={`flex items-center gap-2 px-4 py-3 rounded-t-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'walk_in_bills'
+                ? 'border-t border-x bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border-slate-200 dark:border-slate-700'
+                : 'border bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 font-semibold border-slate-200/60 dark:border-slate-700/50'
+            }`}
+          >
+            <Receipt className="w-4 h-4" />
+            <span>{t('walk_in_bills_button', 'Walk-in Bills & Tabs')}</span>
+            {walkInTabs.filter((tab) => tab.status === 'open').length > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                activeTab === 'walk_in_bills'
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                  : 'bg-slate-200/80 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+              }`}>
+                {walkInTabs.filter((tab) => tab.status === 'open').length}
+              </span>
+            )}
+          </button>
+        </div>
       )}
 
       {/* TAB 1: KDS TICKET QUEUE */}
@@ -1063,17 +1143,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
         return (
-        <div className="kds-orders-container space-y-4">
-          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs gap-3 shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">{t('live_active_orders_label', 'Live Active Orders')}</span>
-              <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                {activeOrders.length}
-              </span>
-            </div>
-
+        <div className="kds-orders-container space-y-4 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+          <div className="kds-status-filter-bar flex flex-col sm:flex-row items-start sm:items-center justify-end text-xs gap-3">
             {/* Smart Polling / Live Sync Bar */}
-            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1091,17 +1164,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     }`}
                   />
                 </button>
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-ping' : autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400 dark:bg-slate-500'}`}></span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
-                    {autoSyncEnabled ? t('live_kds_sync_text') : t('sync_paused_text')}
-                  </span>
+                {/* Static label instead of swapping "Live KDS Sync"/"Sync Paused" text,
+                    and no separate status dot - the toggle's own position/color and the
+                    Sync button's spin state (below) already carry that signal. */}
+                <span className="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
+                  {t('auto_sync_label', 'Auto-sync')}
                   {autoSyncEnabled && (
-                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                    <span className="font-mono text-slate-400 dark:text-slate-500 font-normal ml-1">
                       ({syncCountdown}s)
                     </span>
                   )}
-                </div>
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1119,7 +1192,20 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
           </div>
 
-          <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {activeOrders.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 border border-emerald-200 dark:border-emerald-800/60">
+                <UtensilsCrossed className="w-7 h-7" />
+              </div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base tracking-wide">
+                {t('no_kitchen_orders_title', 'Currently, there are no kitchen orders')}
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 max-w-sm mx-auto">
+                {t('no_kitchen_orders_desc', 'New orders placed from POS or room service will automatically appear in this live ticket queue.')}
+              </p>
+            </div>
+          ) : (
+            <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeOrders.map((ord) => {
               const completionPhase = completingOrderIds[ord.id];
               // Elapsed time since the order was placed — drives both the
@@ -1177,19 +1263,30 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         {t('completed_label', 'Completed')}
                       </span>
                     ) : (
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        ord.status === 'Fulfilled'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : ord.status === 'Preparing'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                      }`}>
-                        {ord.status === 'Pending'
-                          ? t('status_in_queue', 'In Queue')
-                          : ord.status === 'Preparing'
-                          ? t('status_preparing', 'Preparing')
-                          : ord.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          ord.status === 'Fulfilled'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            : ord.status === 'Preparing'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                        }`}>
+                          {ord.status === 'Pending'
+                            ? t('status_in_queue', 'In Queue')
+                            : ord.status === 'Preparing'
+                            ? t('status_preparing', 'Preparing')
+                            : ord.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrder(ord)}
+                          className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
+                          title={t('cancel_order_tooltip', 'Cancel this order')}
+                          aria-label="Cancel order"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -1304,6 +1401,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               );
             })}
           </div>
+          )}
 
           {/* No separate order-level "Fulfilled/Served Orders" table anymore
               (removed 17 Aug 2026) - it duplicated Current Guest Served
@@ -1356,15 +1454,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           return (
             <div
               key={item.id}
-              className="pos-food-card bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 hover:border-cyan-400 hover:shadow-2xs p-2 flex flex-col justify-between gap-2 transition-all"
+              className="pos-food-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 hover:border-blue-400 hover:shadow-sm p-2.5 flex flex-col justify-between gap-2 transition-all"
             >
               <div className="space-y-1.5">
-                <div className="relative w-full h-20 sm:h-16 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500">
+                <div className="relative w-full h-20 sm:h-16 rounded-xl bg-slate-100 dark:bg-slate-700 border border-slate-200/80 dark:border-slate-600 overflow-hidden flex items-center justify-center text-slate-400 dark:text-slate-500">
                   {item.imagePath ? (
                     <img
                       src={item.imagePath}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-xl"
                       onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                     />
                   ) : (
@@ -1384,7 +1482,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               {/* Mobile-First Touch Stepper (Always showing minus, quantity, plus) */}
               <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-lg p-0.5 w-full">
+                <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-700/60 rounded-xl p-0.5 w-full">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1445,92 +1543,106 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         const openTabs = walkInTabs.filter((tab) => tab.status === 'open');
 
         return (
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0">
+          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
+
             {/* Order Mode: Guest (room service, billed to the stay) vs Walk-in
                 (counter/dine-in, no room - joins a running tab, billed all at
-                once from the Walk-in Bills tab). */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 shrink-0">
+                once from the Walk-in Bills tab). Deliberately NOT styled as its
+                own bordered/shadowed card or in the tab bar's blue - that made
+                it look like a second row of page-level tabs stacked under the
+                real one above (found confusing 18 Aug 2026). A plain inline
+                row with a neutral (not blue) active state reads as "a setting
+                for this order", not "another nav bar". */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  {t('order_billing_target_label', 'Billing')}
+                </span>
+                {/* Segmented Switcher */}
+                <div className="inline-flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0">
                   <button
                     type="button"
                     onClick={() => setOrderMode('guest')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       orderMode === 'guest'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    {t('order_mode_guest_button', 'Guest / Room Service')}
+                    {t('order_mode_guest_button', 'In-House Guest')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setOrderMode('walkin')}
-                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       orderMode === 'walkin'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     {t('order_mode_walkin_button', 'Walk-in / Counter')}
                   </button>
                 </div>
-
-                {orderMode === 'guest' && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {selectedGuest ? (
-                      <>
-                        {t('ordering_for_prefix', 'Ordering for')}{' '}
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedGuest.guestName}</span>
-                        {selectedGuest.roomNumber ? ` (${selectedGuest.roomNumber})` : ''}
-                      </>
-                    ) : (
-                      t('no_active_resident_tooltip')
-                    )}
-                  </p>
-                )}
               </div>
 
+              {/* Target Guest Info Badge */}
+              {orderMode === 'guest' && (
+                <div className="flex items-center gap-2 text-xs">
+                  {selectedGuest ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/60">
+                      <User className="w-3.5 h-3.5" />
+                      {selectedGuest.guestName}
+                      {selectedGuest.roomNumber ? ` (${selectedGuest.roomNumber})` : ''}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400 text-xs">
+                      {t('no_active_resident_tooltip', 'No active resident selected')}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Walk-in Tab Controls */}
               {orderMode === 'walkin' && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                    {t('walk_in_tab_picker_label', 'Add to tab')}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <div className="w-full pt-2.5 mt-0.5 border-t border-slate-100 dark:border-slate-700/80 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                    {t('walk_in_tab_picker_label', 'Add to tab')}:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedWalkInTabId(null)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      selectedWalkInTabId === null
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
+                    }`}
+                  >
+                    + {t('new_tab_button', 'New Tab')}
+                  </button>
+                  {openTabs.map((tab) => (
                     <button
+                      key={tab.id}
                       type="button"
-                      onClick={() => setSelectedWalkInTabId(null)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                        selectedWalkInTabId === null
-                          ? 'bg-emerald-600 border-emerald-600 text-white'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
+                      onClick={() => setSelectedWalkInTabId(tab.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                        selectedWalkInTabId === tab.id
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
                       }`}
                     >
-                      + {t('new_tab_button', 'New Tab')}
+                      {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
                     </button>
-                    {openTabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setSelectedWalkInTabId(tab.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                          selectedWalkInTabId === tab.id
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-300'
-                        }`}
-                      >
-                        {tab.label || t('walk_in_badge', 'Walk-in')} · ₹{tab.subtotal.toLocaleString('en-IN')}
-                      </button>
-                    ))}
-                  </div>
+                  ))}
                   {selectedWalkInTabId === null && (
-                    <Input
-                      type="text"
-                      value={newTabLabel}
-                      onChange={(e) => setNewTabLabel(e.target.value)}
-                      placeholder={t('walk_in_name_placeholder', 'Table / customer name (optional)')}
-                      className="max-w-xs"
-                    />
+                    <div className="w-full sm:w-auto sm:flex-1 sm:max-w-xs mt-1 sm:mt-0">
+                      <Input
+                        type="text"
+                        value={newTabLabel}
+                        onChange={(e) => setNewTabLabel(e.target.value)}
+                        placeholder={t('walk_in_name_placeholder', 'Table / customer name (optional)')}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   )}
                 </div>
               )}
@@ -1541,45 +1653,66 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
                 {/* Sticky Search & Category Pills Bar */}
                 <div className="pos-category-filter-bar bg-white dark:bg-slate-800 pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 dark:border-slate-700 shadow-2xs rounded-t-xl">
-                  {/* Quick Search Bar */}
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3 z-10" />
-                    <Input
-                      type="text"
-                      value={posSearch}
-                      onChange={(e) => setPosSearch(e.target.value)}
-                      placeholder={t('quick_search_menu_placeholder')}
-                      className="pl-9"
-                    />
-                    {posSearch && (
-                      <button
-                        onClick={() => setPosSearch('')}
-                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer z-10"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                  {/* Quick Search Bar + Category Filter Toggle */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3 z-10" />
+                      <Input
+                        type="text"
+                        value={posSearch}
+                        onChange={(e) => setPosSearch(e.target.value)}
+                        placeholder={t('quick_search_menu_placeholder')}
+                        className="pl-9"
+                      />
+                      {posSearch && (
+                        <button
+                          onClick={() => setPosSearch('')}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer z-10"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryFilters((v) => !v)}
+                      className={`relative h-10 w-10 shrink-0 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                        showCategoryFilters
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }`}
+                      title={t('toggle_category_filters_tooltip', 'Filter by category')}
+                      aria-label="Toggle category filters"
+                      aria-expanded={showCategoryFilters}
+                    >
+                      <Filter className="w-4 h-4" />
+                      {selectedPosCategory !== 'all' && !showCategoryFilters && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white dark:border-slate-800" />
+                      )}
+                    </button>
                   </div>
 
-                  {/* Category Pills Bar */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
-                    {posCategories.map((cat) => {
-                      const isSelected = selectedPosCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => setSelectedPosCategory(cat.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-cyan-500 text-white shadow-2xs'
-                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* Category Pills Bar - hidden by default, revealed via the Filter button above */}
+                  {showCategoryFilters && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+                      {posCategories.map((cat) => {
+                        const isSelected = selectedPosCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            onClick={() => setSelectedPosCategory(cat.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 font-bold shadow-xs'
+                                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 font-medium'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
 
@@ -1802,7 +1935,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           opens WalkInTabBillModal, the same itemized/GST/WhatsApp-share
           pattern a guest's checkout receipt already gets. */}
       {activeTab === 'walk_in_bills' && (
-        <div className="space-y-6">
+        <div className="space-y-6 bg-white dark:bg-slate-800 rounded-2xl border-x border-b border-slate-200 dark:border-slate-700 p-3.5 sm:p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">

@@ -87,7 +87,7 @@ return (
             : 'border-[var(--select-border-default)] hover:border-[var(--select-border-hover)] focus:border-[var(--select-border-focus)] focus:ring-4 focus:ring-[var(--select-ring-focus)] cursor-pointer'
         } ${isOpen && !buttonClassName.includes('ring-blue') ? 'border-[var(--select-border-focus)] ring-4 ring-[var(--select-ring-focus)]' : ''} ${
           isOpen && buttonClassName.includes('ring-blue') ? 'border-blue-500 ring-2 ring-blue-500/20' : ''
-        } ${/(^|\s)(!?)h-/.test(buttonClassName) ? '' : 'h-10'} ${/(^|\s)(!?)rounded-/.test(buttonClassName) ? '' : 'rounded-lg'} ${
+        } ${/(^|\s)(!?)h-/.test(buttonClassName) ? '' : 'h-10'} ${/(^|\s)(!?)rounded-/.test(buttonClassName) ? '' : 'rounded-xl'} ${
           /(^|\s)(!?)font-/.test(buttonClassName) ? '' : 'font-normal'
         } ${
           /(^|\s)(!?)text-/.test(buttonClassName)

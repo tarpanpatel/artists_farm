@@ -56,22 +56,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={
               errorMessage ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
             }
-             className={`
-               app-input ${hasError ? 'app-input-error' : ''} ${disabled ? 'app-input-disabled' : ''}
-                w-full h-10 px-3.5 text-sm font-normal rounded-lg transition-all duration-200 outline-none
-               bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)]
-               border ${
-                 disabled
-                   ? 'border-[var(--input-border-disabled)] bg-[var(--input-bg-disabled)] text-[var(--input-text-disabled)] cursor-not-allowed opacity-60'
-                   : hasError
-                   ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)]'
-                   : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
-               }
-               ${leftIcon ? 'pl-10' : ''}
-               ${rightIcon ? 'pr-10' : ''}
-               ${className}
-               input__field form-field__input
-             `}
+            className={`
+              app-input ${hasError ? 'app-input-error' : ''} ${disabled ? 'app-input-disabled' : ''}
+              w-full h-10 px-3.5 text-sm font-normal rounded-xl transition-all duration-200 outline-none
+              bg-[var(--input-bg-default)] text-[var(--input-text-default)] placeholder:text-[var(--input-placeholder)]
+              border ${
+                disabled
+                  ? 'border-[var(--input-border-disabled)] bg-[var(--input-bg-disabled)] text-[var(--input-text-disabled)] cursor-not-allowed opacity-60'
+                  : hasError
+                  ? 'border-[var(--input-border-error)] focus:ring-4 focus:ring-[var(--input-ring-error)]'
+                  : 'border-[var(--input-border-default)] hover:border-slate-400 dark:hover:border-slate-500 focus:border-[var(--input-border-focus)] focus:ring-4 focus:ring-[var(--input-ring-focus)]'
+              }
+              ${leftIcon ? 'pl-10' : ''}
+              ${rightIcon ? 'pr-10' : ''}
+              ${className}
+              input__field form-field__input
+            `}
             {...props}
           />
           {rightIcon && (
