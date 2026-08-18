@@ -13,6 +13,7 @@ import {
   ClipboardList,
   RefreshCw,
   HelpCircle,
+  ArrowRight,
   Home as RoomIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,9 +23,10 @@ import { useServiceRequestContext } from '../contexts/ServiceRequestContext';
 import { Guest } from '../types';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { t } from '../i18n';
+import { TabType } from './Navigation';
 
 import { requestPushNotificationPermission, getPushPermissionState } from '../services/webPushService';
-import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB } from '../services/api';
+import { getPropertyAndRoomSlugs, fetchIcalCalendarsFromDB, syncAllIcalCalendarsInDB, fulfillServiceRequestInDB } from '../services/api';
 import { useToast } from './ToastContext';
 
 interface HeaderProps {
@@ -46,6 +48,7 @@ interface HeaderProps {
   // this is just told whether to show the icon and what to do when tapped.
   showInstallIcon?: boolean;
   onInstallIconClick?: () => void;
+  onNavigate?: (tab: TabType, itemKey?: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -63,13 +66,33 @@ export const Header: React.FC<HeaderProps> = ({
   rooms: _rooms = [],
   showInstallIcon = false,
   onInstallIconClick,
+  onNavigate,
 }) => {
-  useAuth();
+  const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { lowStockCount } = useInventoryContext();
   const { orders } = useKitchenContext();
-  const { pendingRequests } = useServiceRequestContext();
+  const { pendingRequests, refreshRequests } = useServiceRequestContext();
   const recentServiceRequests = pendingRequests.slice(0, 5);
+  const [resolvingRequestId, setResolvingRequestId] = useState<number | null>(null);
+
+  const handleNavigateAndClose = (tab: TabType, itemKey?: string) => {
+    setShowNotificationDropdown(false);
+    onNavigate?.(tab, itemKey);
+  };
+
+  const handleResolveServiceRequest = async (id: number) => {
+    setResolvingRequestId(id);
+    const fulfilledBy = currentUser?.name || currentUser?.username || 'Staff';
+    const ok = await fulfillServiceRequestInDB(id, fulfilledBy);
+    setResolvingRequestId(null);
+    if (ok) {
+      showToast('Service request marked fulfilled', { type: 'success' });
+      refreshRequests();
+    } else {
+      showToast('Failed to update request', { type: 'error' });
+    }
+  };
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
   useEffect(() => {
@@ -354,8 +377,16 @@ export const Header: React.FC<HeaderProps> = ({
                           <Utensils className="w-3.5 h-3.5 text-amber-600" />
                           {isShowingServed ? t('recently_served_orders_label', 'Recently Served Orders') : t('live_kitchen_tickets_label', 'Live Kitchen Tickets')}
                         </span>
-                        <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
-                          {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
+                        <span className="flex items-center gap-1.5">
+                          <span className={`header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded ${isShowingServed ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                            {isShowingServed ? t('kitchen_served_badge', 'Served') : t('kitchen_active_badge', 'Active')}
+                          </span>
+                          <button
+                            onClick={() => handleNavigateAndClose('kitchen', 'kitchen_orders')}
+                            className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer flex items-center gap-0.5"
+                          >
+                            {t('view_button', 'View')} <ArrowRight className="w-2.5 h-2.5" />
+                          </button>
                         </span>
                       </div>
 
@@ -399,8 +430,16 @@ export const Header: React.FC<HeaderProps> = ({
                           <Calendar className="w-3.5 h-3.5 text-blue-600" />
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
-                        <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
-                          {t('today_tomorrow_badge', 'Today & Tomorrow')}
+                        <span className="flex items-center gap-1.5">
+                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                            {t('today_tomorrow_badge', 'Today & Tomorrow')}
+                          </span>
+                          <button
+                            onClick={() => handleNavigateAndClose('guests', 'all_bookings')}
+                            className="text-[9px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer flex items-center gap-0.5"
+                          >
+                            {t('view_button', 'View')} <ArrowRight className="w-2.5 h-2.5" />
+                          </button>
                         </span>
                       </div>
 
@@ -500,6 +539,14 @@ export const Header: React.FC<HeaderProps> = ({
                                 {t('requested_by_text', 'Requested by')} {r.requestedBy}
                               </p>
                             </div>
+                            <button
+                              onClick={() => handleResolveServiceRequest(r.id)}
+                              disabled={resolvingRequestId === r.id}
+                              className="text-[9px] font-bold px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>{resolvingRequestId === r.id ? t('resolving_label', 'Resolving...') : t('resolve_button', 'Resolve')}</span>
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -512,13 +559,22 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="header__low-stock-icon p-1.5 rounded-lg bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mt-0.5">
                         <AlertTriangle className="w-4 h-4" />
                       </div>
-                      <div>
-                        <p className="header__low-stock-title text-xs font-semibold text-slate-900 dark:text-white">
-                          {lowStockCount} Low Inventory Items
-                        </p>
-                        <p className="header__low-stock-desc text-[11px] text-slate-500 dark:text-slate-400">
-                          {t('low_stock_threshold_description', 'Items reached minimum threshold limit')}
-                        </p>
+                      <div className="flex-1 flex items-center justify-between gap-2">
+                        <div>
+                          <p className="header__low-stock-title text-xs font-semibold text-slate-900 dark:text-white">
+                            {lowStockCount} Low Inventory Items
+                          </p>
+                          <p className="header__low-stock-desc text-[11px] text-slate-500 dark:text-slate-400">
+                            {t('low_stock_threshold_description', 'Items reached minimum threshold limit')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleNavigateAndClose('inventory', 'stock_requests')}
+                          className="text-[9px] font-bold px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors shrink-0 inline-flex items-center gap-1"
+                        >
+                          <span>{t('view_button', 'View')}</span>
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
                       </div>
                     </div>
                   )}

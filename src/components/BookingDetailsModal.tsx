@@ -109,9 +109,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
   const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
   const advancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
+  // The booking form folds itemized "Additional Charges" (Decoration Fees,
+  // Pet Stay Charges, etc.) straight into pendingAmount at creation time -
+  // this modal has no visibility into those individual lines (they live in
+  // guest_extra_charges, a table this component never reads; it's
+  // write-only-from-here, analytics-only-read). Without preserving that gap,
+  // recomputing pending as pure roomRent-advancePaid on every edit silently
+  // dropped any extra charges from the bill - the guest_name note text
+  // ("Extra Charges: ...") the create form also writes was the only
+  // surviving trace, which is why it looked like the charge "became" just a
+  // note (found 19 Aug 2026). storedPending - the bare rent/advance math is
+  // treated as that baked-in extra and carried forward through edits.
+  const storedPending = g.pending_amount ?? g.pendingAmount;
+  const extrasBaked = typeof storedPending === 'number'
+    ? Math.max(0, storedPending - Math.max(0, roomRent - advancePaid))
+    : 0;
   const pendingDisplay = isEditing
-    ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0))
-    : Math.max(0, roomRent - advancePaid);
+    ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0) + extrasBaked)
+    : Math.max(0, roomRent - advancePaid + extrasBaked);
 
   const startEditing = (highlightReceiver: boolean = false) => {
     setHighlightReceiverFields(highlightReceiver);
@@ -157,7 +172,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const newRoom = rooms.find((r) => String(r.id) === editRoomId);
     const newRoomRent = parseFloat(editRoomRent) || 0;
     const newAdvance = parseFloat(editAdvance) || 0;
-    const newPending = Math.max(0, newRoomRent - newAdvance);
+    const newPending = Math.max(0, newRoomRent - newAdvance + extrasBaked);
     setIsSaving(true);
     try {
       const updated: any = {

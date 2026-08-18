@@ -1639,6 +1639,7 @@ ${itemsStr}
             rooms={preloadedData.currentProperty?.rooms || []}
             showInstallIcon={canShowInstallIcon}
             onInstallIconClick={handleHeaderInstallClick}
+            onNavigate={(tab, itemKey) => handleNavigateTab(tab, itemKey)}
           />
         )}
 

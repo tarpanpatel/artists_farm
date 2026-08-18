@@ -461,17 +461,29 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           BookingDetailsModal (Edit Booking), this is just the at-a-glance
                           indicator so a pending filing isn't only discoverable by opening every
                           card one by one. */}
-                      {guest.isForeignGuest && (
-                        <div className="mt-1.5">
-                          {guest.cFormFiledAt ? (
-                            <Badge variant="success" size="sm">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {t('c_form_filed_badge', 'C-Form Filed')}
-                            </Badge>
-                          ) : (
+                      {(guest.isForeignGuest || guest.idVerificationStatus !== 'Complete') && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {guest.isForeignGuest && (
+                            guest.cFormFiledAt ? (
+                              <Badge variant="success" size="sm">
+                                <CheckCircle2 className="w-3 h-3" />
+                                {t('c_form_filed_badge', 'C-Form Filed')}
+                              </Badge>
+                            ) : (
+                              <Badge variant="warning" size="sm">
+                                <AlertCircle className="w-3 h-3" />
+                                {t('c_form_pending_badge', 'C-Form Pending')}
+                              </Badge>
+                            )
+                          )}
+                          {/* ID docs pending - same idVerificationStatus the
+                              Dashboard's Alerts widget counts, surfaced here too
+                              so it's visible per-booking, not just as an
+                              aggregate elsewhere. */}
+                          {guest.idVerificationStatus !== 'Complete' && (
                             <Badge variant="warning" size="sm">
                               <AlertCircle className="w-3 h-3" />
-                              {t('c_form_pending_badge', 'C-Form Pending')}
+                              {t('id_verification_pending_badge', 'ID Pending')}
                             </Badge>
                           )}
                         </div>

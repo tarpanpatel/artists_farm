@@ -649,7 +649,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     <span className="summary-line summary-line--advance-paid text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹{advancePaid.toFixed(2)}</span>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
+                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('received_by_booking_label', 'Received By (Booking)')}</label>
                     <StyledSelect
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
@@ -659,9 +659,31 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 flex justify-between items-center text-xs font-semibold border border-amber-200 dark:border-amber-800">
-                  <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
-                  <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
+                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
+                  <div className="flex justify-between items-center font-semibold">
+                    <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Lodging Due:')}</span>
+                    <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
+                  </div>
+                  {/* Who's expected to collect this at checkout - same
+                      guests.pending_received_by column set at booking time
+                      (GuestManagement's "Pending Received By") and editable
+                      later via BookingDetailsModal, so it stays one
+                      consistent field across the whole guest lifecycle
+                      instead of a separate checkout-only record. Moved here
+                      (19 Aug 2026) to sit right below the amount it applies
+                      to, same as "Received By (Booking)" does for Advance
+                      Paid above - was previously buried deep inside the
+                      Final Checkout Split Settlement box further down,
+                      disconnected from Pending Lodging Due itself. */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
+                    <StyledSelect
+                      value={pendingReceivedBy}
+                      onChange={setPendingReceivedBy}
+                      placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
+                      options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -681,7 +703,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   {/* Dish / Item Selector Controls */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                     <div className="sm:col-span-7">
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('select_dish_item_label', 'Select Dish / Item')}</label>
+                      <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('select_dish_item_label', 'Select Dish / Item')}</label>
                       <StyledSelect
                         value={selectedMenuId}
                         onChange={setSelectedMenuId}
@@ -692,7 +714,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
+                      <label className="block text-[11px] font-semibold text-slate-500 uppercase mb-1">{t('quantity_label', 'Quantity')}</label>
                       <Input
                         type="number"
                         min="1"
@@ -1080,27 +1102,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
                 </div>
 
-                {/* Who actually collected the pending lodging due at checkout -
-                    same guests.pending_received_by column set at booking time
-                    (GuestManagement's "Pending Received By") and editable later
-                    via BookingDetailsModal, so it stays one consistent field
-                    across the whole guest lifecycle instead of a separate
-                    checkout-only record. Restricted to real cash handlers,
-                    same as "Received By (Booking)" above. */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('pending_received_by_label', 'Pending Received By')}</label>
-                  <StyledSelect
-                    value={pendingReceivedBy}
-                    onChange={setPendingReceivedBy}
-                    placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                    options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
-                  />
-                </div>
-
                 {/* Split Distribution Matrix */}
                 <div className="space-y-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase">{t('split_distribution_matrix_heading', 'Split Distribution Matrix')}</span>
+                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{t('split_distribution_matrix_heading', 'Split Distribution Matrix')}</span>
                     <button
                       type="button"
                       onClick={handleAddSplitRow}
