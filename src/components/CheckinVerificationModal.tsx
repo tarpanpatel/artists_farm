@@ -138,7 +138,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
 
   return (
-    <div className="checkin-verification-modal__overlay fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+    <div className="checkin-verification-modal__overlay fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-70 animate-in fade-in">
       <div className="checkin-verification-modal__content bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="checkin-verification-modal__header flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
