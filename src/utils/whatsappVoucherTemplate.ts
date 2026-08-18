@@ -11,15 +11,17 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
   `🏨 *BOOKING CONFIRMATION VOUCHER*
 ━━━━━━━━━━━━━━━━━
 👤 *Guest:* {guest_name}
-🏠 *Assigned Room:* {room_name}
+🏠 *Unit / Room:* {room_name}
 📅 *Check-In:* {checkin_date} from {checkin_time}
 📅 *Check-Out:* {checkout_date} until {checkout_time}
 👥 *Number of Guests:* {guest_count}
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
-💳 *Pay via UPI:* {upi_id}
-📍 *Location:* {maps_link}
+📍 *Address:* {address}
 📞 *Contact:* {contact_phone}
+🧭 *Google Maps:* {maps_link}
+💳 *Pay via UPI:* {upi_id}
+📝 *Notes:* {other_notes}
 ━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
 
@@ -32,7 +34,15 @@ We look forward to welcoming you to {property_name}!`;
 export function renderWhatsappVoucherTemplate(
   template: string,
   values: Record<string, string>,
-  optionalTokens: string[] = ['{maps_link}', '{contact_phone}', '{checkin_time}', '{checkout_time}', '{upi_id}']
+  optionalTokens: string[] = [
+    '{maps_link}',
+    '{contact_phone}',
+    '{checkin_time}',
+    '{checkout_time}',
+    '{upi_id}',
+    '{address}',
+    '{other_notes}',
+  ]
 ): string {
   const lines = template.split('\n');
   const keptLines = lines.filter((line) => {

@@ -1426,10 +1426,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             rooms={rooms}
             checkedInGuests={guests}
             propertyName={propertyName}
+            propertyAddress={propertyAddress}
             propertyMapsLink={propertyMapsLink}
             propertyPhone={propertyPhone}
             propertyWhatsappTemplate={propertyWhatsappTemplate}
             propertyUpiId={propertyUpiId}
+            propertyInstructions={propertyInstructions}
           />
         )}
       </div>

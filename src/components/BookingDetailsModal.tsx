@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, MessageCircle, LogOut, Upload, CreditCard, Globe, AlertTriangle } from 'lucide-react';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB } from '../services/api';
@@ -28,10 +28,12 @@ interface BookingDetailsModalProps {
   rooms?: Array<{ id: number; name: string; slug: string }>;
   checkedInGuests?: Guest[];
   propertyName?: string;
+  propertyAddress?: string;
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
+  propertyInstructions?: string;
   onOpenIdVerification?: () => void;
   onCheckedIn?: (guestId: string) => void;
   // Guest can be checked out and billed anytime during the stay, not just on
@@ -68,10 +70,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   rooms = [],
   checkedInGuests = [],
   propertyName = '',
+  propertyAddress = '',
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
+  propertyInstructions = '',
   onOpenIdVerification,
   onCheckedIn,
   onCheckout,
@@ -79,6 +83,26 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const { staff } = useStaff();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  const [propDetails, setPropDetails] = useState<{
+    name?: string;
+    address?: string;
+    phone?: string;
+    google_maps_link?: string;
+    upi_id?: string;
+    instructions?: string;
+  }>({});
+
+  useEffect(() => {
+    fetch('/php/api/router.php?action=get_property', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === 'success' && data.data) {
+          setPropDetails(data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -261,18 +285,30 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const buildWhatsAppShareUrl = () => {
     const digits = (guest.phoneNumber || '').replace(/\D/g, '');
     const phone = digits.length === 10 ? '91' + digits : digits;
+
+    const matchedRoom = rooms.find((r) => String(r.id) === String(g.roomId ?? g.room_id));
+    const unitName = guest.roomNumber || matchedRoom?.name || propDetails.name || 'N/A';
+
+    const addressVal = propertyAddress || propDetails.address || g.address || '';
+    const phoneVal = propertyPhone || propDetails.phone || g.phone || '';
+    const mapsVal = propertyMapsLink || propDetails.google_maps_link || g.google_maps_link || '';
+    const upiVal = propertyUpiId || propDetails.upi_id || g.upi_id || '';
+    const notesVal = propertyInstructions || propDetails.instructions || g.instructions || g.notes || '';
+
     const message = renderWhatsappVoucherTemplate(propertyWhatsappTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
       guest_name: guest.guestName,
-      room_name: guest.roomNumber,
-      property_name: propertyName || 'us',
+      room_name: unitName,
+      property_name: propertyName || propDetails.name || 'our property',
       checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
-      checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || ''),
+      checkout_date: formatDate(guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || ''),
       guest_count: String(noOfGuests),
       room_tariff: roomRent.toFixed(2),
       advance_paid: advancePaid.toFixed(2),
-      maps_link: propertyMapsLink,
-      contact_phone: propertyPhone,
-      upi_id: propertyUpiId,
+      address: addressVal,
+      contact_phone: phoneVal,
+      maps_link: mapsVal,
+      upi_id: upiVal,
+      other_notes: notesVal,
     });
     return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
   };
