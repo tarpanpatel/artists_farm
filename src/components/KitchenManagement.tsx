@@ -321,6 +321,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       onDispatchTelegram('Single Dish Ready', resolved || fallbackMsg, 'kitchen', inlineKeyboard, 'kitchen_single_dish_ready');
     }
 
+    showToast(`Dish marked ready: ${item.quantity}x ${item.name}`, { type: 'success' });
+
     recordTelescopeLog({
       portal: 'requests',
       severity: 'INFO',

@@ -43,11 +43,33 @@ if (!function_exists('getPropertyTelegramConfig')) {
  */
 if (!function_exists('resolveGroupChatId')) {
     function resolveGroupChatId(array $config, string $groupKey) {
+        if (empty($config['groups']) || !is_array($config['groups'])) {
+            return null;
+        }
+
+        // 1. Exact match on group key
         foreach ($config['groups'] as $group) {
-            if (($group['key'] ?? null) === $groupKey && !empty($group['chatId'])) {
+            if (!empty($group['chatId']) && ($group['key'] ?? null) === $groupKey) {
                 return $group['chatId'];
             }
         }
+
+        // 2. Case-insensitive / partial match on key or name for built-in categories ('kitchen', 'admin', 'finance')
+        $search = strtolower($groupKey);
+        foreach ($config['groups'] as $group) {
+            if (empty($group['chatId'])) continue;
+            $gKey = strtolower($group['key'] ?? '');
+            $gName = strtolower($group['name'] ?? '');
+            if (strpos($gKey, $search) !== false || strpos($gName, $search) !== false) {
+                return $group['chatId'];
+            }
+        }
+
+        // 3. Single connected group fallback
+        if (count($config['groups']) === 1 && !empty($config['groups'][0]['chatId'])) {
+            return $config['groups'][0]['chatId'];
+        }
+
         return null;
     }
 }
@@ -461,6 +483,32 @@ if (!function_exists('sendRawTelegramMessage')) {
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
+
+        // Automatic fallback retry if Telegram rejects HTML parse_mode
+        if ($http_code != 200) {
+            $parsed = json_decode($response, true);
+            $desc = strtolower($parsed['description'] ?? '');
+            if (strpos($desc, 'parse') !== false || strpos($desc, 'entity') !== false || strpos($desc, 'tag') !== false) {
+                $plainData = $data;
+                unset($plainData['parse_mode']);
+                $plainData['text'] = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\n", $message));
+                $chFallback = curl_init();
+                curl_setopt($chFallback, CURLOPT_URL, $url);
+                curl_setopt($chFallback, CURLOPT_POST, true);
+                curl_setopt($chFallback, CURLOPT_POSTFIELDS, $plainData);
+                curl_setopt($chFallback, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($chFallback, CURLOPT_SSL_VERIFYPEER, true);
+                curl_setopt($chFallback, CURLOPT_CONNECTTIMEOUT, 5);
+                curl_setopt($chFallback, CURLOPT_TIMEOUT, 8);
+                $fallbackResponse = curl_exec($chFallback);
+                $fallbackHttpCode = curl_getinfo($chFallback, CURLINFO_HTTP_CODE);
+                curl_close($chFallback);
+                if ($fallbackHttpCode == 200) {
+                    $response = $fallbackResponse;
+                    $http_code = 200;
+                }
+            }
+        }
 
         // Log Telegram API call
         $status = ($http_code == 200) ? 'SUCCESS' : 'WARNING';
