@@ -98,3 +98,44 @@ This document defines the core visual design tokens, component architecture patt
 - **Single Universal Border Radius Rule**: EVERY element in the entire application that has a border radius—including outer card boxes, panels, section containers, bottom drawers, modals, buttons, form inputs, search bars, select dropdowns, navigation tabs, images, dish thumbnails, status badges, counter tags, and info labels—MUST use the exact same unified corner radius: **`rounded-xl` (12px / 0.75rem)**.
 - **Absolute Visual Uniformity**: Zero variations in corner roundness are permitted across the site. Ad-hoc mixing of `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-2xl`, `rounded-3xl`, or capsule `rounded-full` shapes is strictly prohibited (with the sole exception of 1:1 circular user profile avatars and tiny notification dot indicators).
 
+---
+
+## 11. Persistent Site-Wide Mobile Bottom Navigation
+- **Universal Mobile Navigation Bar**: The mobile bottom navigation bar (`<MobileBottomNav />`) must remain persistent and accessible across ALL pages, modules, sub-views, and dashboards throughout the entire application on mobile viewports (`md:hidden`).
+- **One-Thumb Mobile Navigation Standard**: Never hide or disable the bottom navigation bar on any mobile screen. It provides one-thumb access to core resort modules (`Dashboard`, `Bookings`, `Expenses`, `Kitchen`, `Petty Cash`, and the Quick Action drawer) at all times, with safe-area inset padding (`pb-[calc(0.5rem+env(safe-area-inset-bottom))]`).
+- **Page Bottom Spacer Margin**: All page container views must include bottom padding (`pb-24` on mobile or `pb-[calc(6rem+env(safe-area-inset-bottom))]`) so page content and bottom action buttons are never obscured by the persistent mobile bottom bar.
+
+---
+
+## 12. Mobile Responsive Data Cards & 10-Item Pagination Standard
+- **Mobile Responsive Layout (Card Stacks)**: Data tables must convert into responsive card stacks on mobile viewports (`block lg:hidden` card layout alongside `hidden lg:block` desktop table view). Multi-column tables must never force horizontal scrolling or unreadable cramped columns on mobile screens.
+- **Strict 10-Item Mobile Pagination**: All data lists, mobile card feeds, catalog inventories, and log records must implement 10-item pagination (`10 items per page`), complete with `Previous` and `Next` page navigation controls to maintain fast page rendering, minimal scrolling depth, and clean touch ergonomics.
+
+---
+
+## 13. Tailwind CSS Standard Button Guidelines
+- **Tailwind Button System**: All buttons across the application must strictly adhere to the standard Tailwind CSS component design system (reference: [Tailwind CSS Documentation](https://tailwindcss.com/)).
+- **Universal Button Styling Tokens**:
+  - **Primary Buttons**: Solid fill with active scale & hover elevation (`bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer`).
+  - **Secondary / Outline Buttons**: Clean border with hover state (`border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer`).
+  - **Ghost / Icon Buttons**: Soft hover state with icon alignment (`p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer`).
+- **No Non-Standard Shapes or Meaningless Buttons**: Capsule buttons (`rounded-full`), flat non-interactive text labels, or meaningless "Enter" buttons are strictly prohibited. All interactive controls must share the universal `rounded-xl` radius and clear hover feedback.
+
+---
+
+## 14. Protected Custom Calendar & Date Picker Components
+- **Immutable Custom PMS Calendar Components**: The Multi-Room Calendar (`<MultiRoomCalendar />` / `MultiRoomCalendar.tsx`), Single Room Calendar View (`<CalendarView />` / `CalendarView.tsx`), and Custom Date Range Picker (`<DateRangePicker />` / `DateRangePicker.tsx`) are proprietary custom-built PMS components.
+- **Strict Permission Rule**: These components and their underlying layout, booking grid logic, date math, and rendering functions must **NEVER BE TOUCHED, MODIFIED, OR REFACTORED WITHOUT EXPLICIT PERMISSION FROM THE USER**.
+- **Universal Trigger Standard**: All date filtering controls across the site must launch the exact `<DateRangePicker />` modal using a standard Tailwind outline trigger button (`border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-2xs flex items-center gap-2 cursor-pointer`) containing a `<Calendar />` icon.
+
+---
+
+## 15. Standard Toggle Switch Guidelines
+- **Universal Toggle Switch Standard**: All boolean toggle controls across the site must use the standard `<ToggleSwitch />` component (`ToggleSwitch.tsx`).
+- **Toggle Switch Styling Tokens**:
+  - **Track (Container)**: Fixed size `h-6 w-11 rounded-full shrink-0 relative inline-flex items-center cursor-pointer border-2 border-transparent transition-colors duration-200 ease-in-out`.
+  - **Active State (On)**: `bg-emerald-600 dark:bg-emerald-500` (or `bg-blue-600`).
+  - **Inactive State (Off)**: `bg-slate-300 dark:bg-slate-600`.
+  - **Knob (Thumb)**: `h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out` (`translate-x-5` when On, `translate-x-0` when Off).
+- **Prohibited Custom Toggles**: Ad-hoc raw buttons with unconstrained dimensions, misaligned absolute spans, or stretched flex tracks are strictly forbidden. All toggles must use `<ToggleSwitch />`.
+
