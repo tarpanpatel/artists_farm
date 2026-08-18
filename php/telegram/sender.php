@@ -113,6 +113,45 @@ if (!function_exists('legacyCategoryChatId')) {
  * a last-resort fallback to the legacy global chat IDs for properties/events
  * that haven't been routed to a specific group yet.
  */
+if (!function_exists('appendAppUrlToMessage')) {
+    function appendAppUrlToMessage($pdo, $propertyId, $category, $message) {
+        if (strpos($message, 'http://') !== false || strpos($message, 'https://') !== false) {
+            return $message;
+        }
+
+        $appUrl = null;
+        try {
+            if ($pdo && $propertyId) {
+                $stmt = $pdo->prepare("SELECT p.slug as prop_slug, t.slug as tenant_slug FROM properties p JOIN tenants t ON p.tenant_id = t.id WHERE p.id = ?");
+                $stmt->execute([$propertyId]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($row) {
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost:3000';
+                    $hash = 'dashboard';
+                    if ($category === 'kitchen' || strpos($message, 'KITCHEN') !== false) {
+                        $hash = 'kitchen';
+                    } else if ($category === 'finance' || strpos($message, 'FINANCIAL') !== false || strpos($message, 'EXPENSE') !== false) {
+                        $hash = 'finance';
+                    } else if (strpos($message, 'MATERIAL') !== false || strpos($message, 'REQUISITION') !== false) {
+                        $hash = 'stock_requests';
+                    } else if (strpos($message, 'SERVICE') !== false) {
+                        $hash = 'service_requests';
+                    } else if (strpos($message, 'GUEST') !== false || strpos($message, 'BOOKING') !== false || strpos($message, 'CHECK-IN') !== false) {
+                        $hash = 'guests';
+                    }
+                    $appUrl = "{$scheme}://{$host}/{$row['tenant_slug']}/{$row['prop_slug']}/#{$hash}";
+                }
+            }
+        } catch (Exception $e) {}
+
+        if ($appUrl) {
+            $message .= "\n\n🔗 <b>Open in App:</b> <a href=\"{$appUrl}\">{$appUrl}</a>";
+        }
+        return $message;
+    }
+}
+
 if (!function_exists('sendPropertyTelegramMessage')) {
     function sendPropertyTelegramMessage($pdo, $propertyId, $category, $message, $replyMarkup = null, $templateKey = null) {
         $config = getPropertyTelegramConfig($pdo, $propertyId);
@@ -121,6 +160,7 @@ if (!function_exists('sendPropertyTelegramMessage')) {
         }
 
         $token = !empty($config['botToken']) ? $config['botToken'] : TELEGRAM_BOT_TOKEN;
+        $message = appendAppUrlToMessage($pdo, $propertyId, $category, $message);
 
         if ($category === 'all') {
             $chatIds = [];

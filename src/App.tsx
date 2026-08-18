@@ -992,7 +992,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
         take_food_order: { tab: 'kitchen', key: 'take_food_order' },
         kitchen_orders: { tab: 'kitchen', key: 'kitchen_orders' },
         staff_meals: { tab: 'kitchen', key: 'staff_meals' },
-        kitchen: { tab: 'kitchen', key: 'kitchen_orders' },
+        // Must match getInitialActiveState()'s routeMap ('kitchen_overview',
+        // not 'kitchen_orders') - kitchen_overview is the synthetic launchpad
+        // key that isRouteAllowed() above explicitly bypasses RBAC for.
+        // 'kitchen_orders' is a real DB-driven nav item and fails the RBAC
+        // check for any role that isn't granted it specifically, which was
+        // silently bouncing the mobile bottom nav's "Kitchen" button (itemKey
+        // 'kitchen') straight back to #dashboard on every click.
+        kitchen: { tab: 'kitchen', key: 'kitchen_overview' },
         stock_requests: { tab: 'inventory', key: 'stock_requests' },
         fulfill_stock_req: { tab: 'inventory', key: 'stock_requests' },
         deficit_shortfalls_log: { tab: 'inventory', key: 'deficit_shortfalls_log' },

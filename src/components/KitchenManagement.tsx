@@ -545,8 +545,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         elapsed_minutes: String(elapsedMin),
       };
       const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
-      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>`;
-      onDispatchTelegram('Kitchen Order Reminder', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
+      const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
+      const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Pending for:</b> ${elapsedMin} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+      onDispatchTelegram('Kitchen Order Reminder', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     }
 
     if (item.id) {
@@ -582,13 +584,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         ready_since: readySince || 'a while ago',
       };
       const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
+      const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
       const inlineKeyboard = {
         inline_keyboard: [
           [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${cleanTicketId}_${itemIndex}` }]
         ]
       };
-      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>`;
-      onDispatchTelegram('Pickup Reminder', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
+      const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${cleanTicketId}\n• <b>${item.quantity}x</b> ${item.name} (${ord.roomNumber})\n⏱️ <b>Ready since:</b> ${readySince || 'a while ago'}\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+      const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+      onDispatchTelegram('Pickup Reminder', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     }
 
     if (item.id) {
@@ -630,8 +634,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       elapsed_minutes: String(stale.elapsed_minutes),
     };
     const resolved = await resolveTelegramTemplate('kitchen_order_reminder', reminderVars);
-    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>`;
-    onDispatchTelegram?.('Kitchen Order Reminder (Auto)', resolved || fallbackMsg, 'kitchen', undefined, 'kitchen_order_reminder');
+    const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
+    const fallbackMsg = `⏰ <b>KITCHEN REMINDER</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Pending for:</b> ${stale.elapsed_minutes} min\n━━━━━━━━━━━━━━━━━━\n👨‍🍳 <i>Auto-reminder — please check on this order.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+    onDispatchTelegram?.('Kitchen Order Reminder (Auto)', finalMsg, 'kitchen', undefined, 'kitchen_order_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
 
@@ -644,13 +650,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       ready_since: `${stale.elapsed_minutes} min ago`,
     };
     const resolved = await resolveTelegramTemplate('kitchen_pickup_reminder', reminderVars);
+    const appUrl = `${window.location.origin}${window.location.pathname}#kitchen`;
     const inlineKeyboard = {
       inline_keyboard: [
         [{ text: '🍽️ Tap when Served', callback_data: `serve_item_${stale.order_id}_${stale.item_index ?? 0}` }]
       ]
     };
-    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>`;
-    onDispatchTelegram?.('Pickup Reminder (Auto)', resolved || fallbackMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
+    const fallbackMsg = `⏰ <b>STILL WAITING FOR PICKUP</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Order Ticket:</b> #${stale.order_id}\n• <b>${stale.quantity}x</b> ${stale.dish_name} (${stale.room_no})\n⏱️ <b>Ready since:</b> ${stale.elapsed_minutes} min ago\n━━━━━━━━━━━━━━━━━━\n🏃 <i>Auto-reminder — please collect and tap below when served.</i>\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>`;
+    const finalMsg = resolved ? `${resolved}\n\n🔗 <b>Open Kitchen Board:</b> <a href="${appUrl}">${appUrl}</a>` : fallbackMsg;
+    onDispatchTelegram?.('Pickup Reminder (Auto)', finalMsg, 'admin', inlineKeyboard, 'kitchen_pickup_reminder');
     updateItemReminderTimestamp(stale.item_id);
   };
 
@@ -1142,7 +1150,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           tab-content wrapper divs below (kds-orders-container,
           take-food-order-container, and the walk_in_bills root div) so this
           bar and whichever content is active render as one continuous card. */}
-      {activeTab !== 'beta_recipe_builder' && (
+      {(activeTab === 'new_order' || activeTab === 'kds' || activeTab === 'walk_in_bills') && (
         <div className="flex items-end justify-center gap-1.5 px-2 overflow-x-auto scrollbar-thin">
           <button
             type="button"
